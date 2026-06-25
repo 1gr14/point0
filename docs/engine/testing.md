@@ -1,7 +1,9 @@
 ---
 index: 1200
 title: Testing
-description: Run a point's loader, drive a request, or walk a real browser — three test levels, no manual server boot.
+description:
+  Run a point's loader, drive a request, or walk a real browser — three test
+  levels, no manual server boot.
 ---
 
 A Point0 app is a normal fullstack app, so you test it however you already test
@@ -9,14 +11,15 @@ fullstack apps — there is no Point0-specific test framework to learn. Two fact
 matter, and the rest of this page is just **one** way to organize around them:
 
 1. **It runs in a real browser.** The built (or dev) app serves real HTML over
-   HTTP, so you can drive it end-to-end with [Playwright](https://playwright.dev/)
-   (or any browser driver) exactly like any other web app.
+   HTTP, so you can drive it end-to-end with
+   [Playwright](https://playwright.dev/) (or any browser driver) exactly like
+   any other web app.
 2. **You can also call a point's server loader directly, in-process, with full
    types.** `point.fetchServer(input)` runs the point's server loader and hands
-   back its typed output — no socket, no HTTP framing. `point.fetchServerDetailed`
-   does the same but returns a discriminated `{ output } | { error } | { redirect }`
-   so you can assert on failures. Both run inside `engine.withFetch(...)`, against
-   the `engine` you already export.
+   back its typed output — no socket, no HTTP framing.
+   `point.fetchServerDetailed` does the same but returns a discriminated
+   `{ output } | { error } | { redirect }` so you can assert on failures. Both
+   run inside `engine.withFetch(...)`, against the `engine` you already export.
 
 That second point is the one worth remembering — it lets you unit-test backend
 logic against your real engine without booting a server:
@@ -39,33 +42,31 @@ That is the whole framework surface for testing: `engine.withFetch`,
 `engine.fetch`, `point.fetchServer` / `fetchServerDetailed`. The runner above is
 **Bun's** `bun:test` — not Jest or Vitest — but nothing here is tied to it.
 
-<!-- TODO(med): the example apps under examples/* ship no tests, and it is NOT
-confirmed whether create-point0-app scaffolds a src/test/ rig. The layout below is
-a pattern to copy, not generated output. -->
+The layout below is a pattern to copy, not generated output.
 
 ## This page is one example, not the way
 
-Everything below — the four-kind `unit` / `dom` / `int` / `e2e` taxonomy, the file
-suffixes, the `src/test/setup/*` preloads, the fixtures and `cleanDb` helpers — is
-how [start0](https://1gr14.dev/start0), our boilerplate, happens to lay its tests
-out. None of it is Point0 API. **Copy what fits, ignore the rest, or structure your
-tests completely differently.** Point0 only gives you the runtime hooks; you wire
-the test harness yourself.
+Everything below — the four-kind `unit` / `dom` / `int` / `e2e` taxonomy, the
+file suffixes, the `src/test/setup/*` preloads, the fixtures and `cleanDb`
+helpers — is how [start0](https://1gr14.dev/start0), our boilerplate, happens to
+lay its tests out. None of it is Point0 API. **Copy what fits, ignore the rest,
+or structure your tests completely differently.** Point0 only gives you the
+runtime hooks; you wire the test harness yourself.
 
 ## The four kinds
 
 Pick the **lightest** kind that can catch the bug.
 
-| Kind | Suffix | Spins up | For |
-| --- | --- | --- | --- |
-| **unit** | `*.unit.test.ts` | plain Bun | a util, a pure function, a schema |
-| **dom** | `*.dom.test.tsx` | happy-dom + Testing Library, **no browser** | React components and hooks |
-| **int** | `*.int.test.ts` | engine + Prisma in-process, **no server** | endpoint / backend behavior |
-| **e2e** | `*.e2e.test.ts` | **real server + real browser** (Playwright) | full user flows |
+| Kind     | Suffix           | Spins up                                    | For                               |
+| -------- | ---------------- | ------------------------------------------- | --------------------------------- |
+| **unit** | `*.unit.test.ts` | plain Bun                                   | a util, a pure function, a schema |
+| **dom**  | `*.dom.test.tsx` | happy-dom + Testing Library, **no browser** | React components and hooks        |
+| **int**  | `*.int.test.ts`  | engine + Prisma in-process, **no server**   | endpoint / backend behavior       |
+| **e2e**  | `*.e2e.test.ts`  | **real server + real browser** (Playwright) | full user flows                   |
 
 Each kind loads its own setup via Bun's `--preload`, and the file suffix is how
-Bun's filter picks the suite. start0 runs them all under `NODE_ENV=test` against a
-separate test database:
+Bun's filter picks the suite. start0 runs them all under `NODE_ENV=test` against
+a separate test database:
 
 ```sh
 bun run test         # unit → dom → int → e2e (build) in order
@@ -86,21 +87,23 @@ preloaded:
 ```
 
 The trailing `.int.test.` is Bun's filename filter; `--preload` runs the setup
-before any test file. (start0 also keeps one `src/test/setup/preload.ts`
-dispatcher that reads the test file's name and imports the matching setup — same
-result, one entry point.)
+before any test file. start0 also wires a `bunfig.toml` `[test] preload`
+dispatcher that reads the test file's name and loads the matching setup, so a
+bare `bun test path/to/x.dom.test.tsx` gets its setup without going through a
+script.
 
 ## int — run one point's loader (`engine.withFetch` + `fetchServer`)
 
-This is the default for backend tests: execute **one point's server loader**, get
-its typed output, no HTTP request, no socket. Two pieces:
+This is the default for backend tests: execute **one point's server loader**,
+get its typed output, no HTTP request, no socket. Two pieces:
 
-- **`point.fetchServer(input, fetchOptions?)`** runs the point's server loader and
-  returns the loader's output. It **throws** on a loader error or a redirect.
-- **`engine.withFetch(callback)`** is the wrapper you run it inside. It swaps the
-  fetch that points use under the hood so the loader runs **against this engine
-  in-process** instead of hitting the network. Call `fetchServer` *inside* the
-  callback.
+- **`point.fetchServer(input, fetchOptions?)`** runs the point's server loader
+  and returns the loader's output. It **throws** on a loader error or a
+  redirect.
+- **`engine.withFetch(callback)`** is the wrapper you run it inside. It swaps
+  the fetch that points use under the hood so the loader runs **against this
+  engine in-process** instead of hitting the network. Call `fetchServer`
+  _inside_ the callback.
 
 ```ts
 import { engine } from '@/engine'
@@ -118,11 +121,11 @@ test('returns the newest ideas first', async () => {
 ### Simulate auth: pass `headers`
 
 The second argument is `FetchOptions` — a standard `RequestInit` (so `headers`,
-`method`, `body`, …) plus a `transform?: boolean` flag. Pass `headers` to run the
-loader as a specific user, or `{}` for anonymous:
+`method`, `body`, …) plus a `transform?: boolean` flag. Pass `headers` to run
+the loader as a specific user, or `{}` for anonymous:
 
 ```ts
-await getMeQuery.fetchServer(undefined, { headers: {} })          // anonymous
+await getMeQuery.fetchServer(undefined, { headers: {} }) // anonymous
 await getMeQuery.fetchServer(undefined, { headers: user.headers }) // signed-in
 ```
 
@@ -132,10 +135,11 @@ further down, not a Point0 API.
 
 ### Assert on errors: `fetchServerDetailed`
 
-`fetchServer` throws on error, which is what you want when you just need the value.
-When you want to **assert on the error** instead, use `fetchServerDetailed` — same
-execution, but it returns a discriminated result (`{ output }` on success, `{
-error }` on failure, `{ redirect }` on redirect) rather than throwing:
+`fetchServer` throws on error, which is what you want when you just need the
+value. When you want to **assert on the error** instead, use
+`fetchServerDetailed` — same execution, but it returns a discriminated result
+(`{ output }` on success, `{ error }` on failure, `{ redirect }` on redirect)
+rather than throwing:
 
 ```ts
 test('rejects anonymous users', async () => {
@@ -146,7 +150,7 @@ test('rejects anonymous users', async () => {
     )
   })
   expect(result.error?.code).toBe('UNAUTHORIZED') // your AppError's code
-  expect(await prisma.idea.count()).toBe(0)        // and nothing was written
+  expect(await prisma.idea.count()).toBe(0) // and nothing was written
 })
 ```
 
@@ -169,14 +173,16 @@ test('forbids non-authors', async () => {
   })
   expect(result.error?.code).toBe('FORBIDDEN')
 
-  const inDb = await prisma.idea.findUniqueOrThrow({ where: { sn: created.sn } })
+  const inDb = await prisma.idea.findUniqueOrThrow({
+    where: { sn: created.sn },
+  })
   expect(inDb.title).toBe('Untouchable') // unchanged
 })
 ```
 
-> **What to test:** write int tests for states that *do* something that can break —
-> authorization gates, ownership checks, data rules. Skip plumbing like pagination;
-> tests written just to have tests only grow the codebase.
+> **What to test:** write int tests for states that _do_ something that can
+> break — authorization gates, ownership checks, data rules. Skip plumbing like
+> pagination; tests written just to have tests only grow the codebase.
 
 ### The int setup: `engine.prepare()`
 
@@ -198,11 +204,12 @@ export {}
 ```
 
 `engine.prepare()` makes the engine read its registered points and ready its
-server side — the same step `engine.serve()` does for you automatically; here you
-call it by hand because there is no `serve()`. **Skip it and `fetchServer` /
-`engine.fetch` throw** `Engine server is not prepared. Please call await
-engine.prepare() first.` It does not open a port or touch the DB. (Compare
-[engine-runtime](engine-runtime) for `serve` / `prepare` / `preload`.)
+server side — the same step `engine.serve()` does for you automatically; here
+you call it by hand because there is no `serve()`. **Skip it and `fetchServer` /
+`engine.fetch` throw**
+`Engine server is not prepared. Please call await engine.prepare() first.` It
+does not open a port or touch the DB. (Compare [engine-runtime](engine-runtime)
+for `serve` / `prepare` / `preload`.)
 
 ## int — drive a raw request (`engine.fetch`)
 
@@ -212,14 +219,16 @@ real `Request` through the engine in-process and returns a `Response`, no socket
 opened:
 
 ```ts
-const response = await engine.fetch('http://localhost:3001/zxc/123', { method: 'POST' })
+const response = await engine.fetch('http://localhost:3001/zxc/123', {
+  method: 'POST',
+})
 expect(response.status).toBe(201)
 expect(await response.json()).toEqual({ id: '123' })
 ```
 
 The first argument is a `string | URL | Request`; the second is a `RequestInit`.
-**Use a full absolute URL** — the router needs an origin to parse path and method.
-The port value is arbitrary in-process; only the path and method matter.
+**Use a full absolute URL** — the router needs an origin to parse path and
+method. The port value is arbitrary in-process; only the path and method matter.
 
 A not-found request flows through the same way:
 
@@ -243,33 +252,34 @@ headers, the raw error — `engine.fetchDetailed(...)` returns the full result a
 > request path around it.
 
 When the engine is created with a required ctx, `engine.fetch`'s overload makes
-`requiredCtx` a mandatory option (`engine.fetch(url, { requiredCtx, ...init })`).
-Most apps (start0 included) require none, so you pass just the URL and an
-optional `RequestInit`.
+`requiredCtx` a mandatory option
+(`engine.fetch(url, { requiredCtx, ...init })`). Most apps (start0 included)
+require none, so you pass just the URL and an optional `RequestInit`.
 
-<!-- TODO(low): FetchOptions.transform — default and exact effect on the
-transformer round-trip in tests — is not pinned down by any test; confirm before
-documenting it here. -->
-<!-- TODO(low): cross-link [transformer](transformer) once transform behavior in
-tests is confirmed. -->
-<!-- TODO(low): provide a concrete engine.fetch example for an engine that does
-require a ctx, once one exists in the examples or start0. -->
+### The `transform` flag
+
+`FetchOptions` also carries `transform?: boolean`, default `true`. When on, the
+fetch round-trips input and output through the point's
+[transformer](transformer) — so rich types (dates, and anything else the
+transformer handles) survive the serialize / deserialize across the request,
+in-process tests included. Set `transform: false` to send and receive plain JSON
+instead. Leave it on unless a test asserts specifically on the raw wire shape.
 
 ## fixtures: seed and authenticate
 
-int tests need real rows and real sessions. These are start0 helpers — patterns to
-replicate, not framework API:
+int tests need real rows and real sessions. These are start0 helpers — patterns
+to replicate, not framework API:
 
 ```ts
 // create a user straight in the DB; get back the row + ready auth headers + login()
 const user = await createTestUser()
 const other = await createTestUser({ index: 1 }) // a second, distinct user
-const { headers } = await user.login()           // refresh headers via a real sign-in
+const { headers } = await user.login() // refresh headers via a real sign-in
 ```
 
-`createTestUser` writes through better-auth's test helpers, rereads the row through
-Prisma for full types, and returns `{ ...user, headers, login }`. `seedIdea`
-inserts domain rows. Between tests, truncate everything:
+`createTestUser` writes through better-auth's test helpers, rereads the row
+through Prisma for full types, and returns `{ ...user, headers, login }`.
+`seedIdea` inserts domain rows. Between tests, truncate everything:
 
 ```ts
 import { cleanDb } from '@/modules/seed/utils'
@@ -278,10 +288,10 @@ beforeEach(async () => {
 })
 ```
 
-`cleanDb` is guarded by `throwIfNotSafeToDestroyDb`: it refuses unless `NODE_ENV
-!== 'production'`, `HOST_ENV === 'local'`, and `DATABASE_URL` contains `localhost`
-— so a test run can never wipe a staging database. Migrate the test DB before
-running int or e2e:
+`cleanDb` is guarded by `throwIfNotSafeToDestroyDb`: it refuses unless
+`NODE_ENV !== 'production'`, `HOST_ENV === 'local'`, and `DATABASE_URL` contains
+`localhost` — so a test run can never wipe a staging database. Migrate the test
+DB before running int or e2e:
 
 ```sh
 cross-env NODE_ENV=test prisma migrate dev # start0: bun run prisma:migrate:test
@@ -289,8 +299,8 @@ cross-env NODE_ENV=test prisma migrate dev # start0: bun run prisma:migrate:test
 
 ## dom — components without a browser
 
-dom tests render React with happy-dom and Testing Library — fast, no browser. The
-setup has one sharp edge worth copying verbatim:
+dom tests render React with happy-dom and Testing Library — fast, no browser.
+The setup has one sharp edge worth copying verbatim:
 
 ```ts
 // src/test/setup/dom.ts
@@ -309,8 +319,27 @@ const rtl = await import('@testing-library/react')
 afterEach(() => rtl.cleanup())
 ```
 
-<!-- TODO(med): add a real dom component-test body snippet (only the setup is
-shown). e.g. render a component point, assert with Testing Library queries. -->
+With that setup preloaded, a dom test renders React and asserts on the DOM with
+Testing Library — no point manager, no engine, no browser:
+
+```tsx
+// stepper.dom.test.tsx
+import { Stepper } from '@/ui/stepper'
+import { act, render, screen } from '@testing-library/react'
+import { expect, test } from 'bun:test'
+
+test('increments on click', () => {
+  render(<Stepper start={1} />)
+  expect(screen.getByTestId('value').textContent).toBe('1')
+
+  act(() => screen.getByRole('button', { name: 'add' }).click())
+  expect(screen.getByTestId('value').textContent).toBe('2')
+})
+```
+
+This tier is for plain React — components and hooks. A point's **component**
+needs the point manager around it to render, so exercise that through an `int`
+or `e2e` test (which boot the engine or the real app), not here.
 
 ## e2e — the real app in a browser (Playwright)
 
@@ -320,22 +349,37 @@ A new browser context per test keeps sessions isolated:
 
 ```ts
 import { routes } from '@/generated/point0/routes'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from 'bun:test'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  test,
+} from 'bun:test'
 import { chromium, type Browser, type Page } from 'playwright'
 import { expect } from 'playwright/test'
 
 let browser: Browser
 let page: Page
 
-beforeAll(async () => { browser = await chromium.launch() })
+beforeAll(async () => {
+  browser = await chromium.launch()
+})
 // browser.newPage() opens its own context, so every test starts clean
-beforeEach(async () => { page = await browser.newPage() })
-afterEach(async () => { await page.close() })
-afterAll(async () => { void browser.close() })
+beforeEach(async () => {
+  page = await browser.newPage()
+})
+afterEach(async () => {
+  await page.close()
+})
+afterAll(async () => {
+  void browser.close()
+})
 
 describe('smoke e2e', () => {
   test('home page available', async () => {
-    await page.goto(routes.home.abs())        // navigate via generated routes, not hand-written URLs
+    await page.goto(routes.home.abs()) // navigate via generated routes, not hand-written URLs
     await expect(page.locator('body')).toContainText('Welcome')
   })
 })
@@ -343,15 +387,19 @@ describe('smoke e2e', () => {
 
 **Navigate via generated [`routes`](generator), never literal URLs.**
 `routes.home.abs()` is the absolute URL (origin from the engine's client URL);
-`routes.signOut()` is the path only — both come from `@/generated/point0/routes`,
-so `bun run generate` (or `setup`) must have run first or the import is empty.
+`routes.signOut()` is the path only — both come from
+`@/generated/point0/routes`, so `bun run generate` (or `setup`) must have run
+first or the import is empty.
 
 **The app runs in a separate process, so the browser is the only way in** — you
 cannot reach its DB or engine from the test. Set up state by driving the UI:
 
 ```ts
 // a shared flow helper — sign a fresh user up through the real form
-export const signUpViaUi = async (page: Page, { prefix }: { prefix: string }) => {
+export const signUpViaUi = async (
+  page: Page,
+  { prefix }: { prefix: string },
+) => {
   const email = `${prefix}-${Date.now()}@example.com` // unique per call
   await page.goto(routes.signUp.abs())
   const form = page.locator('#sign-up-email-form')
@@ -364,22 +412,25 @@ export const signUpViaUi = async (page: Page, { prefix }: { prefix: string }) =>
 }
 ```
 
-For a second, unauthenticated visitor inside one test, open another page from the
-same browser in a `try/finally`:
+For a second, unauthenticated visitor inside one test, open another page from
+the same browser in a `try/finally`:
 
 ```ts
 const anonymous = await browser.newPage()
 try {
   await anonymous.goto(routes.ideaList.abs())
   await anonymous.getByRole('link', { name: title }).click()
-  await expect(anonymous.getByRole('link', { name: 'Edit idea' })).toHaveCount(0)
+  await expect(anonymous.getByRole('link', { name: 'Edit idea' })).toHaveCount(
+    0,
+  )
 } finally {
   await anonymous.close()
 }
 ```
 
-> **GOTCHA:** prefer `page.goto(route)` over clicking a header link when a toast or
-> overlay may sit over it — an overlapping success toast can swallow the click.
+> **GOTCHA:** prefer `page.goto(route)` over clicking a header link when a toast
+> or overlay may sit over it — an overlapping success toast can swallow the
+> click.
 
 ### Three ways to get a server
 
@@ -391,7 +442,8 @@ bun run test:e2e:build   # build first, then run the built server — closest to
 bun run test:e2e:no-run  # don't start anything; connect to a server you already run
 ```
 
-For the fastest iteration, run the server yourself once and reuse it across runs:
+For the fastest iteration, run the server yourself once and reuse it across
+runs:
 
 ```sh
 bun run dev:test       # NODE_ENV=test dev server, in one shell
@@ -400,9 +452,10 @@ bun run test:e2e:no-run # tests connect to it, in another — no per-run boot
 
 Each script is the same Bun e2e run with a different flag the e2e setup reads:
 `E2E_TESTS_BUILD=true` builds then runs `dist/server/index.server.js`;
-`E2E_TESTS_NO_RUN=true` skips launching; the default runs `point0 dev`. (There is
-**no `point0 serve`/`start` command** — the built server is run by executing
-`dist/server/index.server.js` directly. See [build](build) and [deploy](deploy).)
+`E2E_TESTS_NO_RUN=true` skips launching; the default runs `point0 dev`. (There
+is **no `point0 serve`/`start` command** — the built server is run by executing
+`dist/server/index.server.js` directly. See [build](build) and
+[deploy](deploy).)
 
 ### What the e2e setup does
 
@@ -413,17 +466,27 @@ worth copying:
 import { killPort } from '@point0/engine/port'
 
 // 1. free the ports first (a public engine helper)
-await killPort([Number(process.env.CLIENT_PORT), Number(process.env.SERVER_PORT)])
+await killPort([
+  Number(process.env.CLIENT_PORT),
+  Number(process.env.SERVER_PORT),
+])
 
 // 2. spawn the app as a child process (point0 dev, or the built server, or nothing)
-const mainProcess = Bun.spawn(runCommand, { stdout: 'inherit', stderr: 'inherit', env: { ...process.env, NODE_ENV: 'test' } })
+const mainProcess = Bun.spawn(runCommand, {
+  stdout: 'inherit',
+  stderr: 'inherit',
+  env: { ...process.env, NODE_ENV: 'test' },
+})
 
 // 3. kill it when this process exits — afterAll + plain signal listeners, so an
 //    interrupted run never orphans the app (signal-exit doesn't hold under Bun)
 afterAll(() => mainProcess.kill())
 process.on('exit', () => mainProcess.kill())
 for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
-  process.once(signal, () => { mainProcess.kill(); process.exit(1) })
+  process.once(signal, () => {
+    mainProcess.kill()
+    process.exit(1)
+  })
 }
 
 // 4. wait until the app is actually serving before any test runs
@@ -441,22 +504,23 @@ export const apiHealthAction = root.lets
   .action(async () => new Response('OK', { status: 200 }))
 
 // …and poll it (and the client HTML) before running tests
-const isApiHealthy = async () => (await fetch(serverEnv.SERVER_URL + apiHealthAction.route.get())).ok
+const isApiHealthy = async () =>
+  (await fetch(serverEnv.SERVER_URL + apiHealthAction.route.get())).ok
 ```
 
 ## Reference
 
 ### Test-time engine API
 
-| Call | Returns | Use for |
-| --- | --- | --- |
-| `engine.prepare()` | `Promise<void>` | ready the engine once before any in-process fetch (no port, no DB) |
-| `engine.withFetch(cb)` | `cb`'s return | wrap in-process point fetches so loaders run against this engine |
-| `point.fetchServer(input, fetchOptions?)` | the loader's typed output | run one point's server loader; **throws** on error / redirect |
-| `point.fetchServerDetailed(input, fetchOptions?)` | `{ output } \| { error } \| { redirect }` | same, but assert on `error` / `redirect` instead of throwing |
-| `engine.fetch(request, init?)` | `Promise<Response>` | drive a raw HTTP request through the pipeline in-process |
-| `engine.fetchDetailed(request, init?)` | detailed result | as above, plus matched point / scope / raw error |
-| `killPort(ports)` | `Promise<void>` | free ports before spawning the app (`@point0/engine/port`) |
+| Call                                              | Returns                                   | Use for                                                            |
+| ------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------ |
+| `engine.prepare()`                                | `Promise<void>`                           | ready the engine once before any in-process fetch (no port, no DB) |
+| `engine.withFetch(cb)`                            | `cb`'s return                             | wrap in-process point fetches so loaders run against this engine   |
+| `point.fetchServer(input, fetchOptions?)`         | the loader's typed output                 | run one point's server loader; **throws** on error / redirect      |
+| `point.fetchServerDetailed(input, fetchOptions?)` | `{ output } \| { error } \| { redirect }` | same, but assert on `error` / `redirect` instead of throwing       |
+| `engine.fetch(request, init?)`                    | `Promise<Response>`                       | drive a raw HTTP request through the pipeline in-process           |
+| `engine.fetchDetailed(request, init?)`            | detailed result                           | as above, plus matched point / scope / raw error                   |
+| `killPort(ports)`                                 | `Promise<void>`                           | free ports before spawning the app (`@point0/engine/port`)         |
 
 `fetchOptions` is `RequestInit & { transform?: boolean }`. Both `fetchServer*`
 also take a third `{ outputType? }` option (`'data'` by default; other values
@@ -464,14 +528,9 @@ shape the result for SSR) — not needed for ordinary tests.
 
 ### Test kinds and scripts
 
-| Kind | Suffix | Setup spins up | Default run |
-| --- | --- | --- | --- |
-| unit | `*.unit.test.ts` | nothing | `bun run test:unit` |
-| dom | `*.dom.test.tsx` | happy-dom + Testing Library | `bun run test:dom` |
-| int | `*.int.test.ts` | engine (`prepare`) + Prisma, no server | `bun run test:int` |
-| e2e | `*.e2e.test.ts` | real server + Playwright browser | `bun run test:e2e:dev` |
-
-<!-- TODO(low): document the Playwright `playwright install` browser-binary step
-once confirmed (whether it's needed and where it belongs in setup). -->
-<!-- TODO(low): bunfig [test] preload vs per-script --preload — start0 uses
-per-script flags; decide which to recommend. -->
+| Kind | Suffix           | Setup spins up                         | Default run            |
+| ---- | ---------------- | -------------------------------------- | ---------------------- |
+| unit | `*.unit.test.ts` | nothing                                | `bun run test:unit`    |
+| dom  | `*.dom.test.tsx` | happy-dom + Testing Library            | `bun run test:dom`     |
+| int  | `*.int.test.ts`  | engine (`prepare`) + Prisma, no server | `bun run test:int`     |
+| e2e  | `*.e2e.test.ts`  | real server + Playwright browser       | `bun run test:e2e:dev` |

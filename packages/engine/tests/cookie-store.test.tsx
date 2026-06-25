@@ -103,6 +103,21 @@ describe('cookie-store', () => {
     )
 
     it(
+      'treats a numeric expires as epoch milliseconds (matches the server serializer)',
+      inClient(() => {
+        const epochMs = Date.UTC(2025, 0, 1) // 2025-01-01T00:00:00Z
+        const writtenCookie = captureDocumentCookieWrite(() => {
+          CookieStore.clientDocumentCookieSetter({
+            name: 'sid',
+            value: 'abc',
+            expires: epochMs,
+          })
+        })
+        expect(writtenCookie).toContain(`Expires=${new Date(epochMs).toUTCString()}`)
+      }),
+    )
+
+    it(
       'read decoded value for encoded cookie name',
       inClient(() => {
         const value = withDocumentCookieString('user%20name=hello%20world; plain=value', () => {

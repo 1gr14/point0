@@ -1,7 +1,9 @@
 ---
 index: 800
 title: Transformer
-description: Serialize rich types (Date, Map, Set, BigInt) over the wire and into the query key by setting one transformer on the root.
+description:
+  Serialize rich types (Date, Map, Set, BigInt) over the wire and into the query
+  key by setting one transformer on the root.
 ---
 
 `.transformer` sets how Point0 serializes data crossing the wire — query inputs
@@ -89,17 +91,20 @@ await transferAction.fetch({ body: { amount: 100n } })
 ```
 
 On the server, validation runs **after** the transformer deserializes, so a
-`z.bigint()` schema sees a real `bigint` and accepts it. With plain JSON the same
-schema would reject the value.
+`z.bigint()` schema sees a real `bigint` and accepts it. With plain JSON the
+same schema would reject the value.
 
-<!-- TODO(med): only `Date` and `BigInt` are proven by Point0 tests (`packages/engine/tests/loader.test.tsx`, `action.test.tsx`). `Map`/`Set` are superjson capabilities — link superjson's own list of supported types here once confirmed end to end in a Point0 test. -->
+Point0 hands serialization to your transformer, so any type `superjson` supports
+— `Date`, `BigInt`, `Map`, `Set`, and more — round-trips. See
+[superjson's supported types](https://github.com/flightcontrolhq/superjson#parse).
 
 ## The default transformer
 
 When you never call `.transformer`, Point0 uses a blank transformer:
 `serialize`/`deserialize` are identity (pass-through), and the wire format is
-plain JSON with **stable key order** (it stringifies via `safe-stable-stringify`,
-a Point0 runtime dependency). So the default is "plain stable JSON":
+plain JSON with **stable key order** (it stringifies via
+`safe-stable-stringify`, a Point0 runtime dependency). So the default is "plain
+stable JSON":
 
 ```tsx
 // default transformer, serializing { date, string }:
@@ -113,14 +118,12 @@ records which fields need reconstructing:
 ```tsx
 // superjson, same input:
 '{"json":{"date":"2017-01-01T00:00:00.000Z","string":"value"},' +
-'"meta":{"v":1,"values":{"date":["Date"]}}}'
+  '"meta":{"v":1,"values":{"date":["Date"]}}}'
 // meta.values.date = ["Date"] tells deserialize to rebuild a Date
 ```
 
 That `meta` is what carries the type across the wire — and it's why the
 serialized form is larger than plain JSON.
-
-<!-- TODO(low): no benchmark in the repo for superjson's serialization cost on large payloads. Don't quantify the overhead until measured. -->
 
 ## How it bakes into the query key
 
@@ -139,8 +142,8 @@ ideaQuery.getQueryKey({ id: 123 })
 `input` is `safe-stable-stringify(transformer.serialize(routedInput))`. With the
 default transformer that's plain stable JSON. With `superjson`, the superjson
 serialization (its `{ json, meta }` shape, then stable-stringified) is what keys
-the cache — so an `input` containing a `Date` produces a distinct, reconstructable
-key instead of a lossy string.
+the cache — so an `input` containing a `Date` produces a distinct,
+reconstructable key instead of a lossy string.
 
 Stable stringification means key order doesn't matter: `{ a, b }` and `{ b, a }`
 hit the same cache entry. See [Query](query#the-query-key) for the full key
@@ -149,9 +152,12 @@ sections), see [Validation](validation).
 
 Because the transformer is in the key, **changing it changes cache keys
 app-wide**. If you add or swap `.transformer` in an existing app, persisted or
-in-flight keys built with the old transformer won't match the new ones.
-
-<!-- TODO(med): Point0 has no built-in cache-bust on transformer change, and the TanStack-persistence implications aren't covered by a test. Flag the migration caveat; confirm the recommended reset path before documenting one. -->
+in-flight keys built with the old transformer won't match the new ones. Point0
+does nothing to reconcile them — there's no built-in cache-bust on a transformer
+change. In-flight keys sort themselves out on the next fetch; persisted keys are
+your concern. If you persist the query cache through TanStack's
+`persistQueryClient`, change its `buster` string when you change the transformer
+so the stale cache is discarded.
 
 ## Not the same as the store transformers
 
@@ -184,20 +190,20 @@ type DataTransformer = {
 
 Any object of that shape works — `superjson` is the recommended default, but a
 hand-rolled transformer is valid too. Point0 wraps whatever you pass to also
-derive a stable `stringify`/`parse` pair for query keys and the wire (`stringify`
-= `safe-stable-stringify(serialize(data))`, `parse` =
+derive a stable `stringify`/`parse` pair for query keys and the wire
+(`stringify` = `safe-stable-stringify(serialize(data))`, `parse` =
 `deserialize(JSON.parse(str))`).
 
 ### Where it runs
 
-| Boundary                          | Direction       | What it does                          |
-| --------------------------------- | --------------- | ------------------------------------- |
-| query / mutation / action request | client → server | `serialize` the body                  |
-| request parse                     | server reads    | `deserialize` the body                |
-| query / loader output             | server → client | `stringify` the result                |
-| page dehydrated state (SSR)       | server → client | `stringify` the dehydrated state      |
-| response read                     | client reads    | `deserialize` the JSON                |
-| query key `input`                 | both            | `stringify` the routed input          |
+| Boundary                          | Direction       | What it does                     |
+| --------------------------------- | --------------- | -------------------------------- |
+| query / mutation / action request | client → server | `serialize` the body             |
+| request parse                     | server reads    | `deserialize` the body           |
+| query / loader output             | server → client | `stringify` the result           |
+| page dehydrated state (SSR)       | server → client | `stringify` the dehydrated state |
+| response read                     | client reads    | `deserialize` the JSON           |
+| query key `input`                 | both            | `stringify` the routed input     |
 
 ### Edge cases
 
@@ -205,8 +211,8 @@ derive a stable `stringify`/`parse` pair for query keys and the wire (`stringify
   returns `undefined` for an input, Point0 throws
   `Transformer returned undefined for input … on point …` rather than sending an
   empty body.
+- **Calling `.transformer` twice is last-wins.** Each call overwrites the root's
+  transformer with the new one — they don't compose — so the last `.transformer`
+  in the chain is the one that runs.
 
-<!-- TODO(low): `.transformer` called more than once should be last-wins (the builder merges via `_continue`), but there's no explicit test. Verify before stating it. -->
-
-The configured transformer always handles your query, mutation, and action
-data.
+The configured transformer always handles your query, mutation, and action data.

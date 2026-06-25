@@ -1,7 +1,9 @@
 ---
 index: 200
 title: Layout
-description: A shared shell around pages — its own route, data, loading, and error, that pages inherit and read from.
+description:
+  A shared shell around pages — its own route, data, loading, and error, that
+  pages inherit and read from.
 ---
 
 A layout is a point that wraps a set of pages in a shared shell — a header, a
@@ -40,9 +42,9 @@ export const generalLayout = root.lets.layout(({ children }) => (
 ```
 
 `.layout` is **server-ssr-and-client**: cut from the SERVER bundle when
-`ssr: false` (or after a `.clientOnly()` earlier in the chain) — body and imports
-removed from the server build; kept in the client build always, and in the server
-build only when SSR is on.
+`ssr: false` (or after a `.clientOnly()` earlier in the chain) — body and
+imports removed from the server build; kept in the client build always, and in
+the server build only when SSR is on.
 
 The name comes from the variable — see [points](points) for the `.lets`
 notation.
@@ -64,7 +66,9 @@ layout that owns `/ideas/:id` with a page at `/` resolves the page to
 `/ideas/:id`:
 
 ```tsx
-export const ideaLayout = generalLayout.lets.layout('/ideas/:id').layout(/* ... */)
+export const ideaLayout = generalLayout.lets
+  .layout('/ideas/:id')
+  .layout(/* ... */)
 
 export const ideaViewPage = ideaLayout.lets
   .page('/') // final route: /ideas/:id
@@ -94,8 +98,8 @@ A layout loads data the same way a [page](page) does — with its own
 layout component receives that data in `data`:
 
 ```tsx
-export const ideaLayout = generalLayout
-  .lets.layout('/ideas/:id')
+export const ideaLayout = generalLayout.lets
+  .layout('/ideas/:id')
   .with(ideaQuery, ({ params: { id } }) => ({ id: Number(id) }))
   .layout(({ children, data: { idea } }) => (
     <div>
@@ -106,17 +110,20 @@ export const ideaLayout = generalLayout
 ```
 
 Strip categories here: [`.loader`](loader) is **server-only** — cut from the
-client bundle: its body and the imports it uses are removed, so it never ships to
-the browser (it runs on the server). [`.with`](with) is **server-and-client** —
-not cut from either bundle, kept in both (isomorphic), so put secrets in the
-loader/`.ctx`, not in a `.with` mapper. A layout that closes with a loader
+client bundle: its body and the imports it uses are removed, so it never ships
+to the browser (it runs on the server). [`.with`](with) is
+**server-ssr-and-client** — cut from the server bundle when `ssr: false` (or
+after a `.clientOnly()`); kept in the client build always, and in the server
+build only when SSR is on. Either way it ships to the browser, so put secrets in
+the loader/`.ctx`, not in a `.with` mapper. A layout that closes with a loader
 is also a query, and that self-query is **finite by default**; close with
 [`.infiniteQuery`](infinite-query) after the loader to make it infinite instead.
 
 A layout owns its loading and error states, gating its whole subtree:
 
 - While the layout's data loads, the nearest [loading](loading-error) component
-  up the chain renders in place of the layout — the pages inside don't render yet.
+  up the chain renders in place of the layout — the pages inside don't render
+  yet.
 - If the layout's loader throws, the nearest [error](loading-error) component
   replaces the whole subtree, and the page inside is never rendered.
 
@@ -125,8 +132,8 @@ data is guaranteed to be loaded. That's what makes reading it from the page safe
 (next section).
 
 You can target the layout's own states specifically with `.layoutLoading(...)`
-and `.layoutError(...)`, leaving the generic `.loading` / `.error` for everything
-else. See [Loading & error](loading-error).
+and `.layoutError(...)`, leaving the generic `.loading` / `.error` for
+everything else. See [Loading & error](loading-error).
 
 ## A layout is also a provider
 
@@ -153,7 +160,8 @@ ideaLayout.useValue(['idea', 'author']) // => a picked object
 The page does **not** inherit the layout's queries or loaders — it reads the
 already-loaded value through the provider. Calling `.useValue()` outside a
 mounted, loaded layout throws (`useValue must be used within a Provider`); but
-because the layout gates its subtree, a page inside it is always past that point.
+because the layout gates its subtree, a page inside it is always past that
+point.
 
 Outside React, read the value imperatively:
 
@@ -162,8 +170,8 @@ ideaLayout.getValue() // => data; throws if not yet loaded
 ideaLayout.getValueOrUndefined() // => data | undefined; never throws
 ```
 
-`getValue` throws if the value isn't set yet, so call it only from code that runs
-after the layout has mounted and loaded; `getValueOrUndefined` is the safe
+`getValue` throws if the value isn't set yet, so call it only from code that
+runs after the layout has mounted and loaded; `getValueOrUndefined` is the safe
 variant when you can't guarantee that.
 
 ## Nesting layouts
@@ -174,8 +182,8 @@ prefix and shell — the parent wraps the child, which wraps the page:
 ```tsx
 export const generalLayout = root.lets.layout(/* ... */)
 
-export const ideaLayout = generalLayout
-  .lets.layout('/ideas/:id') // route extends the parent's
+export const ideaLayout = generalLayout.lets
+  .layout('/ideas/:id') // route extends the parent's
   .layout(/* ... */)
 
 export const ideaViewPage = ideaLayout.lets.page('/').page(/* ... */)
@@ -186,7 +194,10 @@ You can also attach a layout to a page from the page's own code, instead of
 building the page off the layout:
 
 ```tsx
-export const homePage = root.lets.page('/home').layout(generalLayout).page(/* ... */)
+export const homePage = root.lets
+  .page('/home')
+  .layout(generalLayout)
+  .page(/* ... */)
 ```
 
 When a page declares a layout this way, the layout's route params must be
@@ -207,9 +218,8 @@ not re-run.
 ```
 
 This is why a layout is the right place for a shell, a nav bar, or shared data
-that several pages read: it loads once and survives navigation within its subtree.
-
-<!-- TODO(med): the "loader/query not re-run on sibling navigation" claim is design intent (the layout stays mounted around an inner page switch in router.tsx); no test asserts a fetch-count across such a navigation. Verify with a focused test before treating it as guaranteed. -->
+that several pages read: it loads once and survives navigation within its
+subtree.
 
 ## Gating a layout's subtree
 
@@ -226,15 +236,16 @@ put the gate in the data flow, not in the markup:
 [`.ctx`](ctx) is **server-only** — cut from the client bundle: its body and
 imports are removed, so it never reaches the browser. [`.use`](plugin) and
 [`.with`](with) are **server-and-client** — not cut from either bundle, kept in
-both (isomorphic): a plugin or wrapper ships to both bundles, so the gate must do
-its real check in code that the loader runs, not in markup that reaches the
+both (isomorphic): a plugin or wrapper ships to both bundles, so the gate must
+do its real check in code that the loader runs, not in markup that reaches the
 browser.
 
 ```tsx
 import { authPlugin } from '@/lib/auth' // a plugin that resolves the user into props.me
 import { ErrorPoint0 } from '@point0/core'
 
-export const adminLayout = root.lets.layout('/admin')
+export const adminLayout = root.lets
+  .layout('/admin')
   .use(authPlugin)
   .with(({ props: { me } }) => {
     if (!me?.isAdmin) return new ErrorPoint0('Forbidden', { code: 'FORBIDDEN' })
@@ -260,18 +271,18 @@ layout.
 
 The layout component receives one object:
 
-| Prop               | Type                                          | When                                        |
-| ------------------ | --------------------------------------------- | ------------------------------------------- |
-| `children`         | the page (or nested layout) to render inside  | always — render it to mount the subtree     |
-| `data`             | mapper output, or the layout's loaded data    | always (`{}` if none)                       |
-| `queries`          | tuple of injected query results               | always (`[]` if none)                       |
-| `props`            | props contributed by `.with` wrappers         | always (`{}` if none)                       |
-| `params`           | parsed route params                           | when the route has params / `.params`       |
-| `search`           | parsed query string                           | when `.search` is set                       |
-| `setSearch`        | update the URL query (replace / patch / drop) | always (client-only; SSR no-op)             |
+| Prop               | Type                                          | When                                                     |
+| ------------------ | --------------------------------------------- | -------------------------------------------------------- |
+| `children`         | the page (or nested layout) to render inside  | always — render it to mount the subtree                  |
+| `data`             | mapper output, or the layout's loaded data    | always (`{}` if none)                                    |
+| `queries`          | tuple of injected query results               | always (`[]` if none)                                    |
+| `props`            | props contributed by `.with` wrappers         | always (`{}` if none)                                    |
+| `params`           | parsed route params                           | when the route has params / `.params`                    |
+| `search`           | parsed query string                           | when `.search` is set                                    |
+| `setSearch`        | update the URL query (replace / patch / drop) | always (client-only; SSR no-op)                          |
 | `location`         | the current location (`location.params`, …)   | always (a layout's location may be an ancestor location) |
-| `LoadingComponent` | the resolved loading component                | always                                      |
-| `ErrorComponent`   | the resolved error component (`{ error }`)    | always                                      |
+| `LoadingComponent` | the resolved loading component                | always                                                   |
+| `ErrorComponent`   | the resolved error component (`{ error }`)    | always                                                   |
 
 A layout's `location` can be an ancestor location, not just the exact current
 route — unlike a page, whose location always matches the page's route exactly.
@@ -280,15 +291,15 @@ route — unlike a page, whose location always matches the page's route exactly.
 
 Available once the layout carries a server loader or a suitable query:
 
-| Accessor                    | Returns                                   |
-| --------------------------- | ----------------------------------------- |
-| `useValue(keys?)`           | data (React hook); `keys` picks a subset; throws outside a mounted, loaded layout |
-| `getValue(input?)`          | data; throws if not yet set               |
-| `getValueOrUndefined(input?)` | data \| undefined; never throws         |
+| Accessor                      | Returns                                                                           |
+| ----------------------------- | --------------------------------------------------------------------------------- |
+| `useValue(keys?)`             | data (React hook); `keys` picks a subset; throws outside a mounted, loaded layout |
+| `getValue(input?)`            | data; throws if not yet set                                                       |
+| `getValueOrUndefined(input?)` | data \| undefined; never throws                                                   |
 
 The closed layout point also exposes `.route` (a callable [route0](navigation)
-route), `.Layout` / `.X` (the bound component), `.Infer`, and `.lets` to
-keep building child points.
+route), `.Layout` / `.X` (the bound component), `.Infer`, and `.lets` to keep
+building child points.
 
 ### Methods that apply to a layout
 
@@ -308,39 +319,40 @@ Shared: [`.use`](plugin) (plugins), [`.middleware`](middleware), `.on` /
 A layout also exposes the page-level defaults `.pageError`, `.pageLoading`,
 `.pageQueryOptions`, `.pageDehydratedStateQueryOptions` and the prefetch family
 (`.prefetchPageOnNavigate`, `.prefetchPageOnLinkHover`, `.prefetchPagePolicy`,
-`.onPrefetchPage`) — these configure the pages mounted under it. See
-[Navigation](navigation) and [SSR](ssr) for the prefetch policies.
+`.onPrefetchPage`). Like a [base](base), a layout broadcasts these to its
+subtree: each becomes the default for every page built under it (a page's own
+setting still wins). The scroll defaults (`.scrollPosition` / `.scrollRestore`)
+broadcast the same way. See [Navigation](navigation) and [SSR](ssr) for the
+prefetch policies.
 
 Where each of these runs (strip categories):
 
 - **server-only** — cut from the client bundle: body and the imports it uses are
   removed, so it never ships to the browser (it runs on the server):
   [`.loader`](loader), [`.ctx`](ctx), `.headers`, `.cookies`,
-  [`.middleware`](middleware), `.serverOn`, `.description`. `.params` / `.search`
-  are isomorphic on a layout (server-and-client) — they're server-only only on an
-  action.
+  [`.middleware`](middleware), `.serverOn`, `.description`. `.params` /
+  `.search` are isomorphic on a layout (server-and-client) — they're server-only
+  only on an action.
 - **client-only** — cut from the server bundle: body and its imports removed (it
   runs only in the browser): `.clientLoader`, `.clientOn`,
-  `.prefetchPageOnNavigate`, `.prefetchPageOnLinkHover`. `.onPrefetchPage` is
-  **intended** to run on the client and during server-side prefetch, but today
-  it's cut from the server bundle (client-only in practice).
-  <!-- TODO(high): onPrefetchPage is stripped from the server bundle (point.ts ~1056) but should also run during server prefetch — stop stripping it. -->
+  `.prefetchPageOnNavigate`, `.prefetchPageOnLinkHover`, `.prefetchPagePolicy`.
 - **server-and-client** — not cut from either bundle, kept in both (isomorphic):
   the `.layout` closer's query closers [`.query`](query) /
-  [`.infiniteQuery`](infinite-query) / [`.relatedQuery`](query), [`.with`](with),
+  [`.infiniteQuery`](infinite-query) / [`.relatedQuery`](query),
+  `.onPrefetchPage` (it runs on the client and during server-side prefetch),
   [`.use`](plugin), [`.params` / `.search`](validation), `.tag`, `.on`, and the
   option setters [`.queryOptions`](stage-methods) / `.layoutQueryOptions` /
-  `.pageQueryOptions` / `.pageDehydratedStateQueryOptions` / `.prefetchPagePolicy`.
+  `.pageQueryOptions` / `.pageDehydratedStateQueryOptions`.
 - **server-ssr-and-client** — cut from the SERVER bundle when `ssr: false` (or
   after a `.clientOnly()`): body and imports removed from the server build; kept
   in the client build always, and in the server build only when SSR is on: the
-  [`.layout`](mountable) component, [`.head`](head),
-  [`.loading`](loading-error) / `.layoutLoading` / `.pageLoading`,
-  [`.error`](loading-error) / `.layoutError` / `.pageError`,
-  [`.wrapper`](mountable), [`.with`](with) mapper output, [`.mapper`](mapper).
+  [`.layout`](mountable) component, [`.head`](head), [`.loading`](loading-error)
+  / `.layoutLoading` / `.pageLoading`, [`.error`](loading-error) /
+  `.layoutError` / `.pageError`, [`.wrapper`](mountable), [`.with`](with) mapper
+  output, [`.mapper`](mapper).
 
-[`.relatedQuery`](query) adds its query to the layout's `queries` array just like
-a `.with(query)` result — the difference is prefetch: a related query is
+[`.relatedQuery`](query) adds its query to the layout's `queries` array just
+like a `.with(query)` result — the difference is prefetch: a related query is
 statically discoverable, so it's self-fetched without rendering under the cheap
 policies (`serverQuery` / `clientQuery` / `serverAndClientQuery`), whereas a
 `.with(query)` is only found by rendering and is prefetched only under the
@@ -350,11 +362,14 @@ expensive `pageDehydratedState*` policy.
 bundle: body and their imports removed — and documented in full on the
 [navigation](navigation) page — see there rather than here.
 
-<!-- TODO(med): the page-level defaults set on a *layout* (.pageError, .pageLoading, .page*QueryOptions) and the prefetch family are exposed in the type surface but have no layout-specific test or example — confirm semantics (do they become the defaults for every page under the layout?) before documenting them as a recommended feature. -->
+`.head` on a layout sets the document `<head>` while the layout is mounted, and
+because the layout wraps its pages, that head applies across the subtree. A
+page's own `.head` stacks on top. `.head('global', …)` additionally broadcasts
+to every child's render.
 
-<!-- TODO(low): .head on a layout is exposed but not exercised by a layout-specific test or example — verify whether a layout head contributes to <head> for its child pages. -->
-
-<!-- TODO(low): .scrollRestore / .scrollPosition, .clientOnly / .serverOn / .clientOn / .on type-check on a layout but are exercised only on other point types — verify runtime behavior on a layout. -->
+A layout's `.wrapper`s wrap the layout's own render only — they don't carry to
+the pages built under it, and don't need to: a page renders inside the layout,
+so it already sits within those wrappers.
 
 ### Wrapping the 404 page in a layout
 
@@ -362,7 +377,8 @@ When no route matches, the router renders a built-in "Page Not Found". By
 default it has no shell — but you usually want the not-found screen to keep your
 header and frame. Pass `layout404` to wrap it in one or more layouts, and
 `Page404` to replace the default screen itself. Both are options on
-[`createNavigation`](navigation) (and props you can override on `<RouterRoutes>`):
+[`createNavigation`](navigation) (and props you can override on
+`<RouterRoutes>`):
 
 ```tsx
 // src/lib/navigation.ts

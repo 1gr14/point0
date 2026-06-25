@@ -1,7 +1,9 @@
 ---
 index: 600
 title: Query
-description: A query is an input schema plus a server loader — a real HTTP endpoint and a TanStack Query in one.
+description:
+  A query is an input schema plus a server loader — a real HTTP endpoint and a
+  TanStack Query in one.
 ---
 
 A query pairs an input schema with a server loader. It's a real HTTP endpoint
@@ -17,7 +19,9 @@ export const ideaQuery = root.lets
   .input(z.object({ id: z.number() }))
   .loader(async ({ input }) => {
     // cut from the client bundle — body and its imports removed, so it runs server-side
-    const idea = await prisma.idea.findUniqueOrThrow({ where: { id: input.id } })
+    const idea = await prisma.idea.findUniqueOrThrow({
+      where: { id: input.id },
+    })
     return { idea }
   })
   .query()
@@ -30,8 +34,8 @@ const { data, isLoading } = ideaQuery.useQuery({ id: 123 })
 const { idea } = await ideaQuery.fetchQuery({ id: 123 })
 ```
 
-The first argument to every query method is the **input** — that's what forms the
-cache key and gets validated and sent to the loader.
+The first argument to every query method is the **input** — that's what forms
+the cache key and gets validated and sent to the loader.
 
 ## Declaring a query
 
@@ -46,21 +50,21 @@ export const ideaQuery = root.lets
 ```
 
 The options you pass to the closing `.query({...})` are standard TanStack Query
-options (`staleTime`, `gcTime`, `retry`, `select`, `refetch*`, …); `queryKey` and
-`queryFn` are supplied by Point0. They become the query's defaults and can be
-overridden at every call site.
+options (`staleTime`, `gcTime`, `retry`, `select`, `refetch*`, …); `queryKey`
+and `queryFn` are supplied by Point0. They become the query's defaults and can
+be overridden at every call site.
 
-The closing `.query(...)` closer is **not cut from either bundle** — kept in both
-(isomorphic), nothing pruned (it has to resolve the query on the server and the
-client alike).
+The closing `.query(...)` closer is **not cut from either bundle** — kept in
+both (isomorphic), nothing pruned (it has to resolve the query on the server and
+the client alike).
 
 ## A real endpoint
 
 A query with a server loader is served over HTTP at an auto-generated path —
 roughly `POST /_point0/<scope>/query/<kebab-name>` — and shows up in the
 generated [OpenAPI](openapi) spec. It's a **POST with the input in the body**
-(never a GET with search params). You never write the path; calling
-`fetchQuery` / `useQuery` routes to it for you.
+(never a GET with search params). You never write the path; calling `fetchQuery`
+/ `useQuery` routes to it for you.
 
 A query whose only loader is a `.clientLoader` runs in the browser and has **no
 endpoint** (and no OpenAPI entry) — it's a client-side query that still gets the
@@ -68,22 +72,22 @@ full cache and method surface.
 
 ## Input and validation
 
-`.input(schema)` takes any
-[Standard Schema](validation) — zod, valibot, arktype, typebox, and others —
-or a custom validate function:
+`.input(schema)` takes any [Standard Schema](validation) — zod, valibot,
+arktype, typebox, and others — or a custom validate function:
 
 ```tsx
 .input(z.object({ id: z.number(), withAuthor: z.boolean().optional() }))
 ```
 
-Input schemas **merge down the chain**: a parent (a [base](base) or [plugin](plugin))
-can declare part of the input and the query adds the rest. A child can't *widen*
-the parent's input, and input can't collide with params/search/body.
+Input schemas **merge down the chain**: a parent (a [base](base) or
+[plugin](plugin)) can declare part of the input and the query adds the rest. A
+child can't _widen_ the parent's input, and input can't collide with
+params/search/body.
 
 A query uses `.input` (plus `.clientInput` / `.sharedInput` for client-loader
-cases) — **not** `.params`, `.search`, or `.body`; those are for
-[pages](page) and [actions](action) and are a type error on a query. Full schema
-mechanics live in [Validation](validation).
+cases) — **not** `.params`, `.search`, or `.body`; those are for [pages](page)
+and [actions](action) and are a type error on a query. Full schema mechanics
+live in [Validation](validation).
 
 `.input` is the **server schema** — cut from the client bundle: its body and the
 imports it uses are removed, so it never ships to the browser (it runs
@@ -139,8 +143,8 @@ ideaQuery.useQuery(undefined, { enabled: false }) // read cache without fetching
 ```
 
 When there's an error, `result.error` is an [`ErrorPoint0`](error-handling) (or
-your own error class) — never `unknown`, so `result.error.message` is typed; it's
-`null` otherwise.
+your own error class) — never `unknown`, so `result.error.message` is typed;
+it's `null` otherwise.
 
 ## The query key
 
@@ -167,13 +171,13 @@ ideaQuery.getQueryKey({ id: 123 })
 The `input` is serialized deterministically (sorted keys), so `{ a, b }` and
 `{ b, a }` produce the same key. With the default transformer that's plain JSON;
 if you set [`.transformer(superjson)`](transformer), special types (Date, Map,
-…) are encoded into the key too. For page/layout queries, search keys outside the
-declared `.search` schema (and `undefined` values) are dropped from the key.
+…) are encoded into the key too. For page/layout queries, search keys outside
+the declared `.search` schema (and `undefined` values) are dropped from the key.
 
 ## Defaults and precedence
 
-Set query defaults once and override outward. `.queryOptions(...)` on the root or
-a base applies to every query beneath it:
+Set query defaults once and override outward. `.queryOptions(...)` on the root
+or a base applies to every query beneath it:
 
 ```tsx
 export const root = Point0.lets
@@ -190,17 +194,17 @@ For one query, options resolve lowest-to-highest:
 
 1. root/base `.queryOptions(...)`
 2. the type-specific default — `.pageQueryOptions`, `.componentQueryOptions`,
-   `.layoutQueryOptions`, … — which applies only to a **page / component / layout
-   self query**, never to a standalone query
+   `.layoutQueryOptions`, … — which applies only to a **page / component /
+   layout self query**, never to a standalone query
 3. the query's own closing `.query({...})`
 4. the call-site options on `useQuery` / `fetchQuery`
 
 For a standalone query only steps 1, 3, and 4 participate.
 
 On the **server**, Point0 hard-overrides a few of these regardless of what you
-set — `retry: false`, no refetch-on-*, `staleTime`/`gcTime: Infinity` — because a
-server render fetches once and ships the result. The full list of `*QueryOptions`
-methods is in [stage-methods](stage-methods).
+set — `retry: false`, no refetch-on-*, `staleTime`/`gcTime: Infinity` — because
+a server render fetches once and ships the result. The full list of
+`*QueryOptions` methods is in [stage-methods](stage-methods).
 
 `.queryOptions` and the whole `*QueryOptions` family are **not cut from either
 bundle** — kept in both (isomorphic), nothing pruned (the same defaults have to
@@ -208,23 +212,23 @@ apply server- and client-side).
 
 ## mode, tags, scope
 
-- **mode** (`'server'` vs `'client'`) is derived, not set: a `.loader` makes it a
-  server query, a `.clientLoader` a client query. There's one loader per query, so
-  the mode is unambiguous.
+- **mode** (`'server'` vs `'client'`) is derived, not set: a `.loader` makes it
+  a server query, a `.clientLoader` a client query. There's one loader per
+  query, so the mode is unambiguous.
 - **tags** come from `.tag('a', 'b')` and ride along in the key, so you can
   invalidate or match groups of queries by tag. `.tag` is **not cut from either
   bundle** — kept in both (isomorphic), nothing pruned (the tag is part of the
   key on both sides).
 - **scope** identifies which client/root a query belongs to in a multi-client
-  setup (one server, many clients). It's set by the root you build from, not by a
-  method.
+  setup (one server, many clients). It's set by the root you build from, not by
+  a method.
 
 ## Edge cases
 
-- **A disabled query stays pending.** `useQuery(input, { enabled: false })` never
-  resolves to data — handy for using one query's output as another's input (it
-  blocks downstream until enabled). [`.with`](with)'s `resolve` is the cleaner way
-  to express that.
+- **A disabled query stays pending.** `useQuery(input, { enabled: false })`
+  never resolves to data — handy for using one query's output as another's input
+  (it blocks downstream until enabled). [`.with`](with)'s `resolve` is the
+  cleaner way to express that.
 - **`staleTime: Infinity` for hand-managed caches.** When you write the cache by
   hand after a mutation (`setQueryData`), set `staleTime: Infinity` so it never
   silently refetches.
@@ -249,7 +253,8 @@ exactly as they do in react-query. The only thing Point0 does is build the
 to the right endpoint or client loader), so instead of assembling a
 `UseQueryOptions` object you pass the **input** and, optionally, the same
 react-query options you'd pass anyway. For the behaviour of any individual
-method or option, read the [TanStack Query docs](https://tanstack.com/query/latest/docs/framework/react/reference/useQuery).
+method or option, read the
+[TanStack Query docs](https://tanstack.com/query/latest/docs/framework/react/reference/useQuery).
 
 Every method takes the **input** first. The imperative cache/fetch helpers
 (`fetchQuery`, `getQueryData`, `invalidateQuery`, …) take a trailing options
@@ -257,33 +262,33 @@ object — `{ queryClient?, outputType?, fetchOptions? }`, members varying by
 method; `useQuery` / `useInfiniteQuery` take `{ fetchOptions? }`, and
 `getQueryKey` takes `{ outputType? }`.
 
-| Method                       | Signature                                      | Returns                       |
-| ---------------------------- | ---------------------------------------------- | ----------------------------- |
-| `useQuery`                   | `(input, queryOptions?, options?)`             | TanStack `useQuery` result    |
-| `useInfiniteQuery`           | `(input, infiniteOptions?, options?)`          | TanStack infinite result      |
-| `fetchQuery`                 | `(input, queryOptions?, options?)`             | `Promise<data>`               |
-| `prefetchQuery`              | `(input, queryOptions?, options?)`             | `Promise<void>`               |
-| `ensureQueryData`            | `(input, queryOptions?, options?)`             | `Promise<data>`               |
-| `getQueryData`               | `(input, options?)`                            | `data \| undefined`           |
-| `setQueryData`               | `(input, updater, setDataOptions?, options?)`  | the new `data`                |
-| `refetchQuery`               | `(input, refetchOptions?, options?)`           | `Promise<void>`               |
-| `invalidateQuery`            | `(input, invalidateOptions?, options?)`        | `Promise<void>`               |
-| `cancelQuery`                | `(input, cancelOptions?, options?)`            | `Promise<void>`               |
-| `removeQuery`                | `(input, options?)`                            | `void`                        |
-| `resetQuery`                 | `(input, resetOptions?, options?)`             | `Promise<void>`               |
-| `getQueryState`              | `(input, options?)`                            | TanStack `QueryState \| undefined` |
-| `getQueryCache`              | `(input, options?)`                            | the `Query \| undefined`      |
-| `getQueriesCache`            | `(input \| predicate \| true, options?)`       | `Query[]`                     |
-| `getQueryKey`                | `(input, options?)`                            | the `QueryKey` tuple          |
-| `getQueryOptions`            | `(input, queryOptions?, options?)`             | fully built `UseQueryOptions` |
+| Method             | Signature                                     | Returns                            |
+| ------------------ | --------------------------------------------- | ---------------------------------- |
+| `useQuery`         | `(input, queryOptions?, options?)`            | TanStack `useQuery` result         |
+| `useInfiniteQuery` | `(input, infiniteOptions?, options?)`         | TanStack infinite result           |
+| `fetchQuery`       | `(input, queryOptions?, options?)`            | `Promise<data>`                    |
+| `prefetchQuery`    | `(input, queryOptions?, options?)`            | `Promise<void>`                    |
+| `ensureQueryData`  | `(input, queryOptions?, options?)`            | `Promise<data>`                    |
+| `getQueryData`     | `(input, options?)`                           | `data \| undefined`                |
+| `setQueryData`     | `(input, updater, setDataOptions?, options?)` | the new `data`                     |
+| `refetchQuery`     | `(input, refetchOptions?, options?)`          | `Promise<void>`                    |
+| `invalidateQuery`  | `(input, invalidateOptions?, options?)`       | `Promise<void>`                    |
+| `cancelQuery`      | `(input, cancelOptions?, options?)`           | `Promise<void>`                    |
+| `removeQuery`      | `(input, options?)`                           | `void`                             |
+| `resetQuery`       | `(input, resetOptions?, options?)`            | `Promise<void>`                    |
+| `getQueryState`    | `(input, options?)`                           | TanStack `QueryState \| undefined` |
+| `getQueryCache`    | `(input, options?)`                           | the `Query \| undefined`           |
+| `getQueriesCache`  | `(input \| predicate \| true, options?)`      | `Query[]`                          |
+| `getQueryKey`      | `(input, options?)`                           | the `QueryKey` tuple               |
+| `getQueryOptions`  | `(input, queryOptions?, options?)`            | fully built `UseQueryOptions`      |
 
-Each has an infinite sibling (`fetchInfiniteQuery`, `getInfiniteQueryKey`, …) for
-infinite queries.
+Each has an infinite sibling (`fetchInfiniteQuery`, `getInfiniteQueryKey`, …)
+for infinite queries.
 
-<!-- TODO(low): some helper methods accept an extra `mode` in their options object in the tests, but the public type only exposes `{ queryClient?, outputType? }` — confirm whether `mode` is a supported escape hatch before documenting it. -->
-
-<!-- TODO(low): `outputType` can be 'data' | 'queryClientDehydratedState' | 'queryClientDehydratedStateRedirect' | 'html' (FetchServerOutputType in types.ts); only 'data' and 'queryClientDehydratedState' are exercised in tests for standalone queries — verify when a query ever carries the other two before documenting them. -->
-
-The `mode` escape hatch and the dehydration `outputType`s above are
-prefetch/SSR plumbing the framework drives for you, so call sites rarely touch
-them; the [SSR](ssr) page covers when dehydrated state is fetched.
+The `outputType` option selects what a fetch returns — `'data'` (the default) or
+one of the dehydrated forms (`'queryClientDehydratedState'`,
+`'queryClientDehydratedStateRedirect'`, `'html'`). It's prefetch/SSR plumbing
+the framework drives for you, so call sites rarely set it; the [SSR](ssr) page
+covers when dehydrated state is fetched. A query's `mode` (`'server'` vs
+`'client'`) is derived from its loader, not a call-site option — there's no
+public `mode` argument on these methods.

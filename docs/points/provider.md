@@ -1,7 +1,9 @@
 ---
 index: 400
 title: Provider
-description: A provider point loads or computes a value once and hands it to every child — read it with .useValue() or .getValue().
+description:
+  A provider point loads or computes a value once and hands it to every child —
+  read it with .useValue() or .getValue().
 ---
 
 A provider is a point that produces one value and exposes it down the tree. A
@@ -13,14 +15,12 @@ then every descendant gets it without prop drilling.
 ```tsx
 import { root } from '@/lib/root'
 
-export const AppProvider = root.lets
-  .provider()
-  .provider(() => ({ x: 1, y: 2 }))
+export const AppProvider = root.lets.provider().provider(() => ({ x: 1, y: 2 }))
 ```
 
 ```tsx
 // mount it once, high in the tree:
-<AppProvider>{children}</AppProvider>
+;<AppProvider>{children}</AppProvider>
 
 // read it anywhere below:
 const { x, y } = AppProvider.useValue() // => { x: 1, y: 2 }
@@ -54,11 +54,11 @@ This `mapper` is the same thing as [`.mapper`](mapper), just expressed in the
 closing call — handy because `.provider()` is where the point finalizes anyway.
 With no loader, no query, and no mapper, the value is the empty data object.
 
-The mountable closer `.provider()` (and `.mapper`) is **server-ssr-and-client** —
-cut from the SERVER bundle when `ssr:false` (or after a `.clientOnly()` earlier in
-the chain): its body and the imports it uses are removed from the server build.
-Kept in the client build always, and in the server build only when SSR is on (so
-it can render during SSR).
+The mountable closer `.provider()` (and `.mapper`) is **server-ssr-and-client**
+— cut from the SERVER bundle when `ssr:false` (or after a `.clientOnly()`
+earlier in the chain): its body and the imports it uses are removed from the
+server build. Kept in the client build always, and in the server build only when
+SSR is on (so it can render during SSR).
 
 ## Getting a value into a provider
 
@@ -76,8 +76,8 @@ export const MeProvider = root.lets
 ```
 
 The `.loader` body is **server-only** — cut from the client bundle: its body and
-the imports it uses are removed, so it never ships to the browser (it runs on the
-server alone). A provider's self-query (a loader-backed provider is also a
+the imports it uses are removed, so it never ships to the browser (it runs on
+the server alone). A provider's self-query (a loader-backed provider is also a
 query) is **finite by default**; close with `.infiniteQuery({...})` after the
 loader to make it infinite instead.
 
@@ -106,11 +106,11 @@ export const MeProvider = root.lets
   .provider(({ data: { me }, props: { theme } }) => ({ me, theme }))
 ```
 
-`.with` is **server-ssr-and-client** — like the closer, it is cut from the SERVER
-bundle when `ssr:false` (or after a `.clientOnly()`): body and imports removed from
-the server build. Kept in the client build always, and in the server build only
-when SSR is on. Its function form runs at render, so it can call React hooks; a
-query handed to it is injected the same way on both sides.
+`.with` is **server-ssr-and-client** — like the closer, it is cut from the
+SERVER bundle when `ssr:false` (or after a `.clientOnly()`): body and imports
+removed from the server build. Kept in the client build always, and in the
+server build only when SSR is on. Its function form runs at render, so it can
+call React hooks; a query handed to it is injected the same way on both sides.
 
 The mapper callback receives `data`, `props`, `queries`, and — when the matching
 schema exists — `input`. Its return value is exactly what children read.
@@ -168,8 +168,8 @@ subtree) can read the value.
 
 Two readers, with different rules. Both are ready-methods on the closed
 mountable, not chain stage-methods, so they are never stripped — they read the
-value wherever the provider's subtree renders (the browser, and the server during
-SSR).
+value wherever the provider's subtree renders (the browser, and the server
+during SSR).
 
 ### `.useValue()` — the hook
 
@@ -184,8 +184,8 @@ AppProvider.useValue(['x', 'y']) // => { x, y } — a Pick
 
 It is **fine-grained**: reading one key re-renders the component only when that
 key changes, not when the rest of the value does. Read inside a page or another
-point's render — including via [`.with`](with), the way the basic example reads a
-layout (see below):
+point's render — including via [`.with`](with), the way the basic example reads
+a layout (see below):
 
 ```tsx
 export const ideaViewPage = ideaLayout.lets
@@ -217,21 +217,26 @@ Provider value not found. You should call getValue only after Provider component
 is mounted and loaded. On point <provider>
 ```
 
-When the provider might not be mounted, use `.getValueOrUndefined()` instead — it
-returns `undefined` rather than throwing (the `...OrUndefined` suffix is the
+When the provider might not be mounted, use `.getValueOrUndefined()` instead —
+it returns `undefined` rather than throwing (the `...OrUndefined` suffix is the
 repo's convention for get-or-undefined accessors):
 
 ```tsx
 const value = AppProvider.getValueOrUndefined() // => value | undefined
 ```
 
-If the provider was mounted with an `input`, address that instance by passing the
-same input: `AppProvider.getValue({ z: 4 })`. `.getValue()` with no input reads
-the value the provider last wrote without an input.
+If the provider was mounted with an `input`, address that instance by passing
+the same input: `AppProvider.getValue({ z: 4 })`. The value is stored under a
+key derived from the input, so two instances mounted with distinct inputs each
+keep their own slot and `getValue(input)` reads the matching one. `.getValue()`
+with no input reads the value the provider last wrote without an input — under
+two instances that returns whichever mounted last.
 
-<!-- TODO(med): mounting two instances of one provider with distinct `input` at the same time, then addressing each via `getValue(input)`, is not covered by a test — verify the disambiguation before documenting it as supported. -->
-
-<!-- TODO(med): `.useValue()` takes only a key / keys / nothing — it has no `input` argument. How it disambiguates multiple mounted instances is not covered; verify before relying on it. -->
+`.useValue()` takes only a key / keys / nothing — it has **no** `input`
+argument, because it resolves through React context, not by input. It reads the
+nearest mounting provider above it in the tree; that tree position disambiguates
+instances. To read a specific input-keyed value outside the subtree, use
+`.getValue(input)`.
 
 ## A layout is a provider too
 
@@ -253,12 +258,10 @@ export const ideaLayout = generalLayout.lets
   ))
 
 // a child page reads it without re-fetching
-export const ideaNewsPage = ideaLayout.lets
-  .page('/news')
-  .page(() => {
-    const idea = ideaLayout.useValue('idea')
-    return <Feed ideaId={idea.id} />
-  })
+export const ideaNewsPage = ideaLayout.lets.page('/news').page(() => {
+  const idea = ideaLayout.useValue('idea')
+  return <Feed ideaId={idea.id} />
+})
 ```
 
 A [component](component), by contrast, is **not** a provider — it has no
@@ -267,13 +270,13 @@ A [component](component), by contrast, is **not** a provider — it has no
 ## Endpoint behavior
 
 A provider becomes a real HTTP [endpoint](query) **only if it has a server
-`.loader()`** — then it gets a path (`POST /_point0/<scope>/provider/<kebab-name>`)
-so children can fetch its data. A provider with no loader (a pure computed or
-props-driven value) issues no request and has no endpoint. The loader is
-server-only — its body and the imports it uses are cut from the client bundle at
-compile time, so they never reach the public browser build; an auth gate belongs in
-a [`.with`](with) wrapper, not in `.ctx` alone
-(`.ctx` runs only when the point has a loader).
+`.loader()`** — then it gets a path
+(`POST /_point0/<scope>/provider/<kebab-name>`) so children can fetch its data.
+A provider with no loader (a pure computed or props-driven value) issues no
+request and has no endpoint. The loader is server-only — its body and the
+imports it uses are cut from the client bundle at compile time, so they never
+reach the public browser build; an auth gate belongs in a [`.with`](with)
+wrapper, not in `.ctx` alone (`.ctx` runs only when the point has a loader).
 
 ## Reference
 
@@ -282,13 +285,13 @@ a [`.with`](with) wrapper, not in `.ctx` alone
 `.provider(mapper?)` applies **only to a provider-stage point** (a point opened
 with `.lets.provider()` / `.lets('provider', name)`). It is terminal: it returns
 a `Mountable`, after which only the value/component helpers below remain. As a
-mountable closer it is **server-ssr-and-client** — cut from the server bundle (body
-and imports removed) when `ssr:false` or after a `.clientOnly()`; kept in the
-client build always, and in the server build only when SSR is on.
+mountable closer it is **server-ssr-and-client** — cut from the server bundle
+(body and imports removed) when `ssr:false` or after a `.clientOnly()`; kept in
+the client build always, and in the server build only when SSR is on.
 
-| Argument  | Type                          | Notes                                    |
-| --------- | ----------------------------- | ---------------------------------------- |
-| `mapper?` | `(opts) => value`             | optional; same as [`.mapper`](mapper). Omit → value is `data` |
+| Argument  | Type              | Notes                                                         |
+| --------- | ----------------- | ------------------------------------------------------------- |
+| `mapper?` | `(opts) => value` | optional; same as [`.mapper`](mapper). Omit → value is `data` |
 
 The mapper receives `{ data, props, queries }` plus `input` when an input schema
 exists.
@@ -298,13 +301,13 @@ exists.
 These are exposed on a **closed provider** and on a [layout](layout) — not on a
 [component](component).
 
-| Method                  | Signature                       | Returns                              |
-| ----------------------- | ------------------------------- | ------------------------------------ |
-| `useValue`              | `()`                            | the whole value (hook)               |
-| `useValue`              | `(key)`                         | one key's value (hook)               |
-| `useValue`              | `(keys[])`                      | `Pick` of those keys (hook)          |
-| `getValue`              | `(input?)`                      | the value; **throws** if not mounted/loaded |
-| `getValueOrUndefined`   | `(input?)`                      | the value, or `undefined`            |
+| Method                | Signature  | Returns                                     |
+| --------------------- | ---------- | ------------------------------------------- |
+| `useValue`            | `()`       | the whole value (hook)                      |
+| `useValue`            | `(key)`    | one key's value (hook)                      |
+| `useValue`            | `(keys[])` | `Pick` of those keys (hook)                 |
+| `getValue`            | `(input?)` | the value; **throws** if not mounted/loaded |
+| `getValueOrUndefined` | `(input?)` | the value, or `undefined`                   |
 
 `.useValue()` subscribes (fine-grained re-render); `.getValue()` /
 `.getValueOrUndefined()` read once without subscribing.
@@ -313,20 +316,17 @@ These are exposed on a **closed provider** and on a [layout](layout) — not on 
 
 The provider's React element accepts:
 
-| Prop          | Type                | Notes                                  |
-| ------------- | ------------------- | -------------------------------------- |
-| `children`    | `ReactNode`         | the subtree that may read the value    |
+| Prop          | Type                | Notes                                        |
+| ------------- | ------------------- | -------------------------------------------- |
+| `children`    | `ReactNode`         | the subtree that may read the value          |
 | `input`       | the input schema    | when `.input` is set; addresses the instance |
-| *outer props* | from `.lets<...>()` | spread directly on the element         |
+| _outer props_ | from `.lets<...>()` | spread directly on the element               |
 
 ### Default query options
 
 `.providerQueryOptions(...)` sets the default react-query options for a
-provider's auto-generated self-query. It is configured on the
-[root](root), a [base](base), or a [plugin](plugin) — not on the provider
-itself — alongside the other `*QueryOptions` methods (see
-[stage-methods](stage-methods)). Like the rest of the `*QueryOptions` family it
-is **server-and-client** — not cut from either bundle, kept in both (isomorphic),
-nothing pruned.
-
-<!-- TODO(low): no test demonstrates a provider self-query honoring `providerQueryOptions`; behavior is inferred from the defaults wiring — verify. -->
+provider's auto-generated self-query. It is configured on the [root](root), a
+[base](base), or a [plugin](plugin) — not on the provider itself — alongside the
+other `*QueryOptions` methods (see [stage-methods](stage-methods)). Like the
+rest of the `*QueryOptions` family it is **server-and-client** — not cut from
+either bundle, kept in both (isomorphic), nothing pruned.

@@ -1,7 +1,9 @@
 ---
 index: 1400
 title: Infer
-description: typeof point.Infer.* — pull any type out of a point without writing it by hand.
+description:
+  typeof point.Infer.* — pull any type out of a point without writing it by
+  hand.
 ---
 
 Every point carries an `Infer` property whose only job is type extraction. You
@@ -22,11 +24,11 @@ type IdeaViewInput = typeof ideaViewQuery.Infer.InputRaw // => { id: string }
 
 `Infer` is on **every** point — pages, layouts, queries, mutations, actions,
 roots, bases, plugins — and survives the whole builder chain, so a finalized
-point still has it. It's free at runtime: `Infer` is initialized to `null`, so it
-exists only in the type system.
+point still has it. It's free at runtime: `Infer` is initialized to `null`, so
+it exists only in the type system.
 
 > **GOTCHA — type position only.** `point.Infer` is `null` at runtime, so
-> accessing any member (e.g. `point.Infer.QueriedData`) as a *value* throws —
+> accessing any member (e.g. `point.Infer.QueriedData`) as a _value_ throws —
 > read it only in type position. Always wrap it in `typeof`.
 
 ## The two you reach for most
@@ -62,7 +64,9 @@ production:
 ```tsx
 export const listAccountsQuery = root.lets
   .query()
-  .loader(async ({ request }) => ({ accounts: await listUserAccounts(request) }))
+  .loader(async ({ request }) => ({
+    accounts: await listUserAccounts(request),
+  }))
   .query()
 
 // drill into the data to get one item's type
@@ -74,8 +78,8 @@ export type AccountsItem = NonNullable<
 ## Typing a component against its point
 
 `EdgeComponent` is the typed React component a mountable point expects, and
-`EdgeProps` is the props that component receives. Pull the type out and write the
-component to match — no manual prop interface:
+`EdgeProps` is the props that component receives. Pull the type out and write
+the component to match — no manual prop interface:
 
 ```tsx
 const page = root.lets
@@ -84,15 +88,17 @@ const page = root.lets
   .page((props) => <Page {...props} />)
 
 // `Page` is typed from the point: `data` is { x: string }, plus params/search/…
-const Page: typeof page.Infer.EdgeComponent = ({ data }) => <div>x={data.x}</div>
+const Page: typeof page.Infer.EdgeComponent = ({ data }) => (
+  <div>x={data.x}</div>
+)
 ```
 
 `EdgeComponent` / `EdgeProps` resolve per point kind (page, layout, component,
 provider). On a point that has no component — a query, a mutation, an action —
 `EdgeComponent` is `undefined` and `EdgeProps` is `never`.
 
-The bracket form `typeof point.Infer['Key']` is the same as `typeof point.Infer.Key`;
-use whichever reads better in a generic position.
+The bracket form `typeof point.Infer['Key']` is the same as
+`typeof point.Infer.Key`; use whichever reads better in a generic position.
 
 ## Schemas, params, search, body
 
@@ -128,7 +134,9 @@ comes from [`createNavigation(...)`](navigation) and types your `<Link>` / route
 props against your route table:
 
 ```tsx
-export const { Link, navigate, InferNavigation } = createNavigation({ routes /* … */ })
+export const { Link, navigate, InferNavigation } = createNavigation({
+  routes /* … */,
+})
 
 export type AppLinkProps = typeof InferNavigation.LinkProps //     embeddable Link props
 export type AppNavLinkProps = typeof InferNavigation.NavLinkProps // + active-state classNames
@@ -147,60 +155,57 @@ schema / loader / component on a given point yields its "empty" type (an empty
 object, `undefined`, `never`, or `false`) rather than an error — so you can read
 any key on any point.
 
-| Key | Yields |
-| --- | --- |
-| `PointType` | the point's literal kind: `'page'` \| `'query'` \| `'mutation'` \| `'action'` \| … |
-| `LetsReadyPointType` | the kind set via `.lets(…)` before finalizing, or `undefined` |
-| `Error` | the point's [error class](error-handling) (`ErrorPoint0` by default, or your own) |
-| `RequiredCtx` | the context the point requires to run (rarely needed directly) |
-| `Ctx` | the full accumulated context object |
-| `CtxExposed` | the subset of `Ctx` exposed to the client |
-| `CtxExposedKeys` | the key-union of exposed ctx fields |
-| `ServerLoaderOutput` | raw return type of the server `.loader` |
-| `ClientLoaderOutput` | raw return type of the `.clientLoader` |
-| `MapperOutput` | output of the point's [`.mapper`](mapper) |
-| `RouteDefinition` | the final route as a literal string |
-| `ServerInputSchema` / `ClientInputSchema` | the server / client input schema |
-| `IsInputOptional` | `true` / `false` — is the merged input optional? |
-| `InputRaw` | the merged **raw** (pre-validation) input |
-| `InputRawOrUndefined` | `InputRaw`, but `undefined` when the input is empty |
-| `InputRawOrUndefinedOrVoid` | as above, plus `void` — for omit-the-arg call sites |
-| `ClientInputRaw` / `ClientInputParsed` | raw / parsed client input |
-| `IsClientInputOptional` | `true` / `false` — is client input optional? |
-| `ServerInputRaw` / `ServerInputParsed` | merged raw / parsed server input |
-| `IsServerInputOptional` | `true` / `false` — is server input optional? |
-| `ParamsSchema` / `ParamsRaw` / `ParamsParsed` | route-params schema / raw / parsed |
-| `SearchSchema` / `SearchRaw` / `SearchParsed` | query-string schema / raw / parsed |
-| `BodySchema` / `BodyRaw` / `BodyParsed` | request-body schema / raw / parsed |
-| `HeadersSchema` / `HeadersRaw` / `HeadersParsed` | headers schema / raw / parsed |
-| `CookiesSchema` / `CookiesRaw` / `CookiesParsed` | cookies schema / raw / parsed |
-| `OuterProps` | props passed **into** the point's component from outside |
-| `InnerProps` | props available **inside** the component (accumulated) |
-| `QueryResultType` | `'query'` \| `'infiniteQuery'` \| `undefined` — the query flavor |
-| `Queries` | the point's declared sub-query definitions |
-| `UseQueryOptions` | the options type the point's `useQuery` accepts |
-| `UseQueryResult` | the result type of the point's `useQuery` |
-| `FetchServerOutput` | the server-loader output if present, else `never` |
-| `FetchOutput` | the final loader output (client wins over server) |
-| `ServerQueryFiniteData` / `ClientQueryFiniteData` | server / client finite-query data |
-| `ServerQueryInfiniteData` / `ClientQueryInfiniteData` | server / client infinite-query data |
-| `QueriedFiniteData` / `QueriedInfiniteData` | final finite / infinite data (client over server) |
-| `ServerQueryData` / `ClientQueryData` | server / client query data, shaped by result type |
-| `QueriedData` | **the canonical data key** — final query data, react-query-shaped |
-| `ServerExecuteResult` | the full server-execution result (`{ ctx, data, response, redirect, error, … }`) |
-| `EdgeComponent` | the typed success component for a mountable point, else `undefined` |
-| `EdgeProps` | the props that success component receives, else `never` |
+| Key                                                   | Yields                                                                             |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `PointType`                                           | the point's literal kind: `'page'` \| `'query'` \| `'mutation'` \| `'action'` \| … |
+| `LetsReadyPointType`                                  | the kind set via `.lets(…)` before finalizing, or `undefined`                      |
+| `Error`                                               | the point's [error class](error-handling) (`ErrorPoint0` by default, or your own)  |
+| `RequiredCtx`                                         | the context the point requires to run (rarely needed directly)                     |
+| `Ctx`                                                 | the full accumulated context object                                                |
+| `CtxExposed`                                          | the subset of `Ctx` exposed to the client                                          |
+| `CtxExposedKeys`                                      | the key-union of exposed ctx fields                                                |
+| `ServerLoaderOutput`                                  | raw return type of the server `.loader`                                            |
+| `ClientLoaderOutput`                                  | raw return type of the `.clientLoader`                                             |
+| `MapperOutput`                                        | output of the point's [`.mapper`](mapper)                                          |
+| `RouteDefinition`                                     | the final route as a literal string                                                |
+| `ServerInputSchema` / `ClientInputSchema`             | the server / client input schema                                                   |
+| `IsInputOptional`                                     | `true` / `false` — is the merged input optional?                                   |
+| `InputRaw`                                            | the merged **raw** (pre-validation) input                                          |
+| `InputRawOrUndefined`                                 | `InputRaw`, but `undefined` when the input is empty                                |
+| `InputRawOrUndefinedOrVoid`                           | as above, plus `void` — for omit-the-arg call sites                                |
+| `ClientInputRaw` / `ClientInputParsed`                | raw / parsed client input                                                          |
+| `IsClientInputOptional`                               | `true` / `false` — is client input optional?                                       |
+| `ServerInputRaw` / `ServerInputParsed`                | merged raw / parsed server input                                                   |
+| `IsServerInputOptional`                               | `true` / `false` — is server input optional?                                       |
+| `ParamsSchema` / `ParamsRaw` / `ParamsParsed`         | route-params schema / raw / parsed                                                 |
+| `SearchSchema` / `SearchRaw` / `SearchParsed`         | query-string schema / raw / parsed                                                 |
+| `BodySchema` / `BodyRaw` / `BodyParsed`               | request-body schema / raw / parsed                                                 |
+| `HeadersSchema` / `HeadersRaw` / `HeadersParsed`      | headers schema / raw / parsed                                                      |
+| `CookiesSchema` / `CookiesRaw` / `CookiesParsed`      | cookies schema / raw / parsed                                                      |
+| `OuterProps`                                          | props passed **into** the point's component from outside                           |
+| `InnerProps`                                          | props available **inside** the component (accumulated)                             |
+| `QueryResultType`                                     | `'query'` \| `'infiniteQuery'` \| `undefined` — the query flavor                   |
+| `Queries`                                             | the point's declared sub-query definitions                                         |
+| `UseQueryOptions`                                     | the options type the point's `useQuery` accepts                                    |
+| `UseQueryResult`                                      | the result type of the point's `useQuery`                                          |
+| `FetchServerOutput`                                   | the server-loader output if present, else `never`                                  |
+| `FetchOutput`                                         | the final loader output (client wins over server)                                  |
+| `ServerQueryFiniteData` / `ClientQueryFiniteData`     | server / client finite-query data                                                  |
+| `ServerQueryInfiniteData` / `ClientQueryInfiniteData` | server / client infinite-query data                                                |
+| `QueriedFiniteData` / `QueriedInfiniteData`           | final finite / infinite data (client over server)                                  |
+| `ServerQueryData` / `ClientQueryData`                 | server / client query data, shaped by result type                                  |
+| `QueriedData`                                         | **the canonical data key** — final query data, react-query-shaped                  |
+| `ServerExecuteResult`                                 | the full server-execution result (`{ ctx, data, response, redirect, error, … }`)   |
+| `EdgeComponent`                                       | the typed success component for a mountable point, else `undefined`                |
+| `EdgeProps`                                           | the props that success component receives, else `never`                            |
 
 ### Notes on the data family
 
 For most data extraction, reach for **`QueriedData`** (the final, react-query
 shaped data) or **`FetchOutput`** (the raw loader output). The `Server*` /
-`Client*` variants and the `*FiniteData` / `*InfiniteData` split exist for points
-that have both a server and a client loader, or for distinguishing finite from
-infinite shaping — you rarely need them directly.
+`Client*` variants and the `*FiniteData` / `*InfiniteData` split exist for
+points that have both a server and a client loader, or for distinguishing finite
+from infinite shaping — you rarely need them directly.
 
-<!-- TODO(low): there is no `Location` key on `Infer` (the brief lists one, but it is NOT FOUND in packages/core/src/types.ts). Location types live on navigation, not on point.Infer. -->
-
-<!-- TODO(med): most keys here have no usage example in tests, examples, or start0 — only InputRaw, InputRawOrUndefined, IsInputOptional, RouteDefinition, QueriedData, EdgeComponent, and Error are exercised anywhere. The descriptions for the rest are read off the type definitions, not from worked usage; confirm semantics (especially MapperOutput, CtxExposed, ServerExecuteResult) before leaning on them. -->
-
-<!-- TODO(low): no per-key JSDoc exists on the Infer type yet — the JSDoc pass should mirror the table above. -->
+There is no `Location` key on `point.Infer` — location types belong to
+[Navigation](navigation) (`InferNavigation`), not to the point.

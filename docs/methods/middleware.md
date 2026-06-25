@@ -1,12 +1,14 @@
 ---
 index: 400
 title: Middleware
-description: Server middleware — optionally route- or method-scoped — for CORS, third-party handlers, and integrations that sit outside the point chain.
+description:
+  Server middleware — optionally route- or method-scoped — for CORS, third-party
+  handlers, and integrations that sit outside the point chain.
 ---
 
 `.middleware` adds a server-side function that runs around a request, the same
 idea as Express or Koa middleware. You reach for it to mount things that live
-*outside* the point model — CORS, a third-party auth library, an OpenAPI doc
+_outside_ the point model — CORS, a third-party auth library, an OpenAPI doc
 server — not to load data or guard a point. For point0's own data and access
 control you use [loaders](loader), [`.ctx`](ctx), and [`.with`](with) instead;
 middleware is the escape hatch for everything else.
@@ -15,7 +17,9 @@ middleware is the escape hatch for everything else.
 export const root = Point0.lets
   .root()
   // hand the whole /api/auth/* tree to better-auth
-  .middleware('/api/auth/*', async ({ request }) => authServer.handler(request.original))
+  .middleware('/api/auth/*', async ({ request }) =>
+    authServer.handler(request.original),
+  )
   // serve the OpenAPI spec + Scalar/Swagger UIs
   .middleware(
     openapi({
@@ -39,14 +43,15 @@ middleware function gets to work with.
 imports it uses are removed, so it never ships to the browser. The
 [compiler](compiler) empties its arguments in the client bundle, so a middleware
 body and anything it pulls in (your `authServer`, `prisma`, secrets) is pruned
-from what reaches the browser; on the client it's a no-op. It stays in the server
-build, where it runs — and you can call server-only code inside it freely.
+from what reaches the browser; on the client it's a no-op. It stays in the
+server build, where it runs — and you can call server-only code inside it
+freely.
 
 This is also why middleware is the wrong tool for an authorization gate. After
 the initial SSR render, navigation is client-side (SPA-style), and a point that
 isn't server-rendered still renders in the browser — whether or not a server
-middleware ran. Gate access in a [`.with`](with) wrapper, which runs at render on
-both server and client. Use middleware for integration plumbing, not for
+middleware ran. Gate access in a [`.with`](with) wrapper, which runs at render
+on both server and client. Use middleware for integration plumbing, not for
 protecting a point.
 
 ## Which points have it
@@ -71,10 +76,14 @@ const page = root.lets
   .page(/* ... */)
 ```
 
-Cut from the client bundle — `.middleware`'s body and its imports are removed, so
-it never ships to the browser, on every point type it's available on.
-
-<!-- TODO(med): middleware on a query / mutation / action / component / provider / plugin stage point type-checks, but only root- and page-level middleware is exercised by tests and examples. Confirm runtime behavior on the other point types (e.g. whether a query's own middleware fires on its endpoint request) before documenting it as supported. -->
+A point's middleware runs when that point's request is handled by the server. A
+query, infinite-query, mutation, and action each have their own server endpoint,
+so their middleware fires on a request to that endpoint. A component or provider
+has an endpoint only when it carries a [loader](loader); without one it's never
+hit on the server, so its middleware never runs. A plugin is not a server point
+at all — its middleware folds into whatever point applies the plugin, and runs
+there. Whichever point a request resolves to, that point's full middleware list
+— inherited (from the root down) then its own — runs around it.
 
 ## The middleware function
 
@@ -90,26 +99,26 @@ A middleware receives one options object and returns a `Promise` of either a
 })
 ```
 
-`next()` runs the remaining middleware and finally the point itself. Call it once
-and return either its result or your own `Response`. Calling `next()` twice
+`next()` runs the remaining middleware and finally the point itself. Call it
+once and return either its result or your own `Response`. Calling `next()` twice
 throws `next() called multiple times`.
 
 The options object:
 
-| Key       | What                                                                 |
-| --------- | -------------------------------------------------------------------- |
+| Key       | What                                                                                                                                                                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `request` | the [Request0](request) wrapper. `request.original` is the native Fetch `Request`; also `request.headers`, `request.method`, `request.location`, `request.from.ip`, and `request.state` / `request.cache` for passing data downstream |
-| `set`     | the [response effects](response) helper — `set.headers(...)`, `set.cookies(...)`, `set.status(n)`, plus `set.inspect` to read back what's set |
-| `next`    | run the rest of the chain; returns a detailed result (see below)     |
-| `points`  | the server [points collection](engine-runtime) — `collection`, `findPoint`, `findEndpoint`, `findPage` |
-| `scope`   | the points [scope](query#mode-tags-scope) this middleware belongs to |
-| `params`  | parsed route params — **present only when the scoping route has params** |
+| `set`     | the [response effects](response) helper — `set.headers(...)`, `set.cookies(...)`, `set.status(n)`, plus `set.inspect` to read back what's set                                                                                         |
+| `next`    | run the rest of the chain; returns a detailed result (see below)                                                                                                                                                                      |
+| `points`  | the server [points collection](engine-runtime) — `collection`, `findPoint`, `findEndpoint`, `findPage`                                                                                                                                |
+| `scope`   | the points [scope](query#mode-tags-scope) this middleware belongs to                                                                                                                                                                  |
+| `params`  | parsed route params — **present only when the scoping route has params**                                                                                                                                                              |
 
 ### What `next()` returns
 
 `next()` does not return a bare `Response` — it returns a detailed result so an
-outer middleware can inspect what the inner chain produced before deciding what to
-send:
+outer middleware can inspect what the inner chain produced before deciding what
+to send:
 
 ```tsx
 .middleware(async ({ next }) => {
@@ -123,8 +132,8 @@ send:
 ```
 
 `result` carries `response`, `request`, `scope`, `error` (your error class, or
-`undefined`), and `variant`. Return a new `Response` to override, or the `result`
-to forward.
+`undefined`), and `variant`. Return a new `Response` to override, or the
+`result` to forward.
 
 ## Scope by route
 
@@ -150,20 +159,29 @@ A trailing `*` is a wildcard segment that captures the remainder of the path, so
 
 This is only an illustration of route params and a returned `Response` — don't
 build your own JSON endpoints this way. If you want an endpoint, author an
-[action](action) point instead; middleware is for plumbing that sits *outside*
+[action](action) point instead; middleware is for plumbing that sits _outside_
 the point model, not for serving your own routes.
+
+The wildcard's captured remainder arrives in `params` under the key `*`. For
+`/api/auth/*` matching `/api/auth/sign-in/email`, `params` is
+`{ '*': '/sign-in/email' }`:
+
+```tsx
+.middleware('/api/auth/*', async ({ request, params }) => {
+  // params['*'] is the part after /api/auth, e.g. '/sign-in/email'
+  return authServer.handler(request.original)
+})
+```
 
 A **string** route is extended off the point's own route, so a route on a based
 point composes with its inherited prefix — exactly like a [page's route](page).
 A route object is used as-is.
 
-<!-- TODO(low): the wildcard's captured value lands under the param key '*' per route0, but no point0 test asserts the params['*'] shape for a /api/auth/* middleware — verify before documenting params['*']. -->
-
 ## Scope by method
 
 Put a method (or array of methods) before the route to also filter by HTTP
-method. A request that misses the method falls through — for an otherwise-unknown
-path that means a 404:
+method. A request that misses the method falls through — for an
+otherwise-unknown path that means a 404:
 
 ```tsx
 .middleware('POST', '/zxc/:id', async ({ params }) => {
@@ -190,11 +208,23 @@ applied even when a later middleware returns its own `Response` or throws:
 })
 ```
 
+`set` in a middleware is the same helper a loader gets, so `set.cookies(...)`
+and `set.status(n)` work alongside `set.headers(...)` — all three are collected
+on the request's effects and applied to whatever response the chain finally
+returns:
+
+```tsx
+.middleware(async ({ set, next }) => {
+  set.headers('x-timing', 'on')
+  set.cookies('seen', '1')
+  set.status(201)
+  return next()
+})
+```
+
 `set.inspect` reads back what's been set so far (`set.inspect.headers.y`),
 useful when one middleware reacts to another's headers. Full surface is on the
 [Response](response) page.
-
-<!-- TODO(low): set.cookies and set.status are part of the helper but no middleware test exercises them (only set.headers is covered) — confirm the intended middleware usage. -->
 
 ## Composition and order
 
@@ -205,12 +235,16 @@ point built off the root runs the root's middleware, then its own.
 ```tsx
 const root = Point0.lets
   .root()
-  .middleware(async ({ next }) => { /* 'root' */ return next() })
+  .middleware(async ({ next }) => {
+    /* 'root' */ return next()
+  })
   .root()
 
 const page = root.lets
   .page('/home')
-  .middleware(async ({ next }) => { /* 'page' */ return next() })
+  .middleware(async ({ next }) => {
+    /* 'page' */ return next()
+  })
   .page(/* ... */)
 // order for a /home request: root, then page
 ```
@@ -219,8 +253,8 @@ Under [SSR](ssr) a page request can run the middleware chain more than once:
 point0 uses a render-to-discover loop, so a page may re-render a few times (or
 just once, if it has no pending data) before the HTML settles. There's no fixed
 number — keep middleware side-effect-light and idempotent so it's safe whether
-the request triggers one render pass or several. See [SSR](ssr) for how the
-loop works and `request.renders` on the [Request0](request) page for the live
+the request triggers one render pass or several. See [SSR](ssr) for how the loop
+works and `request.renders` on the [Request0](request) page for the live
 render-pass count.
 
 ## Errors thrown inside
@@ -243,11 +277,11 @@ response.
 
 ## Passing data to loaders
 
-A middleware can stash data on the request for a later loader or
-[`.ctx`](ctx) to read, instead of forcing it through the point chain. There are
-two scratch maps — `request.state` is per request instance, `request.cache` is
-shared along the whole request chain (and across SSR render passes), so a value
-written in middleware reaches every downstream loader:
+A middleware can stash data on the request for a later loader or [`.ctx`](ctx)
+to read, instead of forcing it through the point chain. There are two scratch
+maps — `request.state` is per request instance, `request.cache` is shared along
+the whole request chain (and across SSR render passes), so a value written in
+middleware reaches every downstream loader:
 
 ```tsx
 .middleware(({ request, next }) => {
@@ -257,7 +291,8 @@ written in middleware reaches every downstream loader:
 })
 ```
 
-See [Request0](request#per-request-storage-state-vs-cache) for when to use which.
+See [Request0](request#per-request-storage-state-vs-cache) for when to use
+which.
 
 ## Built-in middleware
 
@@ -275,11 +310,11 @@ its imports removed), so it never ships to the browser and is a no-op there.
   `OPTIONS`. Accepts-all by default; configure `origin`, `methods`,
   `allowedHeaders`, `credentials`, `maxAge`, `preflight`.
 - **[`basicAuth`](basic-auth)** (`@point0/basic-auth`) — HTTP Basic auth gate.
-  `users` is a `Record<user, pass>` (or a string / list / `validator` fn); either
-  forwards via `next()` or returns a `401`/`429`.
-- **[`openapi`](openapi)** (`@point0/openapi`) — serves the generated OpenAPI JSON
-  (and optional Scalar / Swagger UIs) on `GET` of the configured routes. Its
-  options and the separate per-point `.openapi()` method live on the
+  `users` is a `Record<user, pass>` (or a string / list / `validator` fn);
+  either forwards via `next()` or returns a `401`/`429`.
+- **[`openapi`](openapi)** (`@point0/openapi`) — serves the generated OpenAPI
+  JSON (and optional Scalar / Swagger UIs) on `GET` of the configured routes.
+  Its options and the separate per-point `.openapi()` method live on the
   [openapi](openapi) page.
 
 ## Reference
@@ -297,11 +332,9 @@ its imports removed), so it never ships to the browser and is a no-op there.
 - `method` is one of point0's request methods (`'GET'`, `'POST'`, …) or an array
   of them — any string is accepted.
 - At least **one** function is required. Each returns
-  `Promise<Response | (the next() result)>`. Multiple functions in one call merge
-  into a single koa-style chain.
+  `Promise<Response | (the next() result)>`. Multiple functions in one call
+  merge into a single koa-style chain.
 - Returns the same stage point, so it chains.
-
-<!-- TODO(low): .middleware has no JSDoc in packages/core/src/point0.ts — add a one-line description in the JSDoc pass. -->
 
 ### Result variants from `next()`
 

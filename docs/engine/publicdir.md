@@ -1,7 +1,9 @@
 ---
 index: 1100
 title: Public dir
-description: Serve static files — favicons, robots.txt, the built bundle — straight from disk at a route prefix.
+description:
+  Serve static files — favicons, robots.txt, the built bundle — straight from
+  disk at a route prefix.
 ---
 
 A `publicdir` serves files from disk verbatim — same name, same bytes, at the
@@ -65,14 +67,11 @@ Engine.create({
 ```
 
 The examples ship `publicdir` on the **client** side, since that's where the web
-assets live. The server side accepts the same shape and is fully tested
-(`packages/engine/tests/publicdir.test.ts`), so use it when the server origin
-needs to serve its own static files.
+assets live. The server side accepts the same shape, so use it when the server
+origin needs to serve its own static files.
 
-<!-- TODO(low): a `publicdir` on a `clients[]` entry is supported by the type (start0 uses it), but only the single-`client`/`server` forms are integration-tested end-to-end — verify a multi-client `clients[]` publicdir serves before relying on it. -->
-
-A `publicdir` on a `clients[]` entry works the same way — each client carries its
-own.
+A `publicdir` on a `clients[]` entry works the same way — each entry carries its
+own, exactly like the single `client`.
 
 ## `source` — what to serve
 
@@ -114,12 +113,12 @@ same `/robots.txt`.
 
 > **Note — when a function file is re-invoked.** While the function still lives
 > in `source` (in `dev`, where files are read live), it's re-invoked per request
-> and never cached — only real files (directory entries) hit the in-memory cache,
-> so keep dev-time function bodies cheap. After a **build**, this stops being a
-> concern: each function entry is invoked **once** at build time and its output is
-> written as a real file into `outdir` (see the `outdir` section below). In
-> production that real file is what gets indexed and served — fully cached, the
-> function never runs per request.
+> and never cached — only real files (directory entries) hit the in-memory
+> cache, so keep dev-time function bodies cheap. After a **build**, this stops
+> being a concern: each function entry is invoked **once** at build time and its
+> output is written as a real file into `outdir` (see the `outdir` section
+> below). In production that real file is what gets indexed and served — fully
+> cached, the function never runs per request.
 
 > **Gotcha — a typo'd source path fails silently.** A missing or
 > permission-denied source directory yields zero files with no warning — the
@@ -162,11 +161,11 @@ publicdir: {
 },
 ```
 
-| `cacheLimit`        | Effect                                              |
-| ------------------- | --------------------------------------------------- |
-| omitted / `true`    | auto: 5% of total RAM, clamped to 32 MB – 512 MB    |
-| `false` / `0`       | caching disabled — read from disk every request     |
-| a number            | that many bytes (floored, never negative)           |
+| `cacheLimit`     | Effect                                           |
+| ---------------- | ------------------------------------------------ |
+| omitted / `true` | auto: 5% of total RAM, clamped to 32 MB – 512 MB |
+| `false` / `0`    | caching disabled — read from disk every request  |
+| a number         | that many bytes (floored, never negative)        |
 
 Auto is the default. A single file larger than the whole limit is never cached.
 The cache clears whenever the file index is rebuilt.
@@ -221,8 +220,8 @@ name — no hashing, no compiler.
 physically live in `dist/client`. See [assets](assets) for the asset pipeline.
 
 Practically: put files you reference by a fixed, predictable URL (favicon,
-`robots.txt`, manifest, `.well-known/…`) in `publicdir`. Let
-`import` handle anything you reference from code and want cache-busted.
+`robots.txt`, manifest, `.well-known/…`) in `publicdir`. Let `import` handle
+anything you reference from code and want cache-busted.
 
 ## Serving semantics
 
@@ -250,16 +249,14 @@ with `engine.preparePublicdirs()`.
 
 When two publicdirs (e.g. server + client) claim the same route, the first match
 in order wins: the server publicdir is checked first, then client publicdirs in
-`clients[]` order — there's no conflict validation yet.
-
-<!-- TODO(low): cross-publicdir route conflict detection isn't implemented yet (a `checkConflicts` is stubbed in the code). Today it's silently "first match wins" — document a guard once one exists. -->
+`clients[]` order. There is no cross-publicdir conflict validation — a conflict
+is silent, and the first match simply serves.
 
 ### Content type
 
 Content type is inferred from the file. For real files it comes from Bun's file
-detection; for function files it's inferred from the route's extension
-(`.json` → `application/json`, `.css` → `text/css`, …). Verified in tests:
-`.txt`, `.json`, `.css`, `.html`, `.js`, `.svg` all serve with the right type.
+detection; for function files it's inferred from the route's extension (`.json`
+→ `application/json`, `.css` → `text/css`, …).
 
 ### Client publicdir and `serving`
 
@@ -274,11 +271,9 @@ client: {
 ```
 
 `serving` is `true` (always) / `false` (never) / a host string (serve only when
-`request.location.host` matches) / a function (decide per request). In a
+`request.location.host` matches exactly) / a function (decide per request). In a
 multi-client app, each client's publicdir is gated by its own `serving`, so the
 right host serves the right files.
-
-<!-- TODO(low): the host-string `serving` form is confirmed by type + implementation, but has no worked example/test for publicdir specifically — the snippet above is illustrative. -->
 
 ## Production serving
 
@@ -291,13 +286,18 @@ server directly:
 ```
 
 When the engine config is re-imported after a build, the publicdir `source` is
-rewritten to serve the built `outdir` itself — effectively `[['/', dist/client]]`.
-That's the mechanism behind "the built server serves `dist/client` at `/`": your
-`public/` files, the hashed assets, and the JS bundle all sit in `dist/client`
-and are served from there. This auto-rewrite is on by default and controlled by
-the engine's `autoFixBuiltPaths` option.
+rewritten to serve the built `outdir` itself — effectively
+`[['/', dist/client]]`. That's the mechanism behind "the built server serves
+`dist/client` at `/`": your `public/` files, the hashed assets, and the JS
+bundle all sit in `dist/client` and are served from there. This auto-rewrite is
+on by default and controlled by the engine's `autoFixBuiltPaths` option.
 
-<!-- TODO(low): no documented production deploy story for static files behind a CDN / reverse proxy — only "the built server serves `dist/client` at `/`". Add one when defined. Point0 is deploy-agnostic, so this stays a generic "put a CDN/proxy in front" note rather than any host-specific config. -->
+point0 is deploy-agnostic about what sits in front of this. The built server can
+serve `dist/client` directly, or you can put a CDN or reverse proxy ahead of it
+— point0 prescribes no host-specific config either way. The publicdir responses
+carry no HTTP cache headers, so if you front them with a CDN, set caching there
+or attach headers in a [middleware](middleware) (see the `cacheLimit` section).
+See [Deploy](deploy) for the production run-and-serve story.
 
 ## The `--no-publicdir` build flag
 
@@ -329,30 +329,30 @@ publicdir?: {
 
 ### `source` forms
 
-| Form                          | Mounts                                              |
-| ----------------------------- | --------------------------------------------------- |
-| `'../public'`                 | that directory at `/`                               |
-| `{ '/a': '../public-a' }`     | a directory at `/a`                                 |
-| `{ 'robots.txt': () => '…' }` | a virtual file (function body) at `/robots.txt`     |
-| `['/x', './dir']`             | tuple — same as the object form, one entry          |
-| `[ …mix of the above ]`       | array — entries combined, in order                  |
+| Form                          | Mounts                                          |
+| ----------------------------- | ----------------------------------------------- |
+| `'../public'`                 | that directory at `/`                           |
+| `{ '/a': '../public-a' }`     | a directory at `/a`                             |
+| `{ 'robots.txt': () => '…' }` | a virtual file (function body) at `/robots.txt` |
+| `['/x', './dir']`             | tuple — same as the object form, one entry      |
+| `[ …mix of the above ]`       | array — entries combined, in order              |
 
-A directory value is walked recursively; a function value (`() => string \|
-Promise<string>`) is one virtual file, re-run per request.
+A directory value is walked recursively; a function value
+(`() => string \| Promise<string>`) is one virtual file, re-run per request.
 
 ### Behavior at a glance
 
-| Aspect              | Behavior                                                          |
-| ------------------- | ---------------------------------------------------------------- |
-| Match order         | publicdir runs **before** pages/endpoints                        |
-| Methods             | `GET`, `HEAD`, `OPTIONS` only                                    |
-| Index build         | lazy (first matching request); warmed in background              |
-| `outdir` missing    | publicdir is `null` — nothing serves                             |
-| Build-time          | directories copied; function files written as real files         |
-| Dist vs publicdir   | on a same-dir name clash, dist (JS build) wins                   |
-| Server `serving`    | always serves                                                    |
-| Client `serving`    | `true` / `false` / host string / function (default `true`)       |
-| HTTP cache headers   | none — in-memory server cache only                              |
+| Aspect             | Behavior                                                   |
+| ------------------ | ---------------------------------------------------------- |
+| Match order        | publicdir runs **before** pages/endpoints                  |
+| Methods            | `GET`, `HEAD`, `OPTIONS` only                              |
+| Index build        | lazy (first matching request); warmed in background        |
+| `outdir` missing   | publicdir is `null` — nothing serves                       |
+| Build-time         | directories copied; function files written as real files   |
+| Dist vs publicdir  | on a same-dir name clash, dist (JS build) wins             |
+| Server `serving`   | always serves                                              |
+| Client `serving`   | `true` / `false` / host string / function (default `true`) |
+| HTTP cache headers | none — in-memory server cache only                         |
 
 ### Related engine methods
 
@@ -365,6 +365,16 @@ Promise<string>`) is one virtual file, re-run per request.
   `engine.clean({ publicdir })` overload. The publicdir-only clean is the
   internal `publicdir.clean()` on a `Publicdir` instance, not an engine method.
 
-<!-- TODO(med): the build copy reads files as text (`Bun.file(...).text()`), which is a concern for binary files (images, fonts) when `outdir` is **not** `dist` (the canonical `dist/client` path serves binary-safe via `Bun.file` after the auto-rewrite). No test confirms binary integrity through the text-based copy — verify before relying on a non-`dist` `outdir` for binaries like `favicon.ico`. -->
+### Binary files
 
-<!-- TODO(low): range requests / streaming for large files — served via `new Response(Bun.file(...))`; Bun may handle ranges natively, but no point0-level test confirms it. -->
+The build-time copy is binary-safe. Directory entries are copied with
+`Bun.write(dest, Bun.file(src))` — a native byte-for-byte copy, never a UTF-8
+`.text()` round-trip — so images, fonts, and other binaries land in `outdir`
+intact regardless of where `outdir` points.
+
+### Range requests and large files
+
+With caching on (the default) a real file is read into memory on its first
+request (`file.arrayBuffer()`), cached, and served from that `ArrayBuffer`;
+later requests hit the cache. With caching off the file is streamed as
+`new Response(Bun.file(...))`, where Bun handles range requests natively.

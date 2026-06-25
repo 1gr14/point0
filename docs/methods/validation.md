@@ -1,15 +1,18 @@
 ---
 index: 100
 title: Validation
-description: Eight schema methods that parse and type a point's input — input, params, search, body, headers, cookies, and the two client variants.
+description:
+  Eight schema methods that parse and type a point's input — input, params,
+  search, body, headers, cookies, and the two client variants.
 ---
 
 A point's input is validated before its loader runs. You attach a schema with
 one of eight methods — `.input`, `.params`, `.search`, `.body`, `.clientInput`,
-`.sharedInput`, `.headers`, `.cookies` — and from then on that data is parsed and
-typed everywhere it flows: the loader, the component, the cache key, the OpenAPI
-spec. Any [Standard Schema](https://standardschema.dev) library works (zod,
-valibot, arktype, typebox, yup, superstruct), or a plain validate function.
+`.sharedInput`, `.headers`, `.cookies` — and from then on that data is parsed
+and typed everywhere it flows: the loader, the component, the cache key, the
+OpenAPI spec. Any [Standard Schema](https://standardschema.dev) library works
+(zod, valibot, arktype, typebox, yup, superstruct), or a plain validate
+function.
 
 ```tsx
 import { root } from '@/lib/root'
@@ -20,7 +23,9 @@ export const ideaQuery = root.lets
   .input(z.object({ id: z.number() })) // input is { id: number } from here on
   .loader(async ({ input }) => {
     // input is already parsed and typed — never `unknown`
-    const idea = await prisma.idea.findUniqueOrThrow({ where: { id: input.id } })
+    const idea = await prisma.idea.findUniqueOrThrow({
+      where: { id: input.id },
+    })
     return { idea }
   })
   .query()
@@ -95,20 +100,20 @@ input and returns the parsed value, throwing to reject:
 })
 ```
 
-A thrown error becomes one validation issue and fails the parse — on the
-client / mount path with the code `INPUT_SCHEMA_INVALID`; server-side the error
+A thrown error becomes one validation issue and fails the parse — on the client
+/ mount path with the code `INPUT_SCHEMA_INVALID`; server-side the error
 surfaces as your error class without that specific code. Server-side validation
-runs **asynchronously** — a schema
-whose `~standard` validate returns a Promise is awaited and accepted. Only the
-**client / mount** validation path is synchronous: there, a Promise-returning
-schema is rejected at runtime with `INPUT_SCHEMA_PROMISE_NOT_ALLOWED` (its message
-reads "for client input schemas").
+runs **asynchronously** — a schema whose `~standard` validate returns a Promise
+is awaited and accepted. Only the **client / mount** validation path is
+synchronous: there, a Promise-returning schema is rejected at runtime with
+`INPUT_SCHEMA_PROMISE_NOT_ALLOWED` (its message reads "for client input
+schemas").
 
 ## Schema helpers — register your library on the root
 
 A schema library is fully usable for validation on its own. But two things — the
 routable keys of `.search`, and [OpenAPI](openapi) generation — need Point0 to
-*look inside* the schema (read its keys, detect file fields, emit JSON Schema).
+_look inside_ the schema (read its keys, detect file fields, emit JSON Schema).
 That introspection is library-specific, so you register a **schema helper** once
 on the [root](root):
 
@@ -133,11 +138,13 @@ import { typeboxSchemaHelper } from '@point0/core/schema/typebox'
 import { superstructSchemaHelper } from '@point0/core/schema/superstruct'
 ```
 
-You can register more than one (`.schemaHelper(zodSchemaHelper()).schemaHelper(valibotSchemaHelper())`)
-— they accumulate, and the first one that recognizes a given schema wins.
+You can register more than one
+(`.schemaHelper(zodSchemaHelper()).schemaHelper(valibotSchemaHelper())`) — they
+accumulate, and the first one that recognizes a given schema wins.
 
-`.schemaHelper` is **server-and-client** — not cut from either bundle, kept in both
-(isomorphic), because introspection (search keys, OpenAPI) runs on both sides.
+`.schemaHelper` is **server-and-client** — not cut from either bundle, kept in
+both (isomorphic), because introspection (search keys, OpenAPI) runs on both
+sides.
 
 Without a helper, `.search` can't tell which keys are real search params, so it
 treats **every** query-string key as a search param — see
@@ -152,16 +159,18 @@ the cache key, is validated on the server, and is sent to the loader:
 ```tsx
 export const ideaListQuery = root.lets
   .infiniteQuery()
-  .input(z.object({ limit: z.number().optional(), cursor: z.number().optional() }))
+  .input(
+    z.object({ limit: z.number().optional(), cursor: z.number().optional() }),
+  )
   .loader(async ({ input: { limit = 20, cursor } }) => {
     /* ... */
   })
   .infiniteQuery(/* ... */)
 ```
 
-`.input` validates on the **server only**. The component never sees an unvalidated
-input, but it also doesn't re-validate input at render. For input that must be
-checked on the client too, use the two variants:
+`.input` validates on the **server only**. The component never sees an
+unvalidated input, but it also doesn't re-validate input at render. For input
+that must be checked on the client too, use the two variants:
 
 ```tsx
 .clientInput(schema)  // validate at render / on the client — not on the server
@@ -169,15 +178,15 @@ checked on the client too, use the two variants:
 ```
 
 Use `.clientInput` / `.sharedInput` when a client-loader query (or a component)
-must validate its input in the browser. Plain `.input` is the right default for a
-server query.
+must validate its input in the browser. Plain `.input` is the right default for
+a server query.
 
-`.input` is **server-only** — cut from the client bundle: its schema body and the
-imports it pulls in are removed, so it never ships to the browser (it validates on
-the server). `.clientInput` is the mirror: **client-only** — cut from the server
-bundle, body and its imports removed (it validates in the browser). `.sharedInput`
-is **server-and-client** — not cut from either bundle, kept in both (isomorphic),
-validating in both places.
+`.input` is **server-only** — cut from the client bundle: its schema body and
+the imports it pulls in are removed, so it never ships to the browser (it
+validates on the server). `.clientInput` is the mirror: **client-only** — cut
+from the server bundle, body and its imports removed (it validates in the
+browser). `.sharedInput` is **server-and-client** — not cut from either bundle,
+kept in both (isomorphic), validating in both places.
 
 ## `.params` and `.search` — pages and layouts
 
@@ -186,10 +195,10 @@ the route segments, `.search` from the query string.
 
 ### `.params` — route segments
 
-The route already types its own segments: `.page('/ideas/:sn')` gives you a typed
-`params.sn` (a `string`) with no schema at all. You reach for `.params` **only**
-when you want to transform or coerce those strings into something else — turn
-`"123"` into a number, validate a format, narrow a union:
+The route already types its own segments: `.page('/ideas/:sn')` gives you a
+typed `params.sn` (a `string`) with no schema at all. You reach for `.params`
+**only** when you want to transform or coerce those strings into something else
+— turn `"123"` into a number, validate a format, narrow a union:
 
 ```tsx
 export const ideaViewPage = generalLayout.lets
@@ -198,19 +207,19 @@ export const ideaViewPage = generalLayout.lets
   .page(({ params }) => <h1>Idea #{params.sn}</h1>) // params.sn is a number
 ```
 
-A validate function passed to `.params` receives `Record<string, string>` — every
-value is a string, because that's what the router extracts from the path.
+A validate function passed to `.params` receives `Record<string, string>` —
+every value is a string, because that's what the router extracts from the path.
 
 On a page or layout, `.params` is **server-and-client** — not cut from either
 bundle, kept in both (isomorphic), because the page's route parses the URL on
-either side. (On an [action](action) the same method is **server-only**: cut from
-the client bundle — its schema body and the imports it uses are removed, so it
-never reaches the browser, since an action has no client side.)
+either side. (On an [action](action) the same method is **server-only**: cut
+from the client bundle — its schema body and the imports it uses are removed, so
+it never reaches the browser, since an action has no client side.)
 
-`.params` can only *refine* the keys already in the route — it can't introduce a
+`.params` can only _refine_ the keys already in the route — it can't introduce a
 key that isn't a route segment. Adding an unknown key is a type error
-(`Previous provided params should not have another keys…`). `.search` and `.body`
-have no such restriction.
+(`Previous provided params should not have another keys…`). `.search` and
+`.body` have no such restriction.
 
 ### `.search` — the query string
 
@@ -220,22 +229,29 @@ drives routing — its keys are registered as the page's recognized search param
 ```tsx
 export const ideaListPage = generalLayout.lets
   .page('/ideas')
-  .search(z.object({ page: z.coerce.number().default(0), limit: z.coerce.number().default(2) }))
+  .search(
+    z.object({
+      page: z.coerce.number().default(0),
+      limit: z.coerce.number().default(2),
+    }),
+  )
   .page(({ search, setSearch }) => {
     // search is { page: number, limit: number }
     // setSearch updates the URL query (client-only; a no-op during SSR)
   })
 ```
 
-To extract those keys, `.search` needs a [schema helper](#schema-helpers--register-your-library-on-the-root)
-registered on the root. **Without one**, Point0 can't read the schema's keys and
-falls back to treating *every* query-string key as a search param — register the
-helper for your library and this works as expected.
+To extract those keys, `.search` needs a
+[schema helper](#schema-helpers--register-your-library-on-the-root) registered
+on the root. **Without one**, Point0 can't read the schema's keys and falls back
+to treating _every_ query-string key as a search param — register the helper for
+your library and this works as expected.
 
 Like `.params`, `.search` is **server-and-client** on a page or layout — not cut
-from either bundle, kept in both (isomorphic) so the query string parses on either
-side — and **server-only** on an [action](action), where it's cut from the client
-bundle: body and its imports removed, so it never ships to the browser.
+from either bundle, kept in both (isomorphic) so the query string parses on
+either side — and **server-only** on an [action](action), where it's cut from
+the client bundle: body and its imports removed, so it never ships to the
+browser.
 
 `setSearch` and the rest of the search/routing surface live on
 [Navigation](navigation).
@@ -263,27 +279,22 @@ Each schema maps to an OpenAPI location: `.params` → path, `.search` → query
 `.headers` → header, `.cookies` → cookie, `.body` → request body. For a query or
 mutation, `.input` is what OpenAPI emits as the body. See [OpenAPI](openapi).
 
-`.headers` and `.cookies` are available on every point type — a page or layout can
-read auth headers or cookies on its server request the same way. They validate on
-the server.
+`.headers` and `.cookies` are available on every point type — a page or layout
+can read auth headers or cookies on its server request the same way. They
+validate on the server.
 
-`.body`, `.headers`, and `.cookies` are all **server-only** — cut from the client
-bundle: each one's schema body and the imports it pulls in are removed, so they
-never ship to the browser (each reads from the incoming HTTP request on the
-server). (`.params` / `.search` on the action above are also **server-only** here,
-likewise cut from the client bundle, since an action has no client side; on a page
-or layout those two are server-and-client — see above.)
-
-<!-- TODO(med): no production usage of `.body`, `.headers`, `.cookies`, `.clientInput`, or `.sharedInput` exists in start0; the action example above is adapted from the openapi test suite. Confirm against a real action before treating these as documented recipes. -->
-
-<!-- Confirmed server-only: `.headers` / `.cookies` are in the client-strip list (compiler point.ts shakeMethodsForClient ~1020-1021), so their schemas never reach the client bundle. -->
-
+`.body`, `.headers`, and `.cookies` are all **server-only** — cut from the
+client bundle: each one's schema body and the imports it pulls in are removed,
+so they never ship to the browser (each reads from the incoming HTTP request on
+the server). (`.params` / `.search` on the action above are also **server-only**
+here, likewise cut from the client bundle, since an action has no client side;
+on a page or layout those two are server-and-client — see above.)
 
 ## Schemas merge down the chain
 
-A schema declared up the chain is **merged** with one declared lower — they union
-by key. A [base](base) or [plugin](plugin) can declare part of an input, and the
-point fills in the rest:
+A schema declared up the chain is **merged** with one declared lower — they
+union by key. A [base](base) or [plugin](plugin) can declare part of an input,
+and the point fills in the rest:
 
 ```tsx
 export const tenantBase = root.lets
@@ -301,9 +312,9 @@ export const ideaQuery = tenantBase.lets
   .query()
 ```
 
-`.sharedInput` merges into both the server and client input slots — fittingly, it's
-**server-and-client**: not cut from either bundle, kept in both (isomorphic) so it
-validates in both places.
+`.sharedInput` merges into both the server and client input slots — fittingly,
+it's **server-and-client**: not cut from either bundle, kept in both
+(isomorphic) so it validates in both places.
 
 ## Narrowing is allowed, widening is a type error
 
@@ -324,26 +335,26 @@ compile error:
 For a server query, page, or action, input is parsed on the server before the
 loader runs — the client can't smuggle an unvalidated shape into your loader.
 But validation is not authorization. Gate access with a [`.with`](with) wrapper
-that throws your [error class](error-handling) (`ErrorPoint0` by default, or your
-own), not by trusting `.ctx` (which runs only when the point has a loader). A
-`.params`/`.search`/`.input` schema decides *what shape* the data has, never
-*who* may send it.
+that throws your [error class](error-handling) (`ErrorPoint0` by default, or
+your own), not by trusting `.ctx` (which runs only when the point has a loader).
+A `.params`/`.search`/`.input` schema decides _what shape_ the data has, never
+_who_ may send it.
 
 ## Reference
 
 ### Method → point types → request location
 
-| Method          | Available on                                                      | Validated on    | OpenAPI location |
-| --------------- | ---------------------------------------------------------------- | --------------- | ---------------- |
-| `.input`        | query, infiniteQuery, mutation, component, provider (+ root/base/plugin) | server   | request body     |
-| `.clientInput`  | same as `.input`                                                 | client / mount  | —                |
-| `.sharedInput`  | same as `.input`                                                 | server + client | request body     |
-| `.params`       | page, layout, action                                             | server + client | path (required)  |
-| `.search`       | page, layout, action (+ root/base/plugin)                        | server + client | query            |
-| `.body`         | action (+ root/base/plugin)                                      | server          | request body     |
-| `.headers`      | every point type                                                 | server          | header           |
-| `.cookies`      | every point type                                                 | server          | cookie           |
-| `.schemaHelper` | root only                                                        | —               | —                |
+| Method          | Available on                                                             | Validated on    | OpenAPI location |
+| --------------- | ------------------------------------------------------------------------ | --------------- | ---------------- |
+| `.input`        | query, infiniteQuery, mutation, component, provider (+ root/base/plugin) | server          | request body     |
+| `.clientInput`  | same as `.input`                                                         | client / mount  | —                |
+| `.sharedInput`  | same as `.input`                                                         | server + client | request body     |
+| `.params`       | page, layout, action                                                     | server + client | path (required)  |
+| `.search`       | page, layout, action (+ root/base/plugin)                                | server + client | query            |
+| `.body`         | action (+ root/base/plugin)                                              | server          | request body     |
+| `.headers`      | every point type                                                         | server          | header           |
+| `.cookies`      | every point type                                                         | server          | cookie           |
+| `.schemaHelper` | root only                                                                | —               | —                |
 
 `.params` is deliberately **not** available on root/base/plugin — params are
 route-bound and only mean something on a page, layout, or action.
@@ -371,5 +382,11 @@ the request body, and so on). One quirk: on an **action**, an `.input` schema
 would read from `search` — but `.input` isn't available on actions, so in
 practice actions use `.params` / `.search` / `.body`.
 
-<!-- TODO(low): `.input`-vs-component-props (validated cache-key input vs the props a `.component<{…}>()` declares) is contrasted only in prose, not in a test — document the distinction once the component page lands and link from here. -->
+### `.input` vs component props
 
+On a [component](component) (or provider), `.input` and the outer props declared
+with the `.component<{…}>()` / `.provider<{…}>()` generic are two different
+things. `.input` is the **validated** schema that forms the cache key and feeds
+the loader — passed as `input={{…}}` at the mount site. Outer props are the
+plain attributes the element accepts (`<Greet name="…" />`), spread directly and
+not schema-validated. See [component](component) for both side by side.

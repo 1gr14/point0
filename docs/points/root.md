@@ -1,7 +1,9 @@
 ---
 index: 1000
 title: Root
-description: The point you build everything from — the server entry point and the holder of defaults for every point beneath it.
+description:
+  The point you build everything from — the server entry point and the holder of
+  defaults for every point beneath it.
 ---
 
 A root is the point every other point grows from. It's the only point created
@@ -26,26 +28,31 @@ export const root = Point0.lets
   .errorClass(AppError)
   .prefetchPageOnNavigate('pageDehydratedStateAndClientQuery')
   .prefetchPageOnLinkHover('pageDehydratedStateAndClientQuery')
-  .queryOptions({ retry: false, refetchOnWindowFocus: false, staleTime: 60_000 })
+  .queryOptions({
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+  })
   .loading(() => <Spinner />)
   .error(({ error }) => <ErrorScreen error={error} />)
   .root() // close
 ```
 
 Every other point is then opened off this `root` — `root.lets.page(...)`,
-`root.lets.query(...)`, and so on — and inherits everything set here. The rest of
-this page shows each piece and where it lands.
+`root.lets.query(...)`, and so on — and inherits everything set here. The rest
+of this page shows each piece and where it lands.
 
 ## Declaring a root
 
-A root opens with `.lets.root()` and closes with `.root()` — same as every point,
-"what you open it with, you close it with". In between you set the defaults; while
-the chain is open it's a `StagePoint`, and the closing `.root()` turns it into the
-finalized `ReadyPoint` that children grow from. The closing `.root()` is
-server-and-client — not cut from either bundle, kept in both (isomorphic). Between open and close you can call
-every default-setter; after the close those stage-methods are gone and you're left
-with the ready surface (`.lets`, `.id`, `.point`, …). See [points](points) for the
-stage-method / ready-method split and the `.lets` notation.
+A root opens with `.lets.root()` and closes with `.root()` — same as every
+point, "what you open it with, you close it with". In between you set the
+defaults; while the chain is open it's a `StagePoint`, and the closing `.root()`
+turns it into the finalized `ReadyPoint` that children grow from. The closing
+`.root()` is server-and-client — not cut from either bundle, kept in both
+(isomorphic). Between open and close you can call every default-setter; after
+the close those stage-methods are gone and you're left with the ready surface
+(`.lets`, `.id`, `.point`, …). See [points](points) for the stage-method /
+ready-method split and the `.lets` notation.
 
 ```tsx
 export const root = Point0.lets.root().root()
@@ -53,8 +60,8 @@ export const root = Point0.lets.root().root()
 Point0.lets('root', 'app') // a root named 'app'
 ```
 
-The name `'plugin'` is reserved — `Point0.lets('root', 'plugin')` throws, because
-that scope is used internally for [plugin](plugin) points.
+The name `'plugin'` is reserved — `Point0.lets('root', 'plugin')` throws,
+because that scope is used internally for [plugin](plugin) points.
 
 A root holds no data of its own — it has **no** `.loader`, `.clientLoader`,
 `.mapper`, or `.params`. It sets defaults and (on the server) mounts middleware;
@@ -75,9 +82,9 @@ On the server, `serverUrl` is required: without it, `route.abs()` throws
 `origin for route /api/x is not set`.
 
 `.clientUrl` is the public origin pages live on, for when it differs from
-`serverUrl` — split dev ports, a native shell, or a CDN in front. Page and layout
-routes resolve against `clientUrl`; **action (API) routes always use `serverUrl`**,
-because the API lives on the server:
+`serverUrl` — split dev ports, a native shell, or a CDN in front. Page and
+layout routes resolve against `clientUrl`; **action (API) routes always use
+`serverUrl`**, because the API lives on the server:
 
 ```tsx
 .serverUrl(sharedEnv.SERVER_URL) // API origin
@@ -85,11 +92,12 @@ because the API lives on the server:
 ```
 
 The split is by route kind, not by runtime side — so server-rendered and
-client-rendered hrefs come out identical. Without `clientUrl`, pages fall back to
-`serverUrl`.
+client-rendered hrefs come out identical. Without `clientUrl`, pages fall back
+to `serverUrl`.
 
-`.serverUrl` and `.clientUrl` are server-and-client — not cut from either bundle,
-kept in both (they configure URL resolution on either side, so nothing is pruned).
+`.serverUrl` and `.clientUrl` are server-and-client — not cut from either
+bundle, kept in both (they configure URL resolution on either side, so nothing
+is pruned).
 
 ## The transformer
 
@@ -103,9 +111,9 @@ import superjson from 'superjson'
 .transformer(superjson) // Date, Map, Set, BigInt survive the round-trip
 ```
 
-The transformer needs `{ serialize, deserialize }`. Without one, the default is a
-plain pass-through (raw JSON). With superjson set, special types are also encoded
-into the [query key](query). Details on [Transformer](transformer).
+The transformer needs `{ serialize, deserialize }`. Without one, the default is
+a plain pass-through (raw JSON). With superjson set, special types are also
+encoded into the [query key](query). Details on [Transformer](transformer).
 
 `.transformer` is server-and-client — not cut from either bundle, kept in both
 (it runs on both sides: serialize on send, deserialize on receive).
@@ -123,9 +131,9 @@ import { zodSchemaHelper } from '@point0/core/schema/zod'
 ```
 
 Helpers ship as subpath exports: `@point0/core/schema/zod`, `/valibot`, `/yup`,
-`/arktype`, `/typebox`, `/superstruct`. You can call `.schemaHelper` more than once
-to register several — the calls accumulate. A falsy argument is a no-op that keeps
-the existing helpers, not a reset. More in [Validation](validation).
+`/arktype`, `/typebox`, `/superstruct`. You can call `.schemaHelper` more than
+once to register several — the calls accumulate. A falsy argument is a no-op
+that keeps the existing helpers, not a reset. More in [Validation](validation).
 
 `.schemaHelper` is server-and-client — not cut from either bundle, kept in both
 (validation runs on both sides).
@@ -146,9 +154,9 @@ import { AppError } from '@/lib/error' // your own error class
 Without `.errorClass` the default is `ErrorPoint0`. You can replace it with any
 class of the same-or-wider shape — a constructor taking
 `(message, { cause?, status?, code?, redirect?, response?, headers?, meta? })`
-plus static `from`, `serializePublic`, and `serializePrivate`. How you build that
-class is up to you; [error0](error-handling) is one convenient way, but it's
-optional. Full surface on [Error handling](error-handling).
+plus static `from`, `serializePublic`, and `serializePrivate`. How you build
+that class is up to you; [error0](error-handling) is one convenient way, but
+it's optional. Full surface on [Error handling](error-handling).
 
 `.errorClass` is server-and-client — not cut from either bundle, kept in both
 (errors are raised, serialized, and rendered on both sides).
@@ -165,20 +173,18 @@ three setters:
 ```
 
 The policy is one of `'serverQuery'`, `'clientQuery'`, `'serverAndClientQuery'`,
-`'pageDehydratedState'`, `'pageDehydratedStateAndClientQuery'`, `'onPrefetchOnly'`,
-`'none'`, or `false` (which means `'none'`). The optional second argument on the
-hover setters is a debounce in milliseconds. Set these on the root and override
-them per page or per link as needed.
+`'pageDehydratedState'`, `'pageDehydratedStateAndClientQuery'`,
+`'onPrefetchOnly'`, `'none'`, or `false` (which means `'none'`). The optional
+second argument on the hover setters is a debounce in milliseconds. Set these on
+the root and override them per page or per link as needed.
 
 Costs differ: `pageDehydratedStateAndClientQuery` is the most reliable but the
 most expensive (it runs a full SSR render). The policies live on
 [Navigation](navigation) (and [SSR](ssr)).
 
-The three setters split by strip category. `.prefetchPageOnNavigate` and
-`.prefetchPageOnLinkHover` are client-only — cut from the server bundle: body and
-its imports removed (navigation and link-hover prefetch are browser behaviours).
-`.prefetchPagePolicy` (which sets both at once) is server-and-client — not cut from
-either bundle, kept in both (it's a config helper).
+All three setters are **client-only** — cut from the server bundle, body and its
+imports removed (navigation and link-hover prefetch are browser behaviours).
+`.prefetchPagePolicy` just sets the other two at once, so it's cut the same way.
 
 ## Query option defaults
 
@@ -198,13 +204,14 @@ There are type-specific siblings too — `.pageQueryOptions`,
 `.componentQueryOptions`, `.layoutQueryOptions`, `.providerQueryOptions`,
 `.pageDehydratedStateQueryOptions`, `.infiniteQueryOptions`, `.mutationOptions`,
 `.fetchOptions` — each merging into its own slot. On the **server**, Point0
-hard-overrides a few of these (`retry: false`, no refetch, `staleTime`/`gcTime:
-Infinity`) since a server render fetches once. See [Query](query) for precedence
-and [stage-methods](stage-methods) for the full list.
+hard-overrides a few of these (`retry: false`, no refetch,
+`staleTime`/`gcTime: Infinity`) since a server render fetches once. See
+[Query](query) for precedence and [stage-methods](stage-methods) for the full
+list.
 
-`.queryOptions` and its whole `*QueryOptions` family, plus `.mutationOptions` and
-`.fetchOptions`, are server-and-client — not cut from either bundle, kept in both
-(query/mutation options are applied on both sides).
+`.queryOptions` and its whole `*QueryOptions` family, plus `.mutationOptions`
+and `.fetchOptions`, are server-and-client — not cut from either bundle, kept in
+both (query/mutation options are applied on both sides).
 
 ## Events and logging
 
@@ -219,20 +226,21 @@ this is where app-wide error logging goes:
 ```
 
 Each callback gets `{ side, name, data, error, meta }`. `error` is set on error
-events; `meta` is the log-friendly projection (points become ids, requests become
-`{ method, path }`, errors are serialized) — log `meta`, not the raw `data`. Full
-event list and the server/client split on [Events](events).
+events; `meta` is the log-friendly projection (points become ids, requests
+become `{ method, path }`, errors are serialized) — log `meta`, not the raw
+`data`. Full event list and the server/client split on [Events](events).
 
-Strip categories differ by setter. `.on` is server-and-client — not cut from either
-bundle, kept in both (it subscribes on both sides). `.serverOn` is server-only — cut
-from the client bundle: its body and the imports it uses are removed, so it never
-ships to the browser (it runs only on the server). `.clientOn` is client-only — cut
-from the server bundle: body and its imports removed (it runs only in the browser).
+Strip categories differ by setter. `.on` is server-and-client — not cut from
+either bundle, kept in both (it subscribes on both sides). `.serverOn` is
+server-only — cut from the client bundle: its body and the imports it uses are
+removed, so it never ships to the browser (it runs only on the server).
+`.clientOn` is client-only — cut from the server bundle: body and its imports
+removed (it runs only in the browser).
 
 ## Loading and error UI
 
-The root holds the fallback loading and error components for every point below it
-that renders UI. On a root, `.loading` and `.error` each set the fallback for
+The root holds the fallback loading and error components for every point below
+it that renders UI. On a root, `.loading` and `.error` each set the fallback for
 pages, layouts, and components at once:
 
 ```tsx
@@ -241,8 +249,8 @@ pages, layouts, and components at once:
 ```
 
 The error component receives the (possibly custom) error instance, so with
-`.errorClass(AppError)` set, `error` is an `AppError`. There are granular siblings
-— `.pageLoading` / `.pageError`, `.layoutLoading` / `.layoutError`,
+`.errorClass(AppError)` set, `error` is an `AppError`. There are granular
+siblings — `.pageLoading` / `.pageError`, `.layoutLoading` / `.layoutError`,
 `.componentLoading` / `.componentError` — for one slot at a time. start0 uses
 `.componentError` to give in-component errors a different look from page errors:
 
@@ -251,27 +259,29 @@ The error component receives the (possibly custom) error instance, so with
 .componentError(({ error }) => <ErrorComponent error={error} />)
 ```
 
-Any point below can override these. Full rules in [Loading & error](loading-error).
+Any point below can override these. Full rules in
+[Loading & error](loading-error).
 
-`.loading` and `.error` — and their granular siblings (`.pageLoading`/`.pageError`,
-`.layoutLoading`/`.layoutError`, `.componentLoading`/`.componentError`) — are
-server-ssr-and-client: cut from the SERVER bundle when `ssr: false` (or after a
-`.clientOnly()` earlier in the chain) — body and imports removed from the server
-build; kept in the client build always, and in the server build only when SSR is on.
+`.loading` and `.error` — and their granular siblings
+(`.pageLoading`/`.pageError`, `.layoutLoading`/`.layoutError`,
+`.componentLoading`/`.componentError`) — are server-ssr-and-client: cut from the
+SERVER bundle when `ssr: false` (or after a `.clientOnly()` earlier in the
+chain) — body and imports removed from the server build; kept in the client
+build always, and in the server build only when SSR is on.
 
 The error component renders on the server during the initial SSR pass, so be
 careful what it exposes: if it prints `error.stack`, that stack would otherwise
-end up in the server-rendered HTML. The default error component hides the stack in
-production; if you write your own, render the stack only on the client by wrapping
-it in `<ClientOnly>`, so it never reaches the SSR output. The basic root does
-exactly this.
+end up in the server-rendered HTML. The default error component hides the stack
+in production; if you write your own, render the stack only on the client by
+wrapping it in `<ClientOnly>`, so it never reaches the SSR output. The basic
+root does exactly this.
 
 ## The global head
 
 `.head('global', fn)` sets the document head for the whole app shell. Unlike a
 point's own `.head`, the global head runs on every page state and reads
-`{ status, loading, error }` rather than a point's loaded data — so you can drive
-the `<title>` from the app's loading/error state:
+`{ status, loading, error }` rather than a point's loaded data — so you can
+drive the `<title>` from the app's loading/error state:
 
 ```tsx
 .head('global', ({ loading, error }) => ({
@@ -283,18 +293,18 @@ the `<title>` from the app's loading/error state:
 ```
 
 The return is an [unhead](head) object (or a bare string treated as the title).
-Flat SEO keys (`description`, `ogTitle`, …) and `canonical` are supported and win
-over an explicit `meta` entry for the same tag. Details on [Head](head).
+Flat SEO keys (`description`, `ogTitle`, …) and `canonical` are supported and
+win over an explicit `meta` entry for the same tag. Details on [Head](head).
 
-`.head` is server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or
-after a `.clientOnly()` earlier in the chain): body and imports removed from the
-server build; kept in the client build always, and in the server build only when SSR
-is on (so the document head is server-rendered under SSR).
+`.head` is server-ssr-and-client — cut from the SERVER bundle when `ssr: false`
+(or after a `.clientOnly()` earlier in the chain): body and imports removed from
+the server build; kept in the client build always, and in the server build only
+when SSR is on (so the document head is server-rendered under SSR).
 
 ## Middleware — the server entry point
 
 The root is also the server's entry point: `.middleware` mounts server-side
-handlers. Because the root *is* the entry, its middleware chain is the request
+handlers. Because the root _is_ the entry, its middleware chain is the request
 pipeline itself — it runs for every incoming request regardless of which other
 points you've declared (a root with no pages or queries still serves its
 middleware). This is rarely needed for your own code, but it's how third-party
@@ -309,10 +319,9 @@ Three forms: global (runs for all requests), route-scoped (a string or route),
 and method+route-scoped. `.middleware` is **server-only** — cut from the client
 bundle: its body and the imports it uses are removed, so it never ships to the
 browser (on the client the call no-ops to `next()`, and it runs only on the
-server). Each callback gets
-`{ request, set, scope, next, points }` (plus `params` for a route with params)
-and returns a `Response` or calls `next()`. Full surface on
-[Middleware](middleware).
+server). Each callback gets `{ request, set, scope, next, points }` (plus
+`params` for a route with params) and returns a `Response` or calls `next()`.
+Full surface on [Middleware](middleware).
 
 ## One server, many clients
 
@@ -329,37 +338,50 @@ const root = Point0.lets
   .root()
 
 // a derived root inherits the parent's defaults and overrides what it needs
-export const siteRoot = root.lets.root().clientUrl('https://example.com').loading(/* ... */).root()
-export const mobileRoot = root.lets.root().clientUrl('https://m.example.com').root()
+export const siteRoot = root.lets
+  .root()
+  .clientUrl('https://example.com')
+  .loading(/* ... */)
+  .root()
+export const mobileRoot = root.lets
+  .root()
+  .clientUrl('https://m.example.com')
+  .root()
 ```
 
-A derived root **inherits** the parent's defaults — `serverUrl`, transformer, error
-class, query options, prefetch policies, and the loading/error UI — and can
-override any of them. `mobileRoot` above keeps the parent's `serverUrl` but sets
-its own page origin. Each root's `name` becomes a **scope** that tags every point
-under it, which is how a query in a multi-client build knows which client it
-belongs to. Put the shared loading/error UI on the base root and override it on a
-client root only where that client should look different.
+A derived root **inherits** the parent's defaults — `serverUrl`, transformer,
+error class, query options, prefetch policies, and the loading/error UI — and
+can override any of them. `mobileRoot` above keeps the parent's `serverUrl` but
+sets its own page origin. Each root's `name` becomes a **scope** that tags every
+point under it, which is how a query in a multi-client build knows which client
+it belongs to. Put the shared loading/error UI on the base root and override it
+on a client root only where that client should look different.
 
-On the engine side, the config takes a single `client` or a `clients` array, each
-entry carrying its own `scope` — that's how the build wires each root to its
-client. See [Engine config](engine-config).
+On the engine side, the config takes a single `client` or a `clients` array,
+each entry carrying its own `scope` — that's how the build wires each root to
+its client. See [Engine config](engine-config).
 
 ## Base vs. root
 
 A [base](base) is the non-entry sibling of a root: derive one with
-`root.lets.base()…base()` to share partial-scope defaults (a `basePath`, a gating
-plugin) with a subset of points, without being a second server entry point:
+`root.lets.base()…base()` to share partial-scope defaults (a `basePath`, a
+gating plugin) with a subset of points, without being a second server entry
+point:
 
 ```tsx
-export const adminBase = root.lets.base().basePath('/admin').use(adminOnlyPlugin).base()
+export const adminBase = root.lets
+  .base()
+  .basePath('/admin')
+  .use(adminOnlyPlugin)
+  .base()
 ```
 
 Use a root for a whole client, a base for a slice of one. See [base](base).
 
 `.use` (attaching a plugin) and the `.base()` closer are server-and-client — not
-cut from either bundle, kept in both (isomorphic). Whether a plugin's own methods
-get stripped is decided per method by its category, not by `.use` itself.
+cut from either bundle, kept in both (isomorphic). Whether a plugin's own
+methods get stripped is decided per method by its category, not by `.use`
+itself.
 
 ## How children inherit
 
@@ -367,33 +389,33 @@ The closing `.root()` finalizes the point and marks it as both the base and the
 root for everything below. Children opened with `root.lets.<type>()` then pull
 defaults up that chain — server/client URLs, base path, all the `*QueryOptions`,
 prefetch policies, and the loading/error components — and the transformer, error
-class, schema helpers, middleware, and event subscriptions carry through the chain
-too. Nothing lives in a separate config file: everything that shapes a point is
-reachable by walking the parent chain from the point itself.
+class, schema helpers, middleware, and event subscriptions carry through the
+chain too. Nothing lives in a separate config file: everything that shapes a
+point is reachable by walking the parent chain from the point itself.
 
 ## Reference
 
 The setters shown above are the same stage-methods every point has — a root just
 sets them as defaults instead of for a single point. The full catalog, with each
 method's own page, lives on [stage-methods](stage-methods); the sections above
-cover the ones whose default belongs on the root (URLs, transformer, schema helper,
-error class, prefetch, the `*QueryOptions`, events, loading/error, the global head,
-middleware).
+cover the ones whose default belongs on the root (URLs, transformer, schema
+helper, error class, prefetch, the `*QueryOptions`, events, loading/error, the
+global head, middleware).
 
-A root has **no** `.loader`, `.clientLoader`, `.mapper`, `.params`, `.fetchFn`, or
-`.onPrefetchPage` — it holds defaults, not data.
+A root has **no** `.loader`, `.clientLoader`, `.mapper`, `.params`, `.fetchFn`,
+or `.onPrefetchPage` — it holds defaults, not data.
 
 ### Prefetch policies
 
-| Policy | Effect |
-| --- | --- |
-| `'serverQuery'` | prefetch the server query |
-| `'clientQuery'` | prefetch the client query |
-| `'serverAndClientQuery'` | both — the cheap, recommended default for load |
-| `'pageDehydratedState'` | full SSR render (expensive) |
+| Policy                                | Effect                                                    |
+| ------------------------------------- | --------------------------------------------------------- |
+| `'serverQuery'`                       | prefetch the server query                                 |
+| `'clientQuery'`                       | prefetch the client query                                 |
+| `'serverAndClientQuery'`              | both — the cheap, recommended default for load            |
+| `'pageDehydratedState'`               | full SSR render (expensive)                               |
 | `'pageDehydratedStateAndClientQuery'` | SSR render + client query — most reliable, most expensive |
-| `'onPrefetchOnly'` | only fire the `onPrefetchPage` hook |
-| `'none'` / `false` | no prefetch |
+| `'onPrefetchOnly'`                    | only fire the `onPrefetchPage` hook                       |
+| `'none'` / `false`                    | no prefetch                                               |
 
 ### Gotchas
 

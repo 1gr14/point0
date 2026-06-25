@@ -1,7 +1,9 @@
 ---
 index: 400
 title: Dev
-description: point0 dev — one process tree that watches, regenerates, restarts the server and keeps the client alive.
+description:
+  point0 dev — one process tree that watches, regenerates, restarts the server
+  and keeps the client alive.
 ---
 
 `point0 dev` starts your whole app for development: the server, the client dev
@@ -58,31 +60,33 @@ It defaults `NODE_ENV` to `development` when unset; an explicit `--mode` /
 ## Two ports in dev, one in prod — and no CORS
 
 In production the server and the client are served from **one origin** on a
-single port: the same server that renders pages also answers
-[queries](query) and [mutations](mutation). In development point0 splits them
-across **two ports** on purpose — a dedicated client dev server (one per client
-scope) and the server — so the client dev server can stay alive forever and never
-lose its HMR / Fast Refresh state when the server restarts.
+single port: the same server that renders pages also answers [queries](query)
+and [mutations](mutation). In development point0 splits them across **two
+ports** on purpose — a dedicated client dev server (one per client scope) and
+the server — so the client dev server can stay alive forever and never lose its
+HMR / Fast Refresh state when the server restarts.
 
-That split would normally mean cross-origin requests, but point0 keeps everything
-same-origin for the browser:
+That split would normally mean cross-origin requests, but point0 keeps
+everything same-origin for the browser:
 
 - **The client dev server is the only origin the browser talks to.** It serves
   the page and its assets, and it **forwards every other request through to the
   server** — including the query/mutation POSTs your code fires. Each forwarded
-  request is tagged `X-Point0-Forwarded-From-Dev-Client` so the server answers it
-  instead of bouncing it back. The browser only ever sees the client dev server's
-  origin, so there are **no CORS preflights and no [`@point0/cors`](cors) needed**
-  in dev — just as in prod, where it's all one port.
-- **Hit the server port directly and dev redirects you to the client.** Opening a
-  page URL on the server's port during dev `302`s you to the matching client dev
-  server port (same path), so the browser lands on the origin that owns HMR and
-  your Fast Refresh connection never breaks. (Production does no such redirect.)
+  request is tagged `X-Point0-Forwarded-From-Dev-Client` so the server answers
+  it instead of bouncing it back. The browser only ever sees the client dev
+  server's origin, so there are **no CORS preflights and no
+  [`@point0/cors`](cors) needed** in dev — just as in prod, where it's all one
+  port.
+- **Hit the server port directly and dev redirects you to the client.** Opening
+  a page URL on the server's port during dev `302`s you to the matching client
+  dev server port (same path), so the browser lands on the origin that owns HMR
+  and your Fast Refresh connection never breaks. (Production does no such
+  redirect.)
 
 If you turn the client side off (`point0 dev --side server`), there's no client
-dev server to forward through — the browser would hit the server cross-origin, so
-in that setup you'd add the [`@point0/cors`](cors) middleware yourself, exactly as
-you would for any external client.
+dev server to forward through — the browser would hit the server cross-origin,
+so in that setup you'd add the [`@point0/cors`](cors) middleware yourself,
+exactly as you would for any external client.
 
 ## Server restarts vs client restarts
 
@@ -92,9 +96,9 @@ There are two reload axes, and they behave differently.
 HTMLBundle bundler, or Vite when configured). It stays alive for the whole
 session and patches modules in place. Because it's also the front door the
 browser hits and proxies everything through to the server (see above), even a
-full server restart is invisible in the
-browser — point0 retries connection-refused quietly across the brief moment the
-server re-binds its port, so the client proxy doesn't 502.
+full server restart is invisible in the browser — point0 retries
+connection-refused quietly across the brief moment the server re-binds its port,
+so the client proxy doesn't 502.
 
 **The server, by default, restarts on every change.** point0's server dev does
 not truly hot-reload without `--hot`: on any watched change it kills the server
@@ -138,7 +142,7 @@ point0 dev --hot                          # CLI flag
 ```
 
 ```ts
-await engine.dev({ serverHot: true })     // programmatic
+await engine.dev({ serverHot: true }) // programmatic
 ```
 
 ```sh
@@ -153,41 +157,41 @@ unchanged. It's marked **experimental**.
 
 There are two reasons, and the second is the decisive one.
 
-First, `bun --hot` does a *partial* module-graph reload, which tears React's
+First, `bun --hot` does a _partial_ module-graph reload, which tears React's
 cross-module dispatcher singleton (`Invalid hook call` /
 `more than one copy of React`) because `react-dom/server` lives in the unwatched
-framework `dist` and doesn't reload with your edited component. Reproduced on the
-real app, and not fixable with accept-boundaries.
+framework `dist` and doesn't reload with your edited component. Reproduced on
+the real app, and not fixable with accept-boundaries.
 
-Second — and this is why `bun --hot` is a non-starter here, not just awkward — the
-files point0 rewrites on the fly (the content-hashed modules it feeds the server,
-see below) never land in Bun's own hot store, so native Bun hot reload simply
-doesn't fire for them. It's an open Bun limitation
+Second — and this is why `bun --hot` is a non-starter here, not just awkward —
+the files point0 rewrites on the fly (the content-hashed modules it feeds the
+server, see below) never land in Bun's own hot store, so native Bun hot reload
+simply doesn't fire for them. It's an open Bun limitation
 ([oven-sh/bun#5844](https://github.com/oven-sh/bun/issues/5844) — filed against
 `--watch`, but `--hot` is affected the same way).
 
-point0's hot mode sidesteps both by never reloading the framework and by managing
-its own module store — it only re-imports your edited points, with a fresh
-identity, against the unchanged framework singletons.
+point0's hot mode sidesteps both by never reloading the framework and by
+managing its own module store — it only re-imports your edited points, with a
+fresh identity, against the unchanged framework singletons.
 
 ### How it works: the content-addressed store
 
 In hot mode the orchestrator compiles each of your source files, writes it under
 a content-hash filename, and rewrites relative import specifiers to its deps'
-hashed names. Bare specifiers (`react`, `@prisma/*`, `@point0/*`) are left alone,
-so they resolve to the same cached singletons the renderer already uses.
+hashed names. Bare specifiers (`react`, `@prisma/*`, `@point0/*`) are left
+alone, so they resolve to the same cached singletons the renderer already uses.
 
 ```
 node_modules/.cache/server-hot/<scope>-<port>/
 ```
 
 The store lives there, keyed by `<scope>-<port>` so two `--hot` processes on the
-same folder but different ports get isolated stores and can't clobber each other.
-On a change, only the changed file **and its importer chain** get new hashes;
-everything else keeps its hash. The server child re-imports the current points
-aggregator per request, gated by a manifest hash: unchanged → cached module
-(singletons live); changed → fresh module identity. ([`point0 prune`](cli)
-deletes this cache.)
+same folder but different ports get isolated stores and can't clobber each
+other. On a change, only the changed file **and its importer chain** get new
+hashes; everything else keeps its hash. The server child re-imports the current
+points aggregator per request, gated by a manifest hash: unchanged → cached
+module (singletons live); changed → fresh module identity.
+([`point0 prune`](cli) deletes this cache.)
 
 ### Hot vs cold
 
@@ -203,13 +207,15 @@ queues, the DB client) needs a full restart. point0 classifies **default-hot**:
   2. A config glob on the server importer:
      ```ts
      // engine.ts (server config)
-     importer: { cold: ['**/prisma.*'] } // matched against the file's own path
+     importer: {
+       cold: ['**/prisma.*']
+     } // matched against the file's own path
      ```
   3. **Auto** — a file the store provably can't flatten (a location-relative
-     `import.meta`, or an un-rewritable relative import like a generated client's
-     `./enums` dir or wasm). These are logged at startup:
+     `import.meta`, or an un-rewritable relative import like a generated
+     client's `./enums` dir or wasm). These are logged at startup:
      `N file(s) can't be flattened, running cold (edit => restart): …`.
-- **The server entry is cold by default** — it *is* boot.
+- **The server entry is cold by default** — it _is_ boot.
 
 Cold flows **downward** through static imports and **stops at a lazy
 `import()`** (the hot boundary). Importers of a cold file stay hot: a page
@@ -225,14 +231,14 @@ otherwise → hot-swap.
 
 Editing an **existing** file behaves as you'd expect:
 
-| Change | Result |
-| --- | --- |
-| Edit a page / layout / component | hot-swap (pid stable) |
-| Edit a mutation / query / loader | hot-swap (next call returns the edited value) |
-| Edit a server loader, shared lib, or `.mdx` page body | hot-swap |
-| Delete a file | route drops, tree stays alive |
-| Rename a file | route follows the new file |
-| Edit a `@point0/core/cold` file, the boot entry, or `app.client` | full restart |
+| Change                                                           | Result                                        |
+| ---------------------------------------------------------------- | --------------------------------------------- |
+| Edit a page / layout / component                                 | hot-swap (pid stable)                         |
+| Edit a mutation / query / loader                                 | hot-swap (next call returns the edited value) |
+| Edit a server loader, shared lib, or `.mdx` page body            | hot-swap                                      |
+| Delete a file                                                    | route drops, tree stays alive                 |
+| Rename a file                                                    | route follows the new file                    |
+| Edit a `@point0/core/cold` file, the boot entry, or `app.client` | full restart                                  |
 
 Two MVP cuts to know:
 
@@ -251,9 +257,9 @@ Two MVP cuts to know:
   Fix and save → it recovers.
 - A **cold/boot syntax error** prints the error and leaves the tree alive; the
   child exits, and the next save respawns it.
-- Starting `--hot` on an **already-broken hot file**: the store builds, the child
-  crashes importing it before binding the port, and that never-booted child is
-  dropped without tearing down the tree. The next save respawns it:
+- Starting `--hot` on an **already-broken hot file**: the store builds, the
+  child crashes importing it before binding the port, and that never-booted
+  child is dropped without tearing down the tree. The next save respawns it:
   `Server failed to boot (entry "...", code N) — fix the error and save; it will start automatically.`
 - An **initial store build failure** defers the server child entirely; the
   watcher retries the build on each save and starts the server the moment it
@@ -267,7 +273,7 @@ module cache; the store dir is mark-and-swept on disk.
 
 A point file exports **points** — objects and method-decorated functions, not
 React components. Bun's bundler and Vite only enable React Fast Refresh for a
-module that *looks like* it exports a component; a plain points file wouldn't
+module that _looks like_ it exports a component; a plain points file wouldn't
 qualify, and every edit would trigger a full page reload instead of HMR.
 
 point0 fixes this in the compiler. It appends a decoy component-shaped function
@@ -279,11 +285,11 @@ to the final point in the chain:
 ```
 
 That statically-declared, capitalized `function X` is all the bundler's static
-pass needs to wire up Fast Refresh. At runtime `_tail` returns the real thing — a
-mountable point's actual mount component, or the decoy decorated with the point's
-methods for everything else. The inline render function of a page/layout/
-component is also hoisted to a top-level declaration so Fast Refresh tracks edits
-to the render body.
+pass needs to wire up Fast Refresh. At runtime `_tail` returns the real thing —
+a mountable point's actual mount component, or the decoy decorated with the
+point's methods for everything else. The inline render function of a
+page/layout/ component is also hoisted to a top-level declaration so Fast
+Refresh tracks edits to the render body.
 
 The payoff: **a single file can export a page, a query, a mutation, a provider,
 and plain values all at once, and HMR keeps working.** Put points anywhere, mix
@@ -291,14 +297,21 @@ freely, several per file.
 
 ```tsx
 // one file, mixed exports — HMR survives all of them
-export const ideaQuery = root.lets.query() /* ... */ .query()
-export const likeIdea = root.lets.mutation() /* ... */ .mutation()
-export const ideaPage = root.lets.page('/ideas/:id') /* ... */ .page(/* ... */)
+export const ideaQuery = root.lets
+  .query() /* ... */
+  .query()
+export const likeIdea = root.lets
+  .mutation() /* ... */
+  .mutation()
+export const ideaPage = root.lets
+  .page('/ideas/:id') /* ... */
+  .page(/* ... */)
 ```
 
 The fix is on by default for the client side and off for the server side. It's
 not an [engine config](engine-config) option — you can only override it per
-compile through the [`point0 compile`](compiler) CLI (`-h/--hmr`, `-H/--no-hmr`).
+compile through the [`point0 compile`](compiler) CLI (`-h/--hmr`,
+`-H/--no-hmr`).
 
 ## The dev lifecycle: no orphans
 
@@ -306,18 +319,19 @@ A dev tree cleans up after itself. The invariant:
 
 > **No point0 process can outlive whatever launched it.**
 
-This is enforced at the kernel level, not by bookkeeping. The CLI shebang carries
-`--no-orphans` (Bun >= 1.3.14):
+This is enforced at the kernel level, not by bookkeeping. The CLI shebang
+carries `--no-orphans` (Bun >= 1.3.14):
 
 ```sh
 #!/usr/bin/env -S bun --no-orphans --no-env-file --config=/dev/null
 ```
 
 A flagged process exits when its parent dies — even on SIGKILL — and on its own
-exit SIGKILLs every descendant (Bun re-verifies parentage first, so recycled PIDs
-are safe). The flag is inherited by nested bun processes, so the server child and
-the client dev servers are covered automatically. Each app's `bunfig.toml`
-extends the invariant one level up, to the `bun run dev` wrapper itself:
+exit SIGKILLs every descendant (Bun re-verifies parentage first, so recycled
+PIDs are safe). The flag is inherited by nested bun processes, so the server
+child and the client dev servers are covered automatically. Each app's
+`bunfig.toml` extends the invariant one level up, to the `bun run dev` wrapper
+itself:
 
 ```toml
 # bunfig.toml
@@ -333,12 +347,13 @@ terminal.
 
 ### Graceful teardown
 
-`--no-orphans` SIGKILLs. For a *polite* shutdown — so your DB pool closes and
+`--no-orphans` SIGKILLs. For a _polite_ shutdown — so your DB pool closes and
 your job queue drains — `engine.dev()` installs SIGINT/SIGTERM/SIGHUP handlers
-that SIGTERM every child first, wait a grace window (`POINT0_DEV_SHUTDOWN_GRACE_MS`,
-default 5000 ms), then SIGKILL stragglers. The same path runs if a core child
-dies unexpectedly — the tree lives and dies as one unit. Ctrl-C stays graceful
-end-to-end because `bun run` waits for its child after forwarding SIGINT.
+that SIGTERM every child first, wait a grace window
+(`POINT0_DEV_SHUTDOWN_GRACE_MS`, default 5000 ms), then SIGKILL stragglers. The
+same path runs if a core child dies unexpectedly — the tree lives and dies as
+one unit. Ctrl-C stays graceful end-to-end because `bun run` waits for its child
+after forwarding SIGINT.
 
 ### Ports are named, never killed
 
@@ -357,8 +372,8 @@ during a respawn is just the predecessor draining its shutdown hooks. Any other
 dev run binds once.
 
 > **Windows caveat:** `--no-orphans` is a no-op on Windows, so a SIGKILLed tree
-> can leave children behind. The port-conflict error then names them for a manual
-> kill.
+> can leave children behind. The port-conflict error then names them for a
+> manual kill.
 
 ## Stability under rapid edits
 
@@ -392,55 +407,51 @@ precise import graph.
 Every flag on `point0 dev` (each maps to an `engine.dev()` option). Full CLI
 reference on [CLI](cli).
 
-| Flag | Default | What it does |
-| --- | --- | --- |
-| `--hot` | off | Server-side hot reload (bun-native). Hot-swap edited points without restarting; cold files still restart. Experimental. |
-| `-G, --no-generate` | generate on | Skip files generation. |
-| `--side <server\|client>` | both | Serve only one side. |
-| `--scope <scope>` | all | Serve only one scope. |
-| `-w, --watch [glob]` | engine `devWatchGlob` | Watch files and rebuild on change (comma-separated or repeated; no value = the engine's `devWatchGlob`). |
-| `-W, --no-watch` | watch on | Disable file watching (no restart / regenerate on change). |
-| `--entry <name\|path>` | all server entries | Server entry points, by name or path (comma-separated or repeated). |
-| `--engine <path>` | auto-find | Path to the engine file. |
-| `--env <name=value>` | none | Define env vars (override `.env`); repeatable. |
-| `--mode <mode>` | `development` | `production` \| `development` \| `test` — which `.env` files apply. |
-| `-- <args>` | none | Everything after `--` is forwarded to the spawned `bun run`. |
+| Flag                      | Default               | What it does                                                                                                            |
+| ------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `--hot`                   | off                   | Server-side hot reload (bun-native). Hot-swap edited points without restarting; cold files still restart. Experimental. |
+| `-G, --no-generate`       | generate on           | Skip files generation.                                                                                                  |
+| `--side <server\|client>` | both                  | Serve only one side.                                                                                                    |
+| `--scope <scope>`         | all                   | Serve only one scope.                                                                                                   |
+| `-w, --watch [glob]`      | engine `devWatchGlob` | Watch files and rebuild on change (comma-separated or repeated; no value = the engine's `devWatchGlob`).                |
+| `-W, --no-watch`          | watch on              | Disable file watching (no restart / regenerate on change).                                                              |
+| `--entry <name\|path>`    | all server entries    | Server entry points, by name or path (comma-separated or repeated).                                                     |
+| `--engine <path>`         | auto-find             | Path to the engine file.                                                                                                |
+| `--env <name=value>`      | none                  | Define env vars (override `.env`); repeatable.                                                                          |
+| `--mode <mode>`           | `development`         | `production` \| `development` \| `test` — which `.env` files apply.                                                     |
+| `-- <args>`               | none                  | Everything after `--` is forwarded to the spawned `bun run`.                                                            |
 
 ### `engine.dev()` options
 
 ```ts
 await engine.dev({
   generateFiles, // boolean — run codegen first + watch (default true)
-  side,          // 'server' | 'client' — one side only
-  scope,         // a single points scope
-  entries,       // string[] — server entry names or paths
-  bunRunArgs,    // string[] — extra args for the server child's `bun run`
-  watch,         // string | string[] | boolean — watch globs, or true/false
-  cwd,           // string — defaults to process.cwd()
-  serverHot,     // boolean — hot mode; defaults to POINT0_DEV_SERVER_HOT
+  side, // 'server' | 'client' — one side only
+  scope, // a single points scope
+  entries, // string[] — server entry names or paths
+  bunRunArgs, // string[] — extra args for the server child's `bun run`
+  watch, // string | string[] | boolean — watch globs, or true/false
+  cwd, // string — defaults to process.cwd()
+  serverHot, // boolean — hot mode; defaults to POINT0_DEV_SERVER_HOT
 })
 ```
 
-<!-- TODO(med): the dev() options type also lists `restart?: boolean`, declared and never used (not destructured in the body) — omitted here on purpose. Remove it from the type or wire it up. -->
-
 ### Env vars (dev tuning)
 
-| Env var | Default | Effect |
-| --- | --- | --- |
-| `POINT0_DEV_SERVER_HOT` | `false` | Enable server hot mode (fallback when `--hot` / `serverHot` is omitted). |
-| `POINT0_DEV_BIND_TIMEOUT_MS` | `10000` | Server child's port-bind retry window under the orchestrator. |
-| `POINT0_DEV_SHUTDOWN_GRACE_MS` | `5000` | Graceful teardown grace window before SIGKILL. |
-| `POINT0_DEV_RESTART_SETTLE_MS` | `120` | Burst-coalescing settle delay before a respawn. |
-| `POINT0_DEV_RESTART_GRACE_MS` | `1500` | Per-respawn SIGTERM → SIGKILL grace. |
-| `POINT0_DEV_SERVER_HOT_RESTART_EVERY` | `200` | Restart instead of hot-swap every Nth reload, to release Bun's module cache (`0` = off). |
-| `POINT0_DEV_SERVER_HOT_GC_GRACE_MS` | `30000` | Disk-GC grace before sweeping stale store files. |
-| `POINT0_DEV_SERVER_TOUCH_ON_WATCH` | `false` | Restart by touching the entry's bytes instead of respawning. |
+| Env var                               | Default | Effect                                                                                   |
+| ------------------------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| `POINT0_DEV_SERVER_HOT`               | `false` | Enable server hot mode (fallback when `--hot` / `serverHot` is omitted).                 |
+| `POINT0_DEV_BIND_TIMEOUT_MS`          | `10000` | Server child's port-bind retry window under the orchestrator.                            |
+| `POINT0_DEV_SHUTDOWN_GRACE_MS`        | `5000`  | Graceful teardown grace window before SIGKILL.                                           |
+| `POINT0_DEV_RESTART_SETTLE_MS`        | `120`   | Burst-coalescing settle delay before a respawn.                                          |
+| `POINT0_DEV_RESTART_GRACE_MS`         | `1500`  | Per-respawn SIGTERM → SIGKILL grace.                                                     |
+| `POINT0_DEV_SERVER_HOT_RESTART_EVERY` | `200`   | Restart instead of hot-swap every Nth reload, to release Bun's module cache (`0` = off). |
+| `POINT0_DEV_SERVER_HOT_GC_GRACE_MS`   | `30000` | Disk-GC grace before sweeping stale store files.                                         |
+| `POINT0_DEV_SERVER_TOUCH_ON_WATCH`    | `false` | Restart by touching the entry's bytes instead of respawning.                             |
 
 `POINT0_DEV_CHILD` and `POINT0_DEV_STORE_DIR` are set internally by the
 orchestrator on the server child (they mark it as orchestrator-owned and hand it
 the hot store) — you don't set them.
-
-<!-- TODO(low): the design docs (dev-stability.md, server-hot-reload.md) still describe the hot child as running under `bun --watch`; the shipped code spawns a plain `bun run` and recovers via the orchestrator's own respawn branch instead. Code wins — reconcile the dev docs. -->
 
 ### Related
 

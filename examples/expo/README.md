@@ -7,12 +7,12 @@ A minimal example showing how to use Point0 queries and mutations with an Expo
 
 - **Server** (`src/engine.ts`, `src/index.server.ts`) — Point0 server with
   Prisma/SQLite, runs on Bun
-- **Shared** (`src/ideas.ts`, `src/lib/root.ts`) — Query and mutation
+- **Shared** (`src/ideas.ts`, `src/lib/root.tsx`) — Query and mutation
   definitions shared between server and client
 - **Client** (`src/app/`) — Expo Router screens that use Point0 queries and
   mutations
-- **Compiler** (`metro-transformer.js`) — Custom Metro transformer using
-  `@point0/compiler` to prune server code from the client bundle
+- **Compiler** (`babel.config.js`) — the `@point0/compiler` Babel plugin prunes
+  server code from the client bundle; Metro uses the default `metro.config.js`
 
 ## Setup
 
@@ -20,7 +20,7 @@ A minimal example showing how to use Point0 queries and mutations with an Expo
 # From monorepo root, install deps
 bun install
 
-# Build the compiler package (needed for Metro transformer)
+# Build the compiler package (it provides the Babel plugin)
 cd packages/compiler && bun run build && cd -
 
 # Setup the database

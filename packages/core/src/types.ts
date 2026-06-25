@@ -768,13 +768,15 @@ export type ResponseContentType =
 export type NormalizedResponseSchema = {
   [status: number]: {
     description?: string
-    content: Record<
-      ResponseContentType,
-      {
-        schema: InputSchema
-        description?: string
-        examples?: Record<string, any>
-      }
+    content: Partial<
+      Record<
+        ResponseContentType,
+        {
+          schema: InputSchema
+          description?: string
+          examples?: Record<string, any>
+        }
+      >
     >
   }
 }
@@ -3549,6 +3551,7 @@ export type WithQueryIfSuitable<
         | TLiteral
         | 'useInfiniteQuery'
         | 'getQueryKey'
+        | 'getInfiniteQueryKey'
         | 'getInfiniteQueryOptions'
         | 'fetchInfiniteQuery'
         | 'prefetchInfiniteQuery'
@@ -3835,6 +3838,7 @@ export type NiceActionReadyPoint<
         ?
             | 'useInfiniteQuery'
             | 'getQueryKey'
+            | 'getInfiniteQueryKey'
             | 'getInfiniteQueryOptions'
             | 'fetchInfiniteQuery'
             | 'prefetchInfiniteQuery'

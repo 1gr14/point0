@@ -174,6 +174,27 @@ describe('point0 MCP server', () => {
     }
   })
 
+  it('compile accepts the built input (mirrors the CLI --built flag)', async () => {
+    const ctx = await setupMcpClient()
+    try {
+      const compiled = await ctx.client.callTool({
+        name: 'compile',
+        arguments: {
+          file: ctx.tp.resolve('src/mcp.points.tsx'),
+          side: 'server',
+          scope: 'root',
+          built: true,
+        },
+      })
+      expect(compiled.isError).not.toBe(true)
+      const compiledStructured = compiled.structuredContent as { code: string }
+      expect(typeof compiledStructured.code).toBe('string')
+      expect(compiledStructured.code.length).toBeGreaterThan(0)
+    } finally {
+      await teardownMcpClient(ctx)
+    }
+  })
+
   it('trace returns import chain', async () => {
     const ctx = await setupMcpClient()
     try {

@@ -430,7 +430,6 @@ export class Engine<
     entries?: string[] // paths or names
     bunRunArgs?: string[]
     watch?: string | string[] | boolean
-    restart?: boolean
     cwd?: string
     /**
      * Server-side hot reload (bun-native dev only): run the server child as a stable process and hot-swap edited points

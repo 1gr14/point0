@@ -29,6 +29,27 @@ describe('infinityQuery', () => {
       })
       .root()
 
+  it('exposes getInfiniteQueryKey (infinite key) next to getQueryKey (finite)', () => {
+    const root = createRoot()
+    const q = root
+      .lets('infiniteQuery', 'keyTest')
+      .input(z.object({ cursor: z.number().optional() }))
+      .loader(() => ({ items: [] as number[], nextCursor: undefined as number | undefined }))
+      .infiniteQuery({
+        pageParamFromInput: {
+          get: ({ input, get }) => get(input, 'cursor'),
+          set: ({ input, value, set }) => set(input, 'cursor', value),
+        },
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+    // both key getters are on the typed surface — no cast needed to call them
+    const infiniteMeta = q.getInfiniteQueryKey({ cursor: 0 })[1] as { finiteness: string }
+    const finiteMeta = q.getQueryKey({ cursor: 0 })[1] as { finiteness: string }
+    expect(infiniteMeta.finiteness).toBe('infinite')
+    expect(finiteMeta.finiteness).toBe('finite')
+  })
+
   it('simple', async () => {
     const root = createRoot()
     const q = root

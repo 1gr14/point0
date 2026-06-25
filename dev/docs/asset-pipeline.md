@@ -149,9 +149,9 @@ It declares, **per managed extension**: the bare module +
 `*.svg?react` as `FC<SVGProps<SVGSVGElement>>`. The extension list defaults from
 `compiler.assets.extensions` (single source of truth);
 `generate.assetsTypes.extensions` can override. The content is static (depends
-only on the extension list, not on points), so it is emitted via a `customFile`
-generator task that calls `generateAssetsDts()` from `@point0/compiler`.
-Reference the file from tsconfig `include`/`types` or a
+only on the extension list, not on points), so it is emitted via a dedicated
+`assetsTypes` generator task that calls `generateAssetsDts()` from
+`@point0/compiler`. Reference the file from tsconfig `include`/`types` or a
 `/// <reference path="..." />`.
 
 ## Bun constraints (discovered empirically — do not relearn the hard way)
@@ -229,9 +229,9 @@ Reference the file from tsconfig `include`/`types` or a
   `config.ts` publicdir (`[['/', dist/client]]`).
 - **Generator:** `packages/engine/src/generator.ts` —
   `FilesGeneratorSimpleGeneralConfig.assetsTypes` + `simpleGeneralConfigToTasks`
-  (emits a `customFile` task calling `generateAssetsDts`). `config.ts` threads
-  `assetsDefaults` (extensions + defaultMode) from the general
-  `compiler.assets`; the d.ts's bare-import type follows `defaultMode`.
+  (emits a dedicated `assetsTypes` task calling `generateAssetsDts`).
+  `config.ts` threads `assetsDefaults` (extensions + defaultMode) from the
+  general `compiler.assets`; the d.ts's bare-import type follows `defaultMode`.
 
 ## Testing
 

@@ -15,11 +15,11 @@ type OpenapiOptionsGeneral = {
 }
 
 /**
- * Document-level options for {@link getOpenapiSchemaFromPoints} and the {@link openapi} middleware: any top-level
- * OpenAPI document field (`info`, `servers`, `tags`, `security`, `components`, …) merged into the output with your
- * values overriding the generated ones, plus a few Point0 extras — `models` (named schemas for `components.schemas`
- * and `$ref` dedup), `helpers` (schema helpers), and `hideTransformHeader` (drop the auto-added `X-Point0-Transform`
- * header). The `openapi` version string discriminates: a `'3.1...'` value selects the OpenAPI 3.1 types.
+ * Document-level options for {@link getOpenapiSchemaFromPoints} and the {@link openapi} middleware: any top-level OpenAPI
+ * document field (`info`, `servers`, `tags`, `security`, `components`, …) merged into the output with your values
+ * overriding the generated ones, plus a few Point0 extras — `models` (named schemas for `components.schemas` and `$ref`
+ * dedup), `helpers` (schema helpers), and `hideTransformHeader` (drop the auto-added `X-Point0-Transform` header). The
+ * `openapi` version string discriminates: a `'3.1...'` value selects the OpenAPI 3.1 types.
  *
  * Full reference: https://1gr14.dev/point0/latest/openapi
  */
@@ -283,6 +283,9 @@ const getJsonSchemasFromPoint = (
       for (const content of Object.keys(responseStatusSchema.content)) {
         const contentType = content as ResponseContentType
         const responseContentSchema = responseStatusSchema.content[contentType]
+        if (!responseContentSchema) {
+          continue
+        }
         const schema = responseContentSchema.schema
         const jsonSchema = extractJsonSchemaBySchemasHelpers(schema, schemasHelpers)
         if (!jsonSchema) {
@@ -438,7 +441,13 @@ export function getOpenapiSchemaFromPoints(
   points: Array<ReadyPoint | { point: ReadyPoint }>,
   options: (OpenapiOptionsV3_1 | OpenapiOptionsV3) & { cache?: string } = {},
 ): OpenapiSchemaV3_1 | OpenapiSchemaV3 {
-  const { models: providedModelsSchemas, helpers: providedSchemasHelpers, cache, ...providedDocument } = options
+  const {
+    models: providedModelsSchemas,
+    helpers: providedSchemasHelpers,
+    cache,
+    hideTransformHeader,
+    ...providedDocument
+  } = options
 
   if (cache) {
     const cached = _cache.get(cache)
@@ -459,6 +468,8 @@ export function getOpenapiSchemaFromPoints(
   const paths = points.reduce<Record<string, unknown>>((acc, point) => {
     const pointSchema = getOpenapiSchemaFromPoint(point, {
       modelNameBySignature,
+      schemasHelpers,
+      hideTransformHeader,
     })
     if (!pointSchema || !isObjectRecord(pointSchema)) {
       return acc

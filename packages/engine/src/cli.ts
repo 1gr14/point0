@@ -18,6 +18,7 @@
 import { Compiler } from '@point0/compiler'
 import type { PointsScope } from '@point0/core'
 import { Command } from 'commander'
+import { createRequire } from 'node:module'
 import { default as nodePath, default as path } from 'node:path'
 import { Analyzer, buildPointsFilter, ensureMetaPaths, resolveMetaImportPaths } from './analyzer.js'
 import type { AnalyzerPointSelectOptions } from './analyzer.js'
@@ -26,7 +27,11 @@ import { applyEnvMode } from './env-files.js'
 
 const program = new Command()
 
-program.name('point0').description('Point0 CLI').version('0.1.0').enablePositionalOptions()
+// Read the real installed version from @point0/engine's own package.json (dist/cli.js sits one level under it),
+// rather than hardcoding a string that drifts every release.
+const { version: point0Version } = createRequire(import.meta.url)('../package.json') as { version: string }
+
+program.name('point0').description('Point0 CLI').version(point0Version).enablePositionalOptions()
 
 const dictionary = {
   noGenerate: 'Skip files generation',

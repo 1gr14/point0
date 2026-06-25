@@ -96,9 +96,6 @@ export class CookieStore {
         partitioned: options.partitioned,
         maxAge: options.maxAge,
       }
-      if (typeof attributes.expires === 'number') {
-        attributes.expires = new Date(Date.now() + attributes.expires * 864e5)
-      }
       const parts = [`${encodeCookieName(options.name)}=${encodeCookieValue(options.value)}`]
 
       if (attributes.path) {
@@ -110,9 +107,9 @@ export class CookieStore {
       if (attributes.domain) {
         parts.push(`Domain=${sanitizeCookieAttributeValue(attributes.domain)}`)
       }
-      if (attributes.expires) {
-        const expiresDate =
-          attributes.expires instanceof Date ? attributes.expires : new Date(String(attributes.expires))
+      if (attributes.expires !== undefined && typeof attributes.expires !== 'boolean') {
+        // a bare number is epoch milliseconds — the same rule as the server-side serializer (Effects.serializeCookie)
+        const expiresDate = attributes.expires instanceof Date ? attributes.expires : new Date(attributes.expires)
         if (!Number.isNaN(expiresDate.getTime())) {
           parts.push(`Expires=${expiresDate.toUTCString()}`)
         }

@@ -1,14 +1,16 @@
 ---
 index: 800
 title: Mutation
-description: A mutation is an input schema plus a loader — a real HTTP POST endpoint and a TanStack Mutation in one.
+description:
+  A mutation is an input schema plus a loader — a real HTTP POST endpoint and a
+  TanStack Mutation in one.
 ---
 
 A mutation pairs an input schema with a loader that does the write. It's a real
 HTTP endpoint (its own `POST` path, in the OpenAPI spec) and, at the same time,
 a thin wrapper over a classic
-[TanStack (react-query) mutation](https://tanstack.com/query/latest/docs/framework/react/guides/mutations) —
-declared once, called anywhere by importing it directly.
+[TanStack (react-query) mutation](https://tanstack.com/query/latest/docs/framework/react/guides/mutations)
+— declared once, called anywhere by importing it directly.
 
 ```tsx
 import { root } from '@/lib/root'
@@ -119,8 +121,9 @@ sides). Input schemas **merge down the chain**: a parent — a [base](base) or
 `.input` is **server-only** — cut from the client bundle: the server validation
 schema and the imports it uses are removed, so it never ships to the browser.
 `.clientInput` is **client-only** — cut from the server bundle: body and its
-imports removed.
-<!-- TODO(med): confirm .sharedInput's strip category against the compiler (point.ts ~1014-1170) — R3 lists .input as server-only and .clientInput as client-only, but does not name .sharedInput; verify it's kept on both bundles before documenting its strip note. -->
+imports removed. `.sharedInput` is **server-and-client** — not cut from either
+bundle, kept in both (isomorphic), because the same schema validates on the
+server and in the browser.
 
 A mutation uses `.input` (plus `.clientInput` / `.sharedInput`) — **not**
 `.params`, `.search`, or `.body`; those are for [pages](page) and
@@ -148,7 +151,11 @@ const mutation = ideaCreateMutation.useMutation()
 // input is the first argument; per-call options follow it
 await mutation.mutateAsync(
   { title, content },
-  { onSuccess: async ({ idea }) => { await navigate('ideaView', { id: idea.id }) } },
+  {
+    onSuccess: async ({ idea }) => {
+      await navigate('ideaView', { id: idea.id })
+    },
+  },
 )
 
 mutation.isPending // disable the submit button while it runs
@@ -199,26 +206,25 @@ in order.
 Set mutation defaults once on the [root](root), a [base](base), or a
 [plugin](plugin) with `.mutationOptions(...)`, and they apply to every mutation
 beneath. There is no `.mutationOptions()` on the mutation itself — per-mutation
-options go through the closing `.mutation({...})`. Both `.mutationOptions` and the
-closing `.mutation({...})` are **server-and-client** — not cut from either bundle,
-kept in both (isomorphic), because they hold react-query defaults the browser
-needs.
-Resolution is lowest-to-highest:
+options go through the closing `.mutation({...})`. Both `.mutationOptions` and
+the closing `.mutation({...})` are **server-and-client** — not cut from either
+bundle, kept in both (isomorphic), because they hold react-query defaults the
+browser needs. Resolution is lowest-to-highest:
 
 1. root/base/plugin `.mutationOptions(...)`
 2. the mutation's own closing `.mutation({...})`
 3. the call-site options on `useMutation` / `mutateAsync` / `fetchMutation`
 
-Callbacks (`onMutate` / `onSuccess` / `onError` / `onSettled`) at every level run
-in order rather than overwriting each other.
+Callbacks (`onMutate` / `onSuccess` / `onError` / `onSettled`) at every level
+run in order rather than overwriting each other.
 
 ## Authorization
 
 `.ctx` is **server-only** — cut from the client bundle: its body and the imports
 it uses are removed, so it never ships to the browser. It runs **only when the
-mutation runs its loader** — which a mutation always does, so a
-`.use(plugin)` that resolves the current user into `ctx` lets the loader gate the
-write server-side:
+mutation runs its loader** — which a mutation always does, so a `.use(plugin)`
+that resolves the current user into `ctx` lets the loader gate the write
+server-side:
 
 ```tsx
 export const ideaUpdateMutation = root.lets
@@ -231,9 +237,16 @@ export const ideaUpdateMutation = root.lets
       where: { sn },
     })
     if (existing.authorId !== ctx.me.user.id) {
-      throw new AppError('Only the author can edit this idea', { code: 'FORBIDDEN' })
+      throw new AppError('Only the author can edit this idea', {
+        code: 'FORBIDDEN',
+      })
     }
-    return { idea: await prisma.idea.update({ where: { sn }, data: { title, content } }) }
+    return {
+      idea: await prisma.idea.update({
+        where: { sn },
+        data: { title, content },
+      }),
+    }
   })
   .mutation()
 ```
@@ -242,23 +255,25 @@ export const ideaUpdateMutation = root.lets
 you set via `.errorClass(...)` — see [error handling](error-handling)); throwing
 it from the loader rejects the mutation, and `mutation.error` is typed as that
 class. Unlike a [page](page) — where a loader-less point never runs `.ctx`, so
-auth must be gated in
-[`.with`](with) — a mutation has no loader-less case, so a ctx gate inside the
-loader always fires.
+auth must be gated in [`.with`](with) — a mutation has no loader-less case, so a
+ctx gate inside the loader always fires.
 
 ## A real endpoint
 
 A mutation with a server loader is served over HTTP at an auto-generated path —
 `POST /_point0/<scope>/mutation/<kebab-name>` — with the input in the request
-body, and it shows up in the generated [OpenAPI](openapi) spec. You never write the
-path; `useMutation` / `fetchMutation` route to it for you. Unlike a single
+body, and it shows up in the generated [OpenAPI](openapi) spec. You never write
+the path; `useMutation` / `fetchMutation` route to it for you. Unlike a single
 RPC-style endpoint, every mutation has its own stable URL, which is what gives
 full OpenAPI coverage.
 
 A mutation whose only loader is a `.clientLoader` runs in the browser and has
 **no endpoint** (and no OpenAPI entry).
 
-<!-- TODO(low): the mutation method is always POST and the prefix is _point0; a custom method or endpoint prefix for a plain mutation is NOT FOUND in tests or examples — method override is the action surface. -->
+A mutation is always a `POST` — there's no per-mutation method or path override.
+The HTTP method and a custom route are the [action](action) surface: passing a
+method opens an action, not a mutation. To group endpoints under a custom
+prefix, set it on the root/base; the default is `_point0`.
 
 ## The mutation key
 
@@ -278,9 +293,9 @@ ideaCreateMutation.getMutationKey()
 // ]
 ```
 
-Unlike a [query](query) key, the mutation key carries **no input** — input is per
-call, so it lives in each cached mutation's `variables`, not in the key. `tags`
-come from `.tag('a', 'b')` and let you match groups of mutations.
+Unlike a [query](query) key, the mutation key carries **no input** — input is
+per call, so it lives in each cached mutation's `variables`, not in the key.
+`tags` come from `.tag('a', 'b')` and let you match groups of mutations.
 
 To filter the react-query mutation cache, the exported `getMutationPredicate`
 helper matches on `id` (= `scope:type:name`), `tags`, `scope`, `type`, or
@@ -294,10 +309,10 @@ queryClient.getMutationCache().findAll({
 })
 ```
 
-> **GOTCHA:** for a tags **array**, the mutation predicate matches if **any** tag
-> is present (`some` / OR), whereas the query predicate requires **all** tags
-> (`every` / AND). `getMutationPredicate({ tags: ['a', 'b'] })` matches a mutation
-> tagged with `a` *or* `b`.
+> **GOTCHA:** for a tags **array**, the mutation predicate matches if **any**
+> tag is present (`some` / OR), whereas the query predicate requires **all**
+> tags (`every` / AND). `getMutationPredicate({ tags: ['a', 'b'] })` matches a
+> mutation tagged with `a` _or_ `b`.
 
 ## Reading the mutation cache
 
@@ -318,8 +333,8 @@ ideaCreateMutation.getMutationsCache((v) => v.id === 7) // predicate over variab
 
 `getMutationCache` returns the single matching `Mutation` or `undefined`;
 `getMutationsCache` always returns an array. Input matching is exact on the
-stringified variables (using the point's [transformer](transformer)), and ignores
-tags.
+stringified variables (using the point's [transformer](transformer)), and
+ignores tags.
 
 ## Edge cases
 
@@ -339,14 +354,14 @@ tags.
 
 A ready mutation point exposes:
 
-| Method                | Signature                                | Returns                          |
-| --------------------- | ---------------------------------------- | -------------------------------- |
-| `useMutation`         | `(mutationOptions?, options?)`           | TanStack `UseMutationResult`     |
-| `fetchMutation`       | `(input, mutationOptions?, options?)`    | `Promise<data>`                  |
-| `getMutationOptions`  | `(mutationOptions?, options?)`           | built react-query `MutationOptions` |
-| `getMutationKey`      | `()`                                     | the `MutationKey` tuple          |
-| `getMutationCache`    | `(input, options?)`                      | `Mutation \| undefined`          |
-| `getMutationsCache`   | `(input \| predicate \| true, options?)` | `Mutation[]`                     |
+| Method               | Signature                                | Returns                             |
+| -------------------- | ---------------------------------------- | ----------------------------------- |
+| `useMutation`        | `(mutationOptions?, options?)`           | TanStack `UseMutationResult`        |
+| `fetchMutation`      | `(input, mutationOptions?, options?)`    | `Promise<data>`                     |
+| `getMutationOptions` | `(mutationOptions?, options?)`           | built react-query `MutationOptions` |
+| `getMutationKey`     | `()`                                     | the `MutationKey` tuple             |
+| `getMutationCache`   | `(input, options?)`                      | `Mutation \| undefined`             |
+| `getMutationsCache`  | `(input \| predicate \| true, options?)` | `Mutation[]`                        |
 
 `mutationOptions` is the [react-query options](#react-query-options) (no
 `mutationFn` / `mutationKey`); `options` is `{ fetchOptions?, queryClient? }`
@@ -358,9 +373,16 @@ Also exposed: `id` (= `` `${scope}:${type}:${name}` ``), `type` (`'mutation'`),
 `tags`, `point` (the self-reference), and `Infer` (type inference — see
 [Infer](infer)).
 
-<!-- TODO(med): with a server loader the mutation also exposes lower-level fetch / getFetchServerOptions / fetchServer / fetchServerDetailed helpers, but no test or example exercises them on a mutation — their behavior for the mutation case is NOT FOUND. Primary surface is the six methods above. -->
-
-<!-- TODO(low): fetchOptions / headers / cookies are accepted while composing a mutation, and options.fetchOptions is typed on the fetch helpers, but their effect on a mutation request is NOT FOUND in tests or examples. -->
+A mutation with a server loader also exposes the lower-level server-fetch
+helpers — `fetchServer`, `fetchServerDetailed`, and `getFetchServerOptions` —
+that fire the mutation's `POST` directly, outside the mutation cache. (`fetch`
+on a mutation is **not** one of these: it delegates to `fetchMutation`, running
+through the mutation cache and its callbacks.) `fetchServer` resolves to the
+loader output (throwing on error or redirect); `fetchServerDetailed` resolves to
+`{ data, response, error, redirect }`, so you can read the raw status — handy
+when the loader returns a `[status, data]` tuple. They take the input first,
+then optional `fetchOptions`. These are an escape hatch; reach for `useMutation`
+/ `fetchMutation` first.
 
 ### Methods that apply to a mutation
 
@@ -370,8 +392,8 @@ Data & context: [`.loader`](loader), `.clientLoader`, [`.ctx`](ctx),
 Strip categories for these: `.loader`, `.ctx`, `.input` are **server-only** —
 cut from the client bundle (body + the imports they use removed, so they never
 ship to the browser); `.clientLoader`, `.clientInput` are **client-only** — cut
-from the server bundle (body + imports removed).
-<!-- TODO(med): confirm .sharedInput and .use strip categories against the compiler (point.ts ~1014-1170) — not named in R3. -->
+from the server bundle (body + imports removed); `.sharedInput` and `.use` are
+**server-and-client** — not cut from either bundle, kept in both (isomorphic).
 
 Shared: [`.middleware`](middleware), `.on` / `.serverOn` / `.clientOn` (events),
 `.tag`, `.description`, `.fetchOptions`, `.headers`, `.cookies`.

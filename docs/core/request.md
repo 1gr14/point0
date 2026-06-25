@@ -1,13 +1,15 @@
 ---
 index: 300
 title: Request
-description: The incoming request — headers, cookies, URL, method, client IP — handed to every server loader, ctx, and middleware.
+description:
+  The incoming request — headers, cookies, URL, method, client IP — handed to
+  every server loader, ctx, and middleware.
 ---
 
 `request` is the incoming HTTP request, parsed once and handed to your
 server-side code. A [loader](loader), a [`.ctx`](ctx), and a
 [`.middleware`](middleware) all receive it. Read headers, cookies, the URL, the
-method, or the client IP off it; write the *response* with the separate
+method, or the client IP off it; write the _response_ with the separate
 [`set`](response) helper that arrives alongside it.
 
 ```tsx
@@ -22,9 +24,9 @@ export const meQuery = root.lets
   .query()
 ```
 
-`request` is a `Request0` — a thin, parsed wrapper over the native
-`Request`. Field access is cheap; the heavier parsing (headers, cookies, client
-IP) is deferred until first read and then cached.
+`request` is a `Request0` — a thin, parsed wrapper over the native `Request`.
+Field access is cheap; the heavier parsing (headers, cookies, client IP) is
+deferred until first read and then cached.
 
 ## Where you get it
 
@@ -45,8 +47,8 @@ const request = getRequest() // throws if no request is in scope
 const request = getRequestOrUndefined() // undefined instead of throwing
 ```
 
-Use `getRequestOrUndefined()` in helpers that may run off-request — an
-analytics call, an error reporter — so they don't throw when there's no request:
+Use `getRequestOrUndefined()` in helpers that may run off-request — an analytics
+call, an error reporter — so they don't throw when there's no request:
 
 ```tsx
 const request = getRequestOrUndefined()
@@ -59,9 +61,9 @@ differently on the client:
 
 - `getRequest()` is strict: on the client it throws
   `Cannot access serverOnlyStorage item "..." from client`.
-- `getRequestOrUndefined()` is exactly what you reach for off the server — on the
-  client it returns `undefined` instead of throwing, so isomorphic helpers stay
-  safe to call from a component or hook.
+- `getRequestOrUndefined()` is exactly what you reach for off the server — on
+  the client it returns `undefined` instead of throwing, so isomorphic helpers
+  stay safe to call from a component or hook.
 
 ## Reading headers
 
@@ -73,10 +75,10 @@ request.headers['content-type'] // => 'application/json' | undefined
 request.headers['x-anything'] // any key works, always lowercase
 ```
 
-It's a snapshot (`Record<string, string | undefined>`), not a `Headers`
-instance — no `.get()`, no multi-value semantics, a missing key is `undefined`.
-When a library wants a real `Headers`, hand it `request.original.headers`
-instead — this is the usual shape for auth:
+It's a snapshot (`Record<string, string | undefined>`), not a `Headers` instance
+— no `.get()`, no multi-value semantics, a missing key is `undefined`. When a
+library wants a real `Headers`, hand it `request.original.headers` instead —
+this is the usual shape for auth:
 
 ```tsx
 const me = await authServer.api.getSession({
@@ -84,10 +86,12 @@ const me = await authServer.api.getSession({
 })
 ```
 
-<!-- TODO(low): how `request.headers` collapses a duplicated header (e.g.
-multiple `set-cookie`) into one value is not covered by tests — it goes through
-`Headers.forEach`, which yields one combined value per key. -->
-
+`request.headers` is built by iterating the native `Headers` with
+`Headers.forEach`, which already collapses a duplicated header into a single
+value per key (comma-joined, except `set-cookie`, which the runtime keeps
+separate). So a key maps to one combined string, never an array. When you need
+the per-value list — multiple `set-cookie`, say — reach for
+`request.original.headers` and its `Headers` API instead.
 
 ## Reading cookies
 
@@ -99,7 +103,7 @@ request.cookies['session'] // => 'abc123' | undefined
 
 Values are URL-decoded and surrounding quotes are stripped; no `cookie` header
 gives an empty object `{}`. This view is **read-only** — it's what the client
-sent. To *set* or *delete* a cookie on the response, use the `set` helper, not
+sent. To _set_ or _delete_ a cookie on the response, use the `set` helper, not
 `request.cookies`:
 
 ```tsx
@@ -112,15 +116,23 @@ sent. To *set* or *delete* a cookie on the response, use the `set` helper, not
 See [Response](response) for `set.cookies`, and [CookieStore](cookie-store) for
 the reactive store that layers your outgoing changes over `request.cookies`.
 
-<!-- TODO(low): cookie parsing edge cases (quoted values, `%XX` decode failures,
-duplicate names, `__Host-`/`__Secure-` prefixes) have implementation but no
-dedicated tests — treat behavior here as derived from code, not test-verified. -->
+Parsing details:
 
+- **Quoted values** — a leading `"` strips the surrounding quotes (`"abc"` reads
+  back as `abc`).
+- **Percent-encoding** — `%XX` sequences in the value are URL-decoded; if a
+  value is malformed and decoding throws, the unquoted value is kept as-is. The
+  cookie name is decoded too, and if _that_ throws the raw name and raw value
+  are stored untouched.
+- **Duplicate names** — last one wins; the cookies are parsed into a plain
+  object, so a later `name=` overwrites an earlier one.
+- **`__Host-` / `__Secure-` prefixes** — no special handling; they're ordinary
+  names parsed like any other cookie.
 
 ## The URL and route
 
-There is **no `request.url`**. For the parsed URL use `request.location`, for the
-raw string use `request.original.url`:
+There is **no `request.url`**. For the parsed URL use `request.location`, for
+the raw string use `request.original.url`:
 
 ```tsx
 request.location.pathname // => '/ideas/42'
@@ -133,13 +145,14 @@ request.original.url // => the raw URL string
 
 `request.location` is a [route0](navigation) location. Its `pathname` is the raw
 URL pathname — trailing slash preserved as-is (a request to `/ideas/` reads back
-`'/ideas/'`, not `'/ideas'`); route *matching* normalizes internally, but the
-value you read off `request.location.pathname` is not normalized. `search` is the
-parsed query object.
+`'/ideas/'`, not `'/ideas'`); route _matching_ normalizes internally, but the
+value you read off `request.location.pathname` is not normalized. `search` is
+the parsed query object.
 
 Route params are **not** on `request`. They arrive as a separate, typed and
-validated `params` option prop when you declare a [`.params(schema)`](validation)
-— same for `search`, `body`, and the validated `headers`/`cookies` subsets:
+validated `params` option prop when you declare a
+[`.params(schema)`](validation) — same for `search`, `body`, and the validated
+`headers`/`cookies` subsets:
 
 ```tsx
 .loader(({ request, params }) => {
@@ -147,16 +160,16 @@ validated `params` option prop when you declare a [`.params(schema)`](validation
 })
 ```
 
-<!-- TODO(med): there is no raw, untyped route-params view on `request`.
-`request.location` is an unrouted location whose `params` is `undefined`; the
-matched params live on the engine's classified variant
-(`request.variant.location.params` for an `endpoint`), which isn't documented as
-stable read-side API. Read params through the validated `params` option prop. -->
+There is no raw, untyped route-params view on `request`. `request.location` is
+an unrouted location, so its `params` is `undefined`. The matched params do live
+on the engine's classified variant — `request.variant.location.params` for an
+`endpoint` — but that is internal plumbing, not stable read-side API. Read
+params through the validated `params` option prop instead.
 
-
-So `headers`/`cookies` exist twice with different meanings: **on `request`** they
-are the raw, full set (`string | undefined`); **as an option prop** they are the
-validated subset you declared a schema for. See [Validation](validation).
+So `headers`/`cookies` exist twice with different meanings: **on `request`**
+they are the raw, full set (`string | undefined`); **as an option prop** they
+are the validated subset you declared a schema for. See
+[Validation](validation).
 
 ## The method
 
@@ -175,8 +188,8 @@ custom methods type-check.
 Each member is parsed lazily on first read and cached:
 
 ```tsx
-request.from.ip // => '203.0.113.7' | null   (best-guess client IP)
-request.from.ips // => ['203.0.113.7', '70.41.3.18']   (all candidates)
+request.from.ip // => '203.0.113.7' | null   (unspoofable Bun requestIP, safe for security)
+request.from.ips // => ['203.0.113.7', '70.41.3.18']   (all candidates, incl. spoofable)
 request.from.userAgent // => 'Mozilla/5.0 ...' | null
 request.from.location // => the referrer as a parsed location | null
 request.from.scope // => an internal point0 scope header | null
@@ -199,38 +212,42 @@ console.log({
 
 ### IP resolution
 
-`from.ip` is `ips[0] || null`. `ips` is collected in this order, de-duplicated:
+`from.ip` is **always** Bun's `requestIP` — the real socket peer address, which
+can't be spoofed — or `null` when no Bun server is wired in. It never falls back
+to headers, so it's safe for security decisions.
 
-1. Bun's `requestIP(...)` — when a Bun server is wired in. This one **can't be
-   spoofed**, so it's `ips[0]`.
+`from.ips` is the full list of every candidate, de-duplicated, in this order:
+
+1. Bun's `requestIP(...)` — the unspoofable peer address (when a Bun server is
+   wired in); it leads the list.
 2. `x-forwarded-for` — split on `,`, each entry trimmed, in order.
 3. `x-real-ip`.
 4. `cf-connecting-ip` (Cloudflare).
 
-```tsx
-// x-forwarded-for: '203.0.113.7, 70.41.3.18'
-request.from.ips // => ['203.0.113.7', '70.41.3.18']
-request.from.ip // => '203.0.113.7'
+Everything after Bun's `requestIP` comes from headers the client **can spoof** —
+treat `from.ips` as hints, not proof.
 
-// no IP hints at all
-request.from.ip // => null
+```tsx
+// behind a Bun server, with x-forwarded-for: '1.1.1.1'
+request.from.ip // => the real peer address — the forwarded header can't override it
+request.from.ips // => [<peer address>, '1.1.1.1']
+
+// no Bun server wired in (e.g. a synthetic request)
+request.from.ip // => null — header values never become `ip`
+request.from.ips // => ['1.1.1.1']   (header candidates are still listed)
 ```
 
-`from.ip` can be `null`, and outside Bun's `requestIP` it comes from
-**spoofable** headers — don't treat it as authoritative for security decisions.
-
-<!-- TODO(high): change the implementation so `from.ip` is ALWAYS Bun's
-`requestIP` (unspoofable) and never falls back to headers, while `from.ips`
-stays the full array of every candidate including the spoofable header values.
-Then `from.ip` becomes trustworthy for security decisions and this caveat can be
-narrowed to `from.ips`. Update this section once the code lands. -->
-
+During SSR the loaders Point0 prefetches run on internal server-to-server
+requests, but `request.from` still reports the **original visitor** — Point0
+reads it from the first request in the chain. So `from.ip` in a loader is the
+real client IP, not the server's loopback. (`from.server` is the exception: it's
+`true` on those internal hops.)
 
 ### Referrer, scope, server flag
 
-- `from.location` is the `referer` (or native `referrer`) parsed into a location,
-  or `null`. `request.from.location?.pathname` gives the page the request came
-  from.
+- `from.location` is the `referer` (or native `referrer`) parsed into a
+  location, or `null`. `request.from.location?.pathname` gives the page the
+  request came from.
 - `from.scope` is the scope of the **client** that sent the request — usually
   `root`. With several clients it's whichever client the request came from.
   point0 carries it in the internal `X-Point0-From-Scope` header on its own
@@ -238,9 +255,12 @@ narrowed to `from.ips`. Update this section once the code lands. -->
 - `from.server` is `true` for an internal request point0 made on the server
   during SSR (see [Server-to-server chains](#server-to-server-chains)).
 
-<!-- TODO(low): `from.location` is only tested for a well-formed absolute referer;
-behavior on a relative or malformed `referer` is not covered by tests. -->
-
+`from.location` parses the referrer the same way `request.location` parses the
+URL. A **relative** `referer` (e.g. `/dashboard`) still gives you a location —
+`pathname`, `search`, `hash` resolve, but `href`/`origin`/`host` come back
+`undefined` (no absolute base to fill them). A **malformed** `referer` that
+can't be parsed at all surfaces as an error from the getter rather than `null`,
+so this is not the place to validate untrusted input.
 
 ## Per-request storage: `state` vs `cache`
 
@@ -269,7 +289,9 @@ per render, like the current user:
 export const getMe = async ({ request }: { request?: Request0 } = {}) => {
   request ??= getRequest()
   if (request.cache.me !== undefined) return request.cache.me // already resolved
-  const me = await authServer.api.getSession({ headers: request.original.headers })
+  const me = await authServer.api.getSession({
+    headers: request.original.headers,
+  })
   request.cache.me = me
   return me
 }
@@ -304,10 +326,14 @@ to:
 ```
 
 Reach for `request.original` when you need native `Headers`, the request body
-stream, or `formData()`. Point0 reads the body off `request.original` for you and
-exposes it **parsed** as the loader's `body` option (when a [`.body`](validation)
-schema is declared) — you rarely consume `request.original` directly for the
-body.
+stream, or `formData()`. Point0 reads the body off `request.original` for you
+and exposes it **parsed** as the loader's `body` option (when a
+[`.body`](validation) schema is declared) — you rarely consume
+`request.original` directly for the body.
+
+`request.rawBody` exists alongside it, but it's the engine's internal raw/parsed
+body cache — advanced/internal, not stable read-side API. Consume the parsed
+`body` option, not `rawBody`.
 
 ## Server-to-server chains
 
@@ -333,32 +359,32 @@ for cross-hop work: each hop gets a fresh `state` but the **same** `cache`.
 
 ### Fields
 
-| Field             | Type                              | Notes                                                      |
-| ----------------- | --------------------------------- | ---------------------------------------------------------- |
-| `original`        | `Request`                         | the native Fetch request — the escape hatch                |
-| `headers`         | `Record<string, string \| undefined>` | lowercased keys; a snapshot, not `Headers`             |
-| `cookies`         | `Record<string, string \| undefined>` | incoming, parsed, read-only                            |
-| `location`        | `AnyLocation`                     | parsed URL — `pathname`, `search`, `hash`, `href`, …       |
-| `method`          | `WideRequestMethod`               | always uppercase                                           |
-| `from`            | `RequestFrom`                     | origin info (see below)                                    |
-| `state`           | `RequestState`                    | per-instance scratch map; augmentable                      |
-| `cache`           | `RequestCache`                    | chain-shared scratch map; augmentable                      |
-| `renders`         | `number`                          | SSR render-pass count; `0` for plain endpoints; read-only  |
-| `variant`         | `RequestVariant`                  | how point0 classified the request (see below)              |
-| `id`              | `string`                          | per-hop request id (each chain hop gets its own)           |
-| `prev` / `first`  | `Request0 \| undefined`           | parent / root in a server-to-server chain                  |
-| `rawBody`         | `unknown`                         | engine-managed raw/parsed body cache — advanced/internal   |
+| Field            | Type                                  | Notes                                                     |
+| ---------------- | ------------------------------------- | --------------------------------------------------------- |
+| `original`       | `Request`                             | the native Fetch request — the escape hatch               |
+| `headers`        | `Record<string, string \| undefined>` | lowercased keys; a snapshot, not `Headers`                |
+| `cookies`        | `Record<string, string \| undefined>` | incoming, parsed, read-only                               |
+| `location`       | `AnyLocation`                         | parsed URL — `pathname`, `search`, `hash`, `href`, …      |
+| `method`         | `WideRequestMethod`                   | always uppercase                                          |
+| `from`           | `RequestFrom`                         | origin info (see below)                                   |
+| `state`          | `RequestState`                        | per-instance scratch map; augmentable                     |
+| `cache`          | `RequestCache`                        | chain-shared scratch map; augmentable                     |
+| `renders`        | `number`                              | SSR render-pass count; `0` for plain endpoints; read-only |
+| `variant`        | `RequestVariant`                      | how point0 classified the request (see below)             |
+| `id`             | `string`                              | per-hop request id (each chain hop gets its own)          |
+| `prev` / `first` | `Request0 \| undefined`               | parent / root in a server-to-server chain                 |
+| `rawBody`        | `unknown`                             | engine-managed raw/parsed body cache — advanced/internal  |
 
 ### `request.from`
 
-| Member      | Type                  | Notes                                                       |
-| ----------- | --------------------- | ----------------------------------------------------------- |
-| `ip`        | `string \| null`      | `ips[0]` or `null`; spoofable unless from Bun `requestIP`   |
-| `ips`       | `string[]`            | all IP candidates, de-duped, trusted-first                  |
-| `userAgent` | `string \| null`      | the `user-agent` header                                     |
-| `location`  | `AnyLocation \| null` | referrer parsed into a location                             |
-| `scope`     | `string \| null`      | scope of the client that sent it (usually `root`)           |
-| `server`    | `boolean`             | `true` for an internal server-to-server request             |
+| Member      | Type                  | Notes                                                     |
+| ----------- | --------------------- | --------------------------------------------------------- |
+| `ip`        | `string \| null`      | `ips[0]` or `null`; spoofable unless from Bun `requestIP` |
+| `ips`       | `string[]`            | all IP candidates, de-duped, trusted-first                |
+| `userAgent` | `string \| null`      | the `user-agent` header                                   |
+| `location`  | `AnyLocation \| null` | referrer parsed into a location                           |
+| `scope`     | `string \| null`      | scope of the client that sent it (usually `root`)         |
+| `server`    | `boolean`             | `true` for an internal server-to-server request           |
 
 ### `request.variant`
 
@@ -380,6 +406,13 @@ the request settles; `0` for a plain endpoint request with no SSR. It's
 **read-only**: assigning to it throws (getter with no setter). The engine also
 emits the final total as a dev-only `X-Point0-Renders-Count` response header.
 
+### `request.id`
+
+A per-hop request id, generated when the request is created. Treat it as opaque:
+it identifies a single hop, not the whole chain. Each server-to-server hop gets
+its own fresh `id`, so to correlate across a `prev`/`first` chain follow those
+links (or read `request.first.id`), not `id` alone.
+
 ### Reading vs writing
 
 `request` is the **read** side. To **write** the response — headers, cookies,
@@ -394,13 +427,5 @@ status — use the `set` helper that arrives next to `request` in every loader,
 })
 ```
 
-Full response surface is on [Response](response); the reactive cookie store is on
-[CookieStore](cookie-store).
-
-<!-- TODO(med): `rawBody` is a public field but engine-managed and undocumented as
-stable API — whether it's intended public surface is unconfirmed. Treat as
-advanced/internal; consume the parsed `body` option instead. -->
-
-<!-- TODO(low): `request.id` is only asserted to be a non-empty string; its format
-and uniqueness guarantees (and whether it should be used for correlation across a
-`prev`/`first` chain, where each hop gets a fresh id) are unconfirmed. -->
+Full response surface is on [Response](response); the reactive cookie store is
+on [CookieStore](cookie-store).

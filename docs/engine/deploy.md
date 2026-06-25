@@ -1,7 +1,9 @@
 ---
 index: 1300
 title: Deploy
-description: Build with point0 build, then run the built server entry with Bun — one process that serves the API, SSR, and the client bundle.
+description:
+  Build with point0 build, then run the built server entry with Bun — one
+  process that serves the API, SSR, and the client bundle.
 ---
 
 Deploying a point0 app is two steps: build it, then run the built server entry
@@ -30,9 +32,10 @@ point0 build --side client   # build only one side (see the deploy gotcha below)
 ```
 
 Build is **production by default** — it loads the production `.env` cascade and
-sets the mode to `production` before importing your engine, so you no longer need
-`cross-env NODE_ENV=production` in front of it (a shell-exported `NODE_ENV` still
-wins). If `NODE_ENV` ends up something other than `production`, the build warns:
+sets the mode to `production` before importing your engine, so you no longer
+need `cross-env NODE_ENV=production` in front of it (a shell-exported `NODE_ENV`
+still wins). If `NODE_ENV` ends up something other than `production`, the build
+warns:
 
 ```
 Building with NODE_ENV=development, not "production": the client gets inline
@@ -111,8 +114,8 @@ The order — preload before app — only matters when running source directly; 
 
 `engine.serve(options?)` prepares the engine and starts a Bun server that serves
 the API, SSR, and the client. If your engine declares a `requiredCtx`, `serve`
-requires an options argument carrying it; otherwise the argument is optional. The
-`options` object is Bun's `Serve` config (`hostname`, `idleTimeout`, TLS, a
+requires an options argument carrying it; otherwise the argument is optional.
+The `options` object is Bun's `Serve` config (`hostname`, `idleTimeout`, TLS, a
 custom `fetch` / `websocket`, …) — the same shape as the `bunServeConfig` engine
 option. Calling `serve()` twice is a no-op (it returns early if a server is
 already running), which matters for dev re-serve, not production.
@@ -141,9 +144,27 @@ environment, do not hardcode it. In a Docker compose setup you set it yourself
 > process holding the port. (The retry/handover logic is dev-only.) A port
 > already in use in production is a hard `EADDRINUSE` failure.
 
-<!-- TODO(med): point0 sets no explicit bind hostname in production — it falls through to Bun's Serve default (likely 0.0.0.0). Confirm before stating the bind address. To pin it, pass hostname via bunServeConfig or serve(). -->
+### Bind address
 
-<!-- TODO(med): the built prod entry does not visibly wire SIGTERM → engine.dispose() (dispose exists; the dev shutdown hooks are dev-orchestrator only). Confirm whether production needs explicit graceful-shutdown wiring. -->
+point0 sets no explicit bind hostname — the serve config carries only the port.
+The bind address therefore falls through to `Bun.serve`'s default, which is
+`0.0.0.0` (all interfaces) — the right default behind a proxy or in a container.
+To pin it (e.g. `127.0.0.1` to listen locally only), pass `hostname` through the
+`bunServeConfig` engine option or as a `serve()` argument; both forward straight
+to `Bun.serve`.
+
+### Graceful shutdown
+
+The running server installs a process-exit handler that catches `SIGINT`,
+`SIGTERM`, and `SIGHUP` and stops the Bun server, so a normal container stop
+drains the HTTP listener — no extra wiring needed for the common case. What the
+built entry does **not** do is call `engine.dispose()` on a signal:
+`engine.dispose()` exists and tears down clients too, but the per-signal handler
+only stops the server, and the richer shutdown coordinator is dev-orchestrator
+only. In production a client has nothing server-side to dispose, so this is
+rarely a gap. If you hold resources that need an explicit close on shutdown (a
+DB pool, a worker), add your own `SIGTERM`/`SIGINT` handler in `app.server` that
+runs your teardown (and `engine.dispose()` if you want it).
 
 ## Docker
 
@@ -193,19 +214,17 @@ image builds anywhere without a real `DATABASE_URL`. A pure point0 app with no
 Prisma and no native addons can ship `dist/` and Bun alone — the multi-stage
 `node_modules` only earns its keep once you have those.
 
-For local Docker, the examples ship a `docker-compose.yml` and
-`docker:build` / `docker:up` / `docker:down` scripts. A production-grade compose
-(see start0) adds a `db` service, an `env_file` cascade, a healthcheck, and
-`depends_on` ordering.
-
-<!-- TODO(low): the basic example's start script runs dist/server/index.server.js while its Dockerfile CMD runs dist/server/app.server.js. Both files exist (both are build entries), so both work, but the example is inconsistent — this page treats index.server.js as canonical. -->
+For local Docker, the examples ship a `docker-compose.yml` and `docker:build` /
+`docker:up` / `docker:down` scripts. A production-grade compose (see start0)
+adds a `db` service, an `env_file` cascade, a healthcheck, and `depends_on`
+ordering.
 
 ## Env in production
 
 All config — server and client — is read from the environment **at runtime**:
-the server injects the client-safe keys into the page on each request, so nothing
-is baked into the bundle. The same image deploys to any environment; you set the
-variables on the platform.
+the server injects the client-safe keys into the page on each request, so
+nothing is baked into the bundle. The same image deploys to any environment; you
+set the variables on the platform.
 
 The assumption is simply that the variables are already present in the
 environment of the process that runs the server — typically set on whatever host
@@ -216,9 +235,9 @@ secrets itself.
 Two rules that bite in production:
 
 - **Set `NODE_ENV=production` explicitly.** point0's CLI can't help a process it
-  doesn't start. Running `bun dist/server/index.server.js` **without** `NODE_ENV`
-  gets Bun's own development `.env` cascade and skips production-only behavior
-  (minify tier, the error projection below). Set it via the Dockerfile
+  doesn't start. Running `bun dist/server/index.server.js` **without**
+  `NODE_ENV` gets Bun's own development `.env` cascade and skips production-only
+  behavior (minify tier, the error projection below). Set it via the Dockerfile
   (`ENV NODE_ENV=production`), compose, or `cross-env` in your `start` script.
 - **Fail fast in `app.server`, not in the engine file.** The engine file is
   imported raw (no plugins) in some processes, so it must be side-effect free —
@@ -228,8 +247,8 @@ Two rules that bite in production:
 point0 loads Bun's native `.env` cascade by `NODE_ENV`: `.env` → `.env.<mode>` →
 `.env.local` → `.env.<mode>.local` (shell-exported vars always win). A real
 production variable set looks like `DATABASE_URL`, `SERVER_URL` + `CLIENT_URL`
-(the public domain), `PORT` (injected), `NODE_ENV=production`, plus your secrets.
-Full env model on [Env](env).
+(the public domain), `PORT` (injected), `NODE_ENV=production`, plus your
+secrets. Full env model on [Env](env).
 
 ## Production SSR errors never render the stack
 
@@ -245,7 +264,9 @@ const { stack, ...json } = _point0_env.mode.is.production
 
 // In production stackToShow is forced undefined — the stack is never rendered
 // into the SSR HTML, not even as a fallback to the live error.stack.
-const stackToShow = _point0_env.mode.is.production ? undefined : stack || error.stack
+const stackToShow = _point0_env.mode.is.production
+  ? undefined
+  : stack || error.stack
 ```
 
 - **Production** uses `serializePublic` → `{ name, message, code?, redirect? }`.
@@ -273,32 +294,38 @@ when a single instance starts. **If you run more than one instance, move
 `migrate deploy` out of the start command** into a deploy-time step (a platform
 pre-deploy hook, a separate job), so the instances don't race on migrations.
 
-<!-- TODO(low): if a host needs a healthcheck endpoint, it's an app-provided point you add yourself (start0 ships an /api/health point as an example), not a point0 framework built-in — don't present any path as a default endpoint. -->
+### Healthchecks
+
+point0 has no built-in healthcheck endpoint — there is no default path to point
+a load balancer or compose `healthcheck` at. If your host wants one, add it as
+an app point: a small action point that returns `200`, e.g.
+`root.lets.action('GET', '/api/health').action(() => new Response('OK'))`. The
+path is yours to choose (start0 ships one at `/api/health` as an example).
 
 ## Reference
 
 ### Deploy commands
 
-| Command | What it does |
-| --- | --- |
-| `point0 build` | Production build → `dist/` (generate, then client + server in parallel). |
-| `point0 generate` | Regenerate points/routes/meta. Not needed before build (build does it). |
-| `point0 prune` | Clear temporary/cache directories before a clean build. |
-| `bun run ./dist/server/index.server.js` | Run the built server in production (set `NODE_ENV=production`). |
+| Command                                 | What it does                                                             |
+| --------------------------------------- | ------------------------------------------------------------------------ |
+| `point0 build`                          | Production build → `dist/` (generate, then client + server in parallel). |
+| `point0 generate`                       | Regenerate points/routes/meta. Not needed before build (build does it).  |
+| `point0 prune`                          | Clear temporary/cache directories before a clean build.                  |
+| `bun run ./dist/server/index.server.js` | Run the built server in production (set `NODE_ENV=production`).          |
 
 There is **no** `point0 start` — production is the built entry run with Bun.
 
 ### Build flags relevant to deploy
 
-| Flag | Effect |
-| --- | --- |
-| `-w, --watch [glob]` | Rebuild on change; watches the entry import graph (plus any glob). Not a server. |
+| Flag                      | Effect                                                                                   |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| `-w, --watch [glob]`      | Rebuild on change; watches the entry import graph (plus any glob). Not a server.         |
 | `--side <server\|client>` | Build only one side. **Deploy both** — `--side server` alone leaves url assets unserved. |
-| `--scope <scope>` | Limit to one client scope. |
-| `-C, --no-clean` | Don't clean `dist/` first (build cleans by default). |
-| `-P, --no-publicdir` | Don't build the [publicdir](publicdir). |
-| `-k, --keep-alive` | Don't exit after build — keep long-lived build plugins (e.g. a bundle analyzer) running. |
-| `--env <name=value>` | Set an env pair for the build (repeatable). |
-| `--mode <mode>` | Override the `NODE_ENV` mode (build defaults to `production`). |
+| `--scope <scope>`         | Limit to one client scope.                                                               |
+| `-C, --no-clean`          | Don't clean `dist/` first (build cleans by default).                                     |
+| `-P, --no-publicdir`      | Don't build the [publicdir](publicdir).                                                  |
+| `-k, --keep-alive`        | Don't exit after build — keep long-lived build plugins (e.g. a bundle analyzer) running. |
+| `--env <name=value>`      | Set an env pair for the build (repeatable).                                              |
+| `--mode <mode>`           | Override the `NODE_ENV` mode (build defaults to `production`).                           |
 
 The full flag reference is on [Build](build) and [CLI](cli).

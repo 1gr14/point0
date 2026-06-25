@@ -3,6 +3,6 @@ module.exports = function (api) {
 
   return {
     presets: ['babel-preset-expo'],
-    plugins: [['@point0/compiler/plugin/babel', { side: 'client', scope: 'site' }]],
+    plugins: [['@point0/compiler/plugin/babel', { side: 'client', scope: 'root' }]],
   }
 }

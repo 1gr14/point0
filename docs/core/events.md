@@ -1,7 +1,9 @@
 ---
 index: 1300
 title: Events
-description: Subscribe to the framework's query/mutation/fetch lifecycle — for logging, metrics, and error reporting.
+description:
+  Subscribe to the framework's query/mutation/fetch lifecycle — for logging,
+  metrics, and error reporting.
 ---
 
 Point0 emits a lifecycle event for every query, mutation, and fetch it runs.
@@ -20,9 +22,9 @@ export const root = Point0.lets
 ```
 
 Every failed query or mutation now reaches your handler, with `side`, the event
-`name`, the typed `error`, and a slim `meta` you can spread straight in. The rest
-of this page shows the full event set, the subscription methods, and the event
-shape.
+`name`, the typed `error`, and a slim `meta` you can spread straight in. The
+rest of this page shows the full event set, the subscription methods, and the
+event shape.
 
 ## Subscribing
 
@@ -35,18 +37,22 @@ point, so add as many as you like):
 .clientOn('pointMutationSuccess', (e) => { /* cut from the server bundle */ })
 ```
 
-- **`.on`** — not cut from either bundle: kept in both (isomorphic), so it fires on both sides.
-- **`.serverOn`** — cut from the client bundle: its body and the imports it uses are removed, so the handler never ships to the browser. (It fires only for server-side events.)
-- **`.clientOn`** — cut from the server bundle: body and its imports removed. (It fires only for client-side events.)
+- **`.on`** — not cut from either bundle: kept in both (isomorphic), so it fires
+  on both sides.
+- **`.serverOn`** — cut from the client bundle: its body and the imports it uses
+  are removed, so the handler never ships to the browser. (It fires only for
+  server-side events.)
+- **`.clientOn`** — cut from the server bundle: body and its imports removed.
+  (It fires only for client-side events.)
 
 The `side` is decided when the event is emitted, from where the emitting code
 runs — not from the event name. A `.serverOn` callback never sees a client-side
 event, and vice versa.
 
 The compiler cuts each side-bound callback from the bundle it doesn't belong in,
-along with the imports that only that callback pulls in: a `.serverOn` callback —
-body and its imports — is removed from the client bundle, so server secrets in a
-`.serverOn` handler never reach the browser; a `.clientOn` callback — body and
+along with the imports that only that callback pulls in: a `.serverOn` callback
+— body and its imports — is removed from the client bundle, so server secrets in
+a `.serverOn` handler never reach the browser; a `.clientOn` callback — body and
 imports — is removed from the server bundle. A plain `.on` callback is not cut
 from either bundle: it's kept in both (isomorphic) and runs on both sides.
 
@@ -73,15 +79,15 @@ Six families, each with four lifecycle phases — `Start`, `Settled`, `Success`,
 four phases, plus `emitError`); the table below lists the families, the
 [Reference](#event-names) enumerates every expanded name:
 
-| Family               | What it tracks                                          | Side            |
-| -------------------- | ------------------------------------------------------- | --------------- |
-| `pointQuery*`        | a query running (`useQuery` / `fetchQuery`)             | client \| server |
-| `pointInfiniteQuery*`| an infinite query running                               | client \| server |
-| `pointMutation*`     | a mutation running                                      | client \| server |
-| `pointFetchServer*`  | a point's server-fetch step (the SSR / fetch machinery) | client \| server |
-| `pointPrefetchPage*` | a page being prefetched before navigation               | client \| server |
-| `engineFetch*`       | the engine's outgoing HTTP fetch (the actual request)   | **server only** |
-| `emitError`          | a subscriber callback itself threw (see below)          | client \| server |
+| Family                | What it tracks                                          | Side             |
+| --------------------- | ------------------------------------------------------- | ---------------- |
+| `pointQuery*`         | a query running (`useQuery` / `fetchQuery`)             | client \| server |
+| `pointInfiniteQuery*` | an infinite query running                               | client \| server |
+| `pointMutation*`      | a mutation running                                      | client \| server |
+| `pointFetchServer*`   | a point's server-fetch step (the SSR / fetch machinery) | client \| server |
+| `pointPrefetchPage*`  | a page being prefetched before navigation               | client \| server |
+| `engineFetch*`        | the engine's outgoing HTTP fetch (the actual request)   | **server only**  |
+| `emitError`           | a subscriber callback itself threw (see below)          | client \| server |
 
 Each family gives you `<Family>Start`, `<Family>Settled`, `<Family>Success`, and
 `<Family>Error` — e.g. `pointQueryStart`, `pointQuerySettled`,
@@ -102,9 +108,9 @@ For any one run:
 ```
 
 One edge case worth knowing: **a redirect is a success, not an error.** When a
-loader redirects (`throw redirect(...)`), the query settles down the *success*
-path — `Settled` then `Success` fire, not `Error`. See
-[Navigation](navigation) for redirects.
+loader redirects (`throw redirect(...)`), the query settles down the _success_
+path — `Settled` then `Success` fire, not `Error`. See [Navigation](navigation)
+for redirects.
 
 ### Why `engineFetch*` is server-only
 
@@ -134,8 +140,8 @@ SSR, but it's the same code). Only `engineFetch*` — the HTTP layer — reports
 
 ## The `'error'` shorthand
 
-`.on('error', cb)` is sugar — it expands to **four** subscriptions, one per error
-event:
+`.on('error', cb)` is sugar — it expands to **four** subscriptions, one per
+error event:
 
 ```tsx
 .on('error', (e) => { /* … */ })
@@ -154,8 +160,6 @@ failure from two angles.
 > `pointPrefetchPageError`. To catch those two, name them explicitly:
 > `.on(['pointFetchServerError', 'pointPrefetchPageError'], cb)`.
 
-<!-- TODO(low): the rationale for excluding pointFetchServerError / pointPrefetchPageError from the 'error' shorthand is not stated in code — confirm whether it's intentional. -->
-
 ## The event object
 
 Every callback receives one object with the same five fields:
@@ -170,7 +174,8 @@ Every callback receives one object with the same five fields:
 })
 ```
 
-- **`side`** — `'client'` or `'server'`, set at emit time (see [side](#why-enginefetch-is-server-only) above).
+- **`side`** — `'client'` or `'server'`, set at emit time (see
+  [side](#why-enginefetch-is-server-only) above).
 - **`name`** — the event name.
 - **`data`** — the full payload (the query result, the request object, the
   `QueryClient`, …). Accurate, but not pleasant to serialize. Prefer `meta` for
@@ -183,8 +188,8 @@ Every callback receives one object with the same five fields:
 
 ## `meta`: the log-friendly projection
 
-`meta` is a plain record (`Record<string, unknown>`) built per event from `data`,
-meant to go straight into a logger:
+`meta` is a plain record (`Record<string, unknown>`) built per event from
+`data`, meant to go straight into a logger:
 
 ```tsx
 .on('pointQueryStart', ({ meta }) => {
@@ -195,10 +200,11 @@ meant to go straight into a logger:
 
 It exists because `data` carries heavy objects (responses, requests, query
 results) that you don't want in a log line. `meta` replaces them with compact
-forms: points become their string id (`<scope>:<type>:<name>`), requests become `{ method, path }`, errors and
-redirects are serialized, and it drops bulky members. For an engineFetch event,
-`meta.result` and `meta.response` are dropped; for the SSR case, a `settled`
-event's `meta.request.renders` reports how many SSR render passes ran.
+forms: points become their string id (`<scope>:<type>:<name>`), requests become
+`{ method, path }`, errors and redirects are serialized, and it drops bulky
+members. For an engineFetch event, `meta.result` and `meta.response` are
+dropped; for the SSR case, a `settled` event's `meta.request.renders` reports
+how many SSR render passes ran.
 
 Note `meta` does **not** carry the error — on an error event, `meta.error` is
 `undefined`. The error lives on the envelope `error` (and `data.error`). So a
@@ -226,9 +232,9 @@ too; everything else passes through unchanged.
 
 ## Subscriber errors and `emitError`
 
-Callbacks are **fire-and-forget**: they may be sync or async, and Point0 does not
-await them. A slow handler never blocks a request, and the completion order of
-async handlers across subscriptions isn't guaranteed.
+Callbacks are **fire-and-forget**: they may be sync or async, and Point0 does
+not await them. A slow handler never blocks a request, and the completion order
+of async handlers across subscriptions isn't guaranteed.
 
 If a callback throws, the framework does not crash. The error is caught and
 re-emitted as an `emitError` event, carrying the original event and the thrown
@@ -246,8 +252,6 @@ error — so you can observe your own handler failures:
 A throw **inside** an `emitError` handler is swallowed silently — there's no
 recursion, so a broken error reporter can't cause an emit loop.
 
-<!-- TODO(low): no test or example exercises a user .on('emitError', …) handler; the mechanism is verified, the usage pattern above is inferred from the payload shape. -->
-
 ## Wiring events to your observability
 
 Funnel events through one subscriber on the root and let your logging stack fan
@@ -262,13 +266,13 @@ export const root = Point0.lets
   .root()
 ```
 
-Swap `console.error` for your own logger and you get error reporting with no extra
-call sites at the points. In start0, for example, this subscriber writes to a
-LogTape logger whose sink forwards `error` records to Sentry — the same single
-root subscription, just a richer sink behind it.
+Swap `console.error` for your own logger and you get error reporting with no
+extra call sites at the points. In start0, for example, this subscriber writes
+to a LogTape logger whose sink forwards `error` records to Sentry — the same
+single root subscription, just a richer sink behind it.
 
-Subscribe to the success/settled events the same way for request metrics or audit
-logs.
+Subscribe to the success/settled events the same way for request metrics or
+audit logs.
 
 ## Reference
 
@@ -286,11 +290,11 @@ emitError
 
 ### Subscription methods
 
-| Method      | Fires on              | Name argument accepts                                  |
-| ----------- | --------------------- | ------------------------------------------------------ |
-| `.on`       | both sides            | any event name, `'error'`, `'*'`, or an array of names |
-| `.serverOn` | server-side events    | server event names, `'error'`, `'*'`, array            |
-| `.clientOn` | client-side events    | client event names, `'error'`, `'*'`, array            |
+| Method      | Fires on           | Name argument accepts                                  |
+| ----------- | ------------------ | ------------------------------------------------------ |
+| `.on`       | both sides         | any event name, `'error'`, `'*'`, or an array of names |
+| `.serverOn` | server-side events | server event names, `'error'`, `'*'`, array            |
+| `.clientOn` | client-side events | client event names, `'error'`, `'*'`, array            |
 
 All three are on every point type, accumulate, and are inherited down the chain.
 `engineFetch*` names are valid in `.on` / `.serverOn` only — a type error in
@@ -298,27 +302,25 @@ All three are on every point type, accumulate, and are inherited down the chain.
 
 ### Event object fields
 
-| Field   | Type                          | Notes                                                       |
-| ------- | ----------------------------- | ----------------------------------------------------------- |
-| `side`  | `'client' \| 'server'`        | where the emitting code ran, set at emit time               |
-| `name`  | the event name                |                                                             |
-| `data`  | the raw payload (per event)   | rich; not log-friendly                                      |
-| `error` | error instance, or `undefined`| present on error events; same object as `data.error`        |
-| `meta`  | `Record<string, unknown>`     | log-friendly projection of `data`                           |
+| Field   | Type                           | Notes                                                |
+| ------- | ------------------------------ | ---------------------------------------------------- |
+| `side`  | `'client' \| 'server'`         | where the emitting code ran, set at emit time        |
+| `name`  | the event name                 |                                                      |
+| `data`  | the raw payload (per event)    | rich; not log-friendly                               |
+| `error` | error instance, or `undefined` | present on error events; same object as `data.error` |
+| `meta`  | `Record<string, unknown>`      | log-friendly projection of `data`                    |
 
 ### Per-event `data`
 
-| Family               | `data` carries                                                    |
-| -------------------- | ----------------------------------------------------------------- |
-| `pointQuery*`        | `{ queryKey, point, input, mode, data?, error?, redirect? }`      |
-| `pointInfiniteQuery*`| same as query, for the infinite case                              |
-| `pointMutation*`     | `{ point, input }` + one of `output` / `error` / `redirect`       |
-| `pointFetchServer*`  | `{ input, point }` + the fetch-server output on settled/success/error |
-| `pointPrefetchPage*` | `{ point, input, options, error? }`                               |
-| `engineFetch*`       | `{ request, scope, result?, error? }`                             |
-| `emitError`          | `{ error, event }` — the original event and the thrown error      |
-
-<!-- TODO(low): pointPrefetchPage* events fire (emit sites confirmed in point0.ts) but no test pins their exact ordering relative to the page-prefetch flow — document the sequence once it's exercised. -->
+| Family                | `data` carries                                                        |
+| --------------------- | --------------------------------------------------------------------- |
+| `pointQuery*`         | `{ queryKey, point, input, mode, data?, error?, redirect? }`          |
+| `pointInfiniteQuery*` | same as query, for the infinite case                                  |
+| `pointMutation*`      | `{ point, input }` + one of `output` / `error` / `redirect`           |
+| `pointFetchServer*`   | `{ input, point }` + the fetch-server output on settled/success/error |
+| `pointPrefetchPage*`  | `{ point, input, options, error? }`                                   |
+| `engineFetch*`        | `{ request, scope, result?, error? }`                                 |
+| `emitError`           | `{ error, event }` — the original event and the thrown error          |
 
 ### Public types
 

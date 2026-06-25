@@ -16,4 +16,4 @@ RUN bun run build
 EXPOSE 3000
 
 # Start built server output.
-CMD ["bun", "run", "./dist/server/app.server.js"]
+CMD ["bun", "run", "./dist/server/index.server.js"]

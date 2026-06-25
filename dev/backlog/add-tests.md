@@ -1,0 +1,117 @@
+# Tests worth adding
+
+Real coverage gaps found while writing the docs. The behavior in each case is
+already correct in code (and documented as such) — these tests would _pin_ it
+against regressions, not discover anything. Pulled out of the docs so the pages
+stay assertive instead of hedging.
+
+## High value (a real guarantee, currently unpinned)
+
+- **env — a non-whitelisted secret never reaches the client.** `build.test.ts`
+  asserts that whitelisted vars (`VAR1`/`CONST1`) appear in the served HTML, but
+  never that an un-whitelisted secret is _absent_. Add a negative assertion: set
+  a secret env var, leave it out of `client.env.vars`, build, and assert its
+  value appears in neither the client bundle nor the served HTML. (Server
+  injects only the resolved whitelist via `render.ts addEnvVarsToDocumentHtml`;
+  the client `getEnvVars` reads only `__POINT0_ENV_VARS__` /
+  `__POINT0_ENV_CONSTS__`.)
+
+- **error-handling — a thrown error's `response` / `headers` shape the emitted
+  `Response`.** `fetcher.ts` uses `error.response` verbatim (else builds a JSON
+  response from `status`) and merges `error.headers` via effects, but
+  `error.test.tsx` only checks message/code/status/meta. Add a case: a loader
+  throws an `AppError` carrying a `response` (and `headers`); assert the emitted
+  `Response` body / status / headers.
+
+- **loading-error — a render-phase throw is NOT caught by `.error`.** The docs
+  (mapper, loading-error) state this as a contract: `.error` handles a
+  loader/query error _state_ (and an `Error` returned from `.with`), but a throw
+  from a component body or a `.mapper` (which runs in a `useMemo`,
+  `point0.ts ~11646`) is a render error that Point0 does not wrap — no React
+  error boundary exists in `react-dom`/`core`. Add a test: a `.mapper`/component
+  that throws bubbles past `.error` (and fails the SSR render); a `.with` that
+  _returns_ an `Error` renders `.error`.
+
+## Medium value
+
+- **middleware — `params['*']` wildcard shape.** `.middleware('/api/auth/*', …)`
+  matching `/api/auth/sign-in/email` should expose the captured remainder as
+  `params['*'] === '/sign-in/email'` (documented in middleware.md). No point0
+  test asserts the `params['*']` shape for a wildcard middleware route.
+
+- **file-upload — an action File round-trip at runtime.** Only the OpenAPI
+  output for an action file body is tested
+  (`packages/openapi/tests/index.test.tsx`); the encode→FormData→decode executor
+  path is verified for mutations only. Add an action upload round-trip, plus a
+  nested / array-of-files case (`{ profile: { avatar: File } }`,
+  `{ files: [File, File] }`) — `isContainsBinary` recurses but has no test.
+
+- **assets — the edited-asset HMR cycle in dev.** `dev.test.ts` proves an asset
+  import resolves through the hot store to a content-hashed
+  `/_point0/asset/<hash>.<ext>` and the dev route serves the bytes. The untested
+  gap is the _edit_ cycle: change the file's bytes → re-hash → new URL → new
+  bytes served. Add a test that edits an imported asset and asserts the served
+  URL/content changes.
+
+- **publicdir — binary integrity through the build copy + non-`dist` `outdir`.**
+  The build copies directory entries with `Bun.write(dest, Bun.file(src))`
+  (binary-safe, no `.text()` round-trip), but no test serves a real binary (e.g.
+  `favicon.ico`, a font) through a `publicdir` whose `outdir` is not
+  `dist/client` and asserts byte-for-byte integrity.
+
+- **publicdir — range requests on the caching-off path.** With caching off, a
+  real file is served as `new Response(Bun.file(...))`, where Bun handles
+  `Range` natively. No point0 test issues a `Range` request and asserts a
+  `206` + correct slice.
+
+- **importer — `compiler: false` disables import protection for that side.**
+  `getCompilerOptions` returns `false` when `compiler` is off, so the importer
+  plugin never runs and a wrong-side import is not rewritten/denied. No test
+  asserts this no-op (a denied import passing through untouched when the side's
+  compiler is off).
+
+- **importer — a marker carried by a third-party package guards it.** The
+  server-only/client-only markers match the importing file's own marker import,
+  so a `node_modules` package importing `@point0/core/server-only` should be
+  guarded. No test covers a dependency carrying the marker.
+
+## Smaller / nice-to-have
+
+- **mcp/compile/trace — `POINT0_BUILT === 'true'` selects the built transform.**
+  `mcp.ts` `compile`/`trace` read `built` only from the env (no per-call input),
+  unlike the `point0 compile` CLI's `--built`. Documented in mcp-project.md
+  ("Compiling against a built project"). No test asserts that setting
+  `POINT0_BUILT` flips the MCP's compiler options to built.
+- **engine — `guessSideAndScope` inference + ambiguity errors.** `engine.ts`
+  infers side/scope and throws on ambiguity (multiple client scopes need
+  `--scope`; both sides available need `--side`). Documented in compiler.md
+  (`--scope` inference) and mcp-project.md. No test asserts the inference table
+  or the specific throw messages.
+- **request — cookie parsing edge cases.** Quoted values, `%XX` decode failures,
+  duplicate names, `__Host-`/`__Secure-` prefixes: implemented (`request0.ts`
+  `decodeCookieValue` + the `cookies` getter), no dedicated test.
+- **request — `from.location` on a relative / malformed referer.** Only a
+  well-formed absolute referer is tested.
+- **query-client — two scopes in one server request.** The ALS-per-context store
+  implies cache isolation per scope; no test asserts the
+  two-scopes-in-one-request case.
+- **layout — no re-fetch on sibling navigation.** The layout stays mounted
+  around an inner page switch (design intent); no test asserts a fetch-count
+  across such a navigation.
+- **ssr — re-render tuning is read from the client, not the server.** The
+  executor reads `allowedRerendersCount` / `forbiddenRerendersCount` /
+  `prefetchBeforePageRender` from the resolved client SSR options; the server
+  keeps only the boolean. No test asserts that tuning on `server.ssr` is dropped
+  while the client's value takes effect for server-rendered output.
+- **importer — a build forces `onDeny: 'throw'` regardless of config.** Build
+  paths pass `onDeny: 'throw'` (client/server
+  `getCompilerOptions({ built: true })`), default is `'log'`. No test asserts a
+  denied import fails the build even when `onDeny: 'log'` is configured.
+- **engine.serve — `bunServeConfig` vs `serve()` option precedence.** `serve()`
+  spreads `bunServeConfig` then the call's options, then forces
+  `port`/`fetch`/`websocket`. No test asserts the call wins over
+  `bunServeConfig` and that the three owned keys can't be overridden.
+- **fetchServer/fetch — `transform: false` sends plain JSON.**
+  `FetchOptions.transform` defaults `true` (round-trips through the point's
+  transformer); no test asserts `transform: false` skips the transformer so raw
+  JSON is sent and received.

@@ -1,7 +1,9 @@
 ---
 index: 200
 title: Engine Runtime
-description: The engine instance is your app's config and its runtime — one object that the CLI drives and the server serves.
+description:
+  The engine instance is your app's config and its runtime — one object that the
+  CLI drives and the server serves.
 ---
 
 `Engine.create({...})` returns one object that is both the config and the
@@ -18,8 +20,16 @@ export const engine = Engine.create({
   file: import.meta.url, // the engine must know where it lives
   ssr: true,
   pointsGlob: '**/*.{ts,tsx,mdx}',
-  server: { scope: 'root', port: process.env.PORT, entry: { main: './index.server.ts' } },
-  client: { scope: 'root', indexHtml: './index.html', app: async () => await import('./app.client') },
+  server: {
+    scope: 'root',
+    port: process.env.PORT,
+    entry: { main: './index.server.ts' },
+  },
+  client: {
+    scope: 'root',
+    indexHtml: './index.html',
+    app: async () => await import('./app.client'),
+  },
 })
 ```
 
@@ -51,14 +61,15 @@ runtime (the methods below) live on one value you can import anywhere.
 The CLI looks for the engine file in `./`, `./src`, `./lib`, and a few `point0`
 subfolders, basename `engine`, and imports `module.engine ?? module.default`. So
 your `src/engine.ts` must export the instance as a named `engine` or a default
-export — otherwise the CLI throws `engine.ts must export "engine" or have a
-default export`. Override the path with `--engine <path>` or the
-`POINT0_ENGINE_FILE` env var.
+export — otherwise the CLI throws
+`engine.ts must export "engine" or have a default export`. Override the path
+with `--engine <path>` or the `POINT0_ENGINE_FILE` env var.
 
-> **GOTCHA — the engine file must be side-effect free.** The CLI and `preload.ts`
-> import its module graph raw, before the compiler plugins are installed. Don't
-> validate env or throw at module scope in `engine.ts` (or anything it imports
-> eagerly). Import env *shapes*, not eager validation — see [env](env).
+> **GOTCHA — the engine file must be side-effect free.** The CLI and
+> `preload.ts` import its module graph raw, before the compiler plugins are
+> installed. Don't validate env or throw at module scope in `engine.ts` (or
+> anything it imports eagerly). Import env _shapes_, not eager validation — see
+> [env](env).
 
 ## Serving requests
 
@@ -97,7 +108,8 @@ await engine.serve({ requiredCtx: { db } }) // only when the engine requires ctx
 ## Answering a request without a server: `engine.fetch`
 
 `engine.fetch(req)` runs a request through the engine and returns a `Response` —
-no socket, no port. This is how tests and server-to-server calls hit your points:
+no socket, no port. This is how tests and server-to-server calls hit your
+points:
 
 ```ts
 await engine.prepare() // required before fetch (serve() does this for you)
@@ -111,24 +123,25 @@ const response = await engine.fetch('http://localhost:3000/api/ideas/123', {
 
 > **GOTCHA — `fetch`/`fetchDetailed` need `prepare()` first.** Both throw
 > `Engine server is not prepared. Please call await engine.prepare() first.` if
-> you skip it. `serve()` prepares internally, so you only call `prepare()` by hand
-> when you use `fetch` standalone (tests, SSR, scripts). See [testing](testing).
+> you skip it. `serve()` prepares internally, so you only call `prepare()` by
+> hand when you use `fetch` standalone (tests, SSR, scripts). See
+> [testing](testing).
 
 > There is no `engine.execute(...)`. `.execute(...)` is a method on a
 > [mutation](mutation), not on the engine — the engine's request entry point is
 > `fetch` / `fetchDetailed`.
 
 `engine.withFetch(cb)` runs a callback inside the server's request context (the
-server port, a bound `fetch`, a query client) and passes the bound `fetch` to the
-callback. Inside it, server-side point methods — a query's `fetchServer`, a
-mutation's `fetchServer`/`fetchServerDetailed`, a loader calling another loader —
-resolve their in-process fetch directly through the engine, with no socket and no
-running server. Outside that context they throw, because the server-only fetch fn
-has nowhere to read its port and query client from.
+server port, a bound `fetch`, a query client) and passes the bound `fetch` to
+the callback. Inside it, server-side point methods — a query's `fetchServer`, a
+mutation's `fetchServer`/`fetchServerDetailed`, a loader calling another loader
+— resolve their in-process fetch directly through the engine, with no socket and
+no running server. Outside that context they throw, because the server-only
+fetch fn has nowhere to read its port and query client from.
 
 This is exactly what makes it the tool for **integration tests**: you hit your
-points in-process, with full types, without booting a server. This is how start0's
-test suite exercises its API:
+points in-process, with full types, without booting a server. This is how
+start0's test suite exercises its API:
 
 ```ts
 import { engine } from '@/engine'
@@ -157,12 +170,12 @@ test('rejects anonymous users', async () => {
 })
 ```
 
-`fetchServer` returns the data and throws on error; `fetchServerDetailed` returns
-`{ data, error, response, … }` so you can assert on a failure without a `try`.
-Pass `headers` to simulate an authenticated caller. The same pattern covers any
-server-to-server call where you want a point's typed result inside an existing
-request — call `query.fetch()` (or `fetchServer`) from within `withFetch`. See
-[testing](testing).
+`fetchServer` returns the data and throws on error; `fetchServerDetailed`
+returns `{ data, error, response, … }` so you can assert on a failure without a
+`try`. Pass `headers` to simulate an authenticated caller. The same pattern
+covers any server-to-server call where you want a point's typed result inside an
+existing request — call `query.fetch()` (or `fetchServer`) from within
+`withFetch`. See [testing](testing).
 
 ## Dev, build, generate
 
@@ -186,9 +199,9 @@ sourcemaps and unminified bundles…
 
 Each takes options — `dev` has `side`, `scope`, `entries`, `watch`, `serverHot`,
 and more; `build` has `side`, `scope`, `clean`, `publicdir`. The full option and
-flag tables live on [dev](dev) and [build](build); the
-command-to-method mapping is on [cli](cli). The matching watch and codegen
-variants are `engine.buildWatch(...)`, `engine.generateWatch(...)`, and
+flag tables live on [dev](dev) and [build](build); the command-to-method mapping
+is on [cli](cli). The matching watch and codegen variants are
+`engine.buildWatch(...)`, `engine.generateWatch(...)`, and
 `engine.preparePublicdirs()`.
 
 ## Preparing and tearing down
@@ -210,15 +223,16 @@ await engine.clean() //   remove build outputs
 await engine.prune() //   remove the @point0 temp dir + the server hot-reload store
 ```
 
-`prune` is the `point0 prune` command. In production you wire `dispose` into your
-shutdown path so handles (DB pools, the server) close cleanly:
+`prune` is the `point0 prune` command. In production you wire `dispose` into
+your shutdown path so handles (DB pools, the server) close cleanly:
 
 ```ts
 // src/app.server.ts (start0)
 onShutdown('engine', ['prisma'], async () => await engine.dispose())
 await Promise.all([engine.serve(), createInitialAdmin()])
 
-if (import.meta.hot) { // Vite only
+if (import.meta.hot) {
+  // Vite only
   import.meta.hot.dispose(async () => await engine.dispose())
   import.meta.hot.accept()
 }
@@ -266,8 +280,8 @@ plugin that everything downstream relies on.
 
 ### src/index.server.ts
 
-The server boot entry (your `server.entry.main` points at it). It imports preload
-first, then the actual server code:
+The server boot entry (your `server.entry.main` points at it). It imports
+preload first, then the actual server code:
 
 ```ts
 // src/index.server.ts
@@ -276,11 +290,11 @@ await import('./app.server.js')
 export {} // marks the file as a module
 ```
 
-> **GOTCHA — dynamic imports only, in order.** A static `import` hoists above any
-> `await`, so a static preload import would run *after* the app code it's meant to
-> set up. Use `await import('./preload.js')` as the first line, never a top static
-> import. You can interleave other dynamic imports (env validation, telemetry)
-> between preload and `app.server`, as long as they stay dynamic.
+> **GOTCHA — dynamic imports only, in order.** A static `import` hoists above
+> any `await`, so a static preload import would run _after_ the app code it's
+> meant to set up. Use `await import('./preload.js')` as the first line, never a
+> top static import. You can interleave other dynamic imports (env validation,
+> telemetry) between preload and `app.server`, as long as they stay dynamic.
 
 ### src/app.server.ts
 
@@ -340,8 +354,8 @@ if (import.meta.hot) {
 }
 ```
 
-`mount` from `@point0/react-dom/mount` takes the root element, the points, and an
-optional `domRootElement`:
+`mount` from `@point0/react-dom/mount` takes the root element, the points, and
+an optional `domRootElement`:
 
 ```ts
 mount(element, points, { domRootElement }?)
@@ -352,7 +366,8 @@ mount(element, points, { domRootElement }?)
   `<div id="root">` in your `index.html`. (Pass `domRootElement` to target a
   different element; an explicit falsy value throws.)
 - **Hydration vs CSR is automatic.** On the first call, if the root already has
-  child nodes (SSR markup) it `hydrateRoot`s; otherwise it `createRoot().render`s.
+  child nodes (SSR markup) it `hydrateRoot`s; otherwise it
+  `createRoot().render`s.
 - **HMR re-renders into the same root.** Later calls (from `import.meta.hot`)
   reuse the existing React root and just re-render, so Fast Refresh keeps hook
   state.
@@ -376,42 +391,40 @@ The shell: a mount target and the client entry script.
 
 `engine.` —
 
-| Method | Does |
-| --- | --- |
-| `serve(options?)` | Prepare, then start the Bun server. `requiredCtx` required when the engine's ctx is non-`undefined`; accepts partial Bun `Serve.Options`. → [cli](cli) |
-| `dev(options?)` | Dev: server + clients, watch, regenerate, hot-reload. Forces `NODE_ENV=development`. → [dev](dev) |
-| `build(options?)` | Production build of every side. Generates first; forces `NODE_ENV=production`. → [build](build) |
-| `buildWatch(options?)` | `build` in watch mode (watches the entry import graph). → [build](build) |
-| `generate(options?)` | Codegen only (points, routes, meta, assets types). → [generator](generator) |
-| `generateWatch(options?)` | `generate` then watch. → [generator](generator) |
-| `prepare()` | Idempotent runtime setup. Required before `fetch`; called by `serve`. |
-| `fetch(req, options?)` | Run a request through the engine, return a `Response`. Needs `prepare()`. |
-| `fetchDetailed(req, options?)` | As `fetch`, but returns `{ response, data, error, … }`. |
-| `withFetch(cb)` | Run `cb` inside the server request context, so a point's `fetchServer`/`fetch` works in-process (tests, server-to-server). |
-| `preload(options?)` | Process setup: env + compiler Bun plugin. No-op in a built process. |
-| `dispose()` | Dispose all clients + the server. |
-| `clean()` | Remove build outputs. |
-| `prune()` | Remove the `@point0` temp dir + server hot-reload store (`point0 prune`). |
-| `getViteConfig(env?)` | The full Vite `UserConfig` the engine would use — for `vite.config.ts` and vitest. → [bun-vs-vite](bun-vs-vite) |
+| Method                         | Does                                                                                                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `serve(options?)`              | Prepare, then start the Bun server. `requiredCtx` required when the engine's ctx is non-`undefined`; accepts partial Bun `Serve.Options`. → [cli](cli) |
+| `dev(options?)`                | Dev: server + clients, watch, regenerate, hot-reload. Forces `NODE_ENV=development`. → [dev](dev)                                                      |
+| `build(options?)`              | Production build of every side. Generates first; forces `NODE_ENV=production`. → [build](build)                                                        |
+| `buildWatch(options?)`         | `build` in watch mode (watches the entry import graph). → [build](build)                                                                               |
+| `generate(options?)`           | Codegen only (points, routes, meta, assets types). → [generator](generator)                                                                            |
+| `generateWatch(options?)`      | `generate` then watch. → [generator](generator)                                                                                                        |
+| `prepare()`                    | Idempotent runtime setup. Required before `fetch`; called by `serve`.                                                                                  |
+| `fetch(req, options?)`         | Run a request through the engine, return a `Response`. Needs `prepare()`.                                                                              |
+| `fetchDetailed(req, options?)` | As `fetch`, but returns `{ response, data, error, … }`.                                                                                                |
+| `withFetch(cb)`                | Run `cb` inside the server request context, so a point's `fetchServer`/`fetch` works in-process (tests, server-to-server).                             |
+| `preload(options?)`            | Process setup: env + compiler Bun plugin. No-op in a built process.                                                                                    |
+| `dispose()`                    | Dispose all clients + the server.                                                                                                                      |
+| `clean()`                      | Remove build outputs.                                                                                                                                  |
+| `prune()`                      | Remove the `@point0` temp dir + server hot-reload store (`point0 prune`).                                                                              |
+| `getViteConfig(env?)`          | The full Vite `UserConfig` the engine would use — for `vite.config.ts` and vitest. → [bun-vs-vite](bun-vs-vite)                                        |
 
 CLI-internal helpers also live on the instance — `preparePublicdirs`,
 `serveClientDevServers`, `toEntryPath`, `guessSideAndScope`, `getEmit`,
-`readEverything`, and the statics `Engine.findSelfFile` / `Engine.findAndImportSelf`.
-They drive the CLI and rarely appear in app code.
-
-<!-- TODO(med): getViteConfig's full option matrix (isPreview, mode mapping) beyond side/scope resolution is NOT FOUND in the read ranges — document the rest on bun-vs-vite once verified. -->
+`readEverything`, and the statics `Engine.findSelfFile` /
+`Engine.findAndImportSelf`. They drive the CLI and rarely appear in app code.
 
 ### Instance fields
 
 A few are useful in app and config code:
 
-| Field | Is |
-| --- | --- |
-| `engine.clients` / `engine.client` | the configured clients; `.client` is the first one (throws `No clients available…` if none) |
-| `engine.server` | the server runtime (`engine.server.viteConfig`, `engine.server.entry`, …) |
-| `engine.file` / `engine.cwd` | the engine file URL and its working directory |
-| `engine.log` / `engine.logger` | the resolved log fn / logger |
-| `engine.prepared` / `engine.wasBuilt` | runtime flags |
+| Field                                 | Is                                                                                          |
+| ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `engine.clients` / `engine.client`    | the configured clients; `.client` is the first one (throws `No clients available…` if none) |
+| `engine.server`                       | the server runtime (`engine.server.viteConfig`, `engine.server.entry`, …)                   |
+| `engine.file` / `engine.cwd`          | the engine file URL and its working directory                                               |
+| `engine.log` / `engine.logger`        | the resolved log fn / logger                                                                |
+| `engine.prepared` / `engine.wasBuilt` | runtime flags                                                                               |
 
 ### Boot order
 
@@ -424,5 +437,3 @@ index.html                 # browser shell
   → src/index.client.tsx      # mount(<App/>, points) → hydrate or createRoot
       → src/app.client.tsx    # the App component (router + providers)
 ```
-
-<!-- TODO(med): engine.dev({ restart }) is declared in the signature but no code consuming it within dev and no CLI flag mapping to it were found — its effect is NOT FOUND; confirm before documenting on dev. -->

@@ -1,7 +1,9 @@
 ---
 index: 300
 title: Context
-description: Server-only values, computed once per request and read by every loader and ctx that follows.
+description:
+  Server-only values, computed once per request and read by every loader and ctx
+  that follows.
 ---
 
 `.ctx` adds values to a server-only context. The function runs on the server
@@ -9,8 +11,8 @@ during a request; what it returns is merged into the running context, and every
 later `.ctx` and the `.loader` can read it. It's the place to resolve real
 request-scoped values — the current user, a request-scoped flag — once, before
 the loaders. (A DB client or anything that doesn't depend on the request belongs
-in a plain `import`, not in `ctx` — the import is stripped from the client bundle
-anyway.)
+in a plain `import`, not in `ctx` — the import is stripped from the client
+bundle anyway.)
 
 ```tsx
 .ctx(async ({ request }) => {
@@ -86,8 +88,6 @@ The callback gets one object:
 Parsed `input` / `params` / `search` / `body` / `headers` / `cookies` are also
 present when the matching schema is declared **above** this `.ctx` in the chain.
 
-<!-- TODO(med): no test or example reads `set`, `points`, or parsed input from inside `.ctx` — confirm the runtime shape before documenting these as recommended. -->
-
 ## Plain object instead of a function
 
 When the values don't depend on the request, pass an object directly:
@@ -98,8 +98,8 @@ When the values don't depend on the request, pass an object directly:
 ```
 
 Passing a function where an object is expected is a type error
-(`Use ctx(fn) for function values`). Returning an array from a `.ctx` function is
-also a type error (`Ctx fn should not return array`).
+(`Use ctx(fn) for function values`). Returning an array from a `.ctx` function
+is also a type error (`Ctx fn should not return array`).
 
 ## Redirect and error
 
@@ -141,15 +141,15 @@ also spread the key at the top level of later `.ctx` and `.loader` arguments:
 ```
 
 `expose: true` exposes all returned keys; a string array exposes only those.
-Exposed keys accumulate across multiple `.ctx` calls. These keys are reserved and
-can't be exposed (it's a type error): `request`, `input`, `inputRaw`, `data`,
-`set`, `execute`, `ctx`.
+Exposed keys accumulate across multiple `.ctx` calls. These keys are reserved
+and can't be exposed (it's a type error): `request`, `input`, `inputRaw`,
+`data`, `set`, `execute`, `ctx`.
 
 ## It runs only when the point has a loader
 
 `.ctx` runs **only when the point issues a server request** — that is, only when
-it has a loader. A loader-less [page](page) or [layout](layout) makes no request,
-so its `.ctx` never executes.
+it has a loader. A loader-less [page](page) or [layout](layout) makes no
+request, so its `.ctx` never executes.
 
 ```tsx
 // This page has no loader → no request → this .ctx never runs.
@@ -163,23 +163,25 @@ export const profilePage = root.lets
 ```
 
 Server-only code (loader bodies, `.ctx` functions) is cut from the client bundle
-by the compiler — its body and the imports it uses are removed, so it never ships
-to the browser — and `.ctx` runs only when a request is actually made.
+by the compiler — its body and the imports it uses are removed, so it never
+ships to the browser — and `.ctx` runs only when a request is actually made.
 **Do not gate access in `.ctx` alone** — gate it in [`.with`](with), which runs
-at render on both server and client, so it fires on the initial SSR render and on
-every later client-side navigation. The production pattern pairs a `.ctx` (for
-server loaders) with a `.with` (for the render):
+at render on both server and client, so it fires on the initial SSR render and
+on every later client-side navigation. The production pattern pairs a `.ctx`
+(for server loaders) with a `.with` (for the render):
 
 ```tsx
 export const authorizedOnlyPlugin = Point0.lets
   .plugin()
   .use(mePlugin) // an upstream plugin that puts `me` in ctx and props
   .ctx(({ ctx: { me } }) => {
-    if (!me) throw new AppError('Only for authorized users', { code: 'UNAUTHORIZED' })
+    if (!me)
+      throw new AppError('Only for authorized users', { code: 'UNAUTHORIZED' })
     return { me } // narrows me to non-null in ctx
   })
   .with(({ props: { me } }) => {
-    if (!me) return new AppError('Only for authorized users', { code: 'UNAUTHORIZED' })
+    if (!me)
+      return new AppError('Only for authorized users', { code: 'UNAUTHORIZED' })
     return { me } // narrows me to non-null in props
   })
   .plugin()
@@ -212,13 +214,13 @@ Returns the same point chain with `ctx` advanced. Chainable.
 
 ### Function return values
 
-| Return                       | Effect                                                  |
-| ---------------------------- | ------------------------------------------------------- |
-| a plain object               | shallow-merged into `ctx` (later keys override earlier) |
-| `undefined` / `void`         | leaves `ctx` unchanged                                   |
-| an `Error` (returned or thrown) | aborts the request with that error                   |
-| a `RedirectTask` (returned or thrown) | redirects; later `.ctx` / loader don't run     |
-| an array                     | **type error** — `Ctx fn should not return array`       |
+| Return                                | Effect                                                  |
+| ------------------------------------- | ------------------------------------------------------- |
+| a plain object                        | shallow-merged into `ctx` (later keys override earlier) |
+| `undefined` / `void`                  | leaves `ctx` unchanged                                  |
+| an `Error` (returned or thrown)       | aborts the request with that error                      |
+| a `RedirectTask` (returned or thrown) | redirects; later `.ctx` / loader don't run              |
+| an array                              | **type error** — `Ctx fn should not return array`       |
 
 The function may be `async`; it's awaited. A plain object argument must not be a
 function (`Use ctx(fn) for function values`).

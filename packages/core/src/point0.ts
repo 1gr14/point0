@@ -320,8 +320,8 @@ export class Point0<
 > {
   /**
    * Type-extraction only — `typeof point.Infer.<Key>` pulls any type out of the point (`InputRaw`, `QueriedData`,
-   * `Route`, the component type, …), derived from the point itself, no hand-written interfaces. On every point.
-   * GOTCHA: `Infer` is `null` at runtime — read it in TYPE position only (always wrap in `typeof`).
+   * `Route`, the component type, …), derived from the point itself, no hand-written interfaces. On every point. GOTCHA:
+   * `Infer` is `null` at runtime — read it in TYPE position only (always wrap in `typeof`).
    *
    * Server-and-client — type-only point metadata, present on both bundles (not compiler-stripped).
    *
@@ -358,8 +358,8 @@ export class Point0<
   private readonly __POINT0_INSTANCE__: boolean = true
 
   /**
-   * The point's stable, unique id (`scope:type:name`, e.g. `root:page:home`) — also what `toString()` returns. Used
-   * for keys, logging, and matching points across the build.
+   * The point's stable, unique id (`scope:type:name`, e.g. `root:page:home`) — also what `toString()` returns. Used for
+   * keys, logging, and matching points across the build.
    *
    * Server-and-client — point metadata, present on both bundles (not compiler-stripped).
    *
@@ -580,9 +580,9 @@ export class Point0<
    * component, so `<UserCard />` and `<UserCard.X />` are identical — `.X` is the explicit form (needed for a
    * lowercase-named point, since JSX reads `<userCard />` as an HTML tag). Declare mountables in PascalCase.
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): the render
-   * body and the imports it pulls in are removed from the server build. Kept in the client build always, and in the
-   * server build only when SSR is on (it renders the mountable on whichever side keeps it).
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): the render body
+   * and the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on (it renders the mountable on whichever side keeps it).
    *
    *     <UserCard userId={1} />   // === <UserCard.X userId={1} />
    *
@@ -2450,8 +2450,8 @@ export class Point0<
   // general settings
 
   /**
-   * Tag this point — variadic, de-duped, accumulates across calls. Tags are metadata for grouping and filtering
-   * points (e.g. OpenAPI grouping). Available on every point while composing.
+   * Tag this point — variadic, de-duped, accumulates across calls. Tags ride along in the query key, so they group
+   * points for invalidation (invalidate a whole group by tag). Available on every point while composing.
    *
    * Server-and-client — kept on both bundles (isomorphic metadata).
    *
@@ -2485,8 +2485,8 @@ export class Point0<
   }
 
   /**
-   * Teach the root how to read one validation library's schemas (detect, extract keys, spot file uploads, emit JSON
-   * for OpenAPI). Helpers accumulate — call once per library you use.
+   * Teach the root how to read one validation library's schemas (detect, extract keys, spot file uploads, emit JSON for
+   * OpenAPI). Helpers accumulate — call once per library you use.
    *
    * Server-and-client — kept on both bundles (isomorphic config).
    *
@@ -2649,8 +2649,8 @@ export class Point0<
   }
 
   /**
-   * Subscribe to a lifecycle event on the CLIENT side only. The callback is stripped from the server bundle. Same
-   * shape as `.on`. Available on every point type.
+   * Subscribe to a lifecycle event on the CLIENT side only. The callback is stripped from the server bundle. Same shape
+   * as `.on`. Available on every point type.
    *
    * Client-only — the handler is stripped from the server bundle (runs in the browser, regardless of SSR).
    *
@@ -2758,8 +2758,8 @@ export class Point0<
   }
 
   /**
-   * Default react-query options for every mutation in scope (deep-merged, not replaced). On root, base, plugin.
-   * Client + server.
+   * Default react-query options for every mutation in scope (deep-merged, not replaced). On root, base, plugin. Client
+   * + server.
    *
    * Server-and-client — kept on both bundles (isomorphic config).
    *
@@ -2911,9 +2911,9 @@ export class Point0<
    * point's data throws. Usually set once near the root, overridden per point. The component gets `{ type, error }`,
    * with `error` normalized through the configured error class (never a raw `Error`).
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
-   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
-   * build only when SSR is on.
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
+   * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
+   * only when SSR is on.
    *
    *     .error(({ error }) => <ErrorScreen error={error} />)
    *
@@ -3021,9 +3021,9 @@ export class Point0<
    * Like `.error`, but scoped to the `'component'` render position only — the error UI used when a mounted component
    * (not a page or layout) throws. Lets a layout split its error boundaries by where the error sits.
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
-   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
-   * build only when SSR is on.
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
+   * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
+   * only when SSR is on.
    *
    * Full reference: https://1gr14.dev/point0/latest/loading-error
    */
@@ -3072,13 +3072,13 @@ export class Point0<
   }
 
   /**
-   * Declare the loading UI for this point and everything below it — Point0 renders the nearest one up the chain while
-   * a point's data is pending, so a page never writes a loading branch itself. Usually set once near the root. The
+   * Declare the loading UI for this point and everything below it — Point0 renders the nearest one up the chain while a
+   * point's data is pending, so a page never writes a loading branch itself. Usually set once near the root. The
    * component gets `{ type }` ('page' | 'component' | 'layout') to branch on where it renders.
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
-   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
-   * build only when SSR is on.
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
+   * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
+   * only when SSR is on.
    *
    *     .loading(() => <Spinner size="3xl" />)
    *
@@ -3169,9 +3169,9 @@ export class Point0<
    * Wrappers accumulate (outermost first) and are the place for per-point providers, frames, or boundaries. On page,
    * layout, component, provider.
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
-   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
-   * build only when SSR is on.
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
+   * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
+   * only when SSR is on.
    *
    *     .wrapper(({ children }) => <Card>{children}</Card>)
    *
@@ -3233,9 +3233,9 @@ export class Point0<
    *                                                   pass `undefined` for queryOptions if you only want it
    *     with(fn)                                   a with-fn returning queries (appended) or props (merged)
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
-   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
-   * build only when SSR is on.
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
+   * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
+   * only when SSR is on.
    *
    * WHY one signature and not overloads: with multiple overloads the language server can't decide which candidate to
    * complete `input` against, so autocomplete dies, and any mistake collapses to a useless "No overload matches this
@@ -3802,9 +3802,9 @@ export class Point0<
   }
 
   /**
-   * Decide whether to restore scroll on navigation: `true` restores, `false` leaves it, `null` scrolls to top, or a
-   * `({ prevLocation, type }) => …` policy. Default restores on back/forward (`pop`), scrolls to top on `push`. On
-   * page and layout.
+   * Decide whether to restore scroll on navigation: `true` restores, `false` leaves it, `null` scrolls to top, or a `({
+   * prevLocation, type }) => …` policy. Default restores on back/forward (`pop`), scrolls to top on `push`. On page and
+   * layout.
    *
    * Client-only — stripped from the server bundle (runs in the browser, regardless of SSR).
    *
@@ -3853,8 +3853,8 @@ export class Point0<
   /**
    * Add server-side middleware that runs around a request (Express/Koa style), optionally scoped by route or method.
    * Server-only — the body is stripped from the client bundle (runs server-side). Use it to mount things OUTSIDE the
-   * point model (CORS, a third-party auth handler, an OpenAPI server); for data and access control use loaders,
-   * `.ctx`, and `.with` instead.
+   * point model (CORS, a third-party auth handler, an OpenAPI server); for data and access control use loaders, `.ctx`,
+   * and `.with` instead.
    *
    *     .middleware(({ next }) => next())                                       // (…fns) — every request
    *     .middleware('/api/auth/*', ({ request }) => authServer.handler(request.original)) // (route, …fns)
@@ -3976,11 +3976,11 @@ export class Point0<
   // prefetch mode
 
   /**
-   * Run a side-effect when this page/layout is prefetched (warm a cache, kick off an analytics ping). Intended to fire
-   * on the client AND during server-side prefetch. On page and layout.
+   * Run a side-effect when this page/layout is prefetched (warm a cache, kick off an analytics ping). Fires on the
+   * client AND during server-side prefetch. On page and layout.
    *
-   * Client-only today — runs in the browser on prefetch. (Intended to also run during server prefetch.)
-   * <!-- TODO(high): onPrefetchPage is stripped from the server bundle (point.ts ~1056) but should also run during server prefetch — stop stripping it. -->
+   * Server-and-client — kept in both bundles. It runs in the browser on client-side prefetch and during server-side
+   * prefetch (the engine warms a page through the same prefetch path on the server).
    *
    *     .onPrefetchPage(({ location }) => warmCache(location))
    *
@@ -4071,10 +4071,10 @@ export class Point0<
   }
 
   /**
-   * Convenience that sets BOTH the navigate and link-hover prefetch policies at once (2nd arg is the hover delay).
-   * Thin wrapper over `.prefetchPageOnNavigate` + `.prefetchPageOnLinkHover`. On root, base, page, layout (not plugins).
+   * Convenience that sets BOTH the navigate and link-hover prefetch policies at once (2nd arg is the hover delay). Thin
+   * wrapper over `.prefetchPageOnNavigate` + `.prefetchPageOnLinkHover`. On root, base, page, layout (not plugins).
    *
-   * Server-and-client — kept on both bundles (isomorphic config).
+   * Client-only — cut from the server bundle, like the two triggers it sets (they fire on client-side navigation).
    *
    *     .prefetchPagePolicy('serverAndClientQuery')          // policy only
    *     .prefetchPagePolicy('serverAndClientQuery', 200)     // policy + hover delay (ms)
@@ -4369,8 +4369,8 @@ export class Point0<
    * `fetchQuery`, …). Call it with no args for a passthrough loader — marks the point as server-loaded (so it still
    * gets a server request and ctx) without custom logic.
    *
-   * Server-only — the body (and every import only it uses — your DB client included) is stripped from the client
-   * bundle (runs server-side).
+   * Server-only — the body (and every import only it uses — your DB client included) is stripped from the client bundle
+   * (runs server-side).
    *
    *     .loader(async ({ input }) => ({ idea: await prisma.idea.findUniqueOrThrow({ where: { id: input.id } }) })) // fn form
    *     .loader()                                            // no-arg passthrough (server request + ctx, no logic)
@@ -4564,13 +4564,13 @@ export class Point0<
 
   /**
    * Fold the loader and query results into the final `data` your render reads. By default `data` is the first query's
-   * data; once you add a `.mapper`, `data` is whatever it returns. One synchronous function getting
-   * `{ data, queries, props, location }`. Reach for it when a point pulls several queries together or a query's shape
-   * isn't the shape your component wants. On a provider, the mapper's return value IS the provided value.
+   * data; once you add a `.mapper`, `data` is whatever it returns. One synchronous function getting `{ data, queries,
+   * props, location }`. Reach for it when a point pulls several queries together or a query's shape isn't the shape
+   * your component wants. On a provider, the mapper's return value IS the provided value.
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
-   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
-   * build only when SSR is on.
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
+   * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
+   * only when SSR is on.
    *
    *     .mapper(({ data }) => ({ ideas: data.pages.flatMap((p) => p.ideas) }))
    *
@@ -4650,9 +4650,9 @@ export class Point0<
    * `UnheadProvider` mounted. Pass a status first (`'loading' | 'error' | 'success' | 'universal' | 'global'`) to
    * target one render state; `head('global', …)` is the app-wide base head.
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
-   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
-   * build only when SSR is on.
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
+   * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
+   * only when SSR is on.
    *
    *     .head('Ideas')                                       // string shorthand (title)
    *     .head({ title: 'Ideas', meta: [{ name: 'robots', content: 'noindex' }] }) // object
@@ -6109,7 +6109,9 @@ export class Point0<
       const firstValue = (schemas as any)[keys[0]] as object
       const isAlreadyNormalizedResponseSchema = typeof firstValue === 'object' && 'content' in firstValue
       if (isAlreadyNormalizedResponseSchema) {
-        return firstValue
+        // already a normalized status map ({ 200: { content }, 404: { content } }) — return the whole map,
+        // not just the first status, so every declared status reaches the generated spec.
+        return schemas
       }
       return Object.fromEntries(
         keys.map((key) => [
@@ -6151,8 +6153,7 @@ export class Point0<
    * Register named entity schemas (your domain models) for OpenAPI components and shared typing. Accumulates across
    * calls. On root, base, plugin.
    *
-   * Server-only by intent — OpenAPI/docs metadata read server-side.
-   * <!-- TODO(high): add .models to the compiler client-strip list (point.ts ~1026) — it's currently shipped to the client bundle. -->
+   * Server-only — cut from the client bundle (it feeds OpenAPI/docs metadata read server-side).
    *
    *     .models({ Idea: ideaSchema, User: userSchema })
    *
@@ -6170,9 +6171,9 @@ export class Point0<
 
   /**
    * Close the root point. The root is the one point created straight from `Point0` (not inherited): it's the server's
-   * entry point and the holder of every default — server/client URLs, transformer, error class, query options,
-   * prefetch policy, loading/error UI — that every point beneath it inherits. Open with `.lets.root()`, set defaults,
-   * close with `.root()`.
+   * entry point and the holder of every default — server/client URLs, transformer, error class, query options, prefetch
+   * policy, loading/error UI — that every point beneath it inherits. Open with `.lets.root()`, set defaults, close with
+   * `.root()`.
    *
    * Server-and-client — the root closer is kept on both bundles (isomorphic).
    *
@@ -6215,11 +6216,15 @@ export class Point0<
   /**
    * Close a plugin point. A plugin bundles methods — `.ctx`, `.with`, `.middleware`, input schemas, related queries —
    * that you inject into another point's chain with `.use(plugin)`. It does nothing on its own; it's the tool for
-   * sharing setup across points in your own app. Open with `Point0.lets.plugin()`, add methods, close with `.plugin()`.
+   * sharing setup across points in your own app. Open with `Point0.lets.plugin()`, add methods, close with
+   * `.plugin()`.
    *
    * Server-and-client — the plugin closer is kept on both bundles (each bundled method keeps its own strip behavior).
    *
-   *     export const mePlugin = Point0.lets.plugin().ctx(({ request }) => ({ me: getMe({ request }) })).plugin()
+   *     export const mePlugin = Point0.lets
+   *       .plugin()
+   *       .ctx(({ request }) => ({ me: getMe({ request }) }))
+   *       .plugin()
    *
    * Full reference: https://1gr14.dev/point0/latest/plugin
    */
@@ -6254,7 +6259,7 @@ export class Point0<
 
   /**
    * Close a base point. A base holds shared settings — a route prefix (`.basePath`), query defaults, loading/error UI,
-   * a plugin, injected queries — for a *subset* of points; every point built off it inherits them. It's authoring-time
+   * a plugin, injected queries — for a _subset_ of points; every point built off it inherits them. It's authoring-time
    * only: no route, no endpoint of its own. Open with `.lets.base()`, configure, close with a second `.base()`.
    *
    * Server-and-client — the base closer is kept on both bundles (isomorphic).
@@ -6302,9 +6307,9 @@ export class Point0<
    * and, when SSR is on (or it has a server loader), a real HTTP endpoint; a loader-less page that only composes other
    * queries is a client-only mountable, not an endpoint. Pages are lazy-loaded by default.
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
-   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
-   * build only when SSR is on.
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
+   * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
+   * only when SSR is on.
    *
    *     export const ideaPage = root.lets
    *       .page('/ideas/:id')
@@ -6402,9 +6407,9 @@ export class Point0<
    * (`<BestIdea cta="..." />`), wherever you need it. It gets the full chain (`.with`, `.loader`, `.mapper`,
    * loading/error) like a page. The component argument is optional. Declare outer props via `.component<{ … }>()`.
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
-   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
-   * build only when SSR is on.
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
+   * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
+   * only when SSR is on.
    *
    *     export const BestIdea = root.lets.component().loader(loadBest).component(({ data }) => <h2>{data.title}</h2>) // component form
    *     // root.lets.component<{ cta: string }>().component()  // type-only outer props, no component → renders nothing
@@ -6493,15 +6498,15 @@ export class Point0<
   }
 
   /**
-   * Close a layout point: a shared shell (header, sidebar, frame) wrapping a set of pages, rendered where the
-   * component places `{children}`. It can own part of the route those pages sit under and load its own data with its
-   * own loading/error. Navigating between pages in the same layout keeps it mounted — no re-render, no re-fetch. The
-   * component argument is optional (omit it to render just children, e.g. to prefix a route or carry shared data).
-   * From a page chain, `.layout(someLayout)` attaches that layout to the page instead.
+   * Close a layout point: a shared shell (header, sidebar, frame) wrapping a set of pages, rendered where the component
+   * places `{children}`. It can own part of the route those pages sit under and load its own data with its own
+   * loading/error. Navigating between pages in the same layout keeps it mounted — no re-render, no re-fetch. The
+   * component argument is optional (omit it to render just children, e.g. to prefix a route or carry shared data). From
+   * a page chain, `.layout(someLayout)` attaches that layout to the page instead.
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
-   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
-   * build only when SSR is on.
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
+   * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
+   * only when SSR is on.
    *
    *     export const generalLayout = root.lets.layout(({ children }) => <div className="app">{children}</div>) // close a layout
    *     root.lets.page('/ideas/:id').layout(generalLayout).page(IdeaScreen) // attach a layout to a page
@@ -6718,9 +6723,9 @@ export class Point0<
    * injected queries. The closing argument is the value mapper (same as `.mapper`); omit it to provide `data` as-is.
    * Mount the provider once high in the tree; it renders its `{children}`.
    *
-   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
-   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
-   * build only when SSR is on.
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
+   * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
+   * only when SSR is on.
    *
    *     export const AppProvider = root.lets.provider().provider(() => ({ x: 1, y: 2 })) // mapper form
    *     // root.lets.provider().loader(loadValue).provider()   // omit mapper → provide loaded data as-is
@@ -7173,7 +7178,7 @@ export class Point0<
    *       .query()
    *       .input(z.object({ id: z.number() }))
    *       .loader(async ({ input }) => ({ idea: await findIdea(input.id) }))
-   *       .query()                  // no-arg close
+   *       .query() // no-arg close
    *     // .query({ staleTime: 60_000 }) // options form: default react-query options
    *
    * Full reference: https://1gr14.dev/point0/latest/query
@@ -7352,8 +7357,15 @@ export class Point0<
    *
    * Server-and-client — the infiniteQuery closer is kept on both bundles (the query runs from whichever side calls it).
    *
-   *     export const ideaListQuery = root.lets.infiniteQuery().input(schema).loader(loadPage)
-   *       .infiniteQuery({ getNextPageParam: (last) => last.nextCursor, initialPageParam: undefined, pageParamFromInput: 'cursor' })
+   *     export const ideaListQuery = root.lets
+   *       .infiniteQuery()
+   *       .input(schema)
+   *       .loader(loadPage)
+   *       .infiniteQuery({
+   *         getNextPageParam: (last) => last.nextCursor,
+   *         initialPageParam: undefined,
+   *         pageParamFromInput: 'cursor',
+   *       })
    *
    * Full reference: https://1gr14.dev/point0/latest/infinite-query
    *
@@ -7599,8 +7611,8 @@ export class Point0<
   }
 
   /**
-   * Close a mutation point: an input schema plus a write loader. It's a real HTTP `POST` endpoint (in the OpenAPI
-   * spec) and a thin wrapper over a TanStack mutation at once — call it anywhere with `.useMutation()` /
+   * Close a mutation point: an input schema plus a write loader. It's a real HTTP `POST` endpoint (in the OpenAPI spec)
+   * and a thin wrapper over a TanStack mutation at once — call it anywhere with `.useMutation()` /
    * `.fetchMutation(input)`. The optional argument is the default react-query `useMutation` options. A `.loader` (or
    * `.clientLoader`) is required before closing. The first argument to every call is the input.
    *
@@ -7763,8 +7775,8 @@ export class Point0<
   >
   /**
    * Close an action point: a real HTTP endpoint with a method and path you choose (`.action('GET', '/api/health')`),
-   * and — unlike a query — the freedom to return a native `Response`. Reach for it for webhooks, REST-ish endpoints,
-   * or raw bytes; otherwise prefer a query/mutation, which give caching at a framework URL for free. Needs a server
+   * and — unlike a query — the freedom to return a native `Response`. Reach for it for webhooks, REST-ish endpoints, or
+   * raw bytes; otherwise prefer a query/mutation, which give caching at a framework URL for free. Needs a server
    * `.loader()`. `action.route` is callable like any other route.
    *
    * Server-only — the action's server fn (and its loader body) is stripped from the client bundle (runs server-side);
@@ -8325,7 +8337,8 @@ export class Point0<
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
    *
-   *     const q = ideaListQuery.useInfiniteQuery(); q.data?.pages.flatMap((p) => p.ideas)
+   *     const q = ideaListQuery.useInfiniteQuery()
+   *     q.data?.pages.flatMap((p) => p.ideas)
    *
    * Full reference: https://1gr14.dev/point0/latest/infinite-query
    */
@@ -8900,8 +8913,8 @@ export class Point0<
   }
 
   /**
-   * Build the TanStack query key tuple for an input — the same key Point0 uses for this query's cache. Handy for
-   * manual cache reads or `queryClient` calls.
+   * Build the TanStack query key tuple for an input — the same key Point0 uses for this query's cache. Handy for manual
+   * cache reads or `queryClient` calls.
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
    *
@@ -8927,6 +8940,16 @@ export class Point0<
     })
   }
 
+  /**
+   * The infinite query's key tuple — pass the same INPUT you query with. Use it for manual cache reads or `queryClient`
+   * calls against the infinite cache. (The finite `.getQueryKey()` returns the non-infinite key.)
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaFeed.getInfiniteQueryKey({ q })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   getInfiniteQueryKey(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9779,9 +9802,9 @@ export class Point0<
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
    *
-   *     ideaCreateMutation.getMutationsCache({ id: 1 })  // exact input
+   *     ideaCreateMutation.getMutationsCache({ id: 1 }) // exact input
    *     ideaCreateMutation.getMutationsCache((v) => v.id === 1) // predicate over variables
-   *     ideaCreateMutation.getMutationsCache(true)       // all entries
+   *     ideaCreateMutation.getMutationsCache(true) // all entries
    *
    * Full reference: https://1gr14.dev/point0/latest/mutation
    */
@@ -9873,12 +9896,13 @@ export class Point0<
   }
 
   /**
-   * The mutation's `useMutation` hook — returns the standard TanStack `UseMutationResult`. Pass the input to
-   * `mutate` / `mutateAsync`, not to the hook. Per-call options merge over the defaults set at close.
+   * The mutation's `useMutation` hook — returns the standard TanStack `UseMutationResult`. Pass the input to `mutate` /
+   * `mutateAsync`, not to the hook. Per-call options merge over the defaults set at close.
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
    *
-   *     const m = ideaCreateMutation.useMutation(); await m.mutateAsync({ title, content })
+   *     const m = ideaCreateMutation.useMutation()
+   *     await m.mutateAsync({ title, content })
    *
    * Full reference: https://1gr14.dev/point0/latest/mutation
    */
@@ -10138,8 +10162,8 @@ export class Point0<
   }
 
   /**
-   * Force a refetch of the exact-input query, ignoring staleness (`Promise<void>`). Exact-key — pass the same input
-   * you queried with.
+   * Force a refetch of the exact-input query, ignoring staleness (`Promise<void>`). Exact-key — pass the same input you
+   * queried with.
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
    *
@@ -10241,9 +10265,9 @@ export class Point0<
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
    *
-   *     ideaQuery.getQueriesCache({ id: 1 })          // exact input
-   *     ideaQuery.getQueriesCache((i) => i.id > 10)   // predicate
-   *     ideaQuery.getQueriesCache(true)               // all entries for this query
+   *     ideaQuery.getQueriesCache({ id: 1 }) // exact input
+   *     ideaQuery.getQueriesCache((i) => i.id > 10) // predicate
+   *     ideaQuery.getQueriesCache(true) // all entries for this query
    *
    * Full reference: https://1gr14.dev/point0/latest/query
    */
@@ -10872,8 +10896,8 @@ export class Point0<
     })()
 
     if (policy === 'pageDehydratedState') {
-      this._emit('pointPrefetchPageSuccess', eventData, meta)
       this._emit('pointPrefetchPageSettled', eventData, meta)
+      this._emit('pointPrefetchPageSuccess', eventData, meta)
       return
     }
 
@@ -12143,9 +12167,9 @@ export class Point0<
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
    *
-   *     AppProvider.getValue('theme')          // one key
+   *     AppProvider.getValue('theme') // one key
    *     AppProvider.getValue(['theme', 'lang']) // Pick of keys
-   *     AppProvider.getValue()                 // the whole value
+   *     AppProvider.getValue() // the whole value
    *
    * Full reference: https://1gr14.dev/point0/latest/provider
    */
@@ -12248,9 +12272,9 @@ export class Point0<
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
    *
-   *     AppProvider.useValue('x')              // one key (re-renders only on that key)
-   *     AppProvider.useValue(['x', 'y'])       // Pick of keys
-   *     const { x } = AppProvider.useValue()   // the whole value
+   *     AppProvider.useValue('x') // one key (re-renders only on that key)
+   *     AppProvider.useValue(['x', 'y']) // Pick of keys
+   *     const { x } = AppProvider.useValue() // the whole value
    *
    * Full reference: https://1gr14.dev/point0/latest/provider
    */

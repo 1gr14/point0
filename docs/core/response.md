@@ -1,7 +1,9 @@
 ---
 index: 400
 title: Response
-description: The set helper for headers, status, and cookies, the [status, data] return, and how effects merge into the response.
+description:
+  The set helper for headers, status, and cookies, the [status, data] return,
+  and how effects merge into the response.
 ---
 
 Every loader, [`.ctx`](ctx), and [middleware](middleware) gets a `set` helper —
@@ -16,7 +18,11 @@ export const loginMutation = root.lets
   .input(z.object({ email: z.string(), password: z.string() }))
   .loader(async ({ input, set }) => {
     const { user, token } = await auth.login(input)
-    set.cookies('session', token, { httpOnly: true, secure: true, maxAge: 60 * 60 * 24 })
+    set.cookies('session', token, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 60 * 60 * 24,
+    })
     set.headers('X-User-Id', user.id) // a response header
     set.status(201) // the HTTP status
     return { user } // becomes the mutation's data
@@ -100,7 +106,11 @@ set.headers('Vary', '*')
 Set a cookie by name and value, or as one options object:
 
 ```tsx
-set.cookies('session', token, { httpOnly: true, secure: true, maxAge: 60 * 60 * 24 })
+set.cookies('session', token, {
+  httpOnly: true,
+  secure: true,
+  maxAge: 60 * 60 * 24,
+})
 set.cookies({ name: 'theme', value: 'dark', sameSite: 'strict' })
 ```
 
@@ -114,10 +124,10 @@ set.inspect.cookies.session
 
 `path` defaults to `'/'` and `sameSite` to `'lax'`. To let the browser pick the
 path, pass `path: ''`. Everything else (`domain`, `secure`, `httpOnly`,
-`partitioned`, `maxAge`, `expires`) passes through as given. When serialized into
-the `Set-Cookie` header, `maxAge` is floored to an integer, attribute values are
-truncated at the first `;` (no injection), and an invalid `sameSite` falls back
-to `'lax'`.
+`partitioned`, `maxAge`, `expires`) passes through as given. When serialized
+into the `Set-Cookie` header, `maxAge` is floored to an integer, attribute
+values are truncated at the first `;` (no injection), and an invalid `sameSite`
+falls back to `'lax'`.
 
 **Delete a cookie by passing `undefined` as the value** — both call forms work,
 and the framework expires it for you (`Max-Age=0`, `Expires` in the past):
@@ -128,8 +138,8 @@ set.cookies({ name: 'token', value: undefined }) // same, object form
 ```
 
 `set.cookies(...)` is the low-level write. For a typed cookie with transformers,
-fallbacks, and a read/write API, use the [CookieStore](cookie-store) — it funnels
-its server writes through this same `set.cookies` under the hood.
+fallbacks, and a read/write API, use the [CookieStore](cookie-store) — it
+funnels its server writes through this same `set.cookies` under the hood.
 
 > Read **request** cookies — the ones the browser sent — from
 > `request.cookies['name']`, not from `set`. `set` is for the response only. See
@@ -137,8 +147,8 @@ its server writes through this same `set.cookies` under the hood.
 
 ## set.inspect — read what's accumulated
 
-`set.inspect` returns a fresh snapshot of the headers, cookies, and status set so
-far:
+`set.inspect` returns a fresh snapshot of the headers, cookies, and status set
+so far:
 
 ```tsx
 set.inspect // => { headers: {...}, cookies: {...}, status: 201 | undefined }
@@ -146,8 +156,8 @@ set.inspect // => { headers: {...}, cookies: {...}, status: 201 | undefined }
 
 Each access is a new object with copied contents — reading it never mutates
 state, and header keys are lowercased here too. Because every middleware,
-`.ctx`, and loader on one request share the same effects, a later step reads what
-an earlier one wrote:
+`.ctx`, and loader on one request share the same effects, a later step reads
+what an earlier one wrote:
 
 ```tsx
 // a middleware sets a header...
@@ -164,9 +174,12 @@ an earlier one wrote:
 
 One effects collector lives per request. Every middleware, `.ctx`, and loader in
 the chain writes into it, so effects **accumulate** across the whole point
-execution — last write wins per key (headers by lowercased name, cookies by name,
-status is a single slot). At the very end, the framework applies the collected
-effects to the response.
+execution — last write wins per key (headers by lowercased name, cookies by
+name, status is a single slot). At the very end, the framework applies the
+collected effects to the response. Because that apply runs after the whole chain
+has finished, a middleware that writes an effect _after_ `await next()` returns
+still lands in the final response — and, being the last write for its key, it
+wins.
 
 The framework writes effects too: a request-id header, input-validation `422`, a
 `404` for an unknown point, a `500` for a point with no server loader, and (in
@@ -183,7 +196,10 @@ time:
 export const apiHealthAction = root.lets
   .action('GET', '/api/health')
   .action(async () => {
-    return new Response('OK', { status: 200, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+    return new Response('OK', {
+      status: 200,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+    })
   })
 ```
 
@@ -194,10 +210,10 @@ root.lets.page('/x').loader(() => new Response('zxc'))
 ```
 
 When a loader returns a `Response`, that response carries the result and the
-point has no `data`. Your `set` effects **still apply** to it — headers, cookies,
-and status set via `set` merge into the Response you returned. The same holds for
-a middleware: returning a `Response` short-circuits the chain, but effects set by
-earlier middlewares still land:
+point has no `data`. Your `set` effects **still apply** to it — headers,
+cookies, and status set via `set` merge into the Response you returned. The same
+holds for a middleware: returning a `Response` short-circuits the chain, but
+effects set by earlier middlewares still land:
 
 ```tsx
 .middleware(async ({ set, next }) => { set.headers('y', '3'); return await next() })
@@ -212,7 +228,8 @@ error. Use a loader for that.
 
 When effects meet a returned Response, the **Response's own values win**:
 
-- **Headers** — the Response's headers override effects headers of the same name.
+- **Headers** — the Response's headers override effects headers of the same
+  name.
 - **Cookies** — a `Set-Cookie` on the Response keeps its cookie; an effects
   cookie of the same name is dropped, others append.
 - **Status** — `effects.status` is used only if the Response didn't set one.
@@ -258,8 +275,8 @@ function NotFound() {
 
 `useSetStatus` is the **same function** under a `use*` name. Calling `setStatus`
 at the top of a component looks like a side effect during render, which trips
-React's rules-of-hooks lint; the `use*` alias quiets that lint so you can call it
-inline without warnings. It is not a real hook — same function, no extra
+React's rules-of-hooks lint; the `use*` alias quiets that lint so you can call
+it inline without warnings. It is not a real hook — same function, no extra
 behavior.
 
 The framework also writes SSR status directly in a few spots: `404` when no page
@@ -272,8 +289,9 @@ matches the URL, `422` on input-validation failure, and a redirect honors only
 ## The Effects object
 
 `set` is the write surface, but it's only _part_ of the per-request effects
-collector. That collector is an `Effects` instance, and you can reach it directly
-when you build a helper that has no `set` in scope (a plain server function):
+collector. That collector is an `Effects` instance, and you can reach it
+directly when you build a helper that has no `set` in scope (a plain server
+function):
 
 ```tsx
 import { getEffects, getEffectsOrUndefined } from '@point0/core'
@@ -281,9 +299,9 @@ import { getEffects, getEffectsOrUndefined } from '@point0/core'
 const effects = getEffects() // the same collector every loader/ctx/middleware shares
 ```
 
-Both are exported from `@point0/core`. `getEffects` throws when there's no request
-in scope; `getEffectsOrUndefined` returns `undefined` — that's exactly how
-`setStatus` stays a safe no-op off-request:
+Both are exported from `@point0/core`. `getEffects` throws when there's no
+request in scope; `getEffectsOrUndefined` returns `undefined` — that's exactly
+how `setStatus` stays a safe no-op off-request:
 
 ```tsx
 getEffects().set.status(204) // throws if called outside a request
@@ -292,18 +310,18 @@ getEffectsOrUndefined()?.set.headers('x-trace', id) // undefined outside a reque
 
 An `Effects` instance exposes more than just `set`:
 
-| Member            | What it is                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------- |
-| `effects.set`     | the write helper — `set.headers`, `set.cookies`, `set.status`, `set.inspect`, `set.apply` (the very `set` your loaders receive) |
-| `effects.headers` | the raw accumulated headers object (lowercased keys), live state                            |
-| `effects.cookies` | the raw accumulated cookies object (keyed by cookie name), live state                       |
-| `effects.status`  | the accumulated status, or `undefined` if none was set                                      |
-| `effects.values`  | a fresh, deep-copied `{ headers, cookies, status }` snapshot — same shape as `set.inspect`  |
-| `effects.apply(r)`| return a new `Response` with the accumulated effects merged in (the framework calls this at the end of each request) |
+| Member             | What it is                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `effects.set`      | the write helper — `set.headers`, `set.cookies`, `set.status`, `set.inspect`, `set.apply` (the very `set` your loaders receive) |
+| `effects.headers`  | the raw accumulated headers object (lowercased keys), live state                                                                |
+| `effects.cookies`  | the raw accumulated cookies object (keyed by cookie name), live state                                                           |
+| `effects.status`   | the accumulated status, or `undefined` if none was set                                                                          |
+| `effects.values`   | a fresh, deep-copied `{ headers, cookies, status }` snapshot — same shape as `set.inspect`                                      |
+| `effects.apply(r)` | return a new `Response` with the accumulated effects merged in (the framework calls this at the end of each request)            |
 
 So `set` is the curated way to _write_; `effects.headers` / `effects.cookies` /
-`effects.status` are the raw fields you can _read_ directly, and `effects.values`
-(or `set.inspect`) is the safe immutable snapshot.
+`effects.status` are the raw fields you can _read_ directly, and
+`effects.values` (or `set.inspect`) is the safe immutable snapshot.
 
 ## Reference
 
@@ -311,39 +329,35 @@ So `set` is the curated way to _write_; `effects.headers` / `effects.cookies` /
 
 The object passed as `set` to loaders, `.ctx`, and middlewares:
 
-| Member             | Signature                                                    | What it does                              |
-| ------------------ | ----------------------------------------------------------- | ----------------------------------------- |
-| `set.status`       | `(status: number) => void`                                  | set the response status                   |
-| `set.headers`      | `(name, value)` / `(object)` / `(Headers)`                  | set/delete response headers               |
-| `set.cookies`      | `(name, value, opts?)` / `(opts)`                           | set/delete response cookies               |
-| `set.inspect`      | `{ headers, cookies, status }` (getter)                     | a fresh snapshot of accumulated effects   |
-| `set.apply`        | `(response: Response) => Response`                           | apply effects to a Response (mostly internal — the framework calls it) |
+| Member        | Signature                                  | What it does                                                           |
+| ------------- | ------------------------------------------ | ---------------------------------------------------------------------- |
+| `set.status`  | `(status: number) => void`                 | set the response status                                                |
+| `set.headers` | `(name, value)` / `(object)` / `(Headers)` | set/delete response headers                                            |
+| `set.cookies` | `(name, value, opts?)` / `(opts)`          | set/delete response cookies                                            |
+| `set.inspect` | `{ headers, cookies, status }` (getter)    | a fresh snapshot of accumulated effects                                |
+| `set.apply`   | `(response: Response) => Response`         | apply effects to a Response (mostly internal — the framework calls it) |
 
-`set` is a forbidden key for `.ctx(..., { expose: [...] })` — you can't re-export
-it from ctx.
+`set` is a forbidden key for `.ctx(..., { expose: [...] })` — you can't
+re-export it from ctx.
 
 ### Cookie options
 
-`set.cookies` accepts these (only `name` and `value` are required; `value:
-undefined` deletes):
+`set.cookies` accepts these (only `name` and `value` are required;
+`value: undefined` deletes):
 
-| Option        | Type                          | Default | Notes                                          |
-| ------------- | ----------------------------- | ------- | ---------------------------------------------- |
-| `name`        | `string`                      | —       | required                                       |
-| `value`       | `string`                      | —       | `undefined` deletes the cookie                 |
-| `path`        | `string`                      | `'/'`   | pass `''` to let the browser choose            |
-| `sameSite`    | `'strict' \| 'lax' \| 'none'` | `'lax'` | invalid value falls back to `'lax'`            |
-| `domain`      | `string`                      | —       |                                                |
-| `expires`     | `number \| Date \| string`    | —       | a bare `number` is epoch milliseconds          |
-| `maxAge`      | `number`                      | —       | floored to an integer in the `Set-Cookie`      |
-| `secure`      | `boolean`                     | —       |                                                |
-| `httpOnly`    | `boolean`                     | —       | keep session tokens out of client JS           |
-| `partitioned` | `boolean`                     | —       |                                                |
+| Option        | Type                          | Default | Notes                                     |
+| ------------- | ----------------------------- | ------- | ----------------------------------------- |
+| `name`        | `string`                      | —       | required                                  |
+| `value`       | `string`                      | —       | `undefined` deletes the cookie            |
+| `path`        | `string`                      | `'/'`   | pass `''` to let the browser choose       |
+| `sameSite`    | `'strict' \| 'lax' \| 'none'` | `'lax'` | invalid value falls back to `'lax'`       |
+| `domain`      | `string`                      | —       |                                           |
+| `expires`     | `number \| Date \| string`    | —       | a bare `number` is epoch milliseconds     |
+| `maxAge`      | `number`                      | —       | floored to an integer in the `Set-Cookie` |
+| `secure`      | `boolean`                     | —       |                                           |
+| `httpOnly`    | `boolean`                     | —       | keep session tokens out of client JS      |
+| `partitioned` | `boolean`                     | —       |                                           |
 
-<!-- TODO(med): numeric `expires` is ambiguous across code paths — server effects serialization treats a bare `number` as epoch milliseconds (`new Date(number)`), while the CookieStore client document path treats `expires: number` as days-from-now. Confirm and align the intended semantics for `set.cookies` server-side, then document a single rule. -->
-
-<!-- TODO(low): `set.status` accepts any number with no validation or range check; out-of-range / non-integer values are untested. Behavior with odd values is not pinned down. -->
-
-<!-- TODO(low): `set.apply(response)` is public on the `set` helper, but no test or example shows user code calling it — the framework applies effects itself at the end of every request. Confirm whether it's meant as a user-facing method or is effectively internal. -->
-
-<!-- TODO(low): a middleware that writes an effect *after* `await next()` returns — impl applies effects at the very end, so such a late write should still land in the final response, but no test asserts the final response header for a post-`next()` write. Verify before documenting it as supported. -->
+A bare `number` for `expires` is **epoch milliseconds** — the same rule on the
+server (`set.cookies`) and in the browser (`CookieStore`). Use `maxAge`
+(seconds) for a relative lifetime.

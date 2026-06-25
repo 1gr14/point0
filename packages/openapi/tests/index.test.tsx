@@ -584,4 +584,58 @@ describe('openapi', () => {
       additionalProperties: false,
     })
   })
+
+  it('hideTransformHeader drops X-Point0-Transform and never leaks the option into the document', async () => {
+    const root = Point0.lets('root', 'root')
+      .transformer(superjson)
+      .middleware(
+        openapi({
+          cache: false,
+          route: '/openapi.json',
+          hideTransformHeader: true,
+          filter: 'all',
+          info: { title: 'Test API', version: '1.0.0' },
+        }),
+      )
+      .schemaHelper(zodSchemaHelper())
+      .root()
+    const action = root.lets('action', 'action1', 'POST', '/api/test').action(() => ({ x: 'test' }))
+    const { fetch } = await createTestThings({ points: [root, action], ssr: true })
+    const response = await fetch('http://localhost:3000/openapi.json')
+    expect(response.status).toBe(200)
+    const text = await response.text()
+    // the auto-added transform header parameter is suppressed everywhere in the spec
+    expect(text).not.toContain('X-Point0-Transform')
+    // and the flag itself does not bleed into the emitted document
+    const json = JSON.parse(text)
+    expect('hideTransformHeader' in json).toBe(false)
+  })
+
+  it('emits every status from an already-normalized response map', async () => {
+    const root = Point0.lets('root', 'root')
+      .middleware(
+        openapi({
+          cache: false,
+          route: '/openapi.json',
+          filter: 'all',
+          info: { title: 'Test API', version: '1.0.0' },
+        }),
+      )
+      .schemaHelper(zodSchemaHelper())
+      .root()
+    const action = root
+      .lets('action', 'multi', 'POST', '/api/multi')
+      .response({
+        200: { description: 'ok', content: { 'application/json': { schema: z.object({ ok: z.boolean() }) } } },
+        404: { description: 'missing', content: { 'application/json': { schema: z.object({ error: z.string() }) } } },
+      })
+      .loader(() => ({ ok: true }))
+      .action()
+    const { fetch } = await createTestThings({ points: [root, action], ssr: true })
+    const response = await fetch('http://localhost:3000/openapi.json')
+    expect(response.status).toBe(200)
+    const json = await response.json()
+    const responses = json.paths?.['/api/multi']?.post?.responses
+    expect(Object.keys(responses ?? {}).sort()).toEqual(['200', '404'])
+  })
 })

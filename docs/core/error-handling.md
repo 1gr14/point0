@@ -1,26 +1,28 @@
 ---
 index: 500
 title: Error handling
-description: One typed error class from server to UI — serialized safely in production, fully in development, never leaking a stack.
+description:
+  One typed error class from server to UI — serialized safely in production,
+  fully in development, never leaking a stack.
 ---
 
 Every error in Point0 is a typed instance, never `unknown`. By default that's
-[`ErrorPoint0`](#the-default-error-class-errorpoint0), and you can throw it as-is.
-You _can_ — but don't have to — swap it for **any error class of the same or a
-wider structure** via [`.errorClass`](stage-methods): a constructor with the
-`(message?, options?)` shape plus the three statics `from` / `serializePublic` /
-`serializePrivate`. Whatever class you pick threads through the whole app: a
-query's `.error`, the `.on('error')` callback, the error a [`.with`](with) may
-return, and the props the error component renders. Across the wire it's
-serialized for the audience — public for an untrusted client in production, full
-for the developer in development — and the server stack never reaches the
-browser, even though the first page load is server-rendered.
+[`ErrorPoint0`](#the-default-error-class-errorpoint0), and you can throw it
+as-is. You _can_ — but don't have to — swap it for **any error class of the same
+or a wider structure** via [`.errorClass`](stage-methods): a constructor with
+the `(message?, options?)` shape plus the three statics `from` /
+`serializePublic` / `serializePrivate`. Whatever class you pick threads through
+the whole app: a query's `.error`, the `.on('error')` callback, the error a
+[`.with`](with) may return, and the props the error component renders. Across
+the wire it's serialized for the audience — public for an untrusted client in
+production, full for the developer in development — and the server stack never
+reaches the browser, even though the first page load is server-rendered.
 
 The page below describes that class — its fields, how it serializes, and how a
-throw reaches your error component. One convenient way to _build_ such a class is
-[error0](https://1gr14.dev/error0); it's only an example implementation, covered
-[at the end](#building-apperror-with-error0). You could equally hand-write a
-`class extends Error`.
+throw reaches your error component. One convenient way to _build_ such a class
+is [error0](https://1gr14.dev/error0); it's only an example implementation,
+covered [at the end](#building-apperror-with-error0). You could equally
+hand-write a `class extends Error`.
 
 This is the full error class start0 wires onto its root — typical of a real app,
 plugins and all:
@@ -37,16 +39,18 @@ import { responsePlugin } from '@1gr14/error0/plugins/response'
 import { stackPlugin } from '@1gr14/error0/plugins/stack'
 
 export const AppError = Error0.mark('AppError')
-  .use(codeStatusPlugin({
-    codes: { UNAUTHORIZED: 401, FORBIDDEN: 403, UNSUBSCRIBED: 403 },
-    transport: 'public', // these codes survive the public wire in production
-  }))
-  .use(metaPlugin())     // structured, private-by-default context
-  .use(causePlugin())    // keep the cause chain for the private projection
+  .use(
+    codeStatusPlugin({
+      codes: { UNAUTHORIZED: 401, FORBIDDEN: 403, UNSUBSCRIBED: 403 },
+      transport: 'public', // these codes survive the public wire in production
+    }),
+  )
+  .use(metaPlugin()) // structured, private-by-default context
+  .use(causePlugin()) // keep the cause chain for the private projection
   .use(responsePlugin()) // let an error carry a ready-made Response
   .use(redirectPlugin()) // bridge a `cause: RedirectTask` into `error.redirect`
   .use(expectedPlugin({ transport: 'public' })) // a public flag your reporter reads
-  .use(stackPlugin())    // stack in the private projection only
+  .use(stackPlugin()) // stack in the private projection only
 export type AppError = InstanceType<typeof AppError>
 ```
 
@@ -91,16 +95,15 @@ new ErrorPoint0('x', { status: 0 }).status // => undefined (0 is falsy)
 ```
 
 All fields are optional: `status`, `code`, `redirect`, `response`, `headers`,
-`meta`. You rarely construct `ErrorPoint0` by hand — you replace it with your own
-class (below) and throw that. But it's the type behind every framework-raised
-error (a 404 on an unmatched route, a redirect carrier) when you haven't set one.
+`meta`. You rarely construct `ErrorPoint0` by hand — you replace it with your
+own class (below) and throw that. But it's the type behind every
+framework-raised error (a 404 on an unmatched route, a redirect carrier) when
+you haven't set one.
 
 Both fields are wired in the engine. When `error.response` is set, it's used
 verbatim as the emitted `Response`; otherwise the engine builds a JSON error
 response from `status`. When `error.headers` is set, it's merged into the
 response headers through the effects system.
-
-<!-- TODO(low): add a test/example that throws an error carrying `response` / `headers` and asserts the emitted `Response`. -->
 
 ## Replacing the class: `.errorClass(AppError)`
 
@@ -120,7 +123,9 @@ satisfies that works; error0 just gives it to you for free. A custom class is
 ```tsx
 // either of these is valid as the app error class:
 const AppError = Error0.mark('AppError').use(/* plugins */) // built with error0
-class AppError extends Error { /* …implements from/serializePublic/serializePrivate */ }
+class AppError extends Error {
+  /* …implements from/serializePublic/serializePrivate */
+}
 ```
 
 Once set, the engine constructs every framework error through your class
@@ -129,10 +134,11 @@ end to end. See [`.errorClass`](stage-methods) for the setter itself.
 
 ## Building `AppError` with error0
 
-[error0](https://1gr14.dev/error0) is a separate `@1gr14` library for composing a
-serializable error class from plugins. It's **one** way to satisfy the contract
-above, not a requirement — Point0 only cares that the resulting class matches the
-structure; the plugin API belongs to error0. Two real shapes from the codebase:
+[error0](https://1gr14.dev/error0) is a separate `@1gr14` library for composing
+a serializable error class from plugins. It's **one** way to satisfy the
+contract above, not a requirement — Point0 only cares that the resulting class
+matches the structure; the plugin API belongs to error0. Two real shapes from
+the codebase:
 
 **The examples shape** — status from a plugin, stack stripped in production:
 
@@ -160,10 +166,12 @@ status:
 // abridged from start0's src/lib/error.ts (cause/response/redirect/expected and
 // other plugins omitted)
 export const AppError = Error0.mark('AppError')
-  .use(codeStatusPlugin({
-    codes: { UNAUTHORIZED: 401, FORBIDDEN: 403, UNSUBSCRIBED: 403 },
-    transport: 'public',
-  }))
+  .use(
+    codeStatusPlugin({
+      codes: { UNAUTHORIZED: 401, FORBIDDEN: 403, UNSUBSCRIBED: 403 },
+      transport: 'public',
+    }),
+  )
   .use(metaPlugin())
   .use(stackPlugin())
 export type AppError = InstanceType<typeof AppError>
@@ -182,7 +190,8 @@ appears in logs / development.
 The full error0 plugin API — `Error0.mark`, `.use`, the option semantics of
 `codeStatusPlugin` / `metaPlugin` / `stackPlugin` / the inline
 `.use('name', { serialize })` form, and `transport` — is documented on
-[error0](https://1gr14.dev/error0). The shapes above are copied from real config.
+[error0](https://1gr14.dev/error0). The shapes above are copied from real
+config.
 
 ## Two audiences: `serializePublic` vs `serializePrivate`
 
@@ -197,8 +206,8 @@ AppError.serializePrivate(error)
 // => { name, message, code?, status?, meta?, stack?, redirect?, cause? }  ← the operator view
 ```
 
-`serializePublic` **never** emits a stack, `status`, `meta`, or the cause chain —
-regardless of environment. `serializePrivate` is the full picture: identity,
+`serializePublic` **never** emits a stack, `status`, `meta`, or the cause chain
+— regardless of environment. `serializePrivate` is the full picture: identity,
 stack, `meta` (JSON-roundtripped; silently dropped if not serializable), and the
 whole `cause` chain.
 
@@ -206,11 +215,11 @@ The serializer itself never reads the environment — **the caller picks the
 audience by env**. The rule everywhere:
 
 - **HTTP error responses and the error component** branch on the mode:
-  `production → serializePublic`, otherwise `serializePrivate`. So in development
-  the developer sees the full error (stack and all) right in the browser; in
-  production an untrusted client gets only the safe projection.
-- **Logs are always private**, never env-gated. Serialize with `serializePrivate`
-  — the operator always needs the stack and cause chain:
+  `production → serializePublic`, otherwise `serializePrivate`. So in
+  development the developer sees the full error (stack and all) right in the
+  browser; in production an untrusted client gets only the safe projection.
+- **Logs are always private**, never env-gated. Serialize with
+  `serializePrivate` — the operator always needs the stack and cause chain:
 
 ```tsx
 // always private, regardless of NODE_ENV
@@ -225,13 +234,18 @@ Its `LogOptions` is `{ level, category: string[], message, error?, meta? }`:
 ```tsx
 import { logger } from '@point0/core'
 
-console.error({ level: 'error', category: ['point0'], message: 'request failed', error })
+console.error({
+  level: 'error',
+  category: ['point0'],
+  message: 'request failed',
+  error,
+})
 ```
 
 There's also a safety net: `ErrorPoint0` defines a non-enumerable `toJSON` that
-returns the **public** projection. So an accidental `JSON.stringify` of a payload
-that happens to carry an error leaks only `{ name, message, code? }`, never the
-stack or meta:
+returns the **public** projection. So an accidental `JSON.stringify` of a
+payload that happens to carry an error leaks only `{ name, message, code? }`,
+never the stack or meta:
 
 ```tsx
 JSON.stringify({ error: new ErrorPoint0('x', { meta: { secret: 1 } }) })
@@ -261,6 +275,33 @@ The component receives `{ type, error }`, where `error` is your typed class and
 error's `status` flows into the SSR response: the bound error component calls
 `setStatus(error.status)`, so `throw new AppError('Not found', { status: 404 })`
 makes the SSR response a real 404.
+
+**Which boundary catches it.** The error renders **at the point that failed** —
+the point whose loader / `.ctx` / `.with` / related query produced it. A failed
+layout shows its error in the layout's own slot and its child page never mounts;
+a failed page shows its error inside the already-rendered layout. Errors do
+**not** bubble between variants — a component error never "becomes" a page
+error.
+
+For that failing point, Point0 picks the error component in this order:
+
+1. the **nearest `.error`** declared up the chain (an `.error` on the point or
+   on a [plugin](plugin) it uses wins over one set higher up — the closest one
+   wins);
+2. otherwise the variant-specific setter matching the failing point's variant —
+   `.pageError` for a page, `.layoutError` for a layout, `.componentError` for a
+   component (root/base `.error` seeds all three at once);
+3. otherwise the built-in default error component.
+
+So a `.pageError` set on a layout still catches a _page_ below it, and a page's
+own `.error` overrides that inherited `.pageError`.
+
+> **GOTCHA:** these boundaries catch errors carried in **resolved state** — a
+> thrown/returned error from a loader, `.ctx`, `.with`, or a related query. They
+> are **not** React error boundaries: an error thrown _while rendering_ the page
+> component or its `.mapper` is a plain React render error and is **not** routed
+> to `.error`. Surface such failures from a loader/`.with` (or your own
+> `<ErrorBoundary>`), not from the render body.
 
 [`.with`](with) is the other path — returning (not throwing) an `Error` from a
 `.with` renders the error component too, and that's how you build an auth gate
@@ -292,8 +333,6 @@ Mirror that in your own component: gate the stack on `!env.mode.is.production`
 branches on `error.code` / `error.status` for the user-facing copy and shows the
 stack only off-production, inside `<ClientOnly>`.
 
-<!-- TODO(med): pin down which boundary catches a given throw — layout vs page vs component error component, and whether a component error bubbles to the page error. Precedence of the error boundaries is not yet confirmed against a test. -->
-
 ## Typed error in `query.error` and `.on('error')`
 
 Because the class threads through the chain, `query.error` is your class, never
@@ -324,9 +363,9 @@ export const root = Point0.lets
 The callback envelope is `{ side, name, data, error, meta }`. Use `error` and
 `meta` for logs — `meta` is the slim, already-serialized projection (points
 become ids, requests become `{ method, path }`, errors serialized). Don't log
-`data`: it's the raw payload and not always safe to serialize. Subscribe per side
-with `.serverOn` / `.clientOn` (server-only events like `engineFetchError` are
-visible only inside `.serverOn`). Full event surface on [Events](events).
+`data`: it's the raw payload and not always safe to serialize. Subscribe per
+side with `.serverOn` / `.clientOn` (server-only events like `engineFetchError`
+are visible only inside `.serverOn`). Full event surface on [Events](events).
 
 ## Redirect as an error
 
@@ -382,8 +421,8 @@ throw new AppError('Only the author can edit', { code: 'FORBIDDEN' }) // => 403
 ```
 
 The `status` drives the HTTP response and the error component's `setStatus`; the
-`code` is what your error component branches on. Internally an unmatched route is
-just `new AppError('Not Found', { status: 404, code: 'POINT0_NOT_FOUND' })` —
+`code` is what your error component branches on. Internally an unmatched route
+is just `new AppError('Not Found', { status: 404, code: 'POINT0_NOT_FOUND' })` —
 same mechanism. Point0 exposes its own codes through `POINT0_ERROR_CODES_MAP`
 (`.NOT_FOUND`, `.REDIRECT`, …) for matching framework errors; you can treat
 `POINT0_NOT_FOUND` as expected noise to keep scanner 404s out of your error
@@ -392,41 +431,42 @@ reporter.
 ## Security
 
 The browser bundle is public — anyone can read it. Server-only code (loader
-bodies, secrets, DB calls) is stripped from it at compile time, so `meta` and the
-private projection never ship to the browser unless your serializer explicitly
-marks a property public. (The first page load is still server-rendered; what's
-stripped is the _server-only code_, not the rendered HTML.) Two rules that follow:
+bodies, secrets, DB calls) is stripped from it at compile time, so `meta` and
+the private projection never ship to the browser unless your serializer
+explicitly marks a property public. (The first page load is still
+server-rendered; what's stripped is the _server-only code_, not the rendered
+HTML.) Two rules that follow:
 
 - **Keep sensitive context in `meta`, not `message`.** `message` and `code` are
-  public; `meta`, `status`, and the stack are private and only appear in logs and
-  development.
+  public; `meta`, `status`, and the stack are private and only appear in logs
+  and development.
 - **Gate auth in [`.with`](with), not [`.ctx`](ctx).** `.ctx` runs only when a
   point has a loader, so a loader-less page's `.ctx` never executes and can't
-  protect anything. A `.with` that returns an `AppError` (or a `redirect`) runs at
-  render and always fires — see [`.with`](with).
+  protect anything. A `.with` that returns an `AppError` (or a `redirect`) runs
+  at render and always fires — see [`.with`](with).
 
 ## Reference
 
 ### `ErrorPoint0` / `AppError` fields
 
-| Field      | Type                                       | Notes                                                     |
-| ---------- | ------------------------------------------ | --------------------------------------------------------- |
-| `message`  | `string`                                   | empty → `'Unknown error'`. Public.                        |
-| `status`   | `number?`                                  | drives the HTTP/SSR status. Private. `0` is not set.      |
-| `code`     | `string?`                                  | stable code you branch on. Public.                        |
-| `redirect` | `RedirectTask?`                            | carries a redirect; serialized into both projections.     |
-| `meta`     | `Record<string, unknown>?`                 | log/dev context. Private. Must be JSON-serializable.      |
-| `response` | `Response?`                                | when set, emitted verbatim as the response (else built from `status`). |
-| `headers`  | `Record<string, string \| undefined>?`     | when set, merged into the response headers via effects.   |
-| `cause`    | `unknown`                                  | standard `Error` cause; included in `serializePrivate`.   |
+| Field      | Type                                   | Notes                                                                  |
+| ---------- | -------------------------------------- | ---------------------------------------------------------------------- |
+| `message`  | `string`                               | empty → `'Unknown error'`. Public.                                     |
+| `status`   | `number?`                              | drives the HTTP/SSR status. Private. `0` is not set.                   |
+| `code`     | `string?`                              | stable code you branch on. Public.                                     |
+| `redirect` | `RedirectTask?`                        | carries a redirect; serialized into both projections.                  |
+| `meta`     | `Record<string, unknown>?`             | log/dev context. Private. Must be JSON-serializable.                   |
+| `response` | `Response?`                            | when set, emitted verbatim as the response (else built from `status`). |
+| `headers`  | `Record<string, string \| undefined>?` | when set, merged into the response headers via effects.                |
+| `cause`    | `unknown`                              | standard `Error` cause; included in `serializePrivate`.                |
 
 ### Static methods (the `.errorClass` contract)
 
-| Static                     | Returns                                        | Use                                              |
-| -------------------------- | ---------------------------------------------- | ------------------------------------------------ |
-| `from(error: unknown)`     | an instance                                    | coerce anything thrown into the class            |
-| `serializePublic(error)`   | `{ name, message, code?, redirect? }`          | untrusted client / production wire — no stack    |
-| `serializePrivate(error)`  | `{ name, message, code?, status?, meta?, stack?, redirect?, cause? }` | logs / development — full view |
+| Static                    | Returns                                                               | Use                                           |
+| ------------------------- | --------------------------------------------------------------------- | --------------------------------------------- |
+| `from(error: unknown)`    | an instance                                                           | coerce anything thrown into the class         |
+| `serializePublic(error)`  | `{ name, message, code?, redirect? }`                                 | untrusted client / production wire — no stack |
+| `serializePrivate(error)` | `{ name, message, code?, status?, meta?, stack?, redirect?, cause? }` | logs / development — full view                |
 
 Instance methods `error.serializePublic()` / `error.serializePrivate()` delegate
 to the statics.
@@ -434,23 +474,22 @@ to the statics.
 ### `from()` coercion notes
 
 - An `ErrorPoint0` / `AppError` is returned unchanged.
-- A plain `new Error(...)` (constructor exactly `Error`) is **not** nested as its
-  own `cause` — only a subclass instance becomes the `cause`.
-- `message`, `status`, `code`, `stack`, and `meta` are lifted off the source when
-  present; a `RedirectTask` source reconstructs `redirect` and defaults the
+- A plain `new Error(...)` (constructor exactly `Error`) is **not** nested as
+  its own `cause` — only a subclass instance becomes the `cause`.
+- `message`, `status`, `code`, `stack`, and `meta` are lifted off the source
+  when present; a `RedirectTask` source reconstructs `redirect` and defaults the
   message to `'Page Redirect'`.
 
 ### Default statuses
 
-| Situation                          | Status                                       |
-| ---------------------------------- | -------------------------------------------- |
-| JSON error response                | `error.status ?? 500`                        |
-| unmatched route                    | `404` (`code: POINT0_NOT_FOUND`)             |
-| redirect                           | `302` (clamped to 301/302/303/307/308)       |
+| Situation           | Status                                 |
+| ------------------- | -------------------------------------- |
+| JSON error response | `error.status ?? 500`                  |
+| unmatched route     | `404` (`code: POINT0_NOT_FOUND`)       |
+| redirect            | `302` (clamped to 301/302/303/307/308) |
 
 ### Env gate
 
-Audience selection reads `env.mode.is.production` (from
-[`env`](env), derived from `NODE_ENV`). `production` → `serializePublic`;
-otherwise → `serializePrivate`. Logs ignore the gate and always use
-`serializePrivate`.
+Audience selection reads `env.mode.is.production` (from [`env`](env), derived
+from `NODE_ENV`). `production` → `serializePublic`; otherwise →
+`serializePrivate`. Logs ignore the gate and always use `serializePrivate`.

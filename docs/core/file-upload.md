@@ -1,7 +1,9 @@
 ---
 index: 1000
 title: File upload
-description: A File in the input is sent as multipart/form-data and the loader receives a real File — no upload API.
+description:
+  A File in the input is sent as multipart/form-data and the loader receives a
+  real File — no upload API.
 ---
 
 A file is just part of a point's input. Declare a schema field as a file
@@ -15,10 +17,12 @@ import * as z from 'zod'
 
 export const ideaCreateMutation = root.lets
   .mutation()
-  .input(z.object({
-    title: z.string().min(1),
-    image: z.file().optional(), // a file field, just like any other input field
-  }))
+  .input(
+    z.object({
+      title: z.string().min(1),
+      image: z.file().optional(), // a file field, just like any other input field
+    }),
+  )
   .loader(async ({ input }) => {
     // on the server, input.image is a real File (a Blob subclass)
     const imageBase64 = input.image
@@ -54,11 +58,11 @@ A file field is any schema field that holds a `File` or a `Blob`. How you
 declare it depends on your validation library:
 
 ```tsx
-z.file()                       // zod
-z.instanceof(File)             // zod, also detected
-v.file()                       // valibot
+z.file() // zod
+z.instanceof(File) // zod, also detected
+v.file() // valibot
 Type.String({ format: 'binary' }) // typebox
-type({ file: 'File' })         // arktype
+type({ file: 'File' }) // arktype
 ```
 
 The schema only validates the value and feeds [OpenAPI](openapi) (see below). It
@@ -73,7 +77,7 @@ input contains any `File` or `Blob` anywhere, the whole body is sent as
 
 ```tsx
 mutation.mutate({ title: 'x', image: someFile }) // → multipart/form-data
-mutation.mutate({ title: 'x' })                  // → application/json (no file present)
+mutation.mutate({ title: 'x' }) // → application/json (no file present)
 ```
 
 A few consequences worth knowing:
@@ -91,7 +95,8 @@ A few consequences worth knowing:
   [`@1gr14/flat`](https://1gr14.dev/flat) before sending, and the server
   unflattens it back into the original shape for the loader. The `File`/`Blob`
   parts are appended raw; every other field is `JSON.stringify`'d into its form
-  part. Nothing about this is your concern — it folds and unfolds under the hood.
+  part. Nothing about this is your concern — it folds and unfolds under the
+  hood.
 - **The loader gets a genuine `File`.** Its `name`, `type`, `size`, and
   `arrayBuffer()` all survive the round-trip — proven by
   `packages/engine/tests/mutation.test.tsx` ("with file loader").
@@ -139,8 +144,8 @@ export const uploadAction = root.lets
 ```
 
 An action can also take a ready-made `FormData` as its body directly, bypassing
-the schema-driven assembly — useful when you already hold a `FormData` (e.g. from
-a `<form>`):
+the schema-driven assembly — useful when you already hold a `FormData` (e.g.
+from a `<form>`):
 
 ```tsx
 const fd = new FormData()
@@ -148,7 +153,9 @@ fd.append('file', file)
 await uploadAction.fetch({ body: fd }) // passed through as-is
 ```
 
-<!-- TODO(med): a runtime action-with-File round-trip is NOT covered by a test — only the OpenAPI output for an action file body is (packages/openapi/tests/index.test.tsx). The body shape and FormData bypass are confirmed in packages/core/src/point0.ts, but verify the executor path before relying on it in production. -->
+The action body shape and the `FormData` pass-through run through the same
+encoder and decoder as a mutation file — the encoder picks them up from
+`input.body` and the server reads them back from the request body.
 
 ## Reading the file in the loader
 
@@ -210,10 +217,10 @@ new FormData()       // '[FormData]'
 
 The loader body is cut from the client bundle — its body and the imports it uses
 are removed, so file handling, validation, and storage (and everything they pull
-in) never ship to the browser. As with any
-endpoint, gate access with [`.with`](with) (for a render gate) or in the loader
-via `.ctx`/`.use` (for a write gate) — see [Mutation](mutation) authorization.
-Don't trust the client-declared file: validate `type` / `size` in the loader.
+in) never ship to the browser. As with any endpoint, gate access with
+[`.with`](with) (for a render gate) or in the loader via `.ctx`/`.use` (for a
+write gate) — see [Mutation](mutation) authorization. Don't trust the
+client-declared file: validate `type` / `size` in the loader.
 
 ## Reference
 
@@ -222,10 +229,10 @@ Don't trust the client-declared file: validate `type` / `size` in the loader.
 There is **no** symbol named `isFile`. Two distinct mechanisms exist, at two
 different levels:
 
-| Helper | Level | Used by | What it does |
-| --- | --- | --- | --- |
-| `isContainsBinary(value)` | runtime value | the request encoder | returns `true` if a `File`/`Blob` sits anywhere in the value (recursive); decides multipart vs JSON |
-| `SchemaHelper.hasFileOrBlob(schema)` | schema | [OpenAPI](openapi) only | per-library walk of the schema to detect a file field |
+| Helper                               | Level         | Used by                 | What it does                                                                                        |
+| ------------------------------------ | ------------- | ----------------------- | --------------------------------------------------------------------------------------------------- |
+| `isContainsBinary(value)`            | runtime value | the request encoder     | returns `true` if a `File`/`Blob` sits anywhere in the value (recursive); decides multipart vs JSON |
+| `SchemaHelper.hasFileOrBlob(schema)` | schema        | [OpenAPI](openapi) only | per-library walk of the schema to detect a file field                                               |
 
 Both are exported from `@point0/core` for reference, but you rarely call either
 directly — they run inside the framework.
@@ -233,23 +240,23 @@ directly — they run inside the framework.
 Per-library `hasFileOrBlob` detection (all confirmed in
 `packages/core/tests/schema.test.ts`):
 
-| Library | Detected as a file |
-| --- | --- |
-| zod | `def.type` is `'file'` / `'blob'`, or a `custom` check that passes a `File`/`Blob` probe (so `z.instanceof(File)` is caught) |
-| valibot | type `'file'` / `'blob'` |
-| typebox | `type: 'string', format: 'binary'` |
-| arktype | a `'File'` / `'Blob'` node in the schema JSON |
-| yup | a `/(file\|blob)/i`-named test that passes a `File`/`Blob` probe |
-| superstruct | type `'file'` / `'blob'` |
+| Library     | Detected as a file                                                                                                           |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| zod         | `def.type` is `'file'` / `'blob'`, or a `custom` check that passes a `File`/`Blob` probe (so `z.instanceof(File)` is caught) |
+| valibot     | type `'file'` / `'blob'`                                                                                                     |
+| typebox     | `type: 'string', format: 'binary'`                                                                                           |
+| arktype     | a `'File'` / `'Blob'` node in the schema JSON                                                                                |
+| yup         | a `/(file\|blob)/i`-named test that passes a `File`/`Blob` probe                                                             |
+| superstruct | type `'file'` / `'blob'`                                                                                                     |
 
 ### Encoding rules
 
-| Condition | Body |
-| --- | --- |
+| Condition                        | Body                                            |
+| -------------------------------- | ----------------------------------------------- |
 | input contains any `File`/`Blob` | `multipart/form-data`, no manual `Content-Type` |
-| input has no binary | `application/json` |
-| action body is a `FormData` | passed through as-is |
-| `undefined` field | skipped, not appended |
+| input has no binary              | `application/json`                              |
+| action body is a `FormData`      | passed through as-is                            |
+| `undefined` field                | skipped, not appended                           |
 
 The `transform` flag ([transformer](transformer), default on) round-trips
 non-file form fields through JSON on both ends; with `transform: false` scalar
@@ -261,9 +268,28 @@ fields stay as strings. `File`/`Blob` parts are unaffected either way.
   falls back to `{}` and your schema validation produces the user-facing error.
 - **Optional file left out.** An `undefined` file simply isn't sent; with no
   other binary present the request is plain JSON.
+- **Nested and array files round-trip.** A file deep in the input
+  (`{ profile: { avatar: File } }`, `{ files: [File, File] }`) is detected and
+  encoded: the recursive detector (`isContainsBinary`) walks objects and arrays,
+  and the same bracket-notation flatten/unflatten that carries every other field
+  carries these too. The deep shape is reassembled for the loader by the
+  unflatten step.
 
-<!-- TODO(med): Point0 enforces no file size / MIME / count limit of its own — any limit comes from your schema refinements or the runtime's formData() parser. NOT FOUND in framework code; document the recommended pattern once pinned down. -->
+## Size, type, and count limits
 
-<!-- TODO(low): nested-file and array-of-files ({ files: File[] }, { profile: { avatar: File } }) round-trips are inferred from the flat bracket-notation behavior but have no dedicated Point0 test — verify before documenting as supported. -->
+Point0 enforces no file size, MIME type, or file count limit of its own. The
+framework just moves the bytes; what you accept is up to you. Limits come from
+three places, all of them yours to set:
 
-<!-- TODO(low): streaming / large-file handling, and File behavior on React Native (examples/expo), are NOT FOUND in code or tests. -->
+- **Your schema** — refine the file field to reject what you don't want
+  (`z.file().max(5_000_000)`, a `.refine(f => f.type === 'image/png')`, an array
+  with `.max(n)` for a count cap). Schema validation runs on the server, so the
+  check holds even against a hand-crafted request.
+- **Your loader** — re-check `file.size` / `file.type` in the loader for
+  anything the schema can't express, then store or reject.
+- **The runtime** — the body is parsed by the runtime's `formData()` (Bun's, or
+  the platform's), so whatever request-body ceiling that runtime imposes applies
+  before your loader ever sees the file.
+
+Always validate on the server; never trust a client-declared `name`, `type`, or
+`size`.

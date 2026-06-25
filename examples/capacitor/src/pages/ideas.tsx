@@ -16,7 +16,7 @@ export default root
 
     return (
       <div>
-        <h1>Ideas34</h1>
+        <h1>Ideas</h1>
         <p>Create ideas with Prisma (SQLite).</p>
 
         <div style={{ display: 'grid', gap: 8, maxWidth: 520, marginBottom: 24 }}>

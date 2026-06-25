@@ -1,13 +1,15 @@
 ---
 index: 600
 title: .with
-description: One method to inject queries, manage loading and error, pass props, and wrap the render — the builder's swiss-army knife.
+description:
+  One method to inject queries, manage loading and error, pass props, and wrap
+  the render — the builder's swiss-army knife.
 ---
 
-`.with` is the point builder's real swiss-army knife. With it you inject a query,
-drive the loading and error states by hand, pass computed props down the chain,
-or wrap the render. It's available on every [mountable](mountable) point —
-[root](root), [base](base), [plugin](plugin), [page](page), [layout](layout),
+`.with` is the point builder's real swiss-army knife. With it you inject a
+query, drive the loading and error states by hand, pass computed props down the
+chain, or wrap the render. It's available on every [mountable](mountable) point
+— [root](root), [base](base), [plugin](plugin), [page](page), [layout](layout),
 [component](component), and [provider](provider) — but **not** on a
 [mutation](mutation) or a standalone [query](query).
 
@@ -21,19 +23,20 @@ export const ideaPage = root.lets
   .page(({ data: { idea } }) => <h1>{idea.title}</h1>)
 ```
 
-The page renders only after the injected query loads — the component gets `data`,
-never a loading branch. You can stick more than one query into a single point;
-they run in parallel by default, and you see the loading state until all of them
-have loaded. As for the error, you see the first one that comes up. When more than
-one query is used and you want to bring the data into a normal shape before the
-render, reach for [`.mapper`](mapper).
+The page renders only after the injected query loads — the component gets
+`data`, never a loading branch. You can stick more than one query into a single
+point; they run in parallel by default, and you see the loading state until all
+of them have loaded. As for the error, you see the first one that comes up. When
+more than one query is used and you want to bring the data into a normal shape
+before the render, reach for [`.mapper`](mapper).
 
 **Strip category: server-ssr-and-client.** Cut from the **server** bundle when
 `ssr: false` (or after a [`.clientOnly()`](ssr) earlier in the chain) — its body
-and the imports it uses are then removed from the server build; kept in the client
-build always, and in the server build only when SSR is on. (It runs at render: in
-the browser always, on the server only under SSR.) The full mechanics are in
-[When the `.with` body is stripped](#when-the-with-body-is-stripped) below.
+and the imports it uses are then removed from the server build; kept in the
+client build always, and in the server build only when SSR is on. (It runs at
+render: in the browser always, on the server only under SSR.) The full mechanics
+are in [When the `.with` body is stripped](#when-the-with-body-is-stripped)
+below.
 
 But there's much more to `.with`, and that's what this page is about.
 
@@ -165,11 +168,13 @@ export const strangePage = root.lets
     // return undefined — or just nothing — to render the following methods
   })
   // we won't reach the render until all .with() calls have resolved
-  .page(() => <h1>I loaded something, I don't know what, but I pulled it off</h1>)
+  .page(() => (
+    <h1>I loaded something, I don't know what, but I pulled it off</h1>
+  ))
 ```
 
-There's a shorter notation I like more — the reserved word `'loading'` is the same
-as `<LoadingComponent />`, and any `instanceof Error` is the same as
+There's a shorter notation I like more — the reserved word `'loading'` is the
+same as `<LoadingComponent />`, and any `instanceof Error` is the same as
 `<ErrorComponent error={...} />`:
 
 ```tsx
@@ -192,21 +197,23 @@ export const strangePage = root.lets
 
     // return nothing to render the following methods
   })
-  .page(() => <h1>I loaded something, I don't know what, but I pulled it off</h1>)
+  .page(() => (
+    <h1>I loaded something, I don't know what, but I pulled it off</h1>
+  ))
 ```
 
-An error returned this way can even carry an HTTP status, which is honored during
-the SSR render — `return new ErrorPoint0('Failed', { status: 500 })`. Returning any
-string other than `'loading'`, or an array from a plain function, is a type error:
-those shapes are reserved.
+An error returned this way can even carry an HTTP status, which is honored
+during the SSR render — `return new ErrorPoint0('Failed', { status: 500 })`.
+Returning any string other than `'loading'`, or an array from a plain function,
+is a type error: those shapes are reserved.
 
 ## `.with` as a props injector
 
 Suppose in one `.with` hook we got some computation result and want to use it in
-another `.with` hook, or on the page itself. Return a plain object and it becomes
-props, merged into `props` for every later method. The merge is a shallow spread
-(`{ ...prev, ...next }`), so a later `.with` can overwrite an earlier key — even
-change its type:
+another `.with` hook, or on the page itself. Return a plain object and it
+becomes props, merged into `props` for every later method. The merge is a
+shallow spread (`{ ...prev, ...next }`), so a later `.with` can overwrite an
+earlier key — even change its type:
 
 ```tsx
 export const strangePage = root.lets
@@ -234,8 +241,8 @@ export const strangePage = root.lets
 
 ## `.with` as a wrapper
 
-The function's argument also carries `children` — the rendered rest of the chain.
-Return them wrapped and you get a boundary around everything downstream:
+The function's argument also carries `children` — the rendered rest of the
+chain. Return them wrapped and you get a boundary around everything downstream:
 
 ```tsx
 export const ideaPage = root.lets
@@ -246,10 +253,10 @@ export const ideaPage = root.lets
   .page(() => <div id="page">Hello!</div>)
 ```
 
-This differs from returning a *self-contained* element: an element that doesn't
-include `children` **blocks** the chain — the rest never renders, and any queries
-it would have injected never run. Wrap with `children` to keep the chain; return a
-standalone element to stop it.
+This differs from returning a _self-contained_ element: an element that doesn't
+include `children` **blocks** the chain — the rest never renders, and any
+queries it would have injected never run. Wrap with `children` to keep the
+chain; return a standalone element to stop it.
 
 ## `.with` as an idea
 
@@ -289,9 +296,9 @@ export const ideaPage = root.lets
 ```
 
 All this manual handling of query states is verbose, so there's a `resolve`
-helper. It takes a query result; while the query is loading or erroring it returns
-the loading or error state, and on success it maps the data to props passed further
-down. The same example, shorter:
+helper. It takes a query result; while the query is loading or erroring it
+returns the loading or error state, and on success it maps the data to props
+passed further down. The same example, shorter:
 
 ```tsx
 export const ideaPage = root.lets
@@ -328,10 +335,10 @@ export const ideaPage = root.lets
   .page(/* ... */)
 ```
 
-`resolve` also helps when you want to call a query but **don't** want it to land in
-the `queries` array or in `data`. That's handy for the current user, requested in a
-previous point — you want it in `props`, while `data` stays free for the page's own
-data:
+`resolve` also helps when you want to call a query but **don't** want it to land
+in the `queries` array or in `data`. That's handy for the current user,
+requested in a previous point — you want it in `props`, while `data` stays free
+for the page's own data:
 
 ```tsx
 export const ideaPage = root.lets
@@ -354,64 +361,64 @@ export const ideaPage = root.lets
 
 The function form receives one object. Here's everything on it:
 
-| Key                                     | What                                                                              |
-| --------------------------------------- | --------------------------------------------------------------------------------- |
-| `status` / `loading` / `error` / `data` | the accumulated state so far                                                      |
-| `props`                                 | props contributed by earlier `.with` calls                                        |
-| `queries`                               | injected queries — **in an indeterminate state** here (may be loading or errored) |
-| `params` / `search` / `input`           | present when the matching schema exists                                           |
-| `location`                              | present on pages and layouts                                                      |
-| `resolve`                               | the [resolve helper](#resolve-forms)                                              |
-| `children`                              | the rendered remainder of the chain                                               |
+| Key                                     | What                                                                                |
+| --------------------------------------- | ----------------------------------------------------------------------------------- |
+| `status` / `loading` / `error` / `data` | the accumulated state so far                                                        |
+| `props`                                 | props contributed by earlier `.with` calls                                          |
+| `queries`                               | injected queries — **in an indeterminate state** here (may be loading or errored)   |
+| `params` / `search` / `input`           | present when the matching schema exists                                             |
+| `location`                              | present on pages and layouts                                                        |
+| `resolve`                               | the [resolve helper](#resolve-forms)                                                |
+| `children`                              | the rendered remainder of the chain                                                 |
 | `LoadingComponent` / `ErrorComponent`   | the components you set with [`.loading`](loading-error) / [`.error`](loading-error) |
 
-There is **no `ctx`** here — `ctx` is server-only and lives in `.ctx` and loaders.
-If you need a ctx value at render, merge it into props in a [plugin](plugin) first.
-(`.ctx` is server-only — cut from the client bundle: its body and the imports it
-uses are removed, so it never ships to the browser; that's the opposite category
-from `.with`.)
+There is **no `ctx`** here — `ctx` is server-only and lives in `.ctx` and
+loaders. If you need a ctx value at render, merge it into props in a
+[plugin](plugin) first. (`.ctx` is server-only — cut from the client bundle: its
+body and the imports it uses are removed, so it never ships to the browser;
+that's the opposite category from `.with`.)
 
 ### What you can return
 
-| Return                                        | Effect                                              |
-| --------------------------------------------- | --------------------------------------------------- |
-| a query result, or an array of them           | appended to `queries` (`data` = the first)          |
-| `'loading'`                                   | render the loading component                        |
-| an `Error`                                    | render the error component (status honored in SSR)  |
-| a `RedirectTask`, or an `Error` with `.redirect` | redirect                                         |
-| a React element (with `children`)             | wrap the rest of the chain                          |
-| a React element (standalone)                  | render it and **stop** the chain                    |
-| a plain object                                | shallow-merge into `props`                          |
-| `undefined` / nothing                         | proceed to the next method                          |
-| a non-`'loading'` string, or an array from a plain fn | **type error** — those shapes are reserved  |
+| Return                                                | Effect                                             |
+| ----------------------------------------------------- | -------------------------------------------------- |
+| a query result, or an array of them                   | appended to `queries` (`data` = the first)         |
+| `'loading'`                                           | render the loading component                       |
+| an `Error`                                            | render the error component (status honored in SSR) |
+| a `RedirectTask`, or an `Error` with `.redirect`      | redirect                                           |
+| a React element (with `children`)                     | wrap the rest of the chain                         |
+| a React element (standalone)                          | render it and **stop** the chain                   |
+| a plain object                                        | shallow-merge into `props`                         |
+| `undefined` / nothing                                 | proceed to the next method                         |
+| a non-`'loading'` string, or an array from a plain fn | **type error** — those shapes are reserved         |
 
 ### `resolve` forms
 
 ```tsx
-resolve(query)                         // wait, contribute nothing to props
-resolve(query, true)                   // wait, then spread the query's data into props
-resolve(query, ({ data }) => props)    // wait, then map success to props
+resolve(query) // wait, contribute nothing to props
+resolve(query, true) // wait, then spread the query's data into props
+resolve(query, ({ data }) => props) // wait, then map success to props
 ```
 
 The key difference from injecting a query with `.with(query, …)`: a query you
-`resolve` does **not** land in `queries` or `data` — only the props you derive from
-it survive. The fourth-argument form (above) is the opposite: it injects the query
-**and** maps extra props alongside it.
+`resolve` does **not** land in `queries` or `data` — only the props you derive
+from it survive. The fourth-argument form (above) is the opposite: it injects
+the query **and** maps extra props alongside it.
 
 ## When the `.with` body is stripped
 
-`.with` is **server-ssr-and-client** render code, so the rule is symmetric to other
-render methods (`.page`, `.layout`, `.component`, `.provider`, `.loading`, `.error`,
-`.wrapper`, `.mapper`, `.head`):
+`.with` is **server-ssr-and-client** render code, so the rule is symmetric to
+other render methods (`.page`, `.layout`, `.component`, `.provider`, `.loading`,
+`.error`, `.wrapper`, `.mapper`, `.head`):
 
-- From the **server** build, the `.with` body — and the imports it pulls in — are
-  **cut** when `ssr: false`, or after a [`.clientOnly()`](ssr) earlier in the chain
-  (which makes the rest of the point client-only). Nothing from that argument lands
-  in the server bundle then. It's kept in the server build only when SSR is on, so
-  the point can render server-side.
+- From the **server** build, the `.with` body — and the imports it pulls in —
+  are **cut** when `ssr: false`, or after a [`.clientOnly()`](ssr) earlier in
+  the chain (which makes the rest of the point client-only). Nothing from that
+  argument lands in the server bundle then. It's kept in the server build only
+  when SSR is on, so the point can render server-side.
 - From the **client** build, nothing is cut — `.with` always ships and runs at
-  render in the browser. (Server-only methods around it, `.ctx`, server `.loader`, …,
-  are the ones cut from the client bundle; `.with` itself is not.)
+  render in the browser. (Server-only methods around it, `.ctx`, server
+  `.loader`, …, are the ones cut from the client bundle; `.with` itself is not.)
 
 That's also why `.with` runs "at render, on the client and — under SSR — on the
 server too": under SSR the first paint is server-rendered, and after that, page
@@ -420,26 +427,29 @@ navigations are client-side (SPA-style), running `.with` in the browser.
 ## Security: gate access in `.with`, not `.ctx`
 
 A `.ctx` gate runs **only when the point has a loader**, so a loader-less page
-wouldn't run it at all. `.with`, by contrast, runs at render on every point. For an
-authorization gate that always fires, return an `Error` from `.with`:
+wouldn't run it at all. `.with`, by contrast, runs at render on every point. For
+an authorization gate that always fires, return an `Error` from `.with`:
 
 ```tsx
 export const authorizedPlugin = Point0.lets
   .plugin()
   .with(({ props: { me } }) => {
     if (!me) {
-      return new ErrorPoint0('Only for authorized users', { code: 'UNAUTHORIZED' })
+      return new ErrorPoint0('Only for authorized users', {
+        code: 'UNAUTHORIZED',
+      })
     }
     return { me }
   })
   .plugin()
 ```
 
-`ErrorPoint0` is the framework's default error class; you can swap it for your own
-class of the same-or-wider shape via `.errorClass(...)` — see
-[error handling](error-handling). A common production shape combines both gates: a
-`.ctx` that resolves the user for server loaders and a `.with` that resolves it for
-the render — see [Plugin](plugin).
+`ErrorPoint0` is the framework's default error class; you can swap it for your
+own class of the same-or-wider shape via `.errorClass(...)` — see
+[error handling](error-handling). A common production shape combines both gates:
+a `.ctx` that resolves the user for server loaders and a `.with` that resolves
+it for the render — see [Plugin](plugin).
 
-<!-- TODO(low): once the error-handling page lands, cross-link how `Error` returns
-are normalized through the point's error class. -->
+An `Error` you return (not throw) from `.with` is normalized through that error
+class and rendered by the error component, the same as a thrown one — see
+[How a thrown error reaches the error component](error-handling#how-a-thrown-error-reaches-the-error-component).

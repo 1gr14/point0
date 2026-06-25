@@ -22,7 +22,6 @@ export const engine = Engine.create({
     routes: async () => await import('./lib/routes'),
     indexHtml: './index.html',
     port: 3001,
-    env: { vars: ['SOURCE_BASE_URL'] },
     outdir: '../dist/client',
     publicdir: {
       source: [

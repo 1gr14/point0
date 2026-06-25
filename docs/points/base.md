@@ -1,11 +1,13 @@
 ---
 index: 1100
 title: Base
-description: A base holds shared settings for a subset of points — a route prefix, defaults, gating — that its children inherit.
+description:
+  A base holds shared settings for a subset of points — a route prefix,
+  defaults, gating — that its children inherit.
 ---
 
 A base is a point that holds shared settings — a route prefix, query defaults,
-loading and error UI, a [plugin](plugin), injected queries — for a *subset* of
+loading and error UI, a [plugin](plugin), injected queries — for a _subset_ of
 your points. You build other points off it, and they inherit everything it set.
 A base is authoring-time only: it has no route and no endpoint of its own, and
 it never reaches the server or client points files.
@@ -84,15 +86,14 @@ export const v2Base = apiBase.lets.base().basePath('/v2').base()
 // a page off v2Base at '/users' → /api/v2/users
 ```
 
-A base is **transparent to the layout chain**: it can sit between two layouts and
-add a route prefix, but it never shows up in a page's `layouts` array — it isn't
-a layout in the render tree. `.basePath` is also available on the
+A base is **transparent to the layout chain**: it can sit between two layouts
+and add a route prefix, but it never shows up in a page's `layouts` array — it
+isn't a layout in the render tree. `.basePath` is also available on the
 [root](root), but a base is where it earns its keep, since the whole point of a
 base is to share that prefix.
 
 `.basePath` is **server-and-client** — not cut from either bundle, kept in both
 (isomorphic), since the route prefix is needed for routing on both sides.
-<!-- TODO(med): R3's four strip categories don't enumerate `.basePath`; it's not in the compiler's client/server strip lists (point.ts shakeMethodsForClient/Server), so it's effectively kept on both — confirm there's no separate route-table strip path before treating server-and-client as authoritative. -->
 
 ## Shared defaults
 
@@ -108,8 +109,8 @@ export const base = root.lets
   .base()
 ```
 
-Strip categories here: `.queryOptions` (and the per-type `*QueryOptions`
-family) is **server-and-client** — not cut from either bundle, kept in both
+Strip categories here: `.queryOptions` (and the per-type `*QueryOptions` family)
+is **server-and-client** — not cut from either bundle, kept in both
 (isomorphic). `.loading` and `.error` (and their `.page*` / `.layout*` /
 `.component*` variants) are **server-ssr-and-client** — cut from the SERVER
 bundle when `ssr:false` (or after a `.clientOnly()` earlier in the chain): their
@@ -128,10 +129,10 @@ export const specialPage = base.lets
 Two details worth knowing:
 
 - **`.loading` / `.error` on a base cover every child kind.** On a base,
-  `.loading(c)` sets the page, layout, *and* component loading default at once
-  (same for `.error`). Use the variant-specific setters —
-  `.pageLoading` / `.layoutLoading` / `.componentLoading`,
-  `.pageError` / `.layoutError` / `.componentError` — to target just one.
+  `.loading(c)` sets the page, layout, _and_ component loading default at once
+  (same for `.error`). Use the variant-specific setters — `.pageLoading` /
+  `.layoutLoading` / `.componentLoading`, `.pageError` / `.layoutError` /
+  `.componentError` — to target just one.
 - **`queryOptions` merges, it doesn't replace.** A base's `.queryOptions(...)`
   stacks with whatever the child sets, rather than overwriting it. Full
   precedence (root/base → type default → the query's own options → call site) is
@@ -182,10 +183,11 @@ below is **server-ssr-and-client** — cut from the SERVER bundle when `ssr:fals
 kept in the client build always, and in the server build only under SSR.
 
 But mind the security rule that applies everywhere in Point0: **`.ctx` runs only
-when the point has a loader.** A loader-less page makes no server request, so its
-`.ctx` never executes and can't protect anything. For an authorization gate that
-always fires, gate in [`.with`](with) — returning an error (`ErrorPoint0`, or
-your own [error class](error-handling)) short-circuits to the error component:
+when the point has a loader.** A loader-less page makes no server request, so
+its `.ctx` never executes and can't protect anything. For an authorization gate
+that always fires, gate in [`.with`](with) — returning an error (`ErrorPoint0`,
+or your own [error class](error-handling)) short-circuits to the error
+component:
 
 ```tsx
 import { AppError } from '@/lib/error' // your own error class
@@ -221,11 +223,11 @@ export const adminUserQuery = adminBase.lets.query()./* ... */.query()
 export const adminUserQuery = root.lets.query().use(adminOnlyPlugin)./* ... */.query()
 ```
 
-A plugin drops a bundle of methods into any point's chain at any position; a base
-requires every consumer to build *off* it. So:
+A plugin drops a bundle of methods into any point's chain at any position; a
+base requires every consumer to build _off_ it. So:
 
-- **Use a plugin** for shared `.ctx` / `.with` / `.loading` / `.error` / gating —
-  it composes anywhere, and a point can use several.
+- **Use a plugin** for shared `.ctx` / `.with` / `.loading` / `.error` / gating
+  — it composes anywhere, and a point can use several.
 - **Use a base** when you specifically want a shared **route prefix**
   (`.basePath`) plus a single parent to grow a section from. A plugin has no
   `.basePath` — it can't add a route prefix — so this is the one thing a base
@@ -236,15 +238,18 @@ base) for the behavior — the start0 `adminBase` above.
 
 ## Inheritance, briefly
 
-Children inherit a base's settings through two mechanisms, which together explain
-why "everything on the base shows up on the child":
+Children inherit a base's settings through two mechanisms, which together
+explain why "everything on the base shows up on the child":
 
 - **The child continues the base's chain.** Building `base.lets.<type>()`
-  literally continues from the base, carrying its middlewares, plugins (`.use`),
-  wrappers, injected queries (`.with`), context (`.ctx`), and any input schemas.
-- **The base's broadcast defaults are re-applied** to each child: `basePath`, all
-  the `*QueryOptions`, `fetchOptions`, loading/error components, scroll and
-  prefetch settings.
+  continues from the base, carrying its middlewares, plugins (`.use`), wrappers,
+  injected queries (`.with`), context (`.ctx`), input schemas, and its `.head`.
+  `.onPrefetchPage` rides along too and runs during the prefetch of any page
+  built under the base.
+- **The base's broadcast defaults are re-applied** to each child: `basePath`,
+  all the `*QueryOptions`, `fetchOptions`, loading/error components, and the
+  scroll (`.scrollPosition` / `.scrollRestore`) and prefetch (`.prefetchPage*`)
+  settings.
 
 You don't manage either by hand — set it on the base, read it on the child.
 
@@ -261,7 +266,10 @@ table:
   base is a **type error**:
 
   ```tsx
-  const baseWithSearch = root.lets.base().search(z.object({ id: z.string() })).base()
+  const baseWithSearch = root.lets
+    .base()
+    .search(z.object({ id: z.string() }))
+    .base()
 
   baseWithSearch.lets
     .query()
@@ -281,7 +289,11 @@ table:
 import { root } from '@/lib/root'
 import { adminOnlyPlugin } from '@/modules/auth/plugins'
 
-export const adminBase = root.lets.base().basePath('/admin').use(adminOnlyPlugin).base()
+export const adminBase = root.lets
+  .base()
+  .basePath('/admin')
+  .use(adminOnlyPlugin)
+  .base()
 ```
 
 Children pick up the `/admin` prefix and the gate for free — a paged query, a
@@ -305,10 +317,11 @@ server-only / client-only / server-and-client / server-ssr-and-client).
 Routing & defaults: `.basePath`, [`.queryOptions`](query) and the per-type
 `*QueryOptions` / `.mutationOptions` / `.fetchOptions` are **server-and-client**
 (not cut from either bundle, kept in both). `.scrollPosition`, `.scrollRestore`,
-`.onPrefetchPage`, `.prefetchPage*` are **client-only** — cut from the server
-bundle: body and the imports they use removed. `.scrollPosition` /
-`.scrollRestore` are documented in full on the [navigation](navigation) page.
-<!-- TODO(high): onPrefetchPage is stripped from the server bundle (point.ts ~1056) but should also run during server prefetch — stop stripping it. -->
+`.prefetchPageOnNavigate` / `.prefetchPageOnLinkHover` / `.prefetchPagePolicy`
+are **client-only** — cut from the server bundle: body and the imports they use
+removed. `.onPrefetchPage` is **server-and-client**; it runs on the client and
+during server-side prefetch. `.scrollPosition` / `.scrollRestore` are documented
+in full on the [navigation](navigation) page.
 
 UI: [`.loading`](loading-error) (and `.pageLoading` / `.layoutLoading` /
 `.componentLoading`), [`.error`](loading-error) (and `.pageError` /
@@ -323,9 +336,9 @@ use are removed, so they never ship to the browser. `.search` is **server-only**
 only when it sits on an action; on a base (a non-action mountable) it's
 **server-and-client** — not cut from either bundle, inheriting isomorphically.
 [`.with`](with) and [`.mapper`](mapper) are **server-ssr-and-client** — cut from
-the SERVER bundle when `ssr:false` (or after a `.clientOnly()`): body and imports
-removed from the server build; kept in the client build always, server build
-only under SSR.
+the SERVER bundle when `ssr:false` (or after a `.clientOnly()`): body and
+imports removed from the server build; kept in the client build always, server
+build only under SSR.
 
 Shared: [`.use`](plugin) (plugins) is **server-and-client** — not cut from
 either bundle, kept in both (the plugin carries its own per-method strip
@@ -341,7 +354,3 @@ client build always and the server build only under SSR. `.description` and
 
 Not available on a base: `.loader` / `.clientLoader`, `.params`, and `.query` /
 `.mutation` finalizers (a base is not itself a query or mutation).
-
-<!-- TODO(low): `.head`, `.scrollPosition`, `.scrollRestore`, `.onPrefetchPage`, and the `.prefetchPage*` methods are accepted on a base and inherit via the defaults table, but no test exercises them set on a base specifically — verify base-level inheritance before documenting them as recommended base features. -->
-
-<!-- TODO(low): whether a base can be started from a provider is ambiguous — the provider's typed surface doesn't expose `.lets.base()`, yet the compiler accepts the raw string form. Treat provider→base as unsupported in typed authoring until confirmed. -->

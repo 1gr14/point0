@@ -91,85 +91,125 @@ export class Request0<
     const location = Route0.getLocation(original.url)
     const method = original.method.toUpperCase() as WideRequestMethod
 
-    let cachedIps: string[] | undefined
-    let cachedIp: string | null | undefined
-    let cachedUserAgent: string | null | undefined
-    let cachedLocation: AnyLocation | null | undefined
-    let cachedScope: string | null | undefined
+    // Compute the origin from the real client request: the socket peer IP and the request's own headers.
+    const buildClientFrom = (): RequestFrom => {
+      let cachedIps: string[] | undefined
+      let cachedBunIp: string | null | undefined
+      let cachedUserAgent: string | null | undefined
+      let cachedLocation: AnyLocation | null | undefined
+      let cachedScope: string | null | undefined
 
-    const getIps = (): string[] => {
-      if (cachedIps) {
+      // Bun's requestIP is the real socket peer address — it can't be spoofed, unlike any header.
+      const getBunIp = (): string | null => {
+        if (cachedBunIp !== undefined) {
+          return cachedBunIp
+        }
+        cachedBunIp = null
+        if (bunServer) {
+          try {
+            const requestIP = bunServer.requestIP(original)
+            if (requestIP?.address) {
+              cachedBunIp = requestIP.address
+            }
+          } catch {
+            // Ignore errors if requestIP is not available
+          }
+        }
+        return cachedBunIp
+      }
+
+      const getIps = (): string[] => {
+        if (cachedIps) {
+          return cachedIps
+        }
+        // Bun's requestIP (unspoofable) leads the list; the spoofable header candidates follow.
+        const ipsSet = new Set<string>()
+        const bunIp = getBunIp()
+        if (bunIp) {
+          ipsSet.add(bunIp)
+        }
+        // These header values CAN be spoofed by the client, so they live only in `ips`, never in `ip`.
+        const forwardedFor = original.headers.get('x-forwarded-for')
+        if (forwardedFor) {
+          forwardedFor.split(',').forEach((ip) => {
+            ipsSet.add(ip.trim())
+          })
+        }
+        const realIp = original.headers.get('x-real-ip')
+        if (realIp) {
+          ipsSet.add(realIp)
+        }
+        const cfConnectingIp = original.headers.get('cf-connecting-ip')
+        if (cfConnectingIp) {
+          ipsSet.add(cfConnectingIp)
+        }
+        cachedIps = Array.from(ipsSet)
         return cachedIps
       }
-      // Prioritize Bun's requestIP (more trusted, can't be spoofed)
-      const ipsSet = new Set<string>()
-      if (bunServer) {
-        try {
-          const requestIP = bunServer.requestIP(original)
-          if (requestIP?.address) {
-            ipsSet.add(requestIP.address)
+
+      return {
+        get ips(): string[] {
+          return getIps()
+        },
+        // Always the unspoofable Bun requestIP — never a header value — so it's safe for security decisions.
+        // null when no Bun server is wired in (e.g. a synthetic request). Spoofable candidates live in `ips`.
+        get ip(): string | null {
+          return getBunIp()
+        },
+        get userAgent(): string | null {
+          if (cachedUserAgent !== undefined) {
+            return cachedUserAgent
           }
-        } catch {
-          // Ignore errors if requestIP is not available
-        }
-      }
-      // Also collect IPs from headers (Bun's requestIP is prioritized as ips[0])
-      const forwardedFor = original.headers.get('x-forwarded-for')
-      if (forwardedFor) {
-        forwardedFor.split(',').forEach((ip) => {
-          ipsSet.add(ip.trim())
-        })
-      }
-      const realIp = original.headers.get('x-real-ip')
-      if (realIp) {
-        ipsSet.add(realIp)
-      }
-      const cfConnectingIp = original.headers.get('cf-connecting-ip')
-      if (cfConnectingIp) {
-        ipsSet.add(cfConnectingIp)
-      }
-      cachedIps = Array.from(ipsSet)
-      return cachedIps
+          cachedUserAgent = original.headers.get('user-agent') || null
+          return cachedUserAgent
+        },
+        get location(): AnyLocation | null {
+          if (cachedLocation !== undefined) {
+            return cachedLocation
+          }
+          const referrerUrl = original.referrer || original.headers.get('referer')
+          cachedLocation = referrerUrl ? Route0.getLocation(referrerUrl) : null
+          return cachedLocation
+        },
+        get scope(): string | null {
+          if (cachedScope !== undefined) {
+            return cachedScope
+          }
+          cachedScope = original.headers.get('X-Point0-From-Scope') || null
+          return cachedScope
+        },
+        get server(): boolean {
+          return isFromServer
+        },
+      } satisfies RequestFrom
     }
 
-    const from = {
-      get ips(): string[] {
-        return getIps()
-      },
-      get ip(): string | null {
-        if (cachedIp !== undefined) {
-          return cachedIp
+    // The origin describes the external client. A derived request — a server-to-server SSR prefetch hop, whose
+    // socket peer and headers are the server's, not the visitor's — reports the ORIGINAL client's origin from
+    // `first` (so `from.ip` stays the real visitor IP, not the internal hop's loopback peer, and nothing is
+    // recomputed per hop). Only `from.server` is per-request: whether THIS request is server-to-server.
+    const from: RequestFrom = first
+      ? {
+          get ips(): string[] {
+            return first.from.ips
+          },
+          get ip(): string | null {
+            return first.from.ip
+          },
+          get userAgent(): string | null {
+            return first.from.userAgent
+          },
+          get location(): AnyLocation | null {
+            return first.from.location
+          },
+          get scope(): string | null {
+            return first.from.scope
+          },
+          get server(): boolean {
+            return isFromServer
+          },
         }
-        const ips = getIps()
-        cachedIp = ips[0] || null
-        return cachedIp
-      },
-      get userAgent(): string | null {
-        if (cachedUserAgent !== undefined) {
-          return cachedUserAgent
-        }
-        cachedUserAgent = original.headers.get('user-agent') || null
-        return cachedUserAgent
-      },
-      get location(): AnyLocation | null {
-        if (cachedLocation !== undefined) {
-          return cachedLocation
-        }
-        const referrerUrl = original.referrer || original.headers.get('referer')
-        cachedLocation = referrerUrl ? Route0.getLocation(referrerUrl) : null
-        return cachedLocation
-      },
-      get scope(): string | null {
-        if (cachedScope !== undefined) {
-          return cachedScope
-        }
-        cachedScope = original.headers.get('X-Point0-From-Scope') || null
-        return cachedScope
-      },
-      get server(): boolean {
-        return isFromServer
-      },
-    } satisfies RequestFrom
+      : buildClientFrom()
 
     return new Request0({
       original,

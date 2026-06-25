@@ -1,7 +1,9 @@
 ---
 index: 1100
 title: OpenAPI
-description: Turn every query, mutation, and action into an OpenAPI spec — served as JSON, Scalar, and Swagger — with no schema written by hand.
+description:
+  Turn every query, mutation, and action into an OpenAPI spec — served as JSON,
+  Scalar, and Swagger — with no schema written by hand.
 ---
 
 Every [query](query), [mutation](mutation), and [action](action) is already a
@@ -30,12 +32,13 @@ export const root = Point0.lets
   .root()
 ```
 
-`GET /openapi.json` now returns the spec, `/scalar` and `/swagger` render it. The
-rest of this page shows where each operation comes from and how to shape it.
+`GET /openapi.json` now returns the spec, `/scalar` and `/swagger` render it.
+The rest of this page shows where each operation comes from and how to shape it.
 
 ## Installing
 
-`@point0/openapi` is a separate package. Install it and import `openapi` from it:
+`@point0/openapi` is a separate package. Install it and import `openapi` from
+it:
 
 ```sh
 bun add @point0/openapi
@@ -65,8 +68,8 @@ Each point with an endpoint becomes one `path` → `method` → operation:
 - A **query** → `POST /_point0/<scope>/query/<kebab-name>`
 - A **mutation** → `POST /_point0/<scope>/mutation/<kebab-name>`
 - An **action** → its declared method and route, e.g. `PUT /api/ideas/:id`
-- A **page/layout** → `GET` at its route — but only when it's an endpoint (SSR on,
-  or it has a server `.loader`); see [page or endpoint](page).
+- A **page/layout** → `GET` at its route — but only when it's an endpoint (SSR
+  on, or it has a server `.loader`); see [page or endpoint](page).
 
 Scope, type, and name are all kebab-cased in the path, so a query named
 `recentIdeas` in the `root` scope is served at
@@ -90,7 +93,7 @@ openapi({
 })
 ```
 
-The predicate receives each ready point and runs *after* the endpoint check, so
+The predicate receives each ready point and runs _after_ the endpoint check, so
 you only ever filter points that already have an endpoint.
 
 ### summary and operationId
@@ -106,8 +109,8 @@ readable:
 
 Two gotchas, both from how the point is named:
 
-- **Actions get no auto-summary.** A query/mutation/page gets `summary` defaulted
-  to its point id; an action shows a summary only if you set one with
+- **Actions get no auto-summary.** A query/mutation/page gets `summary`
+  defaulted to its point id; an action shows a summary only if you set one with
   [`.openapi()`](#openapi-operation-metadata).
 - **An action's `operationId` is its name** — but only when the action was given
   an explicit name. An action whose name is still the auto-generated
@@ -162,14 +165,11 @@ Two header parameters can appear that you did not declare:
   (`enum` of `data` / `queryClientDehydratedState` / `html`), selecting the
   output format of the page response.
 
-<!-- TODO(high): verify hideTransformHeader actually suppresses X-Point0-Transform through the middleware path before documenting it as effective -->
-
-
 ## Response schemas — `.response()`
 
-The response type is **not** inferred from your loader's return type yet — declare
-it with `.response()` if you want it in the spec. Without it, an endpoint shows a
-bare `200: { description: 'Successful response' }`.
+The response type is **not** inferred from your loader's return type yet —
+declare it with `.response()` if you want it in the spec. Without it, an
+endpoint shows a bare `200: { description: 'Successful response' }`.
 
 ```tsx
 export const ideaQuery = root.lets
@@ -180,8 +180,8 @@ export const ideaQuery = root.lets
   .query()
 ```
 
-A plain schema is wrapped as a `200` JSON response. To document several statuses,
-pass a map keyed by status code:
+A plain schema is wrapped as a `200` JSON response. To document several
+statuses, pass a map keyed by status code:
 
 ```tsx
 .response({
@@ -205,9 +205,6 @@ or examples — pass an already-normalized response object:
 
 `.response()` is available on the endpoint points — queries, mutations, and
 actions.
-
-<!-- TODO(low): the examples field on a normalized response and non-JSON content types (text/plain, image/*, …) are allowed by the types but not exercised by any test or example — confirm before presenting as worked examples -->
-
 
 ## `.openapi()` — operation metadata
 
@@ -246,8 +243,8 @@ Call `.openapi()` more than once and the objects merge — last call wins per ke
 
 ### tags and description are never auto-generated
 
-Point0 maps `tags` and `description` to the operation **only when you set them via
-`.openapi()`** — there is no derivation from the point's name, scope, or its
+Point0 maps `tags` and `description` to the operation **only when you set them
+via `.openapi()`** — there is no derivation from the point's name, scope, or its
 `.tag()` / `.description()` metadata. If you want grouped, described operations,
 pass `tags` and `description` to `.openapi()` explicitly. (`summary`,
 `operationId`, `deprecated` from `.openapi()` are mapped the same way — set, and
@@ -255,9 +252,9 @@ they land on the operation.)
 
 ## Models and `$ref`
 
-Schemas you register as named models on the root with `.models({...})` are emitted
-under `components.schemas`, and any inline request/response schema that exactly
-matches a model is replaced by a `$ref` to it:
+Schemas you register as named models on the root with `.models({...})` are
+emitted under `components.schemas`, and any inline request/response schema that
+exactly matches a model is replaced by a `$ref` to it:
 
 ```tsx
 export const root = Point0.lets
@@ -275,8 +272,8 @@ schemas collapse to the same `$ref`.
 
 ## The UIs: Scalar and Swagger
 
-`scalar` and `swagger` each take either a string (the route to serve the UI at) or
-an object — UI options plus a `route`:
+`scalar` and `swagger` each take either a string (the route to serve the UI at)
+or an object — UI options plus a `route`:
 
 ```tsx
 openapi({
@@ -287,18 +284,16 @@ openapi({
 ```
 
 Each UI defaults its spec `url` to the `route` you set for the JSON spec, so you
-don't repeat it. Omit `scalar` or `swagger` and that UI route simply isn't served.
-Scalar options are `@scalar/api-reference` config (e.g. `theme`, `onLoaded`);
-Swagger options are `swagger-ui` config. Both UIs load their bundles from a CDN.
-
-<!-- TODO(low): pull the enumerated Scalar (ApiReferenceConfigurationWithSource) and Swagger (SwaggerUIOptions) option lists from each tool's own docs -->
-
+don't repeat it. Omit `scalar` or `swagger` and that UI route simply isn't
+served. Scalar options are `@scalar/api-reference` config (e.g. `theme`,
+`onLoaded`); Swagger options are `swagger-ui` config. Both UIs load their
+bundles from a CDN.
 
 ## Protecting the docs
 
-The `before` option runs middleware **only on the doc routes** (json/scalar/swagger),
-not on every request — the natural place to put auth in front of your spec. The
-canonical guard is [`@point0/basic-auth`](basic-auth):
+The `before` option runs middleware **only on the doc routes**
+(json/scalar/swagger), not on every request — the natural place to put auth in
+front of your spec. The canonical guard is [`@point0/basic-auth`](basic-auth):
 
 ```tsx
 import { basicAuth } from '@point0/basic-auth'
@@ -312,14 +307,14 @@ openapi({
 })
 ```
 
-Without credentials the doc routes return `401` with a `WWW-Authenticate` header;
-with valid credentials they serve normally. `before` accepts a single middleware
-or an array.
+Without credentials the doc routes return `401` with a `WWW-Authenticate`
+header; with valid credentials they serve normally. `before` accepts a single
+middleware or an array.
 
 ## Caching
 
-The generated spec is **cached by default**, keyed by the JSON route. Tune it with
-`cache`:
+The generated spec is **cached by default**, keyed by the JSON route. Tune it
+with `cache`:
 
 ```tsx
 openapi({ route: '/openapi.json' }) // default: cached under '/openapi.json'
@@ -328,14 +323,14 @@ openapi({ route: '/openapi.json', cache: 'specs' }) // cache under a custom key
 openapi({ route: '/openapi.json', cache: true }) // explicit: cache under the json route
 ```
 
-Because caching is on by default, schema changes you make at runtime won't show up
-until the process restarts — pass `cache: false` if you need a fresh spec on every
-request (e.g. while iterating).
+Because caching is on by default, schema changes you make at runtime won't show
+up until the process restarts — pass `cache: false` if you need a fresh spec on
+every request (e.g. while iterating).
 
 ## Document-level fields
 
-`openapi(...)` also accepts any top-level field of an OpenAPI document — they are
-merged into the output, with your values overriding the generated ones:
+`openapi(...)` also accepts any top-level field of an OpenAPI document — they
+are merged into the output, with your values overriding the generated ones:
 
 ```tsx
 openapi({
@@ -347,12 +342,9 @@ openapi({
 })
 ```
 
-The `openapi` version string is a type discriminator: a `'3.1...'` value switches
-the option and output types to OpenAPI 3.1. `info`, `servers`, `tags`,
+The `openapi` version string is a type discriminator: a `'3.1...'` value
+switches the option and output types to OpenAPI 3.1. `info`, `servers`, `tags`,
 `security`, `components`, and the rest are passed straight through.
-
-<!-- TODO(low): servers / security / multi-status response examples are supported by the types but not exercised by any test or example — verify before presenting as worked examples -->
-
 
 ## Generating the spec without the middleware
 
@@ -375,26 +367,26 @@ document-level options as the middleware, and returns the spec object.
 
 ### `openapi(options)` options
 
-| Option                | Type                                                        | Default                  |
-| --------------------- | ----------------------------------------------------------- | ------------------------ |
-| `route`               | `string` (**required**)                                     | —                        |
-| `filter`              | `'all'` \| `'action'` \| `(point) => boolean`               | `'action'` (actions only)|
-| `scalar`              | `string` \| `ScalarOptions & { route }`                     | not served               |
-| `swagger`             | `string` \| `SwaggerOptions & { route }`                    | not served               |
-| `before`              | `MiddlewareFn` \| `MiddlewareFn[]`                          | none                     |
-| `cache`               | `string` \| `boolean`                                       | on, keyed by `route`     |
-| `openapi`             | `` `3.0${string}` `` \| `` `3.1${string}` ``                | `'3.0.0'`                |
-| `info`, `servers`, `tags`, `security`, `components`, … | any `OpenAPI Document` field   | —                        |
-| `models`              | `Record<string, InputSchema>`                               | gathered from points     |
-| `helpers`             | `SchemaHelper[]`                                            | gathered from points     |
-| `hideTransformHeader` | `boolean`                                                   | `false`                  |
+| Option                                                 | Type                                          | Default                   |
+| ------------------------------------------------------ | --------------------------------------------- | ------------------------- |
+| `route`                                                | `string` (**required**)                       | —                         |
+| `filter`                                               | `'all'` \| `'action'` \| `(point) => boolean` | `'action'` (actions only) |
+| `scalar`                                               | `string` \| `ScalarOptions & { route }`       | not served                |
+| `swagger`                                              | `string` \| `SwaggerOptions & { route }`      | not served                |
+| `before`                                               | `MiddlewareFn` \| `MiddlewareFn[]`            | none                      |
+| `cache`                                                | `string` \| `boolean`                         | on, keyed by `route`      |
+| `openapi`                                              | `` `3.0${string}` `` \| `` `3.1${string}` ``  | `'3.0.0'`                 |
+| `info`, `servers`, `tags`, `security`, `components`, … | any `OpenAPI Document` field                  | —                         |
+| `models`                                               | `Record<string, InputSchema>`                 | gathered from points      |
+| `helpers`                                              | `SchemaHelper[]`                              | gathered from points      |
+| `hideTransformHeader`                                  | `boolean`                                     | `false`                   |
 
 ### Point methods
 
-| Method        | On                          | Sets                                            |
-| ------------- | --------------------------- | ----------------------------------------------- |
+| Method        | On                                        | Sets                                                                                                                               |
+| ------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `.openapi()`  | query, mutation, action (endpoint points) | operation metadata — `summary`, `description`, `operationId`, `tags`, `deprecated`, … (not `parameters`/`requestBody`/`responses`) |
-| `.response()` | query, mutation, action     | response schema(s) → `responses` in the spec    |
+| `.response()` | query, mutation, action                   | response schema(s) → `responses` in the spec                                                                                       |
 
 Request schemas come from the [validation](validation) methods (`.params`,
 `.search`, `.headers`, `.cookies`, `.body`, `.input`); named models come from
@@ -402,13 +394,15 @@ Request schemas come from the [validation](validation) methods (`.params`,
 
 ### What is and isn't mapped today
 
-- **Mapped:** path/method, request parameters and body (from validation schemas),
-  `requestBody.required`, multipart detection for file bodies, responses (from
-  `.response()`), `$ref` dedup against `.models()`, the `X-Point0-Transform` and
-  `X-Point0-Output-Type` headers, and every operation field you pass to
-  `.openapi()` (`summary`, `description`, `operationId`, `tags`, `deprecated`, …).
-- **Auto-derived:** `summary` (point id, non-actions only), `operationId` (camelCase
-  of name+type for non-actions; the action name for explicitly-named actions).
+- **Mapped:** path/method, request parameters and body (from validation
+  schemas), `requestBody.required`, multipart detection for file bodies,
+  responses (from `.response()`), `$ref` dedup against `.models()`, the
+  `X-Point0-Transform` and `X-Point0-Output-Type` headers, and every operation
+  field you pass to `.openapi()` (`summary`, `description`, `operationId`,
+  `tags`, `deprecated`, …).
+- **Auto-derived:** `summary` (point id, non-actions only), `operationId`
+  (camelCase of name+type for non-actions; the action name for explicitly-named
+  actions).
 - **Not derived:** `tags` and `description` are never generated from the point —
-  supply them via `.openapi()`. Response types are not inferred from the loader's
-  return type — declare them via `.response()`.
+  supply them via `.openapi()`. Response types are not inferred from the
+  loader's return type — declare them via `.response()`.

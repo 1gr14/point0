@@ -72,6 +72,7 @@ const compileSchemaShape = {
   side: z.enum(['server', 'client']).optional().describe("Compile side: 'server' or 'client'."),
   scope: z.string().optional().describe('Compile scope (optional, inferred from side when omitted).'),
   hmr: z.boolean().optional().describe('Enable HMR fix in compiled output.'),
+  built: z.boolean().optional().describe("Treat the engine as built (else falls back to POINT0_BUILT === 'true')."),
   engineFile: z.string().optional().describe('Engine file path when multiple metas/engines are provided.'),
 }
 
@@ -81,6 +82,7 @@ const traceSchemaShape = {
   side: z.enum(['server', 'client']).optional().describe("Trace side: 'server' or 'client'."),
   scope: z.string().optional().describe('Trace scope (optional, inferred from side when omitted).'),
   cwd: z.string().optional().describe('Trace cwd (optional, inferred from engine file when omitted).'),
+  built: z.boolean().optional().describe("Treat the engine as built (else falls back to POINT0_BUILT === 'true')."),
   engineFile: z.string().optional().describe('Engine file path when multiple metas/engines are provided.'),
 }
 
@@ -179,7 +181,7 @@ server.registerTool(
       throw new Error(`Can not find ${compileSide} runtime for scope "${compileScope}"`)
     }
     const compilerOptions = runtime.getCompilerOptions({
-      built: process.env.POINT0_BUILT === 'true',
+      built: input.built === true || process.env.POINT0_BUILT === 'true',
     })
     if (!compilerOptions) {
       throw new Error(`Compiler is disabled for ${compileSide} scope "${compileScope}"`)
@@ -231,7 +233,7 @@ server.registerTool(
       throw new Error(`Can not find ${traceSide} runtime for scope "${traceScope}"`)
     }
     const compilerOptions = runtime.getCompilerOptions({
-      built: process.env.POINT0_BUILT === 'true',
+      built: input.built === true || process.env.POINT0_BUILT === 'true',
     })
     if (!compilerOptions) {
       throw new Error(`Compiler is disabled for ${traceSide} scope "${traceScope}"`)

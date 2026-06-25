@@ -1,7 +1,9 @@
 ---
 index: 100
 title: Page
-description: A page is a point — a route and a component, with data, loading, error, and SSR handled up the chain.
+description:
+  A page is a point — a route and a component, with data, loading, error, and
+  SSR handled up the chain.
 ---
 
 A page is a point. You give it a route and a component; everything else — data,
@@ -43,9 +45,9 @@ for the notation. A page can only grow from a `root`, `base`, or `layout`; you
 can't open a page off a query or a mutation.
 
 The `.page(component)` closer is **server-ssr-and-client** — it's cut from the
-SERVER bundle when `ssr:false` (or after a `.clientOnly()` earlier in the chain):
-its body and imports are removed from the server build. Kept in the client build
-always, and in the server build only when SSR is on.
+SERVER bundle when `ssr:false` (or after a `.clientOnly()` earlier in the
+chain): its body and imports are removed from the server build. Kept in the
+client build always, and in the server build only when SSR is on.
 
 The component argument is **optional**. Omit it and the page renders nothing
 (`() => null`) — useful when the page only runs an effect or a loader:
@@ -72,7 +74,8 @@ export const ideaPage = root.lets
 
 Params are strings; coerce them yourself (`Number(params.id)`), or validate and
 transform them with [`.params(schema)`](validation). Optional and wildcard
-segments work too — `'/files/:dir?/*?'` gives you `params.dir` and `params['*']`.
+segments work too — `'/files/:dir?/*?'` gives you `params.dir` and
+`params['*']`.
 
 ### The route prefix is inherited
 
@@ -112,8 +115,8 @@ export const ideaPage = root.lets
 ```
 
 `.loader` is **server-only** — cut from the client bundle: its body and the
-imports it uses are removed, so it never ships to the browser. Stays in the server
-build.
+imports it uses are removed, so it never ships to the browser. Stays in the
+server build.
 
 **Injected query.** When the data lives in a reusable [query](query), hand it to
 the page with [`.with`](with) and map the route params to its input:
@@ -132,10 +135,10 @@ call `ideaQuery.useQuery({ id })` inside the component, handling `isLoading`
 yourself — the page doesn't force either style.
 
 `.with` and `.mapper` are **server-ssr-and-client** — cut from the SERVER bundle
-when `ssr:false` (or after a `.clientOnly()`): their bodies and imports are removed
-from the server build. Kept in the client build always, and in the server build
-only when SSR is on. A `.with` query is discovered only
-by rendering the page, so it's prefetched only under the expensive
+when `ssr:false` (or after a `.clientOnly()`): their bodies and imports are
+removed from the server build. Kept in the client build always, and in the
+server build only when SSR is on. A `.with` query is discovered only by
+rendering the page, so it's prefetched only under the expensive
 `pageDehydratedState*` policies (the full SSR render); see
 [`.relatedQuery` vs `.with`](#relatedquery-vs-with) below for the cheaper,
 render-free path.
@@ -143,14 +146,14 @@ render-free path.
 ### `.relatedQuery` vs `.with` {#relatedquery-vs-with}
 
 [`.relatedQuery`](query) declares a query the page depends on. Like a `.with`
-query, it **adds its query to the `queries` array** and feeds `data` — it does not
-skip them. The difference is **prefetch**: a related query is statically
-discoverable, so prefetch can self-fetch it **without rendering** the page, under
-the cheap policies (`serverQuery` / `clientQuery` / `serverAndClientQuery`). A
-`.with` query is found only by rendering, so it's prefetched only under the
-expensive, SSR-only `pageDehydratedState*` policies. Reach for `.relatedQuery`
-when you want a page's data warm before navigation without paying for a full
-render.
+query, it **adds its query to the `queries` array** and feeds `data` — it does
+not skip them. The difference is **prefetch**: a related query is statically
+discoverable, so prefetch can self-fetch it **without rendering** the page,
+under the cheap policies (`serverQuery` / `clientQuery` /
+`serverAndClientQuery`). A `.with` query is found only by rendering, so it's
+prefetched only under the expensive, SSR-only `pageDehydratedState*` policies.
+Reach for `.relatedQuery` when you want a page's data warm before navigation
+without paying for a full render.
 
 `.relatedQuery` is **server-and-client** — not cut from either bundle: kept in
 both builds (isomorphic), nothing pruned.
@@ -179,15 +182,15 @@ export const ideaPage = root.lets
   .page(/* ... */)
 ```
 
-The `.loading` must appear before the data method that can suspend. You won't see
-the loading state when SSR is on (the data arrives with the HTML) or when the
-page is prefetched before navigation. Full rules, including prefetch policies,
-are in [Loading & error](loading-error).
+The `.loading` must appear before the data method that can suspend. You won't
+see the loading state when SSR is on (the data arrives with the HTML) or when
+the page is prefetched before navigation. Full rules, including prefetch
+policies, are in [Loading & error](loading-error).
 
-`.loading` and `.error` are **server-ssr-and-client** — cut from the SERVER bundle
-when `ssr:false` (or after a `.clientOnly()`): their bodies and imports are removed
-from the server build. Kept in the client build always, and in the server build
-only when SSR is on.
+`.loading` and `.error` are **server-ssr-and-client** — cut from the SERVER
+bundle when `ssr:false` (or after a `.clientOnly()`): their bodies and imports
+are removed from the server build. Kept in the client build always, and in the
+server build only when SSR is on.
 
 ## Head and SEO
 
@@ -204,18 +207,18 @@ export const ideaPage = root.lets
   .page(/* ... */)
 ```
 
-`.head` accepts a string (shorthand for the title) or an
-[unhead](head) object, and can be set per state. Details on [Head](head).
+`.head` accepts a string (shorthand for the title) or an [unhead](head) object,
+and can be set per state. Details on [Head](head).
 
-`.head` is **server-ssr-and-client** — cut from the SERVER bundle when `ssr:false`
-(or after a `.clientOnly()`): its body and imports are removed from the server
-build. Kept in the client build always, and in the server build only when SSR is
-on.
+`.head` is **server-ssr-and-client** — cut from the SERVER bundle when
+`ssr:false` (or after a `.clientOnly()`): its body and imports are removed from
+the server build. Kept in the client build always, and in the server build only
+when SSR is on.
 
 ## A page is also a query
 
-A page with a loader is itself a query under the hood — Point0 attaches a *self
-query* so the page can be fetched and prefetched like any other:
+A page with a loader is itself a query under the hood — Point0 attaches a _self
+query_ so the page can be fetched and prefetched like any other:
 
 ```tsx
 ideaPage.useQuery({ id: 123 })
@@ -226,8 +229,8 @@ ideaPage.prefetchQuery({ id: 123 })
 
 This is what makes SSR and navigation prefetch work without you wiring anything.
 The page's self query is **finite by default**. To make it infinite, close the
-chain with [`.infiniteQuery({...})`](infinite-query) after the loader (instead of a
-plain loader) — wire the cursor to search with `pageParamFromInput`:
+chain with [`.infiniteQuery({...})`](infinite-query) after the loader (instead
+of a plain loader) — wire the cursor to search with `pageParamFromInput`:
 
 ```tsx
 export const ideaListPage = root.lets
@@ -247,8 +250,8 @@ export const ideaListPage = root.lets
   })
 ```
 
-`.infiniteQuery` and `.query` (the self-query closers) are **server-and-client** —
-not cut from either bundle: kept in both builds (isomorphic), nothing pruned.
+`.infiniteQuery` and `.query` (the self-query closers) are **server-and-client**
+— not cut from either bundle: kept in both builds (isomorphic), nothing pruned.
 
 A page with no loader issues no request and exposes no useful query — calling
 `.useQuery()` on it returns an empty result, not an error.
@@ -256,7 +259,7 @@ A page with no loader issues no request and exposes no useful query — calling
 ## Page or endpoint?
 
 Not every page is an HTTP endpoint. The distinction matters because a query, a
-mutation, or an action is *always* a real endpoint (its own path, in the OpenAPI
+mutation, or an action is _always_ a real endpoint (its own path, in the OpenAPI
 spec), but a page is only sometimes one:
 
 - **SSR on** → the page is server-rendered, so it's an endpoint.
@@ -271,17 +274,17 @@ whether the server serves it directly.
 ## Gating a page
 
 The page component is browser code, and the page's route is reachable in the
-client. The server-only parts of the chain — your loader body, secrets, DB
-calls — are stripped from the client bundle at compile time, so they never leak,
-but a render that depends on access has to be guarded in code that always runs:
+client. The server-only parts of the chain — your loader body, secrets, DB calls
+— are stripped from the client bundle at compile time, so they never leak, but a
+render that depends on access has to be guarded in code that always runs:
 
-- Don't put secret content in the rendered markup expecting it to be server-only —
-  the markup ships to the browser.
+- Don't put secret content in the rendered markup expecting it to be server-only
+  — the markup ships to the browser.
 - Gate access in a [`.with`](with) wrapper (or a [plugin](plugin) that combines
-  `.ctx` and `.with`), not with `.ctx` alone. `.ctx` is **server-only** (its body
-  is stripped from the client bundle). A page's `.ctx` runs **only when the page
-  has a loader** — a loader-less page makes no server request, so its `.ctx` never
-  executes and can't protect anything.
+  `.ctx` and `.with`), not with `.ctx` alone. `.ctx` is **server-only** (its
+  body is stripped from the client bundle). A page's `.ctx` runs **only when the
+  page has a loader** — a loader-less page makes no server request, so its
+  `.ctx` never executes and can't protect anything.
 
 ```tsx
 import { authPlugin } from '@/lib/auth' // a plugin that resolves the user into props.me
@@ -303,15 +306,16 @@ the error component.
 
 ## Authoring notes
 
-- **Pages are lazy by default.** Each page is its own dynamically imported chunk,
-  loaded on navigation. Turn this off in the client's codegen config —
+- **Pages are lazy by default.** Each page is its own dynamically imported
+  chunk, loaded on navigation. Turn this off in the client's codegen config —
   `client: { generate: { points: { lazy: false } } }` — there is no per-page
   method for it.
 - **Put pages anywhere.** Any file, any folder, several per file. Point0 finds
   them by static analysis; hot-reload survives mixing pages, queries, and
   mutations in one file.
-- **Wrap the render with [`.wrapper`](mountable).** `.wrapper(({ children }) => …)`
-  wraps the page's tree; a wrapper can also short-circuit before the data loads.
+- **Wrap the render with [`.wrapper`](mountable).**
+  `.wrapper(({ children }) => …)` wraps the page's tree; a wrapper can also
+  short-circuit before the data loads.
 
 ## Reference
 
@@ -319,17 +323,17 @@ the error component.
 
 The page component receives one object:
 
-| Prop              | Type                                  | When                                   |
-| ----------------- | ------------------------------------- | -------------------------------------- |
-| `data`            | mapper output, or the first query's data | always (`{}` if none)               |
-| `queries`         | tuple of loaded query results, in `.with` order | always (`[]` if none)        |
-| `params`          | parsed route params                   | when the route has params / `.params`  |
-| `search`          | parsed query string                   | when `.search` is set                  |
-| `setSearch`       | update the URL query (replace / patch / drop) | always (client-only; SSR no-op) |
-| `props`           | props contributed by `.with` wrappers | always (`{}` if none)                  |
-| `location`        | the current location (`location.params`, …) | always (pages have a route)      |
-| `LoadingComponent`| the resolved loading component        | always                                 |
-| `ErrorComponent`  | the resolved error component (`{ error }`) | always                            |
+| Prop               | Type                                            | When                                  |
+| ------------------ | ----------------------------------------------- | ------------------------------------- |
+| `data`             | mapper output, or the first query's data        | always (`{}` if none)                 |
+| `queries`          | tuple of loaded query results, in `.with` order | always (`[]` if none)                 |
+| `params`           | parsed route params                             | when the route has params / `.params` |
+| `search`           | parsed query string                             | when `.search` is set                 |
+| `setSearch`        | update the URL query (replace / patch / drop)   | always (client-only; SSR no-op)       |
+| `props`            | props contributed by `.with` wrappers           | always (`{}` if none)                 |
+| `location`         | the current location (`location.params`, …)     | always (pages have a route)           |
+| `LoadingComponent` | the resolved loading component                  | always                                |
+| `ErrorComponent`   | the resolved error component (`{ error }`)      | always                                |
 
 A page has no `input` prop — pages use `params`/`search`, not `.input`. Writing
 `.input` or `.body` on a page is a type error.
@@ -338,7 +342,10 @@ A page has no `input` prop — pages use `params`/`search`, not `.input`. Writin
 
 Data & context: [`.loader`](loader), `.clientLoader`, [`.ctx`](ctx),
 [`.with`](with), [`.mapper`](mapper), [`.relatedQuery`](query),
-[`.params` / `.search`](validation), `.headers`, `.cookies`.
+[`.params` / `.search`](validation), `.headers`, `.cookies`. `.headers` /
+`.cookies` validate the incoming request and type it into the loader, so they
+only do something on a page with a `.loader` — a loader-less page has no request
+to parse.
 
 UI: [`.head`](head), [`.loading`](loading-error), [`.error`](loading-error),
 `.wrapper`, [`.layout`](layout).
@@ -349,14 +356,17 @@ Navigation & prefetch: `.prefetchPageOnNavigate`, `.prefetchPageOnLinkHover`,
 policies.
 
 Shared: [`.use`](plugin) (plugins), [`.middleware`](middleware), `.on` /
-`.serverOn` / `.clientOn` (events), `.tag`, `.description`.
+`.serverOn` / `.clientOn` (events), `.tag`, `.description`. `.middleware` runs
+server-side around the page's request, so it fires only when the page is served
+as an endpoint (a loader, or SSR on).
 
 `.infiniteQuery` and `.query` are valid only to finalize a loader-bearing page's
 self query; they're otherwise unavailable on a page.
 
-<!-- TODO(low): `.headers` / `.cookies` are accepted on a page but have no example or test for the non-endpoint (loader-less) case — confirm intended use before documenting as a recommended page feature. -->
-
-<!-- TODO(low): page-level `.middleware` and the per-status `.head('universal' | 'global', …)` forms type-check on a page but are exercised only on other point types — verify runtime behavior on a page. -->
+The per-status `.head` forms work on a page the same as on any mountable:
+`.head('global', …)` is the app-wide base head, `.head('universal', …)` applies
+in every render state, and `.head('loading' | 'error' | 'success', …)` targets
+one state. A bare `.head(value)` defaults to the `'success'` state.
 
 ### The page's route
 

@@ -1,215 +1,98 @@
 # Docs TODOs — sorted by priority
 
-Auto-extracted from the `<!-- TODO(high|med|low): … -->` markers across `docs/` on 2026-06-25.
-Identical TODOs are merged; the bolded slugs are the pages that carry them. Priority:
-**high** = a wrong/missing API or a real code/compiler gap a reader needs · **med** = a worthwhile gap · **low** = nice-to-have / unverified-but-plausible detail.
+Auto-extracted from the `<!-- TODO(high|med|low): … -->` markers across `docs/`
+on 2026-06-25 (regenerated after the big triage pass — see "Resolved in the
+2026-06-25 pass" below). Identical TODOs are merged; the bolded slugs are the
+pages that carry them. Priority: **high** = a wrong/missing API or a real
+code/compiler gap a reader needs · **med** = a worthwhile gap · **low** =
+nice-to-have / unverified-but-plausible detail.
 
+The five remaining markers are genuine **product decisions or external-doc
+links** — kept in the docs because someone has to make the call. **Test-coverage
+gaps moved to [add-tests.md](add-tests.md)**; the docs no longer carry "not
+tested" hedges. To regenerate this file, run the `perl` extractor in
+[dev/docs/docs.md](../docs/docs.md).
 
 ## HIGH
 
-- **cookie-store** — a numeric expires is treated as days by the client document setter but as a timestamp by the server-side serializer — the two diverge. Prefer a Date for expires until this is clarified.
-- **stage-methods** — add .models to the compiler client-strip list (point.ts ~1026) — it's currently shipped to the client bundle.
-- **request** — change the implementation so `from.ip` is ALWAYS Bun's `requestIP` (unspoofable) and never falls back to headers, while `from.ips` stays the full array of every candidate including the spoofable header values. Then `from.ip` becomes trustworthy for security decisions and this caveat can be narrowed to `from.ips`. Update this section once the code lands.
-- **base, layout, mountable, navigation, plugin, stage-methods** — onPrefetchPage is stripped from the server bundle (point.ts ~1056) but should also run during server prefetch — stop stripping it.
-- **engine-config** — the per-side SSR object (allowedRerendersCount / prefetchBeforePageRender) is parsed and applied on clients, but the server's parsed shape carries only the boolean ssr — whether the re-render tuning takes effect for server-rendered output, and from which side it's read, is NOT FOUND in code. Confirm before relying on per-server SSR tuning.
-- **example-capacitor** — the recommended native-client pattern is `serving: false` (build the client, don't host a server — see [engine-config](engine-config)) with the root pointing at a remote server via `.serverUrl(…)` plus [@point0/cors](cors). This example wires a full local server instead, so the packaged-app → remote-backend topology (base URL, CORS) is NOT shown.
-- **openapi** — verify hideTransformHeader actually suppresses X-Point0-Transform through the middleware path before documenting it as effective
+_None._ All HIGH markers were resolved in the 2026-06-25 pass (see below).
 
 ## MED
 
-- **compiler** — --scope inference for multi-client engines (which client's scope is picked) is not pinned down — confirm guessSideAndScope behavior before documenting the exact rule.
-- **component** — .sharedInput is not in R3's per-method lists — confirm its strip category against point.ts (compiler) before trusting "server-and-client".
-- **stage-methods** — .tag / .description do not currently feed OpenAPI operation `tags` or `description` (the generator emits only `summary` and `operationId` from the point name). Confirm the intended mapping before documenting one here.
-- **assets** — HMR of an edited asset file in dev (re-hash / re-serve live) is not fully pinned down — the hot store reuses the same content-hashed URL, but the end-to-end behavior is NOT FOUND in tests.
-- **file-upload** — Point0 enforces no file size / MIME / count limit of its own — any limit comes from your schema refinements or the runtime's formData() parser. NOT FOUND in framework code; document the recommended pattern once pinned down.
-- **transformer** — Point0 has no built-in cache-bust on transformer change, and the TanStack-persistence implications aren't covered by a test. Flag the migration caveat; confirm the recommended reset path before documenting one.
-- **env** — Point0 supports declaring env types globally by augmenting the EnvDefinition interface (vars, scope, runtime, os), per the commented example in packages/core/src/env.ts. No example app or test actually augments it, so the working snippet is unverified — confirm against a real augmentation before documenting the recommended shape.
-- **base** — R3's four strip categories don't enumerate `.basePath`; it's not in the compiler's client/server strip lists (point.ts shakeMethodsForClient/Server), so it's effectively kept on both — confirm there's no separate route-table strip path before treating server-and-client as authoritative.
-- **provider** — `.useValue()` takes only a key / keys / nothing — it has no `input` argument. How it disambiguates multiple mounted instances is not covered; verify before relying on it.
-- **ssr-store** — `SsrStore.define` exposes no per-value custom serialization — values are always identity-transferred and ride the global store transformer. Where you configure that transformer is not covered here; see [query-client](query-client) / [ssr](ssr).
-- **mcp-docs** — `llms.txt` / `llms-full.txt` are generated by the site repo, not by `@point0/docs` — no code in this package references them. Confirm both are built from the same `docs/` source as the MCP corpus before stating it as a guarantee.
-- **cli** — `point0 --version` prints a hardcoded `0.1.0` (cli.ts), not the installed `@point0/engine` version — fix the bug rather than document the stale string.
-- **request** — `rawBody` is a public field but engine-managed and undocumented as stable API — whether it's intended public surface is unconfirmed. Treat as advanced/internal; consume the parsed `body` option instead.
-- **loading-error** — `useOnNavigateDetailed` (status + error per transition) has a type but no exported implementation found — verify before documenting.
-- **file-upload** — a runtime action-with-File round-trip is NOT covered by a test — only the OpenAPI output for an action file body is (packages/openapi/tests/index.test.tsx). The body shape and FormData bypass are confirmed in packages/core/src/point0.ts, but verify the executor path before relying on it in production.
-- **testing** — add a real dom component-test body snippet (only the setup is shown). e.g. render a component point, assert with Testing Library queries.
-- **ssr-store** — behavior of `.use()` / `.set()` in a client-only app (`ssr: false`) is not covered by a test — it should degrade to plain client state, but that is unverified.
-- **engine-config** — bunServeConfig vs engine.serve() options precedence is NOT FOUND — both exist; confirm merge order before documenting.
-- **loading-error** — clarify the boundary between `.error` (handles query/loader errors) and an app-level React error boundary for uncaught render errors — they are separate paths.
-- **mutation** — confirm .sharedInput and .use strip categories against the compiler (point.ts ~1014-1170) — not named in R3.
-- **mutation** — confirm .sharedInput's strip category against the compiler (point.ts ~1014-1170) — R3 lists .input as server-only and .clientInput as client-only, but does not name .sharedInput; verify it's kept on both bundles before documenting its strip note.
-- **plugin** — confirm `.sharedInput`'s strip category against the compiler (point.ts ~1014-1170) — it isn't named in R3's four lists.
-- **generator** — document the EmitNamedImportsResult shape (importLines, importedPoints, …) so callers know how to assemble a file that imports points — currently only named, not described.
-- **engine-runtime** — engine.dev({ restart }) is declared in the signature but no code consuming it within dev and no CLI flag mapping to it were found — its effect is NOT FOUND; confirm before documenting on dev.
-- **mapper** — error semantics if the mapper body itself throws are not covered by a test — confirm before documenting.
-- **query-client** — getQueryClient() is exported but has zero call sites in examples or start0 — confirm it's intended as public user API versus internal before leaning on it.
-- **engine-runtime** — getViteConfig's full option matrix (isPreview, mode mapping) beyond side/scope resolution is NOT FOUND in the read ranges — document the rest on bun-vs-vite once verified.
-- **middleware** — middleware on a query / mutation / action / component / provider / plugin stage point type-checks, but only root- and page-level middleware is exercised by tests and examples. Confirm runtime behavior on the other point types (e.g. whether a query's own middleware fires on its endpoint request) before documenting it as supported.
-- **infer** — most keys here have no usage example in tests, examples, or start0 — only InputRaw, InputRawOrUndefined, IsInputOptional, RouteDefinition, QueriedData, EdgeComponent, and Error are exercised anywhere. The descriptions for the rest are read off the type definitions, not from worked usage; confirm semantics (especially MapperOutput, CtxExposed, ServerExecuteResult) before leaning on them.
-- **provider** — mounting two instances of one provider with distinct `input` at the same time, then addressing each via `getValue(input)`, is not covered by a test — verify the disambiguation before documenting it as supported.
-- **example-capacitor** — native specifics not demonstrated/unverified — Android shell (no committed `android/`), splash/icon, live-reload (`cap run`), and `env.os` detection (`is.ios`/`is.android`/`is.reactNative`) inside the webview. Treat as gaps, not features.
-- **mountable** — no example or behavioral test exercises the `.clientOnly()` Fallback render path (only the type signature and the action-push are confirmed in code). Verify what the user sees during the SSR skip before relying on it.
-- **validation** — no production usage of `.body`, `.headers`, `.cookies`, `.clientInput`, or `.sharedInput` exists in start0; the action example above is adapted from the openapi test suite. Confirm against a real action before treating these as documented recipes.
-- **mcp-project** — no test or example demonstrates a multi-tool agent workflow end to end (e.g. "find the page for /foo, then trace why a server util leaked into the client"). The intro article describes the intent in prose only — add a worked walkthrough once one exists.
-- **ctx** — no test or example reads `set`, `points`, or parsed input from inside `.ctx` — confirm the runtime shape before documenting these as recommended.
-- **response** — numeric `expires` is ambiguous across code paths — server effects serialization treats a bare `number` as epoch milliseconds (`new Date(number)`), while the CookieStore client document path treats `expires: number` as days-from-now. Confirm and align the intended semantics for `set.cookies` server-side, then document a single rule.
-- **transformer** — only `Date` and `BigInt` are proven by Point0 tests (`packages/engine/tests/loader.test.tsx`, `action.test.tsx`). `Map`/`Set` are superjson capabilities — link superjson's own list of supported types here once confirmed end to end in a Point0 test.
-- **mdx** — passing a `components` map or `wrapper` to `MDXContent` (to override how Markdown elements render) is supported by the underlying MDX compiler but is not wired through any Point0 example, test, or the React-DOM bindings. Treat as advanced/unverified.
-- **error-handling** — pin down which boundary catches a given throw — layout vs page vs component error component, and whether a component error bubbles to the page error. Precedence of the error boundaries is not yet confirmed against a test.
-- **deploy** — point0 sets no explicit bind hostname in production — it falls through to Bun's Serve default (likely 0.0.0.0). Confirm before stating the bind address. To pin it, pass hostname via bunServeConfig or serve().
-- **head** — precedence across a layout's flat SEO key and a child page's same key is inferred from declaration order ("page wins") but not directly tested. Interaction of multiple `canonical` declarations up the chain (page vs layout) is also not verified — only a single-call canonical is tested.
-- **action** — set.status / set.headers / set.cookies are in the action loader options, but no action-specific test exercises them — behavior is documented for mutations; confirm it matches on actions. See response.
-- **layout** — the "loader/query not re-run on sibling navigation" claim is design intent (the layout stays mounted around an inner page switch in router.tsx); no test asserts a fetch-count across such a navigation. Verify with a focused test before treating it as guaranteed.
-- **action** — the .action() / .query() / .infiniteQuery() finalizers share an error message that mentions .clientLoader, but an action is a server endpoint with no client render — confirm whether .clientLoader is callable on an action at all. Author's intent: it should not be. If it's reachable, remove it from the action's stage.
-- **example-expo** — the Babel plugin uses `scope: 'site'` while the engine server uses `scope: 'root'`. Whether the mismatch is intentional, and which scope a React Native client should use, is NOT FOUND in code or tests.
-- **mcp-project** — the MCP reads `built` from `POINT0_BUILT === 'true'` and exposes no input to set it (the CLI has `--built`). Document the intended way to compile/trace against a built project via the MCP, if there is one.
-- **action** — the action test asserts { name: 'ErrorPoint0', message, code, status } — but that is the dev/private projection; the public projection a client sees in production omits status. Author says `name` should not fly to the client at all; if that's the intent, fix serializePublic in core/src/error.ts and this example.
-- **publicdir** — the build copy reads files as text (`Bun.file(...).text()`), which is a concern for binary files (images, fonts) when `outdir` is **not** `dist` (the canonical `dist/client` path serves binary-safe via `Bun.file` after the auto-rewrite). No test confirms binary integrity through the text-based copy — verify before relying on a non-`dist` `outdir` for binaries like `favicon.ico`.
-- **deploy** — the built prod entry does not visibly wire SIGTERM → engine.dispose() (dispose exists; the dev shutdown hooks are dev-orchestrator only). Confirm whether production needs explicit graceful-shutdown wiring.
-- **engine-config** — the default value of importer.onDeny ('throw' vs 'log') is NOT FOUND in the read range — confirm before documenting a default.
-- **dev** — the dev() options type also lists `restart?: boolean`, declared and never used (not destructured in the body) — omitted here on purpose. Remove it from the type or wire it up.
-- **build** — the engine-wide `clientsOutdir` (general option) is parsed and stored but the per-client `outdir` is derived only from `clientOptions.outdir` (config.ts buildClientOptions) — it does NOT fall back to `clientsOutdir`. The examples set per-client `outdir` directly. Don't document `clientsOutdir` as the primary outdir knob until its actual effect is traced.
-- **testing** — the example apps under examples/* ship no tests, and it is NOT confirmed whether create-point0-app scaffolds a src/test/ rig. The layout below is a pattern to copy, not generated output.
-- **layout** — the page-level defaults set on a *layout* (.pageError, .pageLoading, .page*QueryOptions) and the prefetch family are exposed in the type surface but have no layout-specific test or example — confirm semantics (do they become the defaults for every page under the layout?) before documenting them as a recommended feature.
-- **plugin** — the parametrized-plugin factory is shown in the intro article; the live examples and start0 export plugins as plain consts. Confirm a verified-in-repo factory before presenting this as the canonical pattern.
-- **env** — the security claim "a non-whitelisted secret is absent from the client bundle" is implied by the whitelist mechanism but not pinned by a test that asserts a non-whitelisted var is excluded. The build test proves whitelisted vars appear, not that others are stripped — add a test before stating this as a guarantee.
-- **infinite-query** — the typed infinite surface exposes only getQueryKey (returns the finite key); getInfiniteQueryKey exists at runtime but isn't typed on the point. Confirm with the maintainer whether to surface getInfiniteQueryKey or have getQueryKey return the infinite key for infinite points.
-- **mdx** — there is no example/test of `import Article, { frontmatter } from './post.md'` consuming a non-point markdown module. Confirm the import-for-content flow against a real example before presenting it as canonical.
-- **request** — there is no raw, untyped route-params view on `request`. `request.location` is an unrouted location whose `params` is `undefined`; the matched params live on the engine's classified variant (`request.variant.location.params` for an `endpoint`), which isn't documented as stable read-side API. Read params through the validated `params` option prop.
-- **plugin** — verify `.tag` vs `.description` strip split against R3 — `.tag` is listed server-and-client (root setter), `.description` server-only.
-- **cookie-store** — what breaks if you skip CookieStore.plugin() is not isolated by a test — the SSR commit runs without it, only the post-mutation client refresh() is lost. Confirm before documenting the plugin as optional.
-- **importer** — when a side has compiler: false, getCompilerOptions returns false so the importer never runs — import protection is silently off for that side. No test asserts this no-op; state the dependency once confirmed.
-- **mutation** — with a server loader the mutation also exposes lower-level fetch / getFetchServerOptions / fetchServer / fetchServerDetailed helpers, but no test or example exercises them on a mutation — their behavior for the mutation case is NOT FOUND. Primary surface is the six methods above.
+_None._ The coverage gaps that lived here (assets HMR, the env
+negative-whitelist test, the mcp multi-tool walkthrough) moved to
+[add-tests.md](add-tests.md) — they need a test or an example, not a doc edit.
 
 ## LOW
 
-- **bun-vs-vite** — "Bun starts faster / better HMR" is the author's claim — no benchmark number is recorded in the repo. Add a measured figure before quoting one.
-- **action** — .cookies(...) on an action is in the type surface but has no test or example — confirm the parsed-cookie shape in the loader before relying on it.
-- **layout** — .head on a layout is exposed but not exercised by a layout-specific test or example — verify whether a layout head contributes to <head> for its child pages.
-- **middleware** — .middleware has no JSDoc in packages/core/src/point0.ts — add a one-line description in the JSDoc pass.
-- **layout** — .scrollRestore / .scrollPosition, .clientOnly / .serverOn / .clientOn / .on type-check on a layout but are exercised only on other point types — verify runtime behavior on a layout.
-- **generator** — CompilerPoint is a compiler-internal type; consider exposing/aliasing a public type for handler authors, or describe the fields a handler actually needs (id, scope, type, name, route, endpoint).
-- **testing** — FetchOptions.transform — default and exact effect on the transformer round-trip in tests — is not pinned down by any test; confirm before documenting it here.
-- **action** — OPTIONS / HEAD and exotic (WideRequestMethod) verbs are accepted by the types, but no test or example exercises them — CORS-preflight interplay for OPTIONS is unverified.
-- **ssr** — Point0 waits for the full tree (`stream.allReady`) before shipping HTML — no progressive / Suspense-boundary streaming, and RSC is unsupported. Document the non-streaming model once it's confirmed as an intentional, stable guarantee.
-- **getting-started** — `--no-orphans` needs Bun >= 1.3.14 (the template pins `@types/bun` to `^1.3.14`), but the generated app declares no `engines` floor. Decide whether to add an `engines` requirement and document the minimum Bun version.
-- **head** — `.head` on a base point type-checks but has no example or test declaring a base-level head — its rendering path (flow-down to a page/layout) is inferred, not directly exercised.
-- **base** — `.head`, `.scrollPosition`, `.scrollRestore`, `.onPrefetchPage`, and the `.prefetchPage*` methods are accepted on a base and inherit via the defaults table, but no test exercises them set on a base specifically — verify base-level inheritance before documenting them as recommended base features.
-- **page** — `.headers` / `.cookies` are accepted on a page but have no example or test for the non-endpoint (loader-less) case — confirm intended use before documenting as a recommended page feature.
-- **validation** — `.input`-vs-component-props (validated cache-key input vs the props a `.component<{…}>()` declares) is contrasted only in prose, not in a test — document the distinction once the component page lands and link from here.
-- **loading-error** — `.loading()` / `.error()` rendering on a provider point is exposed by the types but has no dedicated test — confirm behavior.
-- **mdx** — `.mdc` ("Markdown Components") has no behavior of its own yet — it is byte-for-byte the `.md`/`.mdx` path. If a real distinction lands (e.g. a default component set), document it here.
-- **transformer** — `.transformer` called more than once should be last-wins (the builder merges via `_continue`), but there's no explicit test. Verify before stating it.
-- **basic-auth** — `BasicAuth.create` and the `validateRequest` method are exercised by tests, but no example or app uses this lower-level surface, and `getFailureResponse` has no test coverage — documented as available, not as a recommended path.
-- **head** — `base`, `style`, `noscript`, `bodyAttrs`, `script` are recognized head keys but have no Point0 test or example exercising them via `.head` — pass-through to unhead is assumed, not proven.
-- **build** — `buildWatchGlob` has no hard-coded default glob in code (effective default is "watch the import graph", with `buildWatchGlob` additive and empty unless set). Confirm there is no implicit glob.
-- **request** — `from.location` is only tested for a well-formed absolute referer; behavior on a relative or malformed `referer` is not covered by tests.
-- **query** — `outputType` can be 'data' | 'queryClientDehydratedState' | 'queryClientDehydratedStateRedirect' | 'html' (FetchServerOutputType in types.ts); only 'data' and 'queryClientDehydratedState' are exercised in tests for standalone queries — verify when a query ever carries the other two before documenting them.
-- **loader** — `points.*` is reachable inside a loader by type, but no example or test calls it from a loader — verify the intended pattern.
-- **mdx** — `rehypePlugins` / `recmaPlugins` are typed and merged but have no test/example (only `remarkPlugins` is exercised). Verify the rehype/recma paths before documenting a worked example.
-- **request** — `request.id` is only asserted to be a non-empty string; its format and uniqueness guarantees (and whether it should be used for correlation across a `prev`/`first` chain, where each hop gets a fresh id) are unconfirmed.
-- **basic-auth** — `safe-stable-stringify` is declared as a peer dependency but isn't imported anywhere in `src` — likely stale; don't document it as required for consumers.
-- **loader** — `set.apply(response)` and `set.inspect` exist on the helper type but have no loader-context example or test — confirm intended use.
-- **response** — `set.apply(response)` is public on the `set` helper, but no test or example shows user code calling it — the framework applies effects itself at the end of every request. Confirm whether it's meant as a user-facing method or is effectively internal.
-- **response** — `set.status` accepts any number with no validation or range check; out-of-range / non-integer values are untested. Behavior with odd values is not pinned down.
-- **publicdir** — a `publicdir` on a `clients[]` entry is supported by the type (start0 uses it), but only the single-`client`/`server` forms are integration-tested end-to-end — verify a multi-client `clients[]` publicdir serves before relying on it.
-- **query-client** — a concrete recipe that instantiates two separate real QueryClients and passes one through { queryClient } isn't in tests or examples — the option's type is confirmed, but a worked multi-client use case isn't.
-- **mountable** — a layout drops its `.wrapper`s in the "suitable subset" path — document the rationale on the layout page, not here.
-- **response** — a middleware that writes an effect *after* `await next()` returns — impl applies effects at the very end, so such a late write should still land in the final response, but no test asserts the final response header for a post-`next()` write. Verify before documenting it as supported.
-- **cookie-store** — a real native (React Native) adapter via clientCookieGetter/clientCookieSetter is supported by the API shape but has no public example — only Point0's own test fake-client wires custom getter/setter this way.
-- **error-handling** — add a test/example that throws an error carrying `response` / `headers` and asserts the emitted `Response`.
-- **infinite-query** — an action can also be finalized with .infiniteQuery (it requires a server loader, and throws `Point has no server loader` otherwise), but there's no runnable example in the repo or start0 — mark illustrative until one exists.
-- **navigation** — asChild / Slot behavior on <Link> / <NavLink> is typed but has no point0 test or example — verify runtime behavior before documenting it in depth.
-- **mdx** — authoring a non-page point (a layout/component chain) in `.mdx` is unconfirmed — every example exports a `.page()`, and the `*.mdx` type only declares `page`. Confirm before documenting other point kinds in `.mdx`.
-- **build** — behavior when multiple clients share an `outdir` / scope is not traced (`Publicdir.checkConflicts` is still a TODO in publicdir.ts) — verify before documenting multi-client output collisions.
-- **mcp-docs** — behavior with a missing/corrupt `content/docs.json` (e.g. a publish without `build:content`) is not handled gracefully — the loader would throw on read/parse. NOT FOUND as a handled path.
-- **engine-config** — buildWatchGlob is described in code comments but exercised by no example or test — mark advanced/unverified until confirmed.
-- **engine-config** — bunBuildConfig is a Partial<Bun BuildConfig> (or ({mode,side,scope}) => it); bunPlugins is Array<BunPlugin | string> (or a function returning it). Both are passthroughs to Bun — no Point0-specific fields to enumerate. The bunBuildConfig shape is now described in the "Bun build config" section.
-- **testing** — bunfig [test] preload vs per-script --preload — start0 uses per-script flags; decide which to recommend.
-- **compiler** — cacheLimit / cacheDir appear in the per-side config types but their resolution/semantics were not traced — confirm before documenting.
-- **mapper** — chaining `.mapper` twice (each mapper feeding the previous output as its `data`) works at runtime but has no test or example — verify before documenting it as a supported pattern.
-- **engine-config** — clientsOutdir runtime semantics (what consumes it, when you'd set it) are NOT FOUND in any example — only its path-fixing is traced.
-- **mountable** — confirm `.relatedQuery` and `.onPrefetchPage` are intentionally unavailable on component/provider before documenting the per-type matrix as final.
-- **mdx** — confirm nothing consumes `frontmatter` automatically (e.g. for `.head()` / meta). As of now it is only `export const frontmatter` for manual use.
-- **basic-auth** — confirm the package is published publicly before documenting an install command — package.json carries publishConfig.access: "restricted", which may be a pre-launch artifact.
-- **plugin** — confirm whether `.use()` *after* `.loader()` throws at runtime with a specific message — only the type-level guard is verified; no runtime test exercises a post-loader `.use()`.
-- **component** — confirm whether a component's POST endpoint appears in the generated OpenAPI spec — not verified in the sources reviewed.
-- **build** — consider moving this manifest to dist/client/_point0/preload.json — it would read nicer than the __point0_preload__.json basename at the client root and sit alongside the other _point0/ files.
-- **request** — cookie parsing edge cases (quoted values, `%XX` decode failures, duplicate names, `__Host-`/`__Secure-` prefixes) have implementation but no dedicated tests — treat behavior here as derived from code, not test-verified.
-- **testing** — cross-link [transformer](transformer) once transform behavior in tests is confirmed.
-- **publicdir** — cross-publicdir route conflict detection isn't implemented yet (a `checkConflicts` is stubbed in the code). Today it's silently "first match wins" — document a guard once one exists.
-- **generator** — dev/docs/asset-pipeline.md describes assets.d.ts as emitted via a customFile generator task; the current code uses a dedicated assetsTypes task. The dev doc may be stale — code wins.
-- **testing** — document the Playwright `playwright install` browser-binary step once confirmed (whether it's needed and where it belongs in setup).
-- **head** — each head action carries an `ssr` flag, but the render loop does not branch on it — heads render regardless of the flag. Whether a non-SSR point should ever suppress head SSR is unverified.
-- **compiler** — enumerate the allowed values for env.runtime.is.<X> and env.os.is.<X> (the EnvRuntimeName / EnvOsName string sets in @point0/core) on the env page and link here.
-- **mutation** — fetchOptions / headers / cookies are accepted while composing a mutation, and options.fetchOptions is typed on the fetch helpers, but their effect on a mutation request is NOT FOUND in tests or examples.
-- **infinite-query** — getPreviousPageParam / fetchPreviousPage (backward pagination) are inherited from TanStack but used nowhere in Point0 examples, tests, or start0 — confirm the wiring before documenting backward pagination here.
-- **request** — how `request.headers` collapses a duplicated header (e.g. multiple `set-cookie`) into one value is not covered by tests — it goes through `Headers.forEach`, which yields one combined value per key.
-- **mcp-docs** — how an agent should be instructed to prefer these tools (a system-prompt rule like "check the docs before answering") is not configured anywhere in this repo — NOT FOUND. Document a recommended instruction once one exists.
-- **deploy** — if a host needs a healthcheck endpoint, it's an app-provided point you add yourself (start0 ships an /api/health point as an example), not a point0 framework built-in — don't present any path as a default endpoint.
-- **engine-config** — itWasBuilt / cwdBeforeBuild / cwdAfterBuild are auto-derived (and overridable via POINT0_ENGINE_* env). Whether they're meant to be user-set is NOT confirmed — treat as internal/advanced.
-- **cookie-store** — maxAge / domain / secure / partitioned reaching a real browser Set-Cookie for a CookieStore item is only unit-tested at the serialization level — no end-to-end integration test confirms them.
-- **infinite-query** — maxPages, select, structuralSharing, and a non-default outputType all pass through to TanStack on an infinite query but are unexercised in the repo — verify behavior before documenting them as supported.
-- **file-upload** — nested-file and array-of-files ({ files: File[] }, { profile: { avatar: File } }) round-trips are inferred from the flat bracket-notation behavior but have no dedicated Point0 test — verify before documenting as supported.
-- **transformer** — no benchmark in the repo for superjson's serialization cost on large payloads. Don't quantify the overhead until measured.
-- **component** — no component-specific `.mapper` usage exists in the examples or production code reviewed; the method applies, but a real-world example is wanted.
-- **publicdir** — no documented production deploy story for static files behind a CDN / reverse proxy — only "the built server serves `dist/client` at `/`". Add one when defined. Point0 is deploy-agnostic, so this stays a generic "put a CDN/proxy in front" note rather than any host-specific config.
-- **generator** — no example app or start0 uses a custom generator task — the shapes are confirmed in code/tests, but there's no worked production example to adapt.
-- **infer** — no per-key JSDoc exists on the Infer type yet — the JSDoc pass should mirror the table above.
-- **cors** — no shipped example mounts cors() path-scoped; the form follows from the .middleware contract (it runs only on matching routes) but isn't exercised in tests.
-- **provider** — no test demonstrates a provider self-query honoring `providerQueryOptions`; behavior is inferred from the defaults wiring — verify.
-- **events** — no test or example exercises a user .on('emitError', …) handler; the mechanism is verified, the usage pattern above is inferred from the payload shape.
-- **example-expo** — not exercised here — whether the example builds/runs end to end (WIP marker), a production / physical-device `serverUrl` strategy beyond "set the LAN IP", and compatibility of other modules (OpenAPI, auth) with the React Native path. NOT FOUND.
-- **with** — once the error-handling page lands, cross-link how `Error` returns are normalized through the point's error class.
-- **getting-started** — only `bun create point0-app` is documented. `npx` / `pnpm dlx` / `yarn create` would technically resolve the bin, but the scaffolder and the generated app both require Bun, so list alternatives only if we decide to support them.
-- **assets** — only `svg`, `png`, and `txt` are exercised in tests/examples; per-type behavior for `avif`/`pdf`/`zip`/audio/video/fonts beyond generic url mode is inferred, not pinned down.
-- **mcp-project** — other MCP clients (VS Code, Windsurf, Zed, …) are not covered by the scaffold — create-point0-app writes only the Claude Code and Cursor configs. Their setup is NOT FOUND in the repo; document it once verified.
-- **page** — page-level `.middleware` and the per-status `.head('universal' | 'global', …)` forms type-check on a page but are exercised only on other point types — verify runtime behavior on a page.
-- **loader** — parsed `headers` / `cookies` in a loader are type-confirmed but have no example or test reading them — document a concrete case once one exists.
-- **events** — pointPrefetchPage* events fire (emit sites confirmed in point0.ts) but no test pins their exact ordering relative to the page-prefetch flow — document the sequence once it's exercised.
-- **env** — processEnvAliases (treating a custom identifier like @/env as process.env for the static rewrite) exists in the compiler but has no exposed engine-config key — not found how an app sets a process.env alias through Engine.create. Verify before documenting.
-- **testing** — provide a concrete engine.fetch example for an engine that does require a ctx, once one exists in the examples or start0.
-- **mcp-docs** — publish cadence of the shipped corpus — how often `@point0/docs` republishes and whether an agent should re-pull — is NOT FOUND in any release doc.
-- **openapi** — pull the enumerated Scalar (ApiReferenceConfigurationWithSource) and Swagger (SwaggerUIOptions) option lists from each tool's own docs
-- **publicdir** — range requests / streaming for large files — served via `new Response(Bun.file(...))`; Bun may handle ranges natively, but no point0-level test confirms it.
-- **env** — runtime / os detection for the native examples (Capacitor, Expo) isn't covered here — confirm the reactNative / ios / android behavior against examples/expo and examples/capacitor before documenting mobile specifics.
-- **example-capacitor** — scaffold leftovers — `ionic.config.json` still has the default `name: "my-app"`; a stray `<h1>Ideas34</h1>` and commented-out code in `navigation.ts`; `client.env.vars: ['SOURCE_BASE_URL']` is exposed but read nowhere. WIP artifacts, not intended.
-- **openapi** — servers / security / multi-status response examples are supported by the types but not exercised by any test or example — verify before presenting as worked examples
-- **middleware** — set.cookies and set.status are part of the helper but no middleware test exercises them (only set.headers is covered) — confirm the intended middleware usage.
-- **mcp-docs** — slugs are file names with no cross-category dedup, so two pages with the same file name in different categories would collide. Not enforced in code — flag if this becomes a real risk as the docs grow.
-- **query** — some helper methods accept an extra `mode` in their options object in the tests, but the public type only exposes `{ queryClient?, outputType? }` — confirm whether `mode` is a supported escape hatch before documenting it.
-- **file-upload** — streaming / large-file handling, and File behavior on React Native (examples/expo), are NOT FOUND in code or tests.
-- **loader** — the `[status, data]` tuple is exercised through the runtime path only; no example or test returns a status tuple from a loader. Verify with a real case.
-- **build** — the `build` / `buildWatch` `file` option exists in the type (engine.ts) but its precise role on the non-watch `build` path (beyond `--engine` passthrough in watch) was not traced — confirm before documenting.
-- **ssr-store** — the `onChange` callback on `.use()` has no test coverage beyond the reference-equality guard — treat its exact timing as lightly specified.
-- **mcp-docs** — the `score` is Orama's raw hybrid score, passed through unchanged — its scale and normalization aren't documented. Don't ascribe a fixed range to it.
-- **compiler** — the base and plugin point-type sugar (.lets.base(...) / .lets.plugin(...)) is supported in the type map but has no example/test of its sugar naming — confirm name inference for those two before documenting them.
-- **deploy** — the basic example's start script runs dist/server/index.server.js while its Dockerfile CMD runs dist/server/app.server.js. Both files exist (both are build entries), so both work, but the example is inconsistent — this page treats index.server.js as canonical.
-- **compiler** — the choice between Bun and Vite for the client is a config decision, not a compiler one — cross-link bun-vs-vite once it lands.
-- **points** — the claim "everything is a point" covers every building block you author with `.lets`. Point0 also has non-point primitives (env, error, navigation, eventer, super-store) — scope the claim to the authored surface, not *literally* everything.
-- **assets** — the content-type mapping for served assets (the dev route relies on `Bun.file`'s mime inference) has no explicit table in code.
-- **dev** — the design docs (dev-stability.md, server-hot-reload.md) still describe the hot child as running under `bun --watch`; the shipped code spawns a plain `bun run` and recovers via the orchestrator's own respawn branch instead. Code wins — reconcile the dev docs.
-- **bun-vs-vite** — the dev docs detail only the Bun source-map workaround; whether Vite handles source maps natively here is not stated explicitly — verify before asserting parity.
-- **head** — the exact `%s` resolution (multiple `%s`, function-form `titleTemplate`, separator handling) is unhead behavior, not covered by Point0 tests — only `'%s | App'` and `null` are exercised. `templateParams` is a recognized head key but has no Point0 test or example.
-- **navigation** — the exact effect of addHashToLocation on the rendered location.hash isn't pinned by a test — confirm before stating end-to-end behavior.
-- **example-better-auth** — the exact endpoints under /api/auth/* (sign-in/email, get-session, …) live inside Better Auth, not this repo — link the Better Auth docs for the full list.
-- **example-expo** — the example's README references a `metro-transformer.js` and a `src/lib/root.ts` that don't exist — compilation is via the Babel plugin above, and the root is `src/lib/root.tsx`. Trust the code over that README.
-- **openapi** — the examples field on a normalized response and non-JSON content types (text/plain, image/*, …) are allowed by the types but not exercised by any test or example — confirm before presenting as worked examples
-- **publicdir** — the host-string `serving` form is confirmed by type + implementation, but has no worked example/test for publicdir specifically — the snippet above is illustrative.
-- **ssr-store** — the intro article claims an unused `SsrStore` doesn't enter the client bundle (tree-shaken). No build/tree-shaking test confirms this — verify before stating it as fact.
-- **action** — the intro says actions auto-parse "json/formData", but only JSON body parsing is covered by tests — form-data auto-parse is unverified.
-- **mutation** — the mutation method is always POST and the prefix is _point0; a custom method or endpoint prefix for a plain mutation is NOT FOUND in tests or examples — method override is the action surface.
-- **compiler** — the native bun dev server passes compiler options to a child process as JSON, which drops function-valued options (markdown / babel plugin functions, assets.svgr); the compiler re-attaches them in-process via a ref. Internal mechanism — mention only if a native-dev-server page needs it.
-- **navigation** — the per-state detailed navigation callback (UseOnNavigateDetailedFn) exists in the types but no hook wraps it — confirm whether a public hook is intended before documenting it.
-- **loading-error** — the precedence when both `.loading()` and a same-variant setter (e.g. `.pageLoading()`) are declared at the same chain depth on one point is derived from the impl (unified field is checked first) — no test isolates this exact tie.
-- **events** — the rationale for excluding pointFetchServerError / pointPrefetchPageError from the 'error' shorthand is not stated in code — confirm whether it's intentional.
-- **importer** — the server-only / client-only markers match the importing file's own marker import (@point0/core/...), so for a third-party library to be guarded this way the library itself must carry the marker — no test covers a node_modules package doing so. Verify before recommending it for libraries.
-- **basic-auth** — the topic brief mentions a `realm` config — there is no `realm` option. The realm is hardcoded. Decide whether to expose it or keep it fixed.
-- **middleware** — the wildcard's captured value lands under the param key '*' per route0, but no point0 test asserts the params['*'] shape for a /api/auth/* middleware — verify before documenting params['*'].
-- **importer** — there is no CLI flag or dev() option to opt dev into onDeny: 'throw' for fail-fast local development — getCompilerOptions accepts an onDeny override but nothing user-facing wires it (only build sites force 'throw'). Confirm whether a dev toggle is intended before documenting one.
-- **infer** — there is no `Location` key on `Infer` (the brief lists one, but it is NOT FOUND in packages/core/src/types.ts). Location types live on navigation, not on point.Infer.
-- **plugin** — two plugins declaring conflicting input keys — the type carries a not-mashed-schemas assertion, but no test exercises the conflict path. Verify the behavior before documenting it.
-- **query-client** — whether Point0 recommends specific app-level QueryClient defaultOptions is not documented — examples and start0 all pass a bare new QueryClient().
-- **base** — whether a base can be started from a provider is ambiguous — the provider's typed surface doesn't expose `.lets.base()`, yet the compiler accepts the raw string form. Treat provider→base as unsupported in typed authoring until confirmed.
-- **component** — whether components are lazy-loaded by default (pages are) is not stated in the sources reviewed — confirm before documenting.
-- **query-client** — whether two scopes within the same server request share or isolate a cache is implied by the context model but not asserted by any test.
+Five genuine **product decisions or external-doc links** — they stay as markers
+until someone makes the call. (Test-coverage gaps are in
+[add-tests.md](add-tests.md), not here.)
+
+- **ssr** — Point0 waits for the full tree (`stream.allReady`) before shipping
+  HTML — no progressive / Suspense-boundary streaming, no RSC. Document the
+  non-streaming model once it's confirmed as an intentional, stable guarantee.
+- **points** — "everything is a point" covers every building block you author
+  with `.lets`, but Point0 also has non-point primitives (env, error,
+  navigation, eventer, super-store) — decide whether to scope the claim to the
+  authored surface.
+- **getting-started** — `--no-orphans` needs Bun >= 1.3.14, but the generated
+  app declares no `engines` floor. Decide whether to add an `engines`
+  requirement and a minimum Bun version.
+- **getting-started** — only `bun create point0-app` is documented; decide
+  whether to support / list `npx` / `pnpm dlx` / `yarn create` alternatives (all
+  require Bun anyway).
+- **example-better-auth** — the exact endpoints under `/api/auth/*` live inside
+  Better Auth, not this repo — link the Better Auth docs for the full list.
+
+## Resolved in the 2026-06-25 pass
+
+The full HIGH set and the large majority of MED/LOW were closed. Doc-only
+resolutions (verified each claim against code/tests and corrected the prose) are
+not listed here; the **code/compiler/type fixes** that landed alongside the doc
+updates are:
+
+- **compiler** — `.models` is now stripped from the client bundle (server-only);
+  `point.ts` `shakeMethodsForClient` + `shakeMethodsForAnotherScope`.
+- **compiler** — `.onPrefetchPage` is no longer stripped from the server bundle:
+  it is now **server-and-client** and runs during server-side prefetch (the
+  runtime already invoked it; the compiler was neutering it). `point.ts`
+  `shakeMethodsForServer`.
+- **core (request0.ts)** — `from.ip` is now **always** Bun's unspoofable
+  `requestIP` (or `null`), never a header value; spoofable header candidates
+  live only in `from.ips`.
+- **openapi (utils.ts)** — `hideTransformHeader` now actually suppresses
+  `X-Point0-Transform` (it was never forwarded into `getOpenapiSchemaFromPoint`
+  and leaked into the document).
+- **core (point0.ts) + openapi** — the already-normalized
+  `.response({ 200: {…}, 404: {…} })` form now emits every status (was returning
+  only the first); `NormalizedResponseSchema.content` is now
+  `Partial<Record<…>>` so a single content type is valid.
+- **core (cookie-store.ts)** — a numeric cookie `expires` is now **epoch
+  milliseconds** on the client document setter too, matching the server
+  serializer (was days-from-now).
+- **core (point0.ts)** — the `pageDehydratedState` prefetch path now emits
+  `pointPrefetchPageSettled` before `pointPrefetchPageSuccess`, matching every
+  other path.
+- **engine (cli.ts)** — `point0 --version` now prints the installed
+  `@point0/engine` version (was a hardcoded `0.1.0`).
+- **engine (engine.ts)** — removed the dead `restart?: boolean` from the `dev()`
+  options type.
+- **basic-auth (package.json)** — removed the stale `safe-stable-stringify` peer
+  dependency (never imported).
+- **examples** — capacitor scaffold leftovers cleaned (`ionic.config.json` name,
+  stray `<h1>`, dead `navigation.ts` comments, unused `SOURCE_BASE_URL`); expo
+  Babel `scope` corrected `'site'` → `'root'` and its README de-staled.
+
+### Flagged, deliberately NOT changed (need a decision)
+
+- **error.ts `serializePublic`** — the action TODO asked to drop `name` from the
+  public (production) error projection. Left as-is: `error.test.ts` deliberately
+  codifies `name` in the public projection ("carries identity"), which
+  contradicts the TODO's hedged intent. The docs now document the real
+  `{ name, message, code }` shape. **Your call** whether to remove `name`.
+- **server.ts (~747)** — a stale code comment says the dev server child "runs
+  under `bun --watch`", but the shipped code spawns plain `bun run` and recovers
+  via the orchestrator's respawn branch. Not rewritten (it sits in the sensitive
+  dev-lifecycle path and an accurate rewrite needs tracing the current
+  keep-alive/respawn model) — flagged for a focused follow-up.

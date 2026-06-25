@@ -1,7 +1,9 @@
 ---
 index: 100
 title: Engine Config
-description: Every option you pass to Engine.create({ ... }) — file, ssr, server/client blocks, generate, env, and the rest.
+description:
+  Every option you pass to Engine.create({ ... }) — file, ssr, server/client
+  blocks, generate, env, and the rest.
 ---
 
 The engine is the one object that ties an app together: it knows where your
@@ -39,7 +41,10 @@ export const engine = Engine.create({
     points: async () => await import('./generated/point0/points.client'),
     generate: {
       points: './generated/point0/points.client.ts',
-      routes: { outfile: './generated/point0/routes.ts', origin: 'process.env.CLIENT_URL' },
+      routes: {
+        outfile: './generated/point0/routes.ts',
+        origin: 'process.env.CLIENT_URL',
+      },
     },
     compiler: { babel: ['babel-plugin-react-compiler'] },
     bunPlugins: ['bun-plugin-tailwind'],
@@ -50,11 +55,11 @@ export const engine = Engine.create({
 })
 ```
 
-That's the canonical Bun setup from `examples/basic`. The config object is **flat
-general options** (`file`, `ssr`, `generate`, …) plus three nested blocks:
-`server`, `client` (or `clients` for several), each with its own options. The
-rest of this page walks through them by need; the full per-option tables are at
-the bottom.
+That's the canonical Bun setup from `examples/basic`. The config object is
+**flat general options** (`file`, `ssr`, `generate`, …) plus three nested
+blocks: `server`, `client` (or `clients` for several), each with its own
+options. The rest of this page walks through them by need; the full per-option
+tables are at the bottom.
 
 The CLI looks for a module that exports `engine` (named) or a default export —
 either must be an `Engine` instance. The canonical form is
@@ -63,11 +68,11 @@ either must be an `Engine` instance. The canonical form is
 ## `file` — the one required option
 
 ```ts
-Engine.create({ file: import.meta.url, /* ... */ })
+Engine.create({ file: import.meta.url /* ... */ })
 ```
 
-`file` is **required** and is almost always `import.meta.url`. The engine uses it
-to locate itself on disk — that drives `cwd`, build-output paths, and
+`file` is **required** and is almost always `import.meta.url`. The engine uses
+it to locate itself on disk — that drives `cwd`, build-output paths, and
 auto-discovery. Omit it and `Engine.create` throws:
 
 ```
@@ -89,25 +94,29 @@ client, `clients: [...]` for several:
 ```ts
 Engine.create({
   file: import.meta.url,
-  server: { scope: 'root', /* ... */ },
-  client: { scope: 'root', /* ... */ }, // shorthand for one client
+  server: { scope: 'root' /* ... */ },
+  client: { scope: 'root' /* ... */ }, // shorthand for one client
 })
 ```
 
 ```ts
 Engine.create({
   file: import.meta.url,
-  server: { scope: 'root', /* ... */ },
+  server: { scope: 'root' /* ... */ },
   clients: [
-    { scope: 'root', port: process.env.CLIENT_PORT, indexHtml: './index.client.html' },
+    {
+      scope: 'root',
+      port: process.env.CLIENT_PORT,
+      indexHtml: './index.client.html',
+    },
     // ...more clients
   ],
 })
 ```
 
 `client` and `clients` are concatenated, so you can use both. If you omit the
-server entirely, it defaults to `{ scope: 'root', ssr: false }`. A client with no
-explicit `port` gets `serverPort + index + 1`.
+server entirely, it defaults to `{ scope: 'root', ssr: false }`. A client with
+no explicit `port` gets `serverPort + index + 1`.
 
 Both blocks share many options (`scope`, `points`, `generate`, `port`,
 `importer`, `env`, `compiler`, `assets`, `viteConfig`, …) but each side also has
@@ -130,7 +139,7 @@ A client can opt out of being served by the engine — useful for a native shell
 
 ```ts
 clients: [
-  { scope: 'root' },                  // served (serving: true is the default)
+  { scope: 'root' }, // served (serving: true is the default)
   { scope: 'native', serving: false }, // built, but not bound to the server or dev serve
 ]
 ```
@@ -162,12 +171,12 @@ ssr: {
 }
 ```
 
-- **`allowedRerendersCount`** is the soft budget. Default is `Infinity` (re-render
-  until the store is stable). Set `0` or `1` to opt out of the stabilization
-  re-renders for performance.
-- **`forbiddenRerendersCount`** is the safety net (default `25`). If a value keeps
-  changing every render — say a stray `Date.now()` — the loop hits this cap, stops,
-  and logs an error.
+- **`allowedRerendersCount`** is the soft budget. Default is `Infinity`
+  (re-render until the store is stable). Set `0` or `1` to opt out of the
+  stabilization re-renders for performance.
+- **`forbiddenRerendersCount`** is the safety net (default `25`). If a value
+  keeps changing every render — say a stray `Date.now()` — the loop hits this
+  cap, stops, and logs an error.
 - **`prefetchBeforePageRender`** (default `false`) declaratively prefetches the
   page and its layouts (their `onPrefetch` hooks and server queries) before the
   first render, so the render finds data in cache. A fallback render-to-discover
@@ -177,8 +186,13 @@ ssr: {
 Resolution: an explicit `server.ssr` / `client.ssr` wins, else the engine-level
 `ssr`, else `false`.
 
-<!-- TODO(high): the per-side SSR object (allowedRerendersCount / prefetchBeforePageRender) is parsed and applied on clients, but the server's parsed shape carries only the boolean ssr — whether the re-render tuning takes effect for server-rendered output, and from which side it's read, is NOT FOUND in code. Confirm before relying on per-server SSR tuning. -->
-
+**The re-render tuning is read from the client, not the server.** A page is
+server-rendered through its client, so the executor reads
+`allowedRerendersCount`, `forbiddenRerendersCount`, and
+`prefetchBeforePageRender` from the resolved **client** SSR options. The
+server's `ssr` is only a boolean: it gates whether the server runs the SSR
+machinery (and the `POINT0_SSR` const). Set the object form on the engine
+default or on the client — tuning fields on `server.ssr` are dropped.
 
 ## Telling the engine where points are
 
@@ -201,16 +215,16 @@ Engine.create({
 
 - **`pointsGlob`** (`string | string[]`, default `[]`) is the glob the
   [generator](generator) walks to find point source files.
-- **`points`** is the runtime loader — usually an `async () => import(...)` of the
-  generated manifest. The server's default is a bare root point if you omit it; a
-  client's default is empty.
+- **`points`** is the runtime loader — usually an `async () => import(...)` of
+  the generated manifest. The server's default is a bare root point if you omit
+  it; a client's default is empty.
 - **`generate`** (per side) emits the manifests. See the next section.
 
 ## Code generation (`generate`)
 
 `generate` controls codegen — the files `point0 generate` writes. There's a
-**general** `generate` for app-wide outputs and a **per-side** `generate` for the
-points/routes manifests. See [generator](generator) for the full picture.
+**general** `generate` for app-wide outputs and a **per-side** `generate` for
+the points/routes manifests. See [generator](generator) for the full picture.
 
 General form (top level):
 
@@ -236,8 +250,8 @@ client: {
 },
 ```
 
-Each path can be a string or `{ outfile, banner? }`. The client `points` form also
-takes a `lazy` flag, and `routes` takes an `origin`:
+Each path can be a string or `{ outfile, banner? }`. The client `points` form
+also takes a `lazy` flag, and `routes` takes an `origin`:
 
 ```ts
 client: {
@@ -253,8 +267,8 @@ points when you don't set it, so each page becomes its own dynamically imported
 chunk. Set `points: { outfile, lazy: false }` to make them eager. There is no
 per-page method for this — see [page](page).
 
-`generate` also accepts a raw `FilesGeneratorTask[]` instead of the simple object,
-for full control. Default when omitted: `[]` (no codegen).
+`generate` also accepts a raw `FilesGeneratorTask[]` instead of the simple
+object, for full control. Default when omitted: `[]` (no codegen).
 
 ## Ports
 
@@ -273,8 +287,8 @@ See [dev](dev) for the dev lifecycle.
 
 ## Bun build config (`bunBuildConfig`)
 
-When a side bundles with Bun (the default — see below), `bunBuildConfig` lets you
-reach the underlying build. It's a plain
+When a side bundles with Bun (the default — see below), `bunBuildConfig` lets
+you reach the underlying build. It's a plain
 [Bun build config](https://bun.sh/docs/bundler) — the same options object you'd
 pass to [`Bun.build`](https://bun.sh/docs/bundler#api) — and Point0 spreads it
 into the build call after its own defaults. Set it at the top level for both
@@ -299,10 +313,10 @@ bunBuildConfig: ({ mode, side, scope }) => ({
 }),
 ```
 
-Lists that Point0 manages itself (`plugins`, `external`, `entrypoints`, `naming`,
-`define`, `banner`) are merged with Point0's own values rather than replaced, so
-your additions stack on top instead of clobbering the build. Everything else is a
-straight passthrough to Bun.
+Lists that Point0 manages itself (`plugins`, `external`, `entrypoints`,
+`naming`, `define`, `banner`) are merged with Point0's own values rather than
+replaced, so your additions stack on top instead of clobbering the build.
+Everything else is a straight passthrough to Bun.
 
 ## Bun or Vite
 
@@ -329,14 +343,19 @@ client: {
 `viteConfig` accepts three forms:
 
 ```ts
-viteConfig: ({ plugins, side, command, mode, scope }) => ({ /* UserConfig */ }) // function
-viteConfig: { /* a literal Vite UserConfig */ }                                 // object
-viteConfig: './vite.config.ts'                                                  // path to your own config
+viteConfig: ({ plugins, side, command, mode, scope }) => ({
+  /* UserConfig */
+}) // function
+viteConfig: {
+  /* a literal Vite UserConfig */
+} // object
+viteConfig: './vite.config.ts' // path to your own config
 ```
 
-The function receives `{ command: 'serve' | 'build', side: 'client' | 'server',
-mode, scope, plugins }`. To toggle a project between bundlers, just comment the
-`viteConfig` out. Full comparison and trade-offs on [bun-vs-vite](bun-vs-vite).
+The function receives
+`{ command: 'serve' | 'build', side: 'client' | 'server', mode, scope, plugins }`.
+To toggle a project between bundlers, just comment the `viteConfig` out. Full
+comparison and trade-offs on [bun-vs-vite](bun-vs-vite).
 
 ## Static files (`publicdir`)
 
@@ -400,16 +419,24 @@ Each form is a string (a single var name, or a `*` glob matched against
 `process.env`), a record, or an array of those:
 
 ```ts
-env: { vars: ['SOURCE_BASE_URL'] }           // pick named vars
-env: { vars: { API_URL: process.env.API_URL } } // explicit record
-env: { consts: 'PUBLIC_*' }                  // glob — all PUBLIC_-prefixed vars
+env: {
+  vars: ['SOURCE_BASE_URL']
+} // pick named vars
+env: {
+  vars: {
+    API_URL: process.env.API_URL
+  }
+} // explicit record
+env: {
+  consts: 'PUBLIC_*'
+} // glob — all PUBLIC_-prefixed vars
 ```
 
 **Client env is guarded.** An empty string `''` or a bare `'*'` in a client's
 `vars` or `consts` throws — that would leak your entire `process.env` to the
-browser. The **server** `vars` is stricter still: it only accepts records/arrays,
-no string or glob form. The server can see everything, so it has no such guard on
-`consts`.
+browser. The **server** `vars` is stricter still: it only accepts
+records/arrays, no string or glob form. The server can see everything, so it has
+no such guard on `consts`.
 
 Point0 always injects these consts: `NODE_ENV`, `POINT0_SCOPE`, `POINT0_SIDE`,
 `POINT0_SSR`, and `POINT0_BUILT` (at build). Full treatment on [env](env).
@@ -425,19 +452,19 @@ server: {
 }
 ```
 
-- **`mock`** — rewrite a matched import to a mock module, at compile time, in every
-  mode.
+- **`mock`** — rewrite a matched import to a mock module, at compile time, in
+  every mode.
 - **`deny`** — forbid a matched import (throws or logs at the import site).
-- **`cold`** — dev-hot-reload only, **server only**: a file whose path matches is
-  externalized from the hot graph, so editing it restarts the server child
+- **`cold`** — dev-hot-reload only, **server only**: a file whose path matches
+  is externalized from the hot graph, so editing it restarts the server child
   instead of hot-swapping. A `cold` rule on a client is a silent no-op.
 - **`cwd`** — base for relative rule paths; defaults to the engine cwd.
-- **`onDeny`** — `'throw'` or `'log'`.
+- **`onDeny`** — `'throw'` or `'log'`. Default `'log'`. A build forces `'throw'`
+  regardless, so a denied import always fails the build; `onDeny` only governs
+  dev compilation.
 
 Each list takes `string | RegExp` entries. See [importer](importer) for the full
 model (it also covers the in-file `import '@point0/core/cold'` marker).
-
-<!-- TODO(med): the default value of importer.onDeny ('throw' vs 'log') is NOT FOUND in the read range — confirm before documenting a default. -->
 
 ## Compiler and assets
 
@@ -468,13 +495,17 @@ assets: {
 `defaultMode` defaults to `'url'`; `extensions` defaults to a broad image/font/
 media set; `svgr` is on by default. **One caveat:** `extensions`, `defaultMode`,
 and `svgr` must agree between the client and the SSR side, or the two emit
-different asset URLs and hydration mismatches. Per-side overrides are allowed but
-a footgun. Full pipeline on [assets](assets).
+different asset URLs and hydration mismatches. Per-side overrides are allowed
+but a footgun. Full pipeline on [assets](assets).
 
 ## Logger
 
 ```ts
-logger: { log: ({ level, category, message, error, meta }) => { /* ... */ } }
+logger: {
+  log: ({ level, category, message, error, meta }) => {
+    /* ... */
+  }
+}
 ```
 
 Pass a `{ log }` object, or a function (sync or async) that returns one. The
@@ -500,92 +531,104 @@ See [events](events) for the event/logging model.
 These spread directly into `Engine.create({ ... })`, alongside `server` /
 `client` / `clients`.
 
-| Option | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `file` | `string` | — (required) | `import.meta.url`. Locates the engine on disk. Throws if missing. |
-| `ssr` | `boolean \| SsrOptions` | `false` | Engine default SSR; sides inherit. See [SSR](#ssr). |
-| `generate` | object \| `FilesGeneratorTask[]` | `[]` | App-wide codegen: `meta`, `assetsTypes`, `custom`. |
-| `pointsGlob` | `string \| string[]` | `[]` | Glob the generator scans for point files. |
-| `assets` | `boolean \| object` | enabled | Default asset config; per-side wins. |
-| `compiler` | `object \| boolean` | on | Default compiler config; per-side wins. |
-| `logger` | `{ log } \| (() => { log })` | default log | Object or (async) function form. |
-| `banner` | `string` | `null` | Prepended to generated files. |
-| `bunPlugins` | plugin list | `[]` | Shared bun plugins for **both** sides; per-side `bunPlugins` are additive. |
-| `bunBuildConfig` | object | `null` | General `Bun.build` overrides. |
-| `viteConfig` | fn \| object \| string | — | Presence switches to Vite. See [Bun or Vite](#bun-or-vite). |
-| `buildWatchGlob` | `string \| string[]` | `[]` | Extra `build --watch` patterns on top of the import-graph watch. |
-| `clientsOutdir` | `string` | `null` | Shared client output dir. |
-| `itWasBuilt` | `boolean` | from env | Internal: flags running from built `dist/`. |
-| `cwdBeforeBuild` / `cwdAfterBuild` | `string` | auto-derived | Internal: source vs build cwd. |
-| `autoFixBuiltPaths` | `boolean` | `true` | Rewrites relative config paths after build. |
+| Option                             | Type                             | Default      | Notes                                                                      |
+| ---------------------------------- | -------------------------------- | ------------ | -------------------------------------------------------------------------- |
+| `file`                             | `string`                         | — (required) | `import.meta.url`. Locates the engine on disk. Throws if missing.          |
+| `ssr`                              | `boolean \| SsrOptions`          | `false`      | Engine default SSR; sides inherit. See [SSR](#ssr).                        |
+| `generate`                         | object \| `FilesGeneratorTask[]` | `[]`         | App-wide codegen: `meta`, `assetsTypes`, `custom`.                         |
+| `pointsGlob`                       | `string \| string[]`             | `[]`         | Glob the generator scans for point files.                                  |
+| `assets`                           | `boolean \| object`              | enabled      | Default asset config; per-side wins.                                       |
+| `compiler`                         | `object \| boolean`              | on           | Default compiler config; per-side wins.                                    |
+| `logger`                           | `{ log } \| (() => { log })`     | default log  | Object or (async) function form.                                           |
+| `banner`                           | `string`                         | `null`       | Prepended to generated files.                                              |
+| `bunPlugins`                       | plugin list                      | `[]`         | Shared bun plugins for **both** sides; per-side `bunPlugins` are additive. |
+| `bunBuildConfig`                   | object                           | `null`       | General `Bun.build` overrides.                                             |
+| `viteConfig`                       | fn \| object \| string           | —            | Presence switches to Vite. See [Bun or Vite](#bun-or-vite).                |
+| `buildWatchGlob`                   | `string \| string[]`             | `[]`         | Extra `build --watch` patterns on top of the import-graph watch.           |
+| `itWasBuilt`                       | `boolean`                        | from env     | Internal: flags running from built `dist/`.                                |
+| `cwdBeforeBuild` / `cwdAfterBuild` | `string`                         | auto-derived | Internal: source vs build cwd.                                             |
+| `autoFixBuiltPaths`                | `boolean`                        | `true`       | Rewrites relative config paths after build.                                |
 
-<!-- TODO(low): bunBuildConfig is a Partial<Bun BuildConfig> (or ({mode,side,scope}) => it); bunPlugins is Array<BunPlugin | string> (or a function returning it). Both are passthroughs to Bun — no Point0-specific fields to enumerate. The bunBuildConfig shape is now described in the "Bun build config" section. -->
+`bunBuildConfig` is a `Partial<Bun.BuildConfig>` or a
+`({ mode, side, scope }) => Partial<Bun.BuildConfig>` function; `bunPlugins` is
+an `Array<BunPlugin | string>` or a function returning one. Both are
+passthroughs to Bun — there are no Point0-specific fields. See
+[Bun build config](#bun-build-config-bunbuildconfig).
 
-<!-- TODO(low): clientsOutdir runtime semantics (what consumes it, when you'd set it) are NOT FOUND in any example — only its path-fixing is traced. -->
-<!-- TODO(low): buildWatchGlob is described in code comments but exercised by no example or test — mark advanced/unverified until confirmed. -->
-<!-- TODO(low): itWasBuilt / cwdBeforeBuild / cwdAfterBuild are auto-derived (and overridable via POINT0_ENGINE_* env). Whether they're meant to be user-set is NOT confirmed — treat as internal/advanced. -->
+The remaining general options are internal — you don't set them by hand:
+
+- **`buildWatchGlob`** — extra globs on top of `build --watch`'s import-graph
+  watch, for files outside the import graph (e.g. non-imported assets). The
+  import-graph watch already covers normal source.
+- **`itWasBuilt` / `cwdBeforeBuild` / `cwdAfterBuild`** — auto-derived from
+  `file` and the server `outdir` (overridable via `POINT0_ENGINE_*` env vars).
+  They tell a built bundle where its source tree was so relative config paths
+  still resolve.
 
 ### Server block (`EngineServerOptions`)
 
-| Option | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `scope` | `PointsScope` | — (required) | e.g. `'root'`, `'site'`. |
-| `points` | points loader | bare root point | Usually `async () => import('./generated/point0/points.server')`. |
-| `generate` | object | `[]` | `{ points?, custom? }`. |
-| `entry` | `string \| Record<string,string>` | `null` | A string becomes `{ main: <string> }`. |
-| `port` | `number \| string` | `3000` | Coerced with `Number()`. |
-| `hmrPort` | `number \| string \| boolean` | `port + 100` | `false` disables. |
-| `outdir` | `string` | `'dist'` | Auto-set; drives the after-build cwd. |
-| `publicdir` | `{ source, outdir, cacheLimit? }` | `null` | See [publicdir](#static-files-publicdir). |
-| `importer` | importer options | `{ cwd }` | `vars` here is **strict**. See [importer](#guarding-imports-importer). |
-| `env` | `{ vars?, consts? }` | `{}` | Server `vars` is **strict** (no glob form). |
-| `routes` | routes loader | `null` | `() => import('./lib/routes')` or a routes object. |
-| `compiler` | `object \| boolean` | inherits general | |
-| `assets` | `boolean \| object` | inherits general | |
-| `viteConfig` | fn \| object \| string | inherits general | |
-| `ssr` | `boolean \| SsrOptions` | inherits general / `false` | |
-| `devWatchGlob` | `string \| string[]` | `[]` | Default watch glob for `point0 dev` when `--watch` has no value. |
-| `bunBuildConfig` | object | `{}` | |
-| `bunPlugins` | plugin list | `[]` | |
-| `bunServeConfig` | `Serve.Options` | `null` | Raw `Bun.serve` config. |
-| `banner` | `string` | `null` | |
-
-<!-- TODO(med): bunServeConfig vs engine.serve() options precedence is NOT FOUND — both exist; confirm merge order before documenting. -->
+| Option           | Type                              | Default                    | Notes                                                                                                                          |
+| ---------------- | --------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `scope`          | `PointsScope`                     | — (required)               | e.g. `'root'`, `'site'`.                                                                                                       |
+| `points`         | points loader                     | bare root point            | Usually `async () => import('./generated/point0/points.server')`.                                                              |
+| `generate`       | object                            | `[]`                       | `{ points?, custom? }`.                                                                                                        |
+| `entry`          | `string \| Record<string,string>` | `null`                     | A string becomes `{ main: <string> }`.                                                                                         |
+| `port`           | `number \| string`                | `3000`                     | Coerced with `Number()`.                                                                                                       |
+| `hmrPort`        | `number \| string \| boolean`     | `port + 100`               | `false` disables.                                                                                                              |
+| `outdir`         | `string`                          | `'dist'`                   | Auto-set; drives the after-build cwd.                                                                                          |
+| `publicdir`      | `{ source, outdir, cacheLimit? }` | `null`                     | See [publicdir](#static-files-publicdir).                                                                                      |
+| `importer`       | importer options                  | `{ cwd }`                  | `vars` here is **strict**. See [importer](#guarding-imports-importer).                                                         |
+| `env`            | `{ vars?, consts? }`              | `{}`                       | Server `vars` is **strict** (no glob form).                                                                                    |
+| `routes`         | routes loader                     | `null`                     | `() => import('./lib/routes')` or a routes object.                                                                             |
+| `compiler`       | `object \| boolean`               | inherits general           |                                                                                                                                |
+| `assets`         | `boolean \| object`               | inherits general           |                                                                                                                                |
+| `viteConfig`     | fn \| object \| string            | inherits general           |                                                                                                                                |
+| `ssr`            | `boolean \| SsrOptions`           | inherits general / `false` | Only the on/off value is used here; re-render tuning is read from the client. See [SSR](#ssr).                                 |
+| `devWatchGlob`   | `string \| string[]`              | `[]`                       | Default watch glob for `point0 dev` when `--watch` has no value.                                                               |
+| `bunBuildConfig` | object                            | `{}`                       |                                                                                                                                |
+| `bunPlugins`     | plugin list                       | `[]`                       |                                                                                                                                |
+| `bunServeConfig` | `Serve.Options`                   | `null`                     | Raw `Bun.serve` config. Options passed to `engine.serve()` win over it; `port`/`fetch`/`websocket` are always owned by Point0. |
+| `banner`         | `string`                          | `null`                     |                                                                                                                                |
 
 ### Client block (`EngineClientOptions`)
 
-| Option | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `scope` | `PointsScope` | — (required) | |
-| `points` | points loader | `null` | |
-| `serving` | `boolean \| string \| fn` | `true` | `false` → not bound to the server, skips dev serve. |
-| `generate` | object | `[]` | `{ points?, routes?, custom? }`. `points` takes `lazy`; `routes` takes `origin`. |
-| `app` | app component loader | `null` | `async () => import('./app.client')`. |
-| `indexHtml` | `string` | `null` | The HTML shell, e.g. `'./index.html'`. |
-| `domRootElementId` | `string` | `'root'` | Mount-point element id. |
-| `port` | `number \| string` | `serverPort + index + 1` | |
-| `hmrPort` | `number \| string \| boolean` | `port + 100` | |
-| `outdir` | `string` | `null` | e.g. `'../dist/client'`. |
-| `publicdir` | `{ source, outdir, cacheLimit? }` | `null` | |
-| `importer` | importer options | `{ cwd }` | |
-| `env` | `{ vars?, consts? }` | `{}` | Client `vars`/`consts` are **wide** but throw on `''` / `'*'`. |
-| `routes` | routes loader | `null` | |
-| `compiler` | `object \| boolean` | inherits general | e.g. `{ babel: ['babel-plugin-react-compiler'] }`. |
-| `assets` | `boolean \| object` | inherits general | |
-| `viteConfig` | fn \| object \| string | inherits general | |
-| `ssr` | `boolean \| SsrOptions` | inherits general / `false` | |
-| `bunBuildConfig` | object | `{}` | |
-| `bunPlugins` | plugin list | `[]` | e.g. `['bun-plugin-tailwind']`. |
-| `banner` | `string` | `null` | |
+| Option             | Type                              | Default                    | Notes                                                                            |
+| ------------------ | --------------------------------- | -------------------------- | -------------------------------------------------------------------------------- |
+| `scope`            | `PointsScope`                     | — (required)               |                                                                                  |
+| `points`           | points loader                     | `null`                     |                                                                                  |
+| `serving`          | `boolean \| string \| fn`         | `true`                     | `false` → not bound to the server, skips dev serve.                              |
+| `generate`         | object                            | `[]`                       | `{ points?, routes?, custom? }`. `points` takes `lazy`; `routes` takes `origin`. |
+| `app`              | app component loader              | `null`                     | `async () => import('./app.client')`.                                            |
+| `indexHtml`        | `string`                          | `null`                     | The HTML shell, e.g. `'./index.html'`.                                           |
+| `domRootElementId` | `string`                          | `'root'`                   | Mount-point element id.                                                          |
+| `port`             | `number \| string`                | `serverPort + index + 1`   |                                                                                  |
+| `hmrPort`          | `number \| string \| boolean`     | `port + 100`               |                                                                                  |
+| `outdir`           | `string`                          | `null`                     | e.g. `'../dist/client'`.                                                         |
+| `publicdir`        | `{ source, outdir, cacheLimit? }` | `null`                     |                                                                                  |
+| `importer`         | importer options                  | `{ cwd }`                  |                                                                                  |
+| `env`              | `{ vars?, consts? }`              | `{}`                       | Client `vars`/`consts` are **wide** but throw on `''` / `'*'`.                   |
+| `routes`           | routes loader                     | `null`                     |                                                                                  |
+| `compiler`         | `object \| boolean`               | inherits general           | e.g. `{ babel: ['babel-plugin-react-compiler'] }`.                               |
+| `assets`           | `boolean \| object`               | inherits general           |                                                                                  |
+| `viteConfig`       | fn \| object \| string            | inherits general           |                                                                                  |
+| `ssr`              | `boolean \| SsrOptions`           | inherits general / `false` |                                                                                  |
+| `bunBuildConfig`   | object                            | `{}`                       |                                                                                  |
+| `bunPlugins`       | plugin list                       | `[]`                       | e.g. `['bun-plugin-tailwind']`.                                                  |
+| `banner`           | `string`                          | `null`                     |                                                                                  |
 
 ### SSR options (`SsrOptions`)
 
-| Option | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `enabled` | `boolean` | `true` (when an object is given) | Toggle. |
-| `allowedRerendersCount` | `number` | `Infinity` | Soft budget; stop quietly. `0`/`1` opts out of stabilization re-renders. |
-| `forbiddenRerendersCount` | `number` | `25` | Hard cap; stop and log a server error. |
-| `prefetchBeforePageRender` | `boolean` | `false` | Prefetch page + layouts before the first render. |
+Set on the engine default `ssr` or on a client `ssr`. The re-render tuning
+(`allowedRerendersCount`, `forbiddenRerendersCount`, `prefetchBeforePageRender`)
+is read from the client at render time; the server keeps only the `enabled`
+boolean. See [SSR](#ssr).
+
+| Option                     | Type      | Default                          | Notes                                                                    |
+| -------------------------- | --------- | -------------------------------- | ------------------------------------------------------------------------ |
+| `enabled`                  | `boolean` | `true` (when an object is given) | Toggle.                                                                  |
+| `allowedRerendersCount`    | `number`  | `Infinity`                       | Soft budget; stop quietly. `0`/`1` opts out of stabilization re-renders. |
+| `forbiddenRerendersCount`  | `number`  | `25`                             | Hard cap; stop and log a server error.                                   |
+| `prefetchBeforePageRender` | `boolean` | `false`                          | Prefetch page + layouts before the first render.                         |
 
 ### Related pages
 

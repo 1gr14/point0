@@ -1,14 +1,16 @@
 ---
 index: 300
 title: CLI
-description: The point0 command — dev, build, generate, and the inspection tools — a thin wrapper over the engine.
+description:
+  The point0 command — dev, build, generate, and the inspection tools — a thin
+  wrapper over the engine.
 ---
 
-The `point0` CLI ships in [`@point0/engine`](engine-runtime). Every command finds
-your [engine file](engine-config), imports it, and calls the matching engine
-method — `point0 dev` runs `engine.dev()`, `point0 build` runs `engine.build()`,
-and so on. The CLI's own job is small: resolve the environment, find the engine,
-parse flags.
+The `point0` CLI ships in [`@point0/engine`](engine-runtime). Every command
+finds your [engine file](engine-config), imports it, and calls the matching
+engine method — `point0 dev` runs `engine.dev()`, `point0 build` runs
+`engine.build()`, and so on. The CLI's own job is small: resolve the
+environment, find the engine, parse flags.
 
 ```jsonc
 // package.json — the scripts a scaffolded app ships with
@@ -18,14 +20,14 @@ parse flags.
     "generate": "point0 generate",
     "build": "point0 build",
     // there is NO `point0 start` — production runs the built server directly:
-    "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js"
-  }
+    "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js",
+  },
 }
 ```
 
-You rarely type these by hand — they live in `package.json` and you run them with
-`bun run dev` / `bun run build`. The rest of this page is one section per command,
-then a full flag reference.
+You rarely type these by hand — they live in `package.json` and you run them
+with `bun run dev` / `bun run build`. The rest of this page is one section per
+command, then a full flag reference.
 
 ## point0 dev
 
@@ -176,9 +178,9 @@ point0 points get --meta ./src/generated/point0/meta.ts --name idea
 Filters include `--ids` / `--id`, `--tags` (every tag must match), `--scope`,
 `--type`, `--name`, `--route` / `--url`, the `--endpoint-*` trio, `--valid` /
 `--ssr` booleans, `--file`, `--parent-id`, `--layout-id`, and `--fields` to
-select output keys. `list` adds `--limit` (default 100) and `--offset`
-(default 0). These are the CLI mirror of the [project MCP](mcp-project)'s
-`list_points` / `get_point` tools.
+select output keys. `list` adds `--limit` (default 100) and `--offset` (default
+0). These are the CLI mirror of the [project MCP](mcp-project)'s `list_points` /
+`get_point` tools.
 
 ## point0 docs
 
@@ -208,7 +210,11 @@ never serves stale points after a `generate`.
 
 ```jsonc
 // package.json
-{ "scripts": { "mcp:project": "point0-project-mcp --meta ./src/generated/point0/meta.ts" } }
+{
+  "scripts": {
+    "mcp:project": "point0-project-mcp --meta ./src/generated/point0/meta.ts",
+  },
+}
 ```
 
 Tools: `list_points`, `get_point`, `compile`, `trace`. Full setup on
@@ -222,7 +228,11 @@ runs offline.
 
 ```jsonc
 // .mcp.json — run the installed copy, matching your point0 version
-{ "mcpServers": { "point0-docs": { "command": "bunx", "args": ["point0-docs-mcp"] } } }
+{
+  "mcpServers": {
+    "point0-docs": { "command": "bunx", "args": ["point0-docs-mcp"] },
+  },
+}
 ```
 
 Full setup, plus the "always latest" variant, on [MCP: docs](mcp-docs).
@@ -238,8 +248,8 @@ bun create point0-app my-app          # interactive
 bun create point0-app my-app --vite --no-interactive
 ```
 
-`bun create point0-app` resolves to the `create-point0-app` bin. Flags:
-`--vite` / `--no-vite`, `--install` / `--no-install`, `-O, --override`,
+`bun create point0-app` resolves to the `create-point0-app` bin. Flags: `--vite`
+/ `--no-vite`, `--install` / `--no-install`, `-O, --override`,
 `-I, --no-interactive`. See [Getting started](getting-started).
 
 ## How a command runs
@@ -262,9 +272,9 @@ point0 dev --env API_URL=http://localhost # define a var, overrides .env files
 ```
 
 **2. Find the engine file.** `--engine <path>` is explicit; otherwise the CLI
-checks `POINT0_ENGINE_FILE`, then auto-finds a file named `engine` (`.ts` / `.js`
-/ `.tsx` / `.jsx`) in `.`, `./src`, `./lib`, and a few `point0` subfolders. Not
-found:
+checks `POINT0_ENGINE_FILE`, then auto-finds a file named `engine` (`.ts` /
+`.js` / `.tsx` / `.jsx`) in `.`, `./src`, `./lib`, and a few `point0`
+subfolders. Not found:
 
 ```
 Could not find engine.ts or engine.js file. Searched in: ./, ./src/.
@@ -281,12 +291,13 @@ The module must export `engine` (named) or `default`, an `Engine` instance.
 
 `--no-env-file` stops Bun from auto-loading any `.env` cascade before any CLI
 code runs (with `NODE_ENV` unset it would assume development and load `.env` +
-`.env.development`); the CLI loads the right-mode cascade itself; `--config=/dev/null` keeps your app's
-`bunfig` out of the CLI process; `--no-orphans` (bun ≥ 1.3.14, no-op on Windows)
-ties the whole process tree to its parent — the CLI dies when its launcher dies,
-even by SIGKILL, and SIGKILLs every descendant on exit. This is why
-`@point0/engine` carries an `engines` field, and why each app's `bunfig.toml`
-sets `[run] noOrphans = true` to extend it to your `bun run dev` wrapper.
+`.env.development`); the CLI loads the right-mode cascade itself;
+`--config=/dev/null` keeps your app's `bunfig` out of the CLI process;
+`--no-orphans` (bun ≥ 1.3.14, no-op on Windows) ties the whole process tree to
+its parent — the CLI dies when its launcher dies, even by SIGKILL, and SIGKILLs
+every descendant on exit. This is why `@point0/engine` carries an `engines`
+field, and why each app's `bunfig.toml` sets `[run] noOrphans = true` to extend
+it to your `bun run dev` wrapper.
 
 > **AGENT GOTCHA:** because of `--no-orphans`, a backgrounded `bun run dev &`
 > dies the moment the shell that spawned it returns — run it in a real
@@ -296,74 +307,73 @@ sets `[run] noOrphans = true` to extend it to your `bun run dev` wrapper.
 
 ### Commands
 
-| Command | Wraps | Does |
-| --- | --- | --- |
-| `dev` | [`engine.dev()`](dev) | dev server + client dev servers |
-| `build` | [`engine.build()`](build) | production build of server + clients |
-| `generate` | `engine.generate()` | write `src/generated/point0` |
-| `compile <file>` | [Compiler](compiler) | print compiled output of one file |
-| `trace <target> <source>` | [Compiler](compiler) | print import chain source → target |
-| `prune` | `engine.prune()` | remove temp dirs + hot store |
-| `points list` / `points get` | analyzer `meta.ts` | inspect declared points (JSON) |
-| `docs search` / `list` / `get` | `@point0/docs` | search / read the docs offline |
+| Command                        | Wraps                     | Does                                 |
+| ------------------------------ | ------------------------- | ------------------------------------ |
+| `dev`                          | [`engine.dev()`](dev)     | dev server + client dev servers      |
+| `build`                        | [`engine.build()`](build) | production build of server + clients |
+| `generate`                     | `engine.generate()`       | write `src/generated/point0`         |
+| `compile <file>`               | [Compiler](compiler)      | print compiled output of one file    |
+| `trace <target> <source>`      | [Compiler](compiler)      | print import chain source → target   |
+| `prune`                        | `engine.prune()`          | remove temp dirs + hot store         |
+| `points list` / `points get`   | analyzer `meta.ts`        | inspect declared points (JSON)       |
+| `docs search` / `list` / `get` | `@point0/docs`            | search / read the docs offline       |
 
 ### Shared flags
 
-Available across most commands (each command's full set is in its section above).
+Available across most commands (each command's full set is in its section
+above).
 
-| Flag | On | Effect |
-| --- | --- | --- |
-| `--engine <path>` | dev, build, generate, compile, trace | engine file, absolute or relative to cwd |
-| `--mode <mode>` | dev, build, compile | `production` \| `development` \| `test` — picks the `.env` cascade |
-| `-p` / `-d` / `-t` | compile | shorthand for `--mode production` / `development` / `test` |
-| `--env <name=value>` | dev, build | define a var (repeatable); overrides `.env` files |
-| `--side <side>` | dev, build, compile, trace | `server` or `client` |
-| `--scope <scope>` | dev, build, compile, trace | one scope (inferred from side when single) |
+| Flag                 | On                                   | Effect                                                             |
+| -------------------- | ------------------------------------ | ------------------------------------------------------------------ |
+| `--engine <path>`    | dev, build, generate, compile, trace | engine file, absolute or relative to cwd                           |
+| `--mode <mode>`      | dev, build, compile                  | `production` \| `development` \| `test` — picks the `.env` cascade |
+| `-p` / `-d` / `-t`   | compile                              | shorthand for `--mode production` / `development` / `test`         |
+| `--env <name=value>` | dev, build                           | define a var (repeatable); overrides `.env` files                  |
+| `--side <side>`      | dev, build, compile, trace           | `server` or `client`                                               |
+| `--scope <scope>`    | dev, build, compile, trace           | one scope (inferred from side when single)                         |
 
 ### point0 dev flags
 
-| Flag | Effect |
-| --- | --- |
-| `-G, --no-generate` | skip generation before serving |
-| `-W, --no-watch` | do not restart / regenerate on change |
-| `-w, --watch [glob]` | watch glob(s); no value = server config's `devWatchGlob` |
-| `--side <side>` / `--scope <scope>` | serve one side / one scope |
-| `--entry <name\|path>` | server entry points (comma-separated or repeated) |
-| `--hot` | server hot reload (bun-native, experimental) |
-| `--env` / `--mode` / `--engine` | see [shared flags](#shared-flags) |
-| `-- <args>` | forwarded to the spawned bun server process |
+| Flag                                | Effect                                                   |
+| ----------------------------------- | -------------------------------------------------------- |
+| `-G, --no-generate`                 | skip generation before serving                           |
+| `-W, --no-watch`                    | do not restart / regenerate on change                    |
+| `-w, --watch [glob]`                | watch glob(s); no value = server config's `devWatchGlob` |
+| `--side <side>` / `--scope <scope>` | serve one side / one scope                               |
+| `--entry <name\|path>`              | server entry points (comma-separated or repeated)        |
+| `--hot`                             | server hot reload (bun-native, experimental)             |
+| `--env` / `--mode` / `--engine`     | see [shared flags](#shared-flags)                        |
+| `-- <args>`                         | forwarded to the spawned bun server process              |
 
 ### point0 build flags
 
-| Flag | Effect |
-| --- | --- |
-| `-w, --watch [glob]` | watch the entries' import graph; a glob adds to it |
-| `--side <side>` / `--scope <scope>` | build one side / one scope |
-| `-C, --no-clean` | do not clean before building |
-| `-P, --no-publicdir` | do not copy the public dir |
-| `-k, --keep-alive` | hold open after the build (for long-lived plugins) |
-| `--env` / `--mode` / `--engine` | see [shared flags](#shared-flags) |
+| Flag                                | Effect                                             |
+| ----------------------------------- | -------------------------------------------------- |
+| `-w, --watch [glob]`                | watch the entries' import graph; a glob adds to it |
+| `--side <side>` / `--scope <scope>` | build one side / one scope                         |
+| `-C, --no-clean`                    | do not clean before building                       |
+| `-P, --no-publicdir`                | do not copy the public dir                         |
+| `-k, --keep-alive`                  | hold open after the build (for long-lived plugins) |
+| `--env` / `--mode` / `--engine`     | see [shared flags](#shared-flags)                  |
 
 ### point0 compile flags
 
-| Flag | Effect |
-| --- | --- |
-| `--side <side>` / `-c` / `-s` | compile side (`-c` = client, `-s` = server) |
-| `--scope <scope>` | compile scope (inferred from side when omitted) |
-| `-b, --built` | treat the engine as built (else `POINT0_BUILT === 'true'`) |
-| `-B, --no-babel` | strip babel plugins from compiler options |
-| `-h, --hmr` / `-H, --no-hmr` | force the HMR fix on / off (else engine config) |
-| `-p` / `-d` / `-t` / `--mode` / `--engine` | see [shared flags](#shared-flags) |
+| Flag                                       | Effect                                                     |
+| ------------------------------------------ | ---------------------------------------------------------- |
+| `--side <side>` / `-c` / `-s`              | compile side (`-c` = client, `-s` = server)                |
+| `--scope <scope>`                          | compile scope (inferred from side when omitted)            |
+| `-b, --built`                              | treat the engine as built (else `POINT0_BUILT === 'true'`) |
+| `-B, --no-babel`                           | strip babel plugins from compiler options                  |
+| `-h, --hmr` / `-H, --no-hmr`               | force the HMR fix on / off (else engine config)            |
+| `-p` / `-d` / `-t` / `--mode` / `--engine` | see [shared flags](#shared-flags)                          |
 
 ### Environment variables
 
-| Var | Effect |
-| --- | --- |
-| `POINT0_ENGINE_FILE` | engine file fallback when no `--engine` |
-| `POINT0_DEV_SERVER_HOT='true'` | enables dev server hot reload when `--hot` is omitted |
-| `POINT0_BUILT='true'` | `compile` / `trace` treat the engine as built |
+| Var                                              | Effect                                                                                                                                   |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `POINT0_ENGINE_FILE`                             | engine file fallback when no `--engine`                                                                                                  |
+| `POINT0_DEV_SERVER_HOT='true'`                   | enables dev server hot reload when `--hot` is omitted                                                                                    |
+| `POINT0_BUILT='true'`                            | `compile` / `trace` treat the engine as built                                                                                            |
 | `POINT0_MODULE_PRELOAD='false'` (also `0`/`off`) | kill switch: disables per-page modulepreload (manifest emission at build + link injection at serve); any other / unset value keeps it on |
-| `NODE_ENV` | mode resolution (after flags and `--env`) |
-| `LOG_MODE` | `build` forces `pretty` |
-
-<!-- TODO(med): `point0 --version` prints a hardcoded `0.1.0` (cli.ts), not the installed `@point0/engine` version — fix the bug rather than document the stale string. -->
+| `NODE_ENV`                                       | mode resolution (after flags and `--env`)                                                                                                |
+| `LOG_MODE`                                       | `build` forces `pretty`                                                                                                                  |

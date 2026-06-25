@@ -4,16 +4,18 @@ import { REQUEST0_RENDERS_CACHE_KEY, Request0 } from '../src/request0.js'
 const from = (init?: RequestInit) => Request0.create(new Request('https://example.com/x', init)).from
 
 describe('Request0.create — from (request origin)', () => {
-  it('reads ip from x-forwarded-for (first entry, trimmed) and the user agent', () => {
+  it('collects x-forwarded-for into ips (first entry, trimmed); ip stays null without a Bun server', () => {
     const f = from({ headers: { 'x-forwarded-for': '203.0.113.7, 70.41.3.18', 'user-agent': 'UA/1.0' } })
     expect(f.ips).toEqual(['203.0.113.7', '70.41.3.18'])
-    expect(f.ip).toBe('203.0.113.7')
+    expect(f.ip).toBeNull() // headers are spoofable, so they never become `ip`
     expect(f.userAgent).toBe('UA/1.0')
   })
 
-  it('falls back to x-real-ip then cf-connecting-ip', () => {
-    expect(from({ headers: { 'x-real-ip': '198.51.100.5' } }).ip).toBe('198.51.100.5')
-    expect(from({ headers: { 'cf-connecting-ip': '198.51.100.9' } }).ip).toBe('198.51.100.9')
+  it('collects x-real-ip and cf-connecting-ip into ips, but never into ip', () => {
+    expect(from({ headers: { 'x-real-ip': '198.51.100.5' } }).ips).toEqual(['198.51.100.5'])
+    expect(from({ headers: { 'x-real-ip': '198.51.100.5' } }).ip).toBeNull()
+    expect(from({ headers: { 'cf-connecting-ip': '198.51.100.9' } }).ips).toEqual(['198.51.100.9'])
+    expect(from({ headers: { 'cf-connecting-ip': '198.51.100.9' } }).ip).toBeNull()
   })
 
   it('returns null ip / userAgent when no hints are present', () => {
@@ -46,6 +48,27 @@ describe('Request0.create — from (request origin)', () => {
   it('resolves the referrer location from the referer header', () => {
     expect(from({ headers: { referer: 'https://example.com/docs/intro' } }).location?.pathname).toBe('/docs/intro')
     expect(from().location).toBeNull()
+  })
+
+  it('a derived request reports the original client origin from `first`; only `server` is per-hop', () => {
+    // first = the real client request: behind a Bun server (real socket IP) with a browser user agent
+    const clientReq = new Request('https://example.com/page', { headers: { 'user-agent': 'Browser/1.0' } })
+    const first = Request0.create(clientReq, { bunServer: { requestIP: () => ({ address: '9.9.9.9' }) } })
+    expect(first.from.ip).toBe('9.9.9.9')
+    expect(first.from.server).toBe(false)
+
+    // derived = a server-to-server SSR hop: synthetic original (no UA), the server's own loopback peer — but prev = first
+    const serverReq = new Request('https://example.com/_point0/root/query/q1', { method: 'POST' })
+    const derived = Request0.create(serverReq, {
+      isFromServer: true,
+      prev: first,
+      bunServer: { requestIP: () => ({ address: '127.0.0.1' }) },
+    })
+    // origin comes from `first` (the visitor), not the loopback hop
+    expect(derived.from.ip).toBe('9.9.9.9')
+    expect(derived.from.userAgent).toBe('Browser/1.0')
+    // but `server` reflects THIS hop
+    expect(derived.from.server).toBe(true)
   })
 })
 

@@ -1,15 +1,17 @@
 ---
 index: 500
 title: Mountable
-description: Page, layout, component, and provider share one method-injection model — same .with, .wrapper, loaders, mapper, and render-prop bag.
+description:
+  Page, layout, component, and provider share one method-injection model — same
+  .with, .wrapper, loaders, mapper, and render-prop bag.
 ---
 
-A **mountable** is a point that renders React. There are four:
-[page](page), [layout](layout), [component](component), and [provider](provider).
-They differ in what they mount (a route, a wrapper around children, a piece of
-UI, a context value) but share one model: the same composition methods, the same
-loading/error wiring, and the same render-prop bag (`data`, `queries`, `props`, …).
-Learn it once and it transfers across all four.
+A **mountable** is a point that renders React. There are four: [page](page),
+[layout](layout), [component](component), and [provider](provider). They differ
+in what they mount (a route, a wrapper around children, a piece of UI, a context
+value) but share one model: the same composition methods, the same loading/error
+wiring, and the same render-prop bag (`data`, `queries`, `props`, …). Learn it
+once and it transfers across all four.
 
 ```tsx
 // a component, a layout, a page — the same chain shape:
@@ -35,12 +37,12 @@ shared surface; each point type's own page covers its specifics.
 
 ## The four mountables
 
-| Type                    | Closes with     | Mounts                                   | Extra render-prop keys     |
-| ----------------------- | --------------- | ---------------------------------------- | -------------------------- |
-| [page](page)            | `.page(c?)`     | a component at a route                    | `location`, `setSearch`    |
-| [layout](layout)        | `.layout(c)`    | a wrapper around child pages (`children`) | `children`, `location`, `setSearch` |
-| [component](component)  | `.component(c?)`| a reusable piece of UI                    | —                          |
-| [provider](provider)    | `.provider(m?)` | a context value (read via `useValue`)     | `children`                 |
+| Type                   | Closes with      | Mounts                                    | Extra render-prop keys              |
+| ---------------------- | ---------------- | ----------------------------------------- | ----------------------------------- |
+| [page](page)           | `.page(c?)`      | a component at a route                    | `location`, `setSearch`             |
+| [layout](layout)       | `.layout(c)`     | a wrapper around child pages (`children`) | `children`, `location`, `setSearch` |
+| [component](component) | `.component(c?)` | a reusable piece of UI                    | —                                   |
+| [provider](provider)   | `.provider(m?)`  | a context value (read via `useValue`)     | `children`                          |
 
 Everything else — how data arrives, what the component receives, how loading and
 error render — is identical. A non-mountable point ([query](query),
@@ -72,22 +74,24 @@ composition and returns the ready point. After that the composition methods are
 gone — the ready point exposes only render helpers (`.X`, `.route`, queries,
 `.Infer`, …). You compose, then close; you can't compose a closed point.
 
-The closer (`.page`/`.layout`/`.component`/`.provider`) is **server-ssr-and-client**:
-cut from the SERVER bundle when `ssr:false` (or after a `.clientOnly()` earlier in the
-chain) — its body and the imports it uses are then removed from the server build;
-kept in the client build always, and in the server build only when SSR is on.
+The closer (`.page`/`.layout`/`.component`/`.provider`) is
+**server-ssr-and-client**: cut from the SERVER bundle when `ssr:false` (or after
+a `.clientOnly()` earlier in the chain) — its body and the imports it uses are
+then removed from the server build; kept in the client build always, and in the
+server build only when SSR is on.
 
 Page and layout add the route-bound methods (`.params`, `.search`, `.head`,
-`.scrollRestore`, the `prefetchPage*` family); component and provider, which have
-no route, add input methods (`.input`, `.clientInput`, `.sharedInput`) instead.
-The full per-type list is in the [reference](#reference) below.
+`.scrollRestore`, the `prefetchPage*` family); component and provider, which
+have no route, add input methods (`.input`, `.clientInput`, `.sharedInput`)
+instead. The full per-type list is in the [reference](#reference) below.
 
 ## Getting data in
 
 Two ways, the same on every mountable.
 
 **A `.loader`** — **server-only**: cut from the client bundle — its body and the
-imports it uses are removed, so it never ships to the browser (it runs on the server):
+imports it uses are removed, so it never ships to the browser (it runs on the
+server):
 
 ```tsx
 export const IdeaCard = root.lets
@@ -108,14 +112,14 @@ export const IdeaCard = root.lets
 ```
 
 Both feed `data`. The mountable renders only once its data is ready, so the
-closing component never sees a half-loaded state. Inject several queries and read
-them from `queries` in declaration order, or fold them with [`.mapper`](mapper).
-See [`.with`](with) for the full range.
+closing component never sees a half-loaded state. Inject several queries and
+read them from `queries` in declaration order, or fold them with
+[`.mapper`](mapper). See [`.with`](with) for the full range.
 
-`.with` and `.mapper` are both **server-ssr-and-client** — cut from the SERVER bundle
-when `ssr:false` (or after a `.clientOnly()`): their bodies and imports are then removed
-from the server build; kept in the client build always, and in the server build only
-when SSR is on.
+`.with` and `.mapper` are both **server-ssr-and-client** — cut from the SERVER
+bundle when `ssr:false` (or after a `.clientOnly()`): their bodies and imports
+are then removed from the server build; kept in the client build always, and in
+the server build only when SSR is on.
 
 ## The render-prop bag
 
@@ -126,16 +130,17 @@ mountables:
 .component(({ data, queries, props, LoadingComponent, ErrorComponent }) => ...)
 ```
 
-- **`data`** — the [`.mapper`](mapper) output, or the first injected query's data,
-  or `{}` if neither. (`.mapper` overrides it.)
+- **`data`** — the [`.mapper`](mapper) output, or the first injected query's
+  data, or `{}` if neither. (`.mapper` overrides it.)
 - **`queries`** — the injected query results, in `.with` order (`[]` if none).
 - **`props`** — props contributed by `.with` (`{}` if none).
 - **`LoadingComponent` / `ErrorComponent`** — the resolved boundary components.
 
 Plus keys that exist only when the matching schema or route is set: `params` /
-`search` / `input`, and `location` (page and layout only — component and provider
-have no location). Page and layout also get `setSearch`; layout and provider get
-`children`. The exact per-type bag is in the [reference](#reference).
+`search` / `input`, and `location` (page and layout only — component and
+provider have no location). Page and layout also get `setSearch`; layout and
+provider get `children`. The exact per-type bag is in the
+[reference](#reference).
 
 ```tsx
 .mapper(({ data }) => ({ ideas: data.pages.flatMap((p) => p.ideas) }))
@@ -143,16 +148,16 @@ have no location). Page and layout also get `setSearch`; layout and provider get
 ```
 
 A `.mapper` reshapes `data` for the component. On a [provider](provider), the
-mapper's return value _is_ the provided value — what `useValue()` and `getValue()`
-hand out. `.mapper` is **server-ssr-and-client** — cut from the server bundle when
-`ssr:false`: body and imports removed from the server build; kept in the client build
-always, and in the server build only when SSR is on.
+mapper's return value _is_ the provided value — what `useValue()` and
+`getValue()` hand out. `.mapper` is **server-ssr-and-client** — cut from the
+server bundle when `ssr:false`: body and imports removed from the server build;
+kept in the client build always, and in the server build only when SSR is on.
 
 ## Loading and error
 
 When a mountable's data is pending, Point0 renders the nearest `.loading`
-component up the chain; on a thrown error or an `Error` returned from `.with`, the
-nearest `.error`. Set them once on the [root](root) and override per point:
+component up the chain; on a thrown error or an `Error` returned from `.with`,
+the nearest `.error`. Set them once on the [root](root) and override per point:
 
 ```tsx
 export const root = Point0.lets
@@ -175,10 +180,10 @@ boundaries for itself and for the pages beneath it — `.layoutError` /
 `.pageError`, `.layoutLoading` / `.pageLoading`. Full rules, including prefetch
 interaction, are in [Loading & error](loading-error).
 
-`.loading` and `.error` (and their split forms) are **server-ssr-and-client** — cut
-from the SERVER bundle when `ssr:false` (or after a `.clientOnly()`): their bodies and
-imports are then removed from the server build; kept in the client build always, and in
-the server build only when SSR is on.
+`.loading` and `.error` (and their split forms) are **server-ssr-and-client** —
+cut from the SERVER bundle when `ssr:false` (or after a `.clientOnly()`): their
+bodies and imports are then removed from the server build; kept in the client
+build always, and in the server build only when SSR is on.
 
 ## Wrapping: `.wrapper` vs a `.with` wrapper
 
@@ -192,9 +197,10 @@ before they load:
 .with(({ children, data }) => <section data-idea={data.idea.id}>{children}</section>)
 ```
 
-**`.wrapper(Component)`** wraps the whole mountable from the _outside_, including
-its loading and error boundary. It gets `props` and (on page/layout) `location`,
-but **not** the resolved `data`/`queries` — it renders before they exist:
+**`.wrapper(Component)`** wraps the whole mountable from the _outside_,
+including its loading and error boundary. It gets `props` and (on page/layout)
+`location`, but **not** the resolved `data`/`queries` — it renders before they
+exist:
 
 ```tsx
 .wrapper(({ children }) => <ErrorBoundaryProvider>{children}</ErrorBoundaryProvider>)
@@ -204,21 +210,22 @@ Multiple `.wrapper` calls nest with the first-registered outermost. Use
 `.wrapper` for things that must exist around the loading state itself (a theme,
 an outer error boundary); use a `.with` wrapper when you need the loaded data.
 
-Both `.wrapper` and the `.with` wrapper are **server-ssr-and-client** — cut from the
-SERVER bundle when `ssr:false` (or after a `.clientOnly()`): their bodies and imports
-are then removed from the server build; kept in the client build always, and in the
-server build only when SSR is on.
+Both `.wrapper` and the `.with` wrapper are **server-ssr-and-client** — cut from
+the SERVER bundle when `ssr:false` (or after a `.clientOnly()`): their bodies
+and imports are then removed from the server build; kept in the client build
+always, and in the server build only when SSR is on.
 
-<!-- TODO(low): a layout drops its `.wrapper`s in the "suitable subset" path — document the rationale on the layout page, not here. -->
+A `.wrapper` wraps the render of the point it's set on. A [layout](layout)'s
+wrappers don't carry to the pages beneath it — see that page for why.
 
 ## Opting out of SSR: `.clientOnly`
 
 `.clientOnly()` marks a mountable as client-only: it's skipped during SSR and
 mounts in the browser. From this point on, the rest of the chain (the remaining
 `.with`, the closing `.component`/`.page`, …) is treated as if `ssr: false` for
-this point — those bodies and the imports they use are cut from the server bundle,
-so that code never ships to the server (it runs only in the browser). Call it bare, or pass an optional `Fallback` to render server-side in
-its place:
+this point — those bodies and the imports they use are cut from the server
+bundle, so that code never ships to the server (it runs only in the browser).
+Call it bare, or pass an optional `Fallback` to render server-side in its place:
 
 ```tsx
 export const MetricsChart = root.lets
@@ -228,7 +235,10 @@ export const MetricsChart = root.lets
   .component(({ data }) => <Chart data={data} />)
 ```
 
-<!-- TODO(med): no example or behavioral test exercises the `.clientOnly()` Fallback render path (only the type signature and the action-push are confirmed in code). Verify what the user sees during the SSR skip before relying on it. -->
+The `Fallback` renders in the server HTML and on the first client paint; once
+the point hydrates, Point0 swaps in the real component. The fallback receives
+the mount state plus `LoadingComponent` and `ErrorComponent`. With no
+`Fallback`, nothing renders in that slot until hydration.
 
 ## Mountable vs endpoint
 
@@ -241,28 +251,29 @@ fetch.
   (`point.useQuery()`, `point.fetchQuery()`, `point.getQueryKey()`) — Point0
   attaches a _self query_, which is what makes SSR and prefetch work. That self
   query needs an endpoint.
-- A mountable that only composes other queries (no server loader) is **client-only**:
-  it renders, but it isn't an endpoint and has no OpenAPI entry.
+- A mountable that only composes other queries (no server loader) is
+  **client-only**: it renders, but it isn't an endpoint and has no OpenAPI
+  entry.
 
 A [query](query), [mutation](mutation), or [action](action) is _always_ an
 endpoint; a mountable is one only sometimes. "Endpoint" is about whether the
-server serves the point directly, not about whether it renders. The
-[page](page) page covers the page case (`SSR on` vs loader) in detail.
+server serves the point directly, not about whether it renders. The [page](page)
+page covers the page case (`SSR on` vs loader) in detail.
 
 ## Gating a mountable: `.with`, not `.ctx`
 
 The closing component is browser code. Server-only code (loader bodies, secrets,
 DB calls) is stripped from the client bundle at compile time — but the rendered
 markup is not: under SSR it's produced on the server and shipped to the browser,
-and after the initial render every mountable re-renders client-side. So don't put
-secret content in the markup expecting it to stay on the server.
+and after the initial render every mountable re-renders client-side. So don't
+put secret content in the markup expecting it to stay on the server.
 
-Gate access in a [`.with`](with), not in `.ctx`. A mountable's `.ctx` runs **only
-when the point has a loader** (no loader → no server request → `.ctx` never runs),
-so a loader-less mountable's `.ctx` protects nothing. `.ctx` is **server-only** — cut
-from the client bundle: its body and the imports it uses are removed, so it never ships
-to the browser (it runs server-side). A `.with` runs at render, every time, on the
-client and (under SSR) the server:
+Gate access in a [`.with`](with), not in `.ctx`. A mountable's `.ctx` runs
+**only when the point has a loader** (no loader → no server request → `.ctx`
+never runs), so a loader-less mountable's `.ctx` protects nothing. `.ctx` is
+**server-only** — cut from the client bundle: its body and the imports it uses
+are removed, so it never ships to the browser (it runs server-side). A `.with`
+runs at render, every time, on the client and (under SSR) the server:
 
 ```tsx
 import { authPlugin } from '@/lib/auth' // a plugin that resolves the user into props.me
@@ -281,24 +292,25 @@ export const AdminPanel = root.lets
 `me` comes from a [plugin](plugin) upstream (it doesn't appear on its own).
 Returning an error from `.with` short-circuits to the error component. The class
 can be the default [`ErrorPoint0`](error-handling) or any error class of the
-same-or-wider structure (one option for building one is [error0](https://1gr14.dev/error0)).
-See [`.with`](with) for the full gate pattern.
+same-or-wider structure (one option for building one is
+[error0](https://1gr14.dev/error0)). See [`.with`](with) for the full gate
+pattern.
 
 ## `.X` — the bound component
 
 Closing a mountable produces a ready point that is itself a React component
-carrying the full point API. The same component is exposed two ways, and they are
-identical:
+carrying the full point API. The same component is exposed two ways, and they
+are identical:
 
 ```tsx
 <UserCard userId={1} />   // short — the ready point IS the component
 <UserCard.X userId={1} /> // explicit — the bound component on `.X`
 ```
 
-The short form only works because the variable starts with a capital letter — JSX
-treats a lowercase tag (`<userCard />`) as an HTML element, so a lowercase point
-forces you into the explicit `<userCard.X />` form. Declare every mountable in
-**PascalCase** and prefer `<UserCard />`.
+The short form only works because the variable starts with a capital letter —
+JSX treats a lowercase tag (`<userCard />`) as an HTML element, so a lowercase
+point forces you into the explicit `<userCard.X />` form. Declare every
+mountable in **PascalCase** and prefer `<UserCard />`.
 
 A [provider](provider) is mounted the same way and hands its value out below:
 
@@ -312,8 +324,8 @@ AppProvider.useValue('theme') // => 'dark'
 ```
 
 [Page](page) and [layout](layout) mount on their own — the router renders them
-from their route — so you rarely write them as JSX. A page's `.X` is its `Page`, a
-layout's its `Layout`, a component's its `Component`.
+from their route — so you rarely write them as JSX. A page's `.X` is its `Page`,
+a layout's its `Layout`, a component's its `Component`.
 
 ## Reference
 
@@ -322,23 +334,24 @@ layout's its `Layout`, a component's its `Component`.
 All four share `data`, `queries`, `props`, `LoadingComponent`, `ErrorComponent`,
 plus `params` / `search` / `input` when the matching schema is set. Differences:
 
-| Key          | page | layout | component | provider |
-| ------------ | ---- | ------ | --------- | -------- |
-| `location`   | ✓ (exact) | ✓ (ancestor or exact) | —     | —        |
-| `setSearch`  | ✓    | ✓      | —         | —        |
-| `children`   | —    | ✓      | —         | ✓        |
+| Key         | page      | layout                | component | provider |
+| ----------- | --------- | --------------------- | --------- | -------- |
+| `location`  | ✓ (exact) | ✓ (ancestor or exact) | —         | —        |
+| `setSearch` | ✓         | ✓                     | —         | —        |
+| `children`  | —         | ✓                     | —         | ✓        |
 
-A provider's closing argument is a [`.mapper`](mapper)-style function whose return
-value becomes the provided context value.
+A provider's closing argument is a [`.mapper`](mapper)-style function whose
+return value becomes the provided context value.
 
 ### Methods per mountable type
 
 Each stage-method is tagged with what compile-time stripping cuts and from which
-bundle (the body and the imports it pulls in go together) — one of **server-only**
-(cut from the client bundle, never ships to the browser), **client-only** (cut from
-the server bundle), **server-and-client** (kept in both, isomorphic, nothing pruned),
-or **server-ssr-and-client** (cut from the server bundle when `ssr:false`; kept in the
-client build always, in the server build only when SSR is on).
+bundle (the body and the imports it pulls in go together) — one of
+**server-only** (cut from the client bundle, never ships to the browser),
+**client-only** (cut from the server bundle), **server-and-client** (kept in
+both, isomorphic, nothing pruned), or **server-ssr-and-client** (cut from the
+server bundle when `ssr:false`; kept in the client build always, in the server
+build only when SSR is on).
 
 **Shared by all four** (while composing):
 
@@ -347,7 +360,8 @@ client build always, in the server build only when SSR is on).
 - `.mapper` — server-ssr-and-client
 - `.loading` — server-ssr-and-client
 - `.error` — server-ssr-and-client
-- the closer `.page` / `.layout` / `.component` / `.provider` — server-ssr-and-client
+- the closer `.page` / `.layout` / `.component` / `.provider` —
+  server-ssr-and-client
 - `.loader` — server-only
 - `.ctx` — server-only
 - `.middleware` — server-only
@@ -359,7 +373,8 @@ client build always, in the server build only when SSR is on).
 - `.clientOn` — client-only
 - `.clientOnly` — the SSR switch; from here on, `server-ssr-and-client` methods
   behave as `ssr:false`
-- `.use` — server-and-client (a plugin's own methods strip by their own category)
+- `.use` — server-and-client (a plugin's own methods strip by their own
+  category)
 - `.fetchOptions` — server-and-client
 - `.on` — server-and-client
 - `.tag` — server-and-client
@@ -369,37 +384,36 @@ client build always, in the server build only when SSR is on).
 
 **Page / layout add** (route-bound):
 
-- `.params` / `.search` — server-and-client here (a non-action mountable keeps them
-  isomorphic; they're server-only only on an [action](action))
+- `.params` / `.search` — server-and-client here (a non-action mountable keeps
+  them isomorphic; they're server-only only on an [action](action))
 - `.head` — server-ssr-and-client
 - `.scrollPosition` / `.scrollRestore` — client-only. Documented in full on
   [navigation](navigation); see that page.
-- `.relatedQuery` — server-and-client. It DOES add its query to `queries` (like a
-  `.with(query)`); the difference is prefetch — a related query is statically
+- `.relatedQuery` — server-and-client. It DOES add its query to `queries` (like
+  a `.with(query)`); the difference is prefetch — a related query is statically
   discoverable, so prefetch self-fetches it without rendering under the cheap
   policies (`serverQuery` / `clientQuery` / `serverAndClientQuery`), whereas a
-  `.with(query)` is only discovered by rendering and is prefetched only under the
-  expensive `pageDehydratedState*`.
-- `.onPrefetchPage` — intended to run on the client AND during server-side prefetch;
-  currently client-only (the compiler strips it from the server bundle).
-  <!-- TODO(high): onPrefetchPage is stripped from the server bundle (point.ts ~1056) but should also run during server prefetch — stop stripping it. -->
-- `.prefetchPageOnNavigate` / `.prefetchPageOnLinkHover` — client-only
-- `.prefetchPagePolicy` — server-and-client
+  `.with(query)` is only discovered by rendering and is prefetched only under
+  the expensive `pageDehydratedState*`.
+- `.onPrefetchPage` — server-and-client. It runs on the client AND during
+  server-side prefetch.
+- `.prefetchPageOnNavigate` / `.prefetchPageOnLinkHover` / `.prefetchPagePolicy`
+  — client-only
 
 Layout also adds the split boundaries `.pageError` / `.layoutError` and
-`.pageLoading` / `.layoutLoading` (both **server-ssr-and-client**, like `.error` /
-`.loading`), and `.pageQueryOptions` / `.layoutQueryOptions` (**server-and-client**).
+`.pageLoading` / `.layoutLoading` (both **server-ssr-and-client**, like `.error`
+/ `.loading`), and `.pageQueryOptions` / `.layoutQueryOptions`
+(**server-and-client**).
 
 **Component / provider add** (no route): `.input` / `.sharedInput` —
 server-and-client on a non-action mountable (isomorphic); `.clientInput` —
 client-only. They have no `.params` / `.search` / `.head` / scroll / prefetch
-methods.
-
-<!-- TODO(low): confirm `.relatedQuery` and `.onPrefetchPage` are intentionally unavailable on component/provider before documenting the per-type matrix as final. -->
+methods, and no `.relatedQuery` or `.onPrefetchPage` — both are
+page/layout-only.
 
 ### What counts as a mountable
 
-At runtime, exactly `page | layout | component | provider`. Every mountable can carry and
-inject queries; not every query-carrying point is a mountable — a standalone
-[query](query) or [infinite query](infinite-query) is queryable but not mountable
-(it renders nothing).
+At runtime, exactly `page | layout | component | provider`. Every mountable can
+carry and inject queries; not every query-carrying point is a mountable — a
+standalone [query](query) or [infinite query](infinite-query) is queryable but
+not mountable (it renders nothing).
