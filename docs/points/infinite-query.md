@@ -390,7 +390,7 @@ a client-loader-only infinite query only the server-fetch trio (`fetchServer`,
 | `prefetchInfiniteQuery`   | `(input?, infiniteOptions?, options?)`         | `Promise<void>`                     |
 | `ensureInfiniteQueryData` | `(input?, infiniteOptions?, options?)`         | `Promise<InfiniteData>`             |
 | `getInfiniteQueryData`    | `(input?, options?)`                           | `InfiniteData \| undefined`         |
-| `setInfiniteQueryData`    | `(input?, updater, setDataOptions?, options?)` | the new page (single page)¹         |
+| `setInfiniteQueryData`    | `(input?, updater, setDataOptions?, options?)` | the new `InfiniteData`              |
 | `refetchInfiniteQuery`    | `(input?, refetchOptions?, options?)`          | `Promise<void>`                     |
 | `invalidateInfiniteQuery` | `(input?, invalidateOptions?, options?)`       | `Promise<void>`                     |
 | `cancelInfiniteQuery`     | `(input?, cancelOptions?, options?)`           | `Promise<void>`                     |
@@ -402,12 +402,6 @@ a client-loader-only infinite query only the server-fetch trio (`fetchServer`,
 | `getInfiniteQueryOptions` | `(input?, infiniteOptions?, options?)`         | fully built infinite options        |
 | `getInfiniteQueryKey`     | `(input?, options?)`                           | the infinite `QueryKey` tuple       |
 | `getQueryKey`             | `(input?, options?)`                           | the finite `QueryKey` tuple         |
-
-¹ `setInfiniteQueryData`'s updater and return are currently typed as a single
-page (`Updater<page, page>`), not `InfiniteData<page>` — a known typing rough
-edge. The cache entry it writes is an `InfiniteData`, so an updater typed
-against `{ pages, pageParams }` will fight the declared type until this is
-fixed.
 
 ### The infinite query key
 

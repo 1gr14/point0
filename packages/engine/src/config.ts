@@ -274,8 +274,10 @@ export type EngineGeneralOptions = {
    * `true`/object enables it. Takes `babel`, `markdown`, `consts`, `filter`, `cache`, and more.
    */
   compiler?: EngineOptionsCompilerGeneral | boolean
-  /** Engine default for SSR; sides inherit unless they override. `true`/`false`, or an object to tune the re-render
-loop. Default `false`. */
+  /**
+   * Engine default for SSR; sides inherit unless they override. `true`/`false`, or an object to tune the re-render
+   * loop. Default `false`.
+   */
   ssr?: boolean | SsrOptions
   /** Default static-asset config for the whole engine. Folds into `compiler.assets`; a nested/per-side one wins. */
   assets?: EngineOptionsCompilerAssets
@@ -294,8 +296,10 @@ export type EngineServerOptions<
 > = {
   /** REQUIRED. The points scope this side serves, e.g. `'root'` or `'site'`. */
   scope: PointsScope
-  /** Runtime loader for the server points manifest, usually `async () => import('./generated/point0/points.server')`.
-Defaults to a bare root point. */
+  /**
+   * Runtime loader for the server points manifest, usually `async () => import('./generated/point0/points.server')`.
+   * Defaults to a bare root point.
+   */
   points?: PointsDefinitionSource<TRequiredCtx, TError>
   // generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
   /** Per-side codegen: `{ points?, custom? }` — where to emit the server points manifest. Default `[]`. */
@@ -310,11 +314,15 @@ Defaults to a bare root point. */
     outdir: string
     cacheLimit?: number | boolean
   }
-  /** Controls which imports the build accepts, mocks, or treats specially: `{ mock?, deny?, cold?, cwd?, onDeny? }`.
-`cold` is server-only. Default `{ cwd }`. */
+  /**
+   * Controls which imports the build accepts, mocks, or treats specially: `{ mock?, deny?, cold?, cwd?, onDeny? }`.
+   * `cold` is server-only. Default `{ cwd }`.
+   */
   importer?: ImporterOptionsInput
-  /** Server env. `vars` are runtime, `consts` are compile-time-inlined. Server `vars` is strict — records/arrays only,
-no string/glob form. Default `{}`. */
+  /**
+   * Server env. `vars` are runtime, `consts` are compile-time-inlined. Server `vars` is strict — records/arrays only,
+   * no string/glob form. Default `{}`.
+   */
   env?: { vars?: EngineOptionsEnvStrict; consts?: EngineOptionsEnvWide }
   /** Port the server listens on. Coerced via `Number()`. Default `3000`. */
   port?: number | string
@@ -359,15 +367,21 @@ no string/glob form. Default `{}`. */
 export type EngineClientOptions = {
   /** REQUIRED. The points scope this client builds, e.g. `'root'`. */
   scope: PointsScope
-  /** Runtime loader for the client points manifest, usually `async () => import('./generated/point0/points.client')`.
-Default `null` (empty). */
+  /**
+   * Runtime loader for the client points manifest, usually `async () => import('./generated/point0/points.client')`.
+   * Default `null` (empty).
+   */
   points?: PointsDefinitionSource<any, any>
-  /** Whether the engine serves this client. `false` builds it but skips binding to the server and dev serve — for a
-native shell (Capacitor, Expo). Default `true`. */
+  /**
+   * Whether the engine serves this client. `false` builds it but skips binding to the server and dev serve — for a
+   * native shell (Capacitor, Expo). Default `true`.
+   */
   serving?: EngineOptionsServing
   // generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
-  /** Per-side codegen: `{ points?, routes?, custom? }`. `points` takes a `lazy` flag (pages are lazy by default);
-`routes` takes an `origin`. Default `[]`. */
+  /**
+   * Per-side codegen: `{ points?, routes?, custom? }`. `points` takes a `lazy` flag (pages are lazy by default);
+   * `routes` takes an `origin`. Default `[]`.
+   */
   generate?: FilesGeneratorSimpleClientConfig
   /** The client app component loader, e.g. `async () => import('./app.client')`. Default `null`. */
   app?: EngineOptionsAppComponent
@@ -380,8 +394,10 @@ native shell (Capacitor, Expo). Default `true`. */
     outdir: string
     cacheLimit?: number | boolean
   }
-  /** Controls which imports the build accepts, mocks, or treats specially: `{ mock?, deny?, cwd?, onDeny? }`. Default `{
-cwd }`. */
+  /**
+   * Controls which imports the build accepts, mocks, or treats specially: `{ mock?, deny?, cwd?, onDeny? }`. Default `{
+   * cwd }`.
+   */
   importer?: ImporterOptionsInput
   /** The HTML shell for this client, e.g. `'./index.html'`. Default `null`. */
   indexHtml?: string

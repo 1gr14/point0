@@ -220,8 +220,8 @@ better match; rank by it, don't read a fixed range into it.
 ### Server facts
 
 - **Transport:** stdio only — no HTTP/SSE.
-- **Server name:** `point0-docs`. Its reported `version` is a hardcoded `1.0.0`
-  and does **not** track the `@point0/docs` package version.
+- **Server name:** `point0-docs`. Its reported `version` is the installed
+  `@point0/docs` package version.
 - **Capabilities:** tools only — no MCP resources or prompts.
 - **Categories:** `intro`, `points`, `methods`, `core`, `engine`, `extra`,
   `examples` (from `docs/categories.json`) — grouping only, never part of a

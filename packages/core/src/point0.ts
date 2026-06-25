@@ -2759,7 +2759,8 @@ export class Point0<
 
   /**
    * Default react-query options for every mutation in scope (deep-merged, not replaced). On root, base, plugin. Client
-   * + server.
+   *
+   * - server.
    *
    * Server-and-client — kept on both bundles (isomorphic config).
    *
@@ -10593,20 +10594,19 @@ export class Point0<
       TBodySchema
     >,
     updater: Updater<
-      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
+      InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+      InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
     >,
     setDataOptions?: SetDataOptions,
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
     },
-  ): FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> {
+  ): InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>> {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const queryKey = this.getInfiniteQueryKey(input, options)
-    return queryClient.setQueryData(queryKey, updater, setDataOptions) as FinalLoaderData<
-      TServerLoaderOutput,
-      TClientLoaderOutput
+    return queryClient.setQueryData(queryKey, updater, setDataOptions) as InfiniteData<
+      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
     >
   }
 

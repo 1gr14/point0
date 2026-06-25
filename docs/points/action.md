@@ -16,15 +16,13 @@ bytes.
 ```ts
 import { root } from '@/lib/root'
 
-export const apiHealthAction = root.lets
-  .action('GET', '/api/health')
-  .action(
-    () =>
-      new Response('OK', {
-        status: 200,
-        headers: { 'content-type': 'text/plain' },
-      }),
-  )
+export const apiHealthAction = root.lets.action('GET', '/api/health').action(
+  () =>
+    new Response('OK', {
+      status: 200,
+      headers: { 'content-type': 'text/plain' },
+    }),
+)
 
 // GET /api/health  →  200  "OK"
 ```

@@ -65,7 +65,6 @@ The bytes are written out and the import value is the served URL
 ```tsx
 import gemUrl from '@/assets/gem.png'
 // gemUrl === '/_point0/asset/a1b2c3d4e5f60718.png'  (16-hex content hash)
-
 ;<img src={gemUrl} alt="gem" />
 ```
 
@@ -79,7 +78,6 @@ React component:
 
 ```tsx
 import GemIcon from '@/assets/gem.svg?react'
-
 ;<GemIcon width={40} height={40} /> // renders an <svg>
 ```
 
@@ -111,7 +109,6 @@ SVG's markup rather than linking it:
 ```tsx
 import favicon from '@/assets/favicon.svg?text'
 // favicon === '<svg xmlns="..." viewBox="...">...</svg>'
-
 ;<Svg src={favicon} /> // a component that renders raw SVG markup
 ```
 

@@ -80,7 +80,6 @@ passing the proxy as `client`:
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { queryClient } from '@/lib/query-client'
-
 ;<QueryClientProvider client={queryClient}>
   <ReactQueryDevtools initialIsOpen={true} />
   {/* your app */}

@@ -1,14 +1,18 @@
 #!/usr/bin/env bun
 
+import { createRequire } from 'node:module'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import { getDocOrUndefined, listDocs, searchDocs } from './search.js'
 
+// Read the real installed version from @point0/docs's own package.json (dist/mcp.js sits one level under it).
+const { version: point0DocsVersion } = createRequire(import.meta.url)('../package.json') as { version: string }
+
 const server = new McpServer(
   {
     name: 'point0-docs',
-    version: '1.0.0',
+    version: point0DocsVersion,
   },
   {
     capabilities: {
