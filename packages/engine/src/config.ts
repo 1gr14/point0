@@ -221,55 +221,122 @@ const pickSsrOptionsPartial = (ssr: boolean | SsrOptions | undefined): Partial<S
  */
 export type LoggerOptionsInput = LoggerConfig | (() => LoggerConfig | Promise<LoggerConfig>)
 
+/**
+ * The flat, top-level options of `Engine.create({ ... })` — everything that isn't a `server` / `client` / `clients`
+ * block. Only `file` is required; the rest tune codegen, SSR, the bundler, and shared defaults that both sides inherit.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/engine-config
+ */
 export type EngineGeneralOptions = {
+  /**
+   * REQUIRED. Almost always `import.meta.url`. The engine uses it to locate itself on disk, which drives `cwd`,
+   * build-output paths, and auto-discovery. Accepts a `file://` URL or a plain path. Throws if missing.
+   */
   file: string
+  /** Custom logger. A `{ log }` object, or a (sync/async) function returning one. Defaults to the built-in log. */
   logger?: LoggerOptionsInput
+  /**
+   * App-wide codegen: the files `point0 generate` writes (`meta`, `assetsTypes`, `custom`). A raw `FilesGeneratorTask[]`
+   * gives full control. Per-side point/route manifests live under `server.generate` / `client.generate`. Default `[]`.
+   */
   generate?: FilesGeneratorSimpleGeneralConfig | FilesGeneratorTask[]
+  /** Internal: flags that the engine is running from a built `dist/`. Defaults from the `POINT0_ENGINE_WAS_BUILT` env. */
   itWasBuilt?: boolean
+  /** Internal: the cwd after build (the `dist/` root). Auto-derived from `file` + `server.outdir`. */
   cwdAfterBuild?: string
+  /** Internal: the cwd before build (the source root). Auto-derived from `file`. */
   cwdBeforeBuild?: string
+  /** Rewrite relative config paths to their built location after a build. Default `true`. */
   autoFixBuiltPaths?: boolean
+  /** Shared output dir for all clients. Default `null` (each client uses its own `outdir`). */
   clientsOutdir?: string
+  /** Glob (or globs) the generator scans to discover point source files. Default `[]`. */
   pointsGlob?: string | string[]
+  /** Extra `build --watch` patterns layered on top of the import-graph watch. Default `[]`. */
   buildWatchGlob?: string | string[]
+  /** Text prepended to generated files. Default `null`. */
   banner?: string
+  /**
+   * General `Bun.build` overrides, applied when a side bundles with Bun. A plain Bun build config, or a
+   * `({ mode, side, scope }) => config` function. Point0-managed lists (`plugins`, `external`, …) are merged, not
+   * replaced. Default `null`.
+   */
   bunBuildConfig?: BunBuildConfigDefinition
+  /** Bun plugins shared by both sides (per-side `bunPlugins` are additive). Default `[]`. */
   bunPlugins?: EngineSharedPluginsDefinition
+  /**
+   * Vite config — its mere presence switches that side from Bun to Vite. A `({ plugins, side, … }) => UserConfig`
+   * function, a literal `UserConfig`, or a path to your own config file. Set per side to switch only one.
+   */
   viteConfig?: EngineOptionsViteConfig
+  /**
+   * Default source-transform config for the whole engine; per-side `compiler` wins. `false` turns the transform off,
+   * `true`/object enables it. Takes `babel`, `markdown`, `consts`, `filter`, `cache`, and more.
+   */
   compiler?: EngineOptionsCompilerGeneral | boolean
-  // default ssr value
+  /** Engine default for SSR; sides inherit unless they override. `true`/`false`, or an object to tune the re-render loop. Default `false`. */
   ssr?: boolean | SsrOptions
   /** Default static-asset config for the whole engine. Folds into `compiler.assets`; a nested/per-side one wins. */
   assets?: EngineOptionsCompilerAssets
 }
 
+/**
+ * The single `server` block of `Engine.create({ ... })` — the side that runs your API and SSR. Omit it and it defaults
+ * to `{ scope: 'root', ssr: false }`. Shares many options with a client (`scope`, `points`, `generate`, `env`,
+ * `compiler`, `viteConfig`, …) but env `vars` here is strict and it owns the server-only `entry` / `bunServeConfig`.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/engine-config
+ */
 export type EngineServerOptions<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TError extends ErrorPoint0 = ErrorPoint0,
 > = {
+  /** REQUIRED. The points scope this side serves, e.g. `'root'` or `'site'`. */
   scope: PointsScope
+  /** Runtime loader for the server points manifest, usually `async () => import('./generated/point0/points.server')`. Defaults to a bare root point. */
   points?: PointsDefinitionSource<TRequiredCtx, TError>
   // generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
+  /** Per-side codegen: `{ points?, custom? }` — where to emit the server points manifest. Default `[]`. */
   generate?: FilesGeneratorSimpleServerConfig
+  /**
+   * Static files to mount. `source` is a dir string, a route→file record, an array of those, or function values
+   * synthesized on the fly; `outdir` is where it's emitted (required for `publicdir` to activate); `cacheLimit`
+   * caps caching (`false`/`0` off, `true`/omit caches all). Default `null`.
+   */
   publicdir?: {
     source: EngineOptionsPublicdir
     outdir: string
     cacheLimit?: number | boolean
   }
+  /** Controls which imports the build accepts, mocks, or treats specially: `{ mock?, deny?, cold?, cwd?, onDeny? }`. `cold` is server-only. Default `{ cwd }`. */
   importer?: ImporterOptionsInput
+  /** Server env. `vars` are runtime, `consts` are compile-time-inlined. Server `vars` is strict — records/arrays only, no string/glob form. Default `{}`. */
   env?: { vars?: EngineOptionsEnvStrict; consts?: EngineOptionsEnvWide }
+  /** Port the server listens on. Coerced via `Number()`. Default `3000`. */
   port?: number | string
+  /** Build output dir. Auto-set to `'dist'`; drives the after-build cwd. */
   outdir?: string
+  /** Server entry file(s). A string becomes `{ main: <string> }`. Default `null`. */
   entry?: string | Record<string, string>
+  /** Default watch glob for `point0 dev` when `--watch` is passed with no value. Default `[]`. */
   devWatchGlob?: string | string[]
+  /** Raw `Bun.serve` config, passed through when serving with Bun. Default `null`. */
   bunServeConfig?: Serve.Options<any, any>
+  /** Per-side `Bun.build` overrides (merged with the general `bunBuildConfig`). Default `{}`. */
   bunBuildConfig?: EngineServerBuildConfigDefinition
+  /** Bun plugins for this side, additive over the shared `bunPlugins`. Default `[]`. */
   bunPlugins?: EngineServerPluginsDefinition
+  /** Vite config for this side; presence switches the server to Vite. Inherits the general `viteConfig`. */
   viteConfig?: EngineOptionsViteConfig
+  /** Source-transform config for this side; overrides the general `compiler`. `false` turns it off. */
   compiler?: EngineOptionsCompilerSpecific | boolean
+  /** Route table for this scope — `() => import('./lib/routes')` or a routes object. Default `null`. */
   routes?: EngineOptionsRoutes
+  /** Text prepended to this side's generated files. Default `null`. */
   banner?: string
+  /** HMR port. `false` disables, a number pins it, `true`/omit uses the default `port + 100`. */
   hmrPort?: number | string | boolean
+  /** SSR for this side; an explicit value wins over the engine-level `ssr`, else falls back to `false`. */
   ssr?: boolean | SsrOptions
   /**
    * Static-asset config for this side. Folds into `compiler.assets`; `compiler.assets` wins. Keep it in sync with other
@@ -278,31 +345,64 @@ export type EngineServerOptions<
   assets?: EngineOptionsCompilerAssets
 }
 
+/**
+ * One `client` block of `Engine.create({ ... })` — a browser bundle the engine builds and (by default) serves. Use
+ * `client` for a single client, `clients: [...]` for several; the two big client-only options you almost always set are
+ * `indexHtml` (the HTML shell) and `app` (the client app component).
+ *
+ * Full reference: https://1gr14.dev/point0/latest/engine-config
+ */
 export type EngineClientOptions = {
+  /** REQUIRED. The points scope this client builds, e.g. `'root'`. */
   scope: PointsScope
+  /** Runtime loader for the client points manifest, usually `async () => import('./generated/point0/points.client')`. Default `null` (empty). */
   points?: PointsDefinitionSource<any, any>
+  /** Whether the engine serves this client. `false` builds it but skips binding to the server and dev serve — for a native shell (Capacitor, Expo). Default `true`. */
   serving?: EngineOptionsServing
   // generate?: Array<Omit<FilesGeneratorTaskPoints, 'scope' | 'side'> | Omit<FilesGeneratorTaskRoutes, 'scope' | 'side'>>
+  /** Per-side codegen: `{ points?, routes?, custom? }`. `points` takes a `lazy` flag (pages are lazy by default); `routes` takes an `origin`. Default `[]`. */
   generate?: FilesGeneratorSimpleClientConfig
+  /** The client app component loader, e.g. `async () => import('./app.client')`. Default `null`. */
   app?: EngineOptionsAppComponent
+  /**
+   * Static files to mount for this client. `source` is a dir string, a route→file record, an array, or function
+   * values; `outdir` is where it's emitted (required to activate); `cacheLimit` caps caching. Default `null`.
+   */
   publicdir?: {
     source: EngineOptionsPublicdir
     outdir: string
     cacheLimit?: number | boolean
   }
+  /** Controls which imports the build accepts, mocks, or treats specially: `{ mock?, deny?, cwd?, onDeny? }`. Default `{ cwd }`. */
   importer?: ImporterOptionsInput
+  /** The HTML shell for this client, e.g. `'./index.html'`. Default `null`. */
   indexHtml?: string
+  /** Id of the element the app mounts into. Default `'root'`. */
   domRootElementId?: string
+  /**
+   * Client env. `vars` are runtime (injected into the HTML), `consts` are compile-time-inlined. Both are wide (string,
+   * glob, record, or array) but throw on `''` / a bare `'*'` to avoid leaking the whole `process.env`. Default `{}`.
+   */
   env?: { vars?: EngineOptionsEnvWide; consts?: EngineOptionsEnvWide }
+  /** Port this client is served on. Default `serverPort + clientIndex + 1`. */
   port?: number | string
+  /** HMR port. `false` disables, a number pins it, `true`/omit uses the default `port + 100`. */
   hmrPort?: number | string | boolean
+  /** Per-side `Bun.build` overrides (merged with the general `bunBuildConfig`). Default `{}`. */
   bunBuildConfig?: EngineClientBuildConfigDefinition
+  /** Bun plugins for this client, additive over the shared `bunPlugins`. Default `[]`. */
   bunPlugins?: EngineClientPluginsDefinition
+  /** Vite config for this client; presence switches it to Vite. Inherits the general `viteConfig`. */
   viteConfig?: EngineOptionsViteConfig
+  /** Source-transform config for this client; overrides the general `compiler`. `false` turns it off. */
   compiler?: EngineOptionsCompilerSpecific | boolean
+  /** Build output dir, e.g. `'../dist/client'`. Default `null`. */
   outdir?: string
+  /** Route table for this client's scope. Default `null`. */
   routes?: EngineOptionsRoutes
+  /** Text prepended to this client's generated files. Default `null`. */
   banner?: string
+  /** SSR for this client; an explicit value wins over the engine-level `ssr`, else falls back to `false`. */
   ssr?: boolean | SsrOptions
   /**
    * Static-asset config for this client. Folds into `compiler.assets`; `compiler.assets` wins. Keep it in sync with
@@ -310,12 +410,29 @@ export type EngineClientOptions = {
    */
   assets?: EngineOptionsCompilerAssets
 }
+/**
+ * The full options object you pass to `Engine.create({ ... })`: the flat general options (`file`, `ssr`, `generate`, …)
+ * plus one `server` block and one or more clients. Use `client` for a single client and `clients: [...]` for several —
+ * both are concatenated, so you can use both. Omit `server` and it defaults to `{ scope: 'root', ssr: false }`.
+ *
+ *     export const engine = Engine.create({
+ *       file: import.meta.url,
+ *       ssr: true,
+ *       server: { scope: 'root' },
+ *       client: { scope: 'root', indexHtml: './index.html', app: async () => import('./app.client') },
+ *     })
+ *
+ * Full reference: https://1gr14.dev/point0/latest/engine-config
+ */
 export type EngineOptions<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TError extends ErrorPoint0 = ErrorPoint0,
 > = EngineGeneralOptions & {
+  /** The server side — your API and SSR. Defaults to `{ scope: 'root', ssr: false }` when omitted. */
   server?: EngineServerOptions<TRequiredCtx, TError>
+  /** Shorthand for a single client. Concatenated with `clients`. */
   client?: EngineClientOptions
+  /** Several clients. A client with no explicit `port` gets `serverPort + index + 1`. */
   clients?: EngineClientOptions[]
 }
 

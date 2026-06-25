@@ -118,3 +118,11 @@ Inside an example: `bun run dev | build | start | generate`.
 - After a change, run the touched package's `types` + `test` before declaring
   done — type errors in `core` cascade everywhere. Touched public API? Update
   the matching `exports`/`typesVersions` and any `examples/basic` consumer.
+- **Touched public behavior? Update the docs in the same change.** Before
+  declaring a task done (and before any commit), check whether the change
+  affected anything the user-facing docs cover — a method, an option, a CLI
+  command, an endpoint, observable behavior, the compiler's strip categories. If
+  so, update the matching `docs/<category>/<slug>.md` page **and** its JSDoc (they
+  must stay in sync), and re-check the `<!-- TODO(...) -->` markers. How the docs
+  are structured and written: [dev/docs/docs.md](dev/docs/docs.md); the open
+  backlog: [dev/backlog/docs-todo.md](dev/backlog/docs-todo.md).

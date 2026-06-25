@@ -4,6 +4,26 @@
     "label": "Getting Started"
   },
   {
+    "slug": "points",
+    "label": "Points"
+  },
+  {
+    "slug": "methods",
+    "label": "Methods"
+  },
+  {
+    "slug": "core",
+    "label": "Core"
+  },
+  {
+    "slug": "engine",
+    "label": "Engine"
+  },
+  {
+    "slug": "extra",
+    "label": "Extra"
+  },
+  {
     "slug": "examples",
     "label": "Examples"
   }

@@ -1,9 +1,24 @@
 import type { MiddlewareFn } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 
+/**
+ * Build a `Basic <base64>` header value from a username and password. Handy for crafting authenticated requests in
+ * tests; not needed for normal gating, which `basicAuth(...)` handles.
+ *
+ *     fetch(url, { headers: { authorization: getBasicAuthHeader('admin', 'secret') } })
+ *
+ * Full reference: https://1gr14.dev/point0/latest/basic-auth
+ */
 export const getBasicAuthHeader = (username: string, password: string): string =>
   `Basic ${Buffer.from(`${username}:${password}`, 'utf8').toString('base64')}`
 
+/**
+ * The shapes `users` accepts for the built-in credential table, all normalized to a `{ username: password }` record:
+ * a record, a single `"user:pass"` string, or a list of `"user:pass"` strings. A string splits on the FIRST `:`, so
+ * passwords may contain colons; an empty username or password throws at config time.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/basic-auth
+ */
 export type BasicAuthOptionsInputUsers = Record<string, string> | string | string[]
 
 type OnUnauthorizedOptions = {
@@ -36,6 +51,17 @@ type ValidatorFn = ({
   password: string
   request: Request0
 }) => boolean | Promise<boolean>
+/**
+ * Options for `basicAuth(...)` / `BasicAuth.create(...)`. Exactly one of `users` (built-in table) or `validator`
+ * (custom async check) is required — they're a discriminated union, so passing both or neither is a type error.
+ * Everything else is optional: `challenge` toggles the `WWW-Authenticate` browser dialog; `limitPerUser` /
+ * `limitPerIp` / `staleTimeMs` / `memorySize` tune brute-force throttling; the `on*` hooks fire on each failure path
+ * for logging (they can't change the response).
+ *
+ *     basicAuth({ users: { admin: 'secret' }, limitPerIp: 50, challenge: false })
+ *
+ * Full reference: https://1gr14.dev/point0/latest/basic-auth
+ */
 export type BasicAuthOptionsInput = {
   limitPerUser?: number
   limitPerIp?: number
@@ -46,8 +72,20 @@ export type BasicAuthOptionsInput = {
   onWrongCredentials?: OnWrongCredentialsFn
   onLimitExceeded?: OnLimitExceededFn
 } & ({ users: BasicAuthOptionsInputUsers; validator?: undefined } | { users?: undefined; validator: ValidatorFn })
+/**
+ * The normalized credential table: every `users` input shape collapses to this `{ username: password }` record.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/basic-auth
+ */
 export type BasicAuthUsers = Record<string, string>
 
+/**
+ * The outcome of `BasicAuth#validateRequest`. On success, just `{ ok: true, username }`. On failure, `ok: false` plus
+ * the resolved `username`/`ip` (either may be `undefined`), a ready-to-return `response` (`401` or `429`), and a
+ * `reason` of `'unauthorized'` | `'wrong-credentials'` | `'limit-exceeded'`.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/basic-auth
+ */
 export type BasicAuthValidationResult =
   | {
       ok: true
@@ -98,6 +136,17 @@ const normalizeUsers = (users: BasicAuthOptionsInputUsers): BasicAuthUsers => {
   return users
 }
 
+/**
+ * The class behind `basicAuth(...)` — the lower-level surface, used in tests but not in any example. The constructor
+ * is private; build one with `BasicAuth.create(options)`. Its `.middleware` getter is exactly what `basicAuth()`
+ * returns. Reach for it when you want to gate by hand: `validateRequest(request)` returns the full
+ * `BasicAuthValidationResult`, and `getFailureResponse(request)` returns the failure `Response` or `undefined`.
+ *
+ *     const auth = BasicAuth.create({ users: { admin: 'secret' } })
+ *     const failure = await auth.getFailureResponse(request) // Response | undefined
+ *
+ * Full reference: https://1gr14.dev/point0/latest/basic-auth
+ */
 export class BasicAuth {
   users: BasicAuthUsers
   validator: ValidatorFn | undefined
@@ -354,6 +403,19 @@ export class BasicAuth {
   }
 }
 
+/**
+ * An HTTP Basic auth gate. Returns a Point0 middleware: give it a user table (or a custom `validator`), mount it on a
+ * point, and every request without valid `username:password` credentials gets a `401`. Runs server-side only (a no-op
+ * on the client) and adds per-user / per-IP brute-force throttling for free. Mount it on `root` to close off a whole
+ * staging deploy, on a route to scope it to a subtree, or as `openapi(...)`'s `before` to guard just the docs.
+ *
+ *     export const root = Point0.lets
+ *       .root()
+ *       .middleware(basicAuth({ users: { admin: 'secret' } }))
+ *       .root()
+ *
+ * Full reference: https://1gr14.dev/point0/latest/basic-auth
+ */
 export const basicAuth = (options: BasicAuthOptionsInput): MiddlewareFn<any, any> => {
   return BasicAuth.create(options).middleware
 }

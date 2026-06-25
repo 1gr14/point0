@@ -6,6 +6,19 @@ import { getScalarHtml, type ScalarOptions } from './scalar.js'
 import { getSwaggerHtml, type SwaggerOptions } from './swagger.js'
 import { getOpenapiSchemaFromPoints, type OpenapiOptions } from './utils.js'
 
+/**
+ * Options for the {@link openapi} middleware that are specific to serving the spec (the rest come from
+ * {@link OpenapiOptions} — document-level fields like `info`, `servers`, `openapi` version).
+ *
+ * - `route` — where the raw JSON spec is served (required).
+ * - `filter` — which points to include: `'action'` (default, actions only), `'all'`, or a predicate run after the
+ *   endpoint check.
+ * - `scalar` / `swagger` — a route string (or options object with a `route`) to serve that UI; omit to not serve it.
+ * - `before` — middleware run only on the doc routes (the place for auth, e.g. `@point0/basic-auth`).
+ * - `cache` — spec caching, on by default keyed by `route`; `false` rebuilds every hit, a string sets a custom key.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/openapi
+ */
 export type OpenapiMiddlewareOptionsGeneral = {
   route: string
   cache?: string | boolean
@@ -18,6 +31,20 @@ export type OpenapiMiddlewareOptionsGeneral = {
 export type OpenapiMiddlewareOptions<TOpenapiVersion extends string> = OpenapiOptions<TOpenapiVersion> &
   OpenapiMiddlewareOptionsGeneral
 
+/**
+ * Middleware that turns every endpoint point — queries, mutations, actions, and SSR pages — into an OpenAPI document,
+ * served as raw JSON plus optional Scalar and Swagger UIs. Request and response schemas are read from each point's
+ * validation schemas (`.params`/`.search`/`.body`/`.input`/`.response`); nothing is written by hand. Add it as one
+ * `.middleware()` on the root. Server-only: on the client it's a no-op pass-through, shipping nothing to the browser.
+ *
+ *     export const root = Point0.lets
+ *       .root()
+ *       .schemaHelper(zodSchemaHelper())
+ *       .middleware(openapi({ route: '/openapi.json', scalar: '/scalar', swagger: '/swagger', filter: 'all' }))
+ *       .root()
+ *
+ * Full reference: https://1gr14.dev/point0/latest/openapi
+ */
 export const openapi = <TOpenapiVersion extends string>(
   options: OpenapiMiddlewareOptions<TOpenapiVersion>,
 ): MiddlewareFn<any> => {

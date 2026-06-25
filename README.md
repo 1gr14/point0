@@ -1,9 +1,16 @@
----
-index: 100
-title: Overview
-description: The Point0 framework, end to end — the announcement article, every feature walked through by example.
----
+# Point0
 
+![Point0](https://1gr14.dev/images/point0-card-dark@2x.png)
+
+> A fullstack TypeScript framework on Bun — your whole app, pages to endpoints, from one typed building block.
+
+[![CI](https://github.com/1gr14/point0/actions/workflows/ci.yml/badge.svg)](https://github.com/1gr14/point0/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@point0/core.svg)](https://www.npmjs.com/package/@point0/core)
+[![coverage](https://codecov.io/gh/1gr14/point0/branch/main/graph/badge.svg)](https://codecov.io/gh/1gr14/point0)
+[![gzip](https://deno.bundlejs.com/badge?q=@point0/core)](https://bundlejs.com/?q=@point0/core)
+[![license](https://img.shields.io/npm/l/@point0/core.svg)](./LICENSE)
+
+<!-- docs:start -->
 
 I want to announce my framework, Point0. It is the first Bun FullStack framework
 comparable in functionality to Next.js and TanStack Start. However, it has a
@@ -117,7 +124,7 @@ the framework's design further:
   safeguarded so that server code doesn't end up in the client. In the end, this
   is handled by the compiler, which I'll talk about later.
 
-Read more in the docs [about pages](page).
+Read more in the docs [about pages](https://1gr14.dev/point0/latest/page).
 
 ## Mutation
 
@@ -220,7 +227,7 @@ The only difference is that the input is taken as the first argument here, and
 it's what forms the unique `mutationKey` for this specific request, as well as
 the body of the mutation function itself.
 
-Read more in the docs [about mutations](mutation).
+Read more in the docs [about mutations](https://1gr14.dev/point0/latest/mutation).
 
 ## Query
 
@@ -464,7 +471,7 @@ please. I specifically wanted to make the framework free of conventions and let
 everyone create whatever they want, and build their own architecture and
 conventions themselves.
 
-Read more in the docs [about queries](query).
+Read more in the docs [about queries](https://1gr14.dev/point0/latest/query).
 
 ## The shorthand .lets notation
 
@@ -498,7 +505,7 @@ Both ways of declaring points are valid, and both are typed exactly as they
 should be. But from here on in the text I'll use the short notation, because in
 general I find it more convenient.
 
-Read more in the docs [about points](points).
+Read more in the docs [about points](https://1gr14.dev/point0/latest/points).
 
 ## Layout
 
@@ -624,7 +631,7 @@ export const ideaPage = ideaLayout.lets.page('/').page(() => {
 })
 ```
 
-Read more in the docs [about layouts](layout).
+Read more in the docs [about layouts](https://1gr14.dev/point0/latest/layout).
 
 ## Root
 
@@ -795,7 +802,7 @@ export const expoRoot = root.lets
   .root()
 ```
 
-Read more in the docs [about the root](root).
+Read more in the docs [about the root](https://1gr14.dev/point0/latest/root).
 
 ## Base
 
@@ -826,7 +833,7 @@ But in fact, essentially, it doesn't come in all that handy for me. Because we
 have plugins, which I'll talk about later, and they simply let you insert some
 methods inside a point's chain, and that's much more convenient.
 
-Read more in the docs [about base](base).
+Read more in the docs [about base](https://1gr14.dev/point0/latest/base).
 
 ## Loading
 
@@ -903,7 +910,7 @@ export const NProgress = () => {
 }
 ```
 
-Read more in the docs [about loading and errors](loading-error).
+Read more in the docs [about loading and errors](https://1gr14.dev/point0/latest/loading-error).
 
 ## Many Queries
 
@@ -977,7 +984,7 @@ export const ideaPage = root.lets
   )
 ```
 
-Read more in the docs [about .with()](with), [about the mapper](mapper).
+Read more in the docs [about .with()](https://1gr14.dev/point0/latest/with), [about the mapper](https://1gr14.dev/point0/latest/mapper).
 
 ## .with()
 
@@ -1344,7 +1351,7 @@ export const ideaPage = root.lets
   ))
 ```
 
-Read more in the docs [about .with()](with).
+Read more in the docs [about .with()](https://1gr14.dev/point0/latest/with).
 
 ## Context
 
@@ -1426,7 +1433,7 @@ It's very important to note that `.ctx()` will only be called if the page has a
 But as practice has shown, this `base` is not nearly as convenient as plugins, so
 let's study plugins.
 
-Read more in the docs [about context](ctx).
+Read more in the docs [about context](https://1gr14.dev/point0/latest/ctx).
 
 ## Plugin
 
@@ -1615,7 +1622,7 @@ export const authorizedPlugin = Point0.lets
   .plugin()
 ```
 
-Read more in the docs [about plugins](plugin).
+Read more in the docs [about plugins](https://1gr14.dev/point0/latest/plugin).
 
 ## Mountables
 
@@ -1635,7 +1642,7 @@ client and the server know about their existence (more on the generator later).
 Components and providers, however, once declared, we have to use somewhere
 ourselves. Let's study them.
 
-Read more in the docs [about mountables](mountable).
+Read more in the docs [about mountables](https://1gr14.dev/point0/latest/mountable).
 
 ## Component
 
@@ -1745,7 +1752,7 @@ Absolutely the same code in terms of the result, but a different approach. Once
 again I'll note that it's actually more convenient to store queries separately
 rather than declaring loaders in the mountables themselves.
 
-Read more in the docs [about components](component).
+Read more in the docs [about components](https://1gr14.dev/point0/latest/component).
 
 ## Provider
 
@@ -1812,7 +1819,7 @@ plugin. Because all data are query results anyway, and queries are cached. And w
 don't get any extra re-renders. But nevertheless we do have providers, in case
 they come in handy.
 
-Read more in the docs [about providers](provider).
+Read more in the docs [about providers](https://1gr14.dev/point0/latest/provider).
 
 ## Infinite Query
 
@@ -1953,7 +1960,7 @@ export const ideaListPage = root.lets
   })
 ```
 
-Read more in the docs [about infinite queries](infinite-query).
+Read more in the docs [about infinite queries](https://1gr14.dev/point0/latest/infinite-query).
 
 ## clientLoader(), clientInput(), sharedInput()
 
@@ -1995,7 +2002,7 @@ export const ideaQuery = root.lets
   .query()
 ```
 
-Read more in the docs [about loaders](loader), [about validation](validation).
+Read more in the docs [about loaders](https://1gr14.dev/point0/latest/loader), [about validation](https://1gr14.dev/point0/latest/validation).
 
 ## Location
 
@@ -2049,7 +2056,7 @@ export const Breadcrumbs = () => {
 you need `location` outside React (in some helper), there's the imperative
 `getLocation()`.
 
-Read more in the docs [about navigation](navigation).
+Read more in the docs [about navigation](https://1gr14.dev/point0/latest/navigation).
 
 ## Route
 
@@ -2087,7 +2094,7 @@ The library itself can do a lot — it can validate parameters and so on — but
 that's used under the hood of Point0, and when building a project we just need it
 to derive paths.
 
-Read more in the docs [about navigation](navigation).
+Read more in the docs [about navigation](https://1gr14.dev/point0/latest/navigation).
 
 ## Router and Navigation
 
@@ -2288,7 +2295,7 @@ mount(
 )
 ```
 
-Read more in the docs [about navigation](navigation).
+Read more in the docs [about navigation](https://1gr14.dev/point0/latest/navigation).
 
 ## Redirect
 
@@ -2447,7 +2454,7 @@ export const root = Point0.lets
   .root()
 ```
 
-Read more in the docs [about .middleware()](middleware).
+Read more in the docs [about .middleware()](https://1gr14.dev/point0/latest/middleware).
 
 ## Request
 
@@ -2514,7 +2521,7 @@ const request2 = getRequestOrUndefined()
 
 This information will come in handy to understand how the CookieStore works.
 
-Read more in the docs [about Request](request).
+Read more in the docs [about Request](https://1gr14.dev/point0/latest/request).
 
 ## Response
 
@@ -2570,7 +2577,7 @@ const effects2 = getEffectsOrUndefined()
 
 This information will come in handy to understand how the CookieStore works.
 
-Read more in the docs [about Response](response).
+Read more in the docs [about Response](https://1gr14.dev/point0/latest/response).
 
 ## File Upload
 
@@ -2642,7 +2649,7 @@ export const ideaCreatePage = root.lets
   })
 ```
 
-Read more in the docs [about file upload](file-upload).
+Read more in the docs [about file upload](https://1gr14.dev/point0/latest/file-upload).
 
 ## Action
 
@@ -2756,7 +2763,7 @@ example, `/_point0/root/query/query-name-kebab-cased` and
 `/_point0/root/mutation/mutation-name-kebab-cased`. And because of this we can get
 the full picture of our endpoints in an OpenAPI schema.
 
-Read more in the docs [about actions](action).
+Read more in the docs [about actions](https://1gr14.dev/point0/latest/action).
 
 ## OpenAPI
 
@@ -2813,7 +2820,7 @@ export const ideaUpdateAction = root.lets
   })
 ```
 
-Read more in the docs [about OpenAPI](openapi).
+Read more in the docs [about OpenAPI](https://1gr14.dev/point0/latest/openapi).
 
 ## Infer
 
@@ -2834,7 +2841,7 @@ There's a lot in there (`InputRaw`, `QueriedData`, `Error`, `Ctx`, and dozens of
 others), but in everyday work what you usually need is exactly the data and the
 input. This is completely free at runtime — `Infer` exists only in the types.
 
-Read more in the docs [about Infer](infer).
+Read more in the docs [about Infer](https://1gr14.dev/point0/latest/infer).
 
 ## Query Client
 
@@ -2858,7 +2865,7 @@ when you call `queryClient.anyMethod()` on the server, we grab the real
 you use it the way you're used to, and all the safety works automatically under
 the hood.
 
-Read more in the docs [about the Query Client](query-client).
+Read more in the docs [about the Query Client](https://1gr14.dev/point0/latest/query-client).
 
 ## Error Class
 
@@ -2937,7 +2944,7 @@ safe — name, message, code, redirect) and `serializePrivate` in dev mode
 goes to the logs. So in production the user won't see anything extra, while you
 see everything in the logs.
 
-Read more in the docs [about error handling](error-handling).
+Read more in the docs [about error handling](https://1gr14.dev/point0/latest/error-handling).
 
 ## Eventer
 
@@ -2960,7 +2967,7 @@ mutations, page prefetches, server fetches. The callback receives: `side`
 to log), and `data` (the raw data, including, for example, the response itself —
 you shouldn't log that, but you can pull something out of it).
 
-Read more in the docs [about events](events).
+Read more in the docs [about events](https://1gr14.dev/point0/latest/events).
 
 ## Engine
 
@@ -3045,7 +3052,7 @@ await engine.serve()
 // start crons, validate env variables, and so on
 ```
 
-Read more in the docs [about the engine config](engine-config), [about the engine runtime](engine-runtime).
+Read more in the docs [about the engine config](https://1gr14.dev/point0/latest/engine-config), [about the engine runtime](https://1gr14.dev/point0/latest/engine-runtime).
 
 ## CLI
 
@@ -3077,7 +3084,7 @@ The commands have flags — `--side server|client` (bring up only one side),
 `--scope <scope>` (only one client), `--mode`, `--env` and others, but those are
 already details for the documentation.
 
-Read more in the docs [about the CLI](cli).
+Read more in the docs [about the CLI](https://1gr14.dev/point0/latest/cli).
 
 ## MCP
 
@@ -3115,7 +3122,7 @@ documentation (hybrid: keywords plus semantics). So that the agent answers
 questions about the framework from the up-to-date docs, and not from whatever it
 made up for itself.
 
-Read more in the docs [about the project MCP](mcp-project), [about the docs MCP](mcp-docs).
+Read more in the docs [about the project MCP](https://1gr14.dev/point0/latest/mcp-project), [about the docs MCP](https://1gr14.dev/point0/latest/mcp-docs).
 
 ## Publicdir
 
@@ -3168,7 +3175,7 @@ export const engine = Engine.create({
 })
 ```
 
-Read more in the docs [about publicdir](publicdir).
+Read more in the docs [about publicdir](https://1gr14.dev/point0/latest/publicdir).
 
 ## Generator
 
@@ -3514,7 +3521,7 @@ declare module '*.jpg?raw' {
 // other extensions
 ```
 
-Read more in the docs [about the generator](generator).
+Read more in the docs [about the generator](https://1gr14.dev/point0/latest/generator).
 
 ## Compiler
 
@@ -3632,7 +3639,7 @@ You can clear the cache with the command:
 point0 prune
 ```
 
-Read more in the docs [about the compiler](compiler).
+Read more in the docs [about the compiler](https://1gr14.dev/point0/latest/compiler).
 
 ## HMR
 
@@ -3669,7 +3676,7 @@ The `ideaUpdateMutation` itself is this very function returned from
 we ourselves never access `ideaUpdateMutation` directly, only its methods, and
 they are all in place.
 
-Read more in the docs [about dev mode](dev).
+Read more in the docs [about dev mode](https://1gr14.dev/point0/latest/dev).
 
 ## Assets
 
@@ -3708,7 +3715,7 @@ export const engine = Engine.create({
 Based on this config, `assets.d.ts` is generated. Again, you can not specify
 `assets` in the config at all, and then the default value will be used.
 
-Read more in the docs [about assets](assets).
+Read more in the docs [about assets](https://1gr14.dev/point0/latest/assets).
 
 ## Env Variables
 
@@ -3915,7 +3922,7 @@ const myServerOnlyFn2 = env.side.define.unsafe.server((name: string) => {
 
 There are more helpers there, read more in the docs.
 
-Read more in the docs [about env variables](env).
+Read more in the docs [about env variables](https://1gr14.dev/point0/latest/env).
 
 ## Importer
 
@@ -3972,7 +3979,7 @@ export const engine = Engine.create({
 })
 ```
 
-Read more in the docs [about the importer](importer).
+Read more in the docs [about the importer](https://1gr14.dev/point0/latest/importer).
 
 ## Mdx
 
@@ -4007,7 +4014,7 @@ So this is still the same point construction (with a loader, `.head()`,
 `.page()`), only the content here is Markdown with the ability to insert any
 components.
 
-Read more in the docs [about MDX](mdx).
+Read more in the docs [about MDX](https://1gr14.dev/point0/latest/mdx).
 
 ## Wiring
 
@@ -4174,7 +4181,7 @@ export default function App() {
 }
 ```
 
-Read more in the docs [about wiring](engine-runtime).
+Read more in the docs [about wiring](https://1gr14.dev/point0/latest/engine-runtime).
 
 ## SSR
 
@@ -4309,7 +4316,7 @@ We also have
 which will tell you how many re-renders happened. You can set up metrics, and
 fix things precisely in those places where there are many re-renders.
 
-Read more in the docs [about SSR](ssr).
+Read more in the docs [about SSR](https://1gr14.dev/point0/latest/ssr).
 
 ## SsrStore
 
@@ -4443,7 +4450,7 @@ we use CookieStore.
 I'll also note that you don't have to use SsrStore at all; if you don't need it,
 it won't even make it into the client bundle.
 
-Read more in the docs [about SsrStore](ssr-store).
+Read more in the docs [about SsrStore](https://1gr14.dev/point0/latest/ssr-store).
 
 ## CookieStore
 
@@ -4574,7 +4581,7 @@ as to apply a transformer like superjson to them. Read more in the docs.
 Like SsrStore, CookieStore is also an optional component, and if you don't use
 it, it won't be included in the client bundle.
 
-Read more in the docs [about CookieStore](cookie-store).
+Read more in the docs [about CookieStore](https://1gr14.dev/point0/latest/cookie-store).
 
 ## Testing
 
@@ -4629,7 +4636,7 @@ describe('ideaViewQuery', () => {
 })
 ```
 
-Read more in the docs [about testing](testing).
+Read more in the docs [about testing](https://1gr14.dev/point0/latest/testing).
 
 ## For fullstack developers, backenders, and frontenders alike.
 
@@ -4645,7 +4652,7 @@ If you are a backender and you only care about the API, then you can use actions
 alone, with convenient OpenAPI generation, typed `.ctx()`, and tests without
 spinning up a server.
 
-Read more in the docs [about points](points).
+Read more in the docs [about points](https://1gr14.dev/point0/latest/points).
 
 ## Bun or Vite
 
@@ -4720,7 +4727,7 @@ export const engine = Engine.create({
 })
 ```
 
-Read more in the docs [about Bun or Vite](bun-vs-vite).
+Read more in the docs [about Bun or Vite](https://1gr14.dev/point0/latest/bun-vs-vite).
 
 ## Deploy
 
@@ -4738,7 +4745,7 @@ CMD ["bun", "run", "./dist/server/index.server.js"]
 
 That is, you can deploy absolutely anywhere, there is nothing specific here.
 
-Read more in the docs [about deploy](deploy).
+Read more in the docs [about deploy](https://1gr14.dev/point0/latest/deploy).
 
 ## Size
 
@@ -5139,7 +5146,7 @@ export const myIdeaListPage = generalLayout.lets
   })
 ```
 
-Read more in the docs [about the basic example](example-basic).
+Read more in the docs [about the basic example](https://1gr14.dev/point0/latest/example-basic).
 
 ## Production
 
@@ -5211,3 +5218,26 @@ what benefit they could bring here. But if they do happen, I will essentially
 just allow returning React elements from `.loader()`. But what the benefit of
 that would be, I don't yet understand. Let's discuss this another time.
 
+<!-- docs:end -->
+
+## Community
+
+Questions, bugs, or want to hang with other builders? Join the 1gr14 community —
+one hub for all our open-source projects, this one included. Get help, share
+what you built, or just say hi:
+[1gr14.dev/#community](https://1gr14.dev/#community)
+
+## Contributing
+
+Issues and PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) and the
+[Code of Conduct](./CODE_OF_CONDUCT.md). Commits follow
+[Conventional Commits](https://www.conventionalcommits.org/). Security reports:
+[SECURITY.md](./SECURITY.md).
+
+## License
+
+[MIT](./LICENSE)
+
+---
+
+Made by [1gr14](https://1gr14.dev), driven by [community](https://1gr14.dev/#community)

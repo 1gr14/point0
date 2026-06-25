@@ -522,6 +522,19 @@ export const useNavigationLocationContext = (): NavigationLocationContextValue =
   if (!ctx) throw new Error('useNavigationLocationContext must be used within NavigationContextProvider')
   return ctx
 }
+/**
+ * The current location, reactive: `useLocation()` re-renders the component on every navigation. It's the same value
+ * pages and layouts already get as a `location` prop — pull it from here in any other component.
+ *
+ *     const location = useLocation()
+ *     location.pathname // "/ideas/123"
+ *     location.search   // parsed query object
+ *     location.params   // parsed route params
+ *
+ * For an imperative read outside React, use `getLocation()` (throws if the router hasn't mounted yet).
+ *
+ * Full reference: https://1gr14.dev/point0/latest/navigation
+ */
 export function useLocation<TRouteDefinition extends AnyRouteOrDefinition = AnyRouteOrDefinition>(
   options?: UseLocationOptions,
 ): UnknownLocation | ExactLocation<TRouteDefinition> {
@@ -532,6 +545,13 @@ export function useLocation<TRouteDefinition extends AnyRouteOrDefinition = AnyR
       : locationCtx.addHashToLocation
   return locationCtx.useAdapterLocation({ ...options, addHash }) as UnknownLocation | ExactLocation<TRouteDefinition>
 }
+/**
+ * Reads the current location imperatively (no React subscription, no re-render) — for use outside components, e.g. in a
+ * loader or an event handler. Throws `"Current location is not yet initialized"` if called before the router mounts;
+ * inside a component prefer the reactive `useLocation()`.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/navigation
+ */
 export const getLocation = <TRouteDefinition extends AnyRouteOrDefinition = AnyRouteOrDefinition>():
   | ExactLocation<TRouteDefinition>
   | UnknownLocation => {
@@ -807,6 +827,18 @@ const isSameNavigationLocation = (left: AnyLocation, right: AnyLocation) => {
   return left.href && right.href ? left.href === right.href : left.hrefRel === right.hrefRel
 }
 
+/**
+ * Runs `fn` when a navigation **starts**; the cleanup it returns runs when that navigation settles. The right hook for a
+ * progress bar or a "navigating" spinner. It skips the very first page load and fires at navigation start, not when the
+ * new page paints — for first-load page-view analytics, read `useLocation()` in an effect instead.
+ *
+ *     useOnNavigate(() => {
+ *       nprogress.start()
+ *       return () => nprogress.done()
+ *     })
+ *
+ * `useIsNavigating()` is the boolean built on top of this. Full reference: https://1gr14.dev/point0/latest/navigation
+ */
 export const useOnNavigate = (fn: UseOnNavigateFn) => {
   const ctx = useNavigationTransitionState()
 

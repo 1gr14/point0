@@ -8,6 +8,20 @@ import type { WideRequestMethod } from '@point0/core/request0'
 type CorsOriginCheck = (context: MiddlewareFnOptionsBase<any>) => boolean | undefined | Promise<boolean | undefined>
 type CorsOriginValue = string | RegExp | CorsOriginCheck
 
+/**
+ * Options for {@link cors}. Every field is optional and all default to the permissive setting, so `cors()` with no
+ * argument reflects the request origin, allows credentials, and mirrors the requested methods/headers.
+ *
+ * - `origin` — which origins are allowed: `true` (reflect, default), `false` (none), a string/RegExp/predicate, or a
+ *   list. A string matches the host only unless it carries a protocol.
+ * - `methods` / `allowedHeaders` / `exposeHeaders` — the corresponding `Access-Control-*` header; `true` (default)
+ *   reflects what the request asked for, a string/array sets it explicitly, `false` omits it.
+ * - `credentials` — send `Access-Control-Allow-Credentials: true` (default `true`).
+ * - `maxAge` — preflight cache lifetime in seconds (default `5`; `0` omits the header).
+ * - `preflight` — answer `OPTIONS` with `204` (default `true`) or pass it through.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/cors
+ */
 export type CorsOptions = {
   origin?: boolean | CorsOriginValue | CorsOriginValue[]
   methods?: boolean | undefined | null | '' | '*' | WideRequestMethod | WideRequestMethod[]
@@ -18,6 +32,19 @@ export type CorsOptions = {
   preflight?: boolean
 }
 
+/**
+ * Build a CORS Point0 middleware. Mount the returned middleware on your `root` (or a route subtree) and every response
+ * gets the `Access-Control-*` headers, while every preflight `OPTIONS` request is answered with a `204` — so a client
+ * on a different origin (a native/mobile app, or a front-end on another domain) can call your API. Bare `cors()` is the
+ * most permissive default; lock it down via {@link CorsOptions}, chiefly `origin`. It is a no-op on the client.
+ *
+ *     export const root = Point0.lets
+ *       .root()
+ *       .middleware(cors({ origin: 'https://app.example.com' }))
+ *       .root()
+ *
+ * Full reference: https://1gr14.dev/point0/latest/cors
+ */
 export const cors = (options: CorsOptions = {}): MiddlewareFn<any> => {
   if (env.side.is.client) {
     return async ({ next }) => {

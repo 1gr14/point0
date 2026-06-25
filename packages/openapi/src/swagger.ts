@@ -1,8 +1,21 @@
 import type { SwaggerUIOptions } from 'swagger-ui'
 import { serializeToJsLiteral } from './serialize.js'
 
+/**
+ * Swagger UI configuration — `swagger-ui` options (e.g. `showExtensions`, `url`, `layout`). In the {@link openapi}
+ * middleware you pass these (plus a `route`) under the `swagger` option; the spec `url` defaults to the JSON route so
+ * you don't repeat it.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/openapi
+ */
 export type SwaggerOptions = Partial<SwaggerUIOptions>
 
+/**
+ * Render a standalone Swagger UI HTML page for the given options, loading the swagger-ui bundle from a CDN. The
+ * {@link openapi} middleware serves this at the `swagger` route; call it directly only if you serve the UI yourself.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/openapi
+ */
 export const getSwaggerHtml = (options: SwaggerOptions): string => {
   const defaultedOptions = {
     dom_id: '#swagger-ui',

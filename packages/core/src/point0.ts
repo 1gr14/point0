@@ -318,6 +318,17 @@ export class Point0<
   in out TInnerProps extends Props,
   in out TQueriesDefinitions extends QueriesDefinitions,
 > {
+  /**
+   * Type-extraction only — `typeof point.Infer.<Key>` pulls any type out of the point (`InputRaw`, `QueriedData`,
+   * `Route`, the component type, …), derived from the point itself, no hand-written interfaces. On every point.
+   * GOTCHA: `Infer` is `null` at runtime — read it in TYPE position only (always wrap in `typeof`).
+   *
+   * Server-and-client — type-only point metadata, present on both bundles (not compiler-stripped).
+   *
+   *     type Data = typeof ideaQuery.Infer.QueriedData
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infer
+   */
   Infer: Infer<
     TPointType,
     TLetsReadyPointType,
@@ -346,6 +357,14 @@ export class Point0<
 
   private readonly __POINT0_INSTANCE__: boolean = true
 
+  /**
+   * The point's stable, unique id (`scope:type:name`, e.g. `root:page:home`) — also what `toString()` returns. Used
+   * for keys, logging, and matching points across the build.
+   *
+   * Server-and-client — point metadata, present on both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mountable
+   */
   get id(): string {
     return getPointId(this)
   }
@@ -402,6 +421,14 @@ export class Point0<
       : undefined
   }
   readonly _endpointPrefix: string | undefined
+  /**
+   * The point's kind — `'page' | 'layout' | 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation' |
+   * 'action' | 'root' | 'base' | 'plugin'`. Read it to branch on what a point is.
+   *
+   * Server-and-client — point metadata, present on both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mountable
+   */
   readonly type: TPointType
   private readonly _letsReadyPointType: TLetsReadyPointType
   readonly _transformer: DataTransformerExtended | undefined
@@ -438,6 +465,16 @@ export class Point0<
   private readonly _mountActions: MountAction[]
   private readonly _wrappers: WrapperComponentType<any, any, any>[]
   private readonly _useValue: undefined | ((point: AnyPoint, keys?: string | string[] | undefined) => any)
+  /**
+   * The point's callable route (pages, layouts, actions) — `route.abs()` / `route.rel()` build URLs, typed to the
+   * point's params and search. `undefined` on points with no route (queries, mutations, components, providers).
+   *
+   * Server-and-client — point metadata, present on both bundles (not compiler-stripped).
+   *
+   *     fetch(apiHealthAction.route.abs())
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mountable
+   */
   readonly route: TRouteDefinition extends RouteDefinition
     ? IfAnyThenElse<
         TRouteDefinition,
@@ -456,6 +493,14 @@ export class Point0<
     | LayoutSuccessComponentType<any, any, any, any, any, any, any>
     | UndefinedLayoutSuccessComponent
   readonly _layouts: LayoutPoint[]
+  /**
+   * The point's name — inferred from the variable in the short `.lets` form, or given explicitly as the second arg
+   * (`Point0.lets('query', 'idea')`). Combined with the scope it forms the point's `id`.
+   *
+   * Server-and-client — point metadata, present on both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mountable
+   */
   readonly name: PointName
   private readonly _unstableId: number
   private readonly _fetchOptions: FetchOptionsFn | undefined
@@ -530,6 +575,19 @@ export class Point0<
   private readonly _pageLoadingComponent: LoadingComponentType<any> | undefined
   private readonly _componentLoadingComponent: LoadingComponentType<any> | undefined
   private readonly _getComponentLoadingComponent = () => this._componentLoadingComponent ?? this.DefaultLoadingComponent
+  /**
+   * The bound React component a closed mountable produces, carrying the full point API. The ready point IS this
+   * component, so `<UserCard />` and `<UserCard.X />` are identical — `.X` is the explicit form (needed for a
+   * lowercase-named point, since JSX reads `<userCard />` as an HTML tag). Declare mountables in PascalCase.
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): the render
+   * body and the imports it pulls in are removed from the server build. Kept in the client build always, and in the
+   * server build only when SSR is on (it renders the mountable on whichever side keeps it).
+   *
+   *     <UserCard userId={1} />   // === <UserCard.X userId={1} />
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mountable
+   */
   X: TPointType extends 'layout'
     ? LayoutSelfType<
         TRouteDefinition,
@@ -2308,6 +2366,17 @@ export class Point0<
 
   // root settings
 
+  /**
+   * Set the app's error class. Root only. Default is `ErrorPoint0`; replace it with any class of same-or-wider
+   * structure (your own `AppError`). Retypes every point's error — query `.error`, the `.on('error', …)` argument, a
+   * `.with` return. Client + server.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   *     .errorClass(AppError)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   errorClass<TErrorClass extends ClassLikeError0<ErrorPoint0>>(
     ErrorClass: TErrorClass,
   ): NiceRootStagePoint<
@@ -2338,6 +2407,16 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * The origin where the server and the API live — routes and endpoints resolve against it. Root only (and plugin).
+   * Config value, client + server.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   *     .serverUrl(env.SERVER_URL)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   serverUrl<TSelf>(this: TSelf, serverUrl: string): TSelf
   serverUrl(serverUrl: string) {
     return this._continue({
@@ -2350,6 +2429,17 @@ export class Point0<
    * Page and layout routes resolve route.abs() against it; action routes always use serverUrl — the API lives on the
    * server. Without it pages fall back to serverUrl.
    */
+  /**
+   * The public origin pages live on, when it differs from `serverUrl` (split dev ports, a native shell, a CDN front).
+   * Page routes resolve against this (falling back to `serverUrl`); endpoint routes always use `serverUrl`. Root only.
+   * Optional. Config value, client + server.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   *     .clientUrl(env.CLIENT_URL)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   clientUrl<TSelf>(this: TSelf, clientUrl: string): TSelf
   clientUrl(clientUrl: string) {
     return this._continue({
@@ -2359,6 +2449,16 @@ export class Point0<
 
   // general settings
 
+  /**
+   * Tag this point — variadic, de-duped, accumulates across calls. Tags are metadata for grouping and filtering
+   * points (e.g. OpenAPI grouping). Available on every point while composing.
+   *
+   * Server-and-client — kept on both bundles (isomorphic metadata).
+   *
+   *     .tag('ideas', 'public')
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   tag<TSelf>(this: TSelf, ...tags: [string, ...string[]]): TSelf
   tag(...tags: [string, ...string[]]) {
     return this._continue({
@@ -2366,6 +2466,16 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Set a human description for this point — appends if called again. Metadata used for docs/OpenAPI. Available on
+   * every point while composing.
+   *
+   * Server-only — stripped from the client bundle (docs/OpenAPI metadata, read server-side).
+   *
+   *     .description('Fetch one idea by id')
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   description<TSelf>(this: TSelf, description: string): TSelf
   description<TSelf>(this: TSelf, description?: string): TSelf
   description(description?: string) {
@@ -2374,6 +2484,16 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Teach the root how to read one validation library's schemas (detect, extract keys, spot file uploads, emit JSON
+   * for OpenAPI). Helpers accumulate — call once per library you use.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   *     .schemaHelper(zodSchemaHelper())
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   schemaHelper<TSelf>(this: TSelf, schemaHelper: SchemaHelper | undefined | false | null): TSelf
   schemaHelper(schemaHelper: SchemaHelper | undefined | false | null) {
     const newSchemasHelpers = schemaHelper ? [...(this._schemasHelpers ?? []), schemaHelper] : this._schemasHelpers
@@ -2382,6 +2502,16 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * A type-level route prefix that every point built off this base inherits. Pair it with a gating plugin to put a
+   * whole section behind one prefix and one check. On root and base.
+   *
+   * Server-and-client — kept on both bundles (routes resolve on both sides).
+   *
+   *     root.lets.base().basePath('/admin').use(adminOnlyPlugin).base()
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   basePath<TBasePath extends string>(
     basePath: TBasePath,
   ): NiceStagePoint<
@@ -2435,6 +2565,19 @@ export class Point0<
   //   }) as never
   // }
 
+  /**
+   * Subscribe to a framework lifecycle event. `.on` runs on BOTH server and client (use `.serverOn` / `.clientOn` for
+   * one side). `'error'` is sugar for the four error events. Available on every point type.
+   *
+   * Server-and-client — kept on both bundles (the handler runs on both sides).
+   *
+   *     .on('queryError', ({ error, meta }) => report(error, meta))            // by name
+   *     .on(['queryError', 'mutationError'], ({ error }) => report(error))     // by array
+   *     .on('error', ({ side, name, error, meta }) => console.error({ side, name, error, ...meta })) // 'error' sugar
+   *     .on('*', (e) => trace(e))                                              // every event
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   on<TSelf, TEventName extends AnyEventerEventName | '*'>(
     this: TSelf,
     name: TEventName,
@@ -2461,6 +2604,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Subscribe to a lifecycle event on the SERVER side only. The callback is stripped from the client bundle, so it can
+   * use server-only code. Same shape as `.on`. Available on every point type.
+   *
+   * Server-only — the handler is stripped from the client bundle (runs server-side).
+   *
+   *     .serverOn('queryError', ({ error, meta }) => logToSentry(error, meta))   // by name
+   *     .serverOn(['queryError', 'mutationError'], ({ error }) => logToSentry(error)) // by array
+   *     .serverOn('*', (e) => auditLog(e))                                       // every event
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   serverOn<TSelf, TEventName extends ServerEventerEventName | '*'>(
     this: TSelf,
     name: TEventName,
@@ -2493,6 +2648,18 @@ export class Point0<
     return this._continue({ _eventerSubscriptions: [...this._eventerSubscriptions, ...subscriptions] }) as never
   }
 
+  /**
+   * Subscribe to a lifecycle event on the CLIENT side only. The callback is stripped from the server bundle. Same
+   * shape as `.on`. Available on every point type.
+   *
+   * Client-only — the handler is stripped from the server bundle (runs in the browser, regardless of SSR).
+   *
+   *     .clientOn('queryError', ({ error }) => toast(error.message))            // by name
+   *     .clientOn(['queryError', 'mutationError'], ({ error }) => toast(error.message)) // by array
+   *     .clientOn('*', (e) => devtools(e))                                      // every event
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   clientOn<TSelf, TEventName extends ClientEventerEventName | '*'>(
     this: TSelf,
     name: TEventName,
@@ -2527,6 +2694,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Opt a mountable out of SSR: its render runs in the browser only, and the server bundle drops the render chain.
+   * Takes an optional fallback component shown in place during SSR. On page, layout, component, provider.
+   *
+   * The strip switch — it sets the rest of the chain to behave as `ssr:false`, so every server-ssr-and-client method
+   * after it (`.page`/`.layout`/`.component`/`.provider`, `.loading`, `.error`, `.wrapper`, `.with`, `.mapper`,
+   * `.head`) is cut from the server build and runs in the browser only.
+   *
+   *     .clientOnly(() => <Spinner />).page(() => <HeavyClientChart />)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   clientOnly<TSelf>(
     this: TSelf,
     Fallback?: ClientOnlyFallbackComponentType<
@@ -2578,6 +2757,16 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Default react-query options for every mutation in scope (deep-merged, not replaced). On root, base, plugin.
+   * Client + server.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   *     .mutationOptions({ retry: 1 })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   mutationOptions<TSelf>(this: TSelf, mutationOptions: ExtraUseMutationOptions): TSelf
   mutationOptions(mutationOptions: ExtraUseMutationOptions) {
     return this._continue({
@@ -2585,6 +2774,17 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Default react-query options for every query in scope (`staleTime`, `retry`, `refetchOnWindowFocus`, …) — the broad
+   * one; the `*QueryOptions` variants target one query kind. Deep-merged, overridable per call site. On root, base,
+   * plugin. Client + server.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   *     .queryOptions({ retry: false, refetchOnWindowFocus: false, staleTime: 60_000 })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   queryOptions<TSelf>(this: TSelf, queryOptions: ExtraUseQueryOptions): TSelf
   queryOptions(queryOptions: ExtraUseQueryOptions | undefined = {}) {
     return this._continue({
@@ -2592,6 +2792,13 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Default react-query options for every infinite query in scope. On root, base, plugin. Client + server.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   infiniteQueryOptions<TSelf>(this: TSelf, infiniteQueryOptions: PartialUseInfiniteQueryOptions): TSelf
   infiniteQueryOptions(infiniteQueryOptions: PartialUseInfiniteQueryOptions | undefined = {}) {
     return this._continue({
@@ -2612,6 +2819,14 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Default react-query options for a page's own self query (a page with a loader). On root, base, layout, plugin.
+   * Client + server.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   pageQueryOptions<TSelf>(this: TSelf, pageQueryOptions: ExtraUseQueryOptions): TSelf
   pageQueryOptions(pageQueryOptions: ExtraUseQueryOptions) {
     return this._continue({
@@ -2619,6 +2834,13 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Default react-query options for a component's own self query. On root, base, plugin. Client + server.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   componentQueryOptions<TSelf>(this: TSelf, componentQueryOptions: ExtraUseQueryOptions): TSelf
   componentQueryOptions(componentQueryOptions: ExtraUseQueryOptions) {
     return this._continue({
@@ -2626,6 +2848,13 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Default react-query options for a provider's own self query. On root, base, plugin. Client + server.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   providerQueryOptions<TSelf>(this: TSelf, providerQueryOptions: ExtraUseQueryOptions): TSelf
   providerQueryOptions(providerQueryOptions: ExtraUseQueryOptions) {
     return this._continue({
@@ -2633,6 +2862,13 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Default react-query options for a layout's own self query. On root, base, layout, plugin. Client + server.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   layoutQueryOptions<TSelf>(this: TSelf, layoutQueryOptions: ExtraUseQueryOptions): TSelf
   layoutQueryOptions(layoutQueryOptions: ExtraUseQueryOptions) {
     return this._continue({
@@ -2640,6 +2876,17 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Customize the `fetch` Point0 makes for server queries and mutations — an object (merged) or a function
+   * (re-evaluated per request, e.g. for a fresh token each time). On root, base, plugin, and mountables.
+   *
+   * Server-and-client — kept on both bundles (the fetch runs from whichever side calls the query/mutation).
+   *
+   *     .fetchOptions({ credentials: 'include' })                              // object, merged once
+   *     .fetchOptions(() => ({ headers: { authorization: `Bearer ${getToken()}` } })) // function, per request
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   fetchOptions<TSelf>(this: TSelf, fetchOptionsOrFn: FetchOptionsOrFn): TSelf
   fetchOptions(fetchOptionsOrFn: FetchOptionsOrFn) {
     const newFetchOptionsFn: FetchOptionsFn = () => {
@@ -2659,6 +2906,19 @@ export class Point0<
 
   // extra components
 
+  /**
+   * Declare the error UI for this point and everything below it — Point0 renders the nearest one up the chain when a
+   * point's data throws. Usually set once near the root, overridden per point. The component gets `{ type, error }`,
+   * with `error` normalized through the configured error class (never a raw `Error`).
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
+   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on.
+   *
+   *     .error(({ error }) => <ErrorScreen error={error} />)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/loading-error
+   */
   error(
     errorComponent: ErrorComponentType<
       TLetsReadyPointType extends 'layout'
@@ -2757,6 +3017,16 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Like `.error`, but scoped to the `'component'` render position only — the error UI used when a mounted component
+   * (not a page or layout) throws. Lets a layout split its error boundaries by where the error sits.
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
+   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/loading-error
+   */
   componentError<TSelf>(this: TSelf, componentErrorComponent: ErrorComponentType<'component', TError>): TSelf
   componentError(componentErrorComponent: ErrorComponentType<'component', TError> | undefined) {
     return this._continue({
@@ -2801,6 +3071,19 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Declare the loading UI for this point and everything below it — Point0 renders the nearest one up the chain while
+   * a point's data is pending, so a page never writes a loading branch itself. Usually set once near the root. The
+   * component gets `{ type }` ('page' | 'component' | 'layout') to branch on where it renders.
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
+   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on.
+   *
+   *     .loading(() => <Spinner size="3xl" />)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/loading-error
+   */
   loading(
     loadingComponent: LoadingComponentType<
       TLetsReadyPointType extends 'layout'
@@ -2881,6 +3164,19 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Wrap this point's render in a component — it receives `children` plus the point's props and renders around them.
+   * Wrappers accumulate (outermost first) and are the place for per-point providers, frames, or boundaries. On page,
+   * layout, component, provider.
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
+   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on.
+   *
+   *     .wrapper(({ children }) => <Card>{children}</Card>)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   wrapper(
     wrapperComponent: WrapperComponentType<TLetsReadyPointType, TRouteDefinition, TOuterProps>,
   ): NiceStagePoint<
@@ -2936,6 +3232,10 @@ export class Point0<
    *     with(query, input, queryOptions, resolve)  ...resolve (boolean | callback) is ALWAYS the 4th arg;
    *                                                   pass `undefined` for queryOptions if you only want it
    *     with(fn)                                   a with-fn returning queries (appended) or props (merged)
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
+   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on.
    *
    * WHY one signature and not overloads: with multiple overloads the language server can't decide which candidate to
    * complete `input` against, so autocomplete dies, and any mistake collapses to a useless "No overload matches this
@@ -3300,6 +3600,20 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Attach a related query to this mountable — like `.with(query)`, it adds the query to the point's `queries` array
+   * and `data`. The difference is PREFETCH: a related query is statically discoverable, so prefetch self-fetches it
+   * WITHOUT rendering, under the cheap policies (`serverQuery`/`clientQuery`/`serverAndClientQuery`); a `.with(query)`
+   * is only discovered by rendering, so it's prefetched only under `pageDehydratedState*` (the expensive SSR render).
+   *
+   * Server-and-client — kept on both bundles (isomorphic; the query runs from whichever side calls it).
+   *
+   *     .relatedQuery(authorQuery)                            // input optional
+   *     .relatedQuery(authorQuery, ({ data }) => ({ id: data.authorId })) // input from this point's data
+   *     .relatedQuery()                                       // no-arg passthrough (finalizes a self-query)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   relatedQuery<
     TPoint extends {
       point: AnyPoint
@@ -3422,6 +3736,18 @@ export class Point0<
 
   // scroll restoration
 
+  /**
+   * Point scroll restoration at the scroll container when it isn't the window — a CSS selector, an element getter, or
+   * explicit `{ x, y }` accessors. On page and layout.
+   *
+   * Client-only — stripped from the server bundle (runs in the browser, regardless of SSR).
+   *
+   *     .scrollPosition('#scroll-root')                      // CSS selector
+   *     .scrollPosition(() => document.querySelector('main')) // element getter
+   *     .scrollPosition(getScroll, setScroll)                // explicit { x, y } accessors
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   scrollPosition<TSelf>(this: TSelf, documentElementGetter: () => HTMLElement | null): TSelf
   scrollPosition<TSelf>(this: TSelf, selector: string): TSelf
   scrollPosition<TSelf>(this: TSelf, getter: ScrollPositionGetter, setter: ScrollPositionSetter): TSelf
@@ -3475,6 +3801,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Decide whether to restore scroll on navigation: `true` restores, `false` leaves it, `null` scrolls to top, or a
+   * `({ prevLocation, type }) => …` policy. Default restores on back/forward (`pop`), scrolls to top on `push`. On
+   * page and layout.
+   *
+   * Client-only — stripped from the server bundle (runs in the browser, regardless of SSR).
+   *
+   *     .scrollRestore(true)                                 // boolean / null
+   *     .scrollRestore(({ type }) => type === 'pop')         // policy fn
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   scrollRestore<TSelf>(
     this: TSelf,
     // true - restore, false - do not restore, null - set {x: 0, y: 0}
@@ -3512,6 +3850,18 @@ export class Point0<
 
   // middlewares
 
+  /**
+   * Add server-side middleware that runs around a request (Express/Koa style), optionally scoped by route or method.
+   * Server-only — the body is stripped from the client bundle (runs server-side). Use it to mount things OUTSIDE the
+   * point model (CORS, a third-party auth handler, an OpenAPI server); for data and access control use loaders,
+   * `.ctx`, and `.with` instead.
+   *
+   *     .middleware(({ next }) => next())                                       // (…fns) — every request
+   *     .middleware('/api/auth/*', ({ request }) => authServer.handler(request.original)) // (route, …fns)
+   *     .middleware('POST', '/api/upload', limitBody)                           // (method, route, …fns)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/middleware
+   */
   middleware<TSelf>(
     this: TSelf,
     ...middlewares: [MiddlewareFn<TError, undefined>, ...MiddlewareFn<TError, undefined>[]]
@@ -3625,6 +3975,17 @@ export class Point0<
 
   // prefetch mode
 
+  /**
+   * Run a side-effect when this page/layout is prefetched (warm a cache, kick off an analytics ping). Intended to fire
+   * on the client AND during server-side prefetch. On page and layout.
+   *
+   * Client-only today — runs in the browser on prefetch. (Intended to also run during server prefetch.)
+   * <!-- TODO(high): onPrefetchPage is stripped from the server bundle (point.ts ~1056) but should also run during server prefetch — stop stripping it. -->
+   *
+   *     .onPrefetchPage(({ location }) => warmCache(location))
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   onPrefetchPage<TSelf>(
     this: TSelf,
     fn: TLetsReadyPointType extends 'page'
@@ -3667,6 +4028,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * How aggressively a page prefetches on link hover. 2nd arg is the hover delay in ms (default 30). `false` / `'none'`
+   * disables it. `serverAndClientQuery` is the cheap policy; `pageDehydratedState` runs a full SSR render (expensive,
+   * needs SSR). On root, base, page, layout.
+   *
+   * Client-only — stripped from the server bundle (the hover trigger runs in the browser).
+   *
+   *     .prefetchPageOnLinkHover('serverAndClientQuery')      // policy only
+   *     .prefetchPageOnLinkHover('serverAndClientQuery', 200) // policy + hover delay (ms)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   prefetchPageOnLinkHover<TSelf>(this: TSelf, policy: PrefetchPagePolicy, duration?: number): TSelf
   prefetchPageOnLinkHover(
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
@@ -3678,6 +4051,16 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * How aggressively a page prefetches when a navigation starts. Same policy values as `.prefetchPageOnLinkHover`. On
+   * root, base, page, layout.
+   *
+   * Client-only — stripped from the server bundle (the navigate trigger runs in the browser).
+   *
+   *     .prefetchPageOnNavigate('serverAndClientQuery')
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   prefetchPageOnNavigate<TSelf>(this: TSelf, policy: PrefetchPagePolicy): TSelf
   prefetchPageOnNavigate(
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
@@ -3687,6 +4070,17 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Convenience that sets BOTH the navigate and link-hover prefetch policies at once (2nd arg is the hover delay).
+   * Thin wrapper over `.prefetchPageOnNavigate` + `.prefetchPageOnLinkHover`. On root, base, page, layout (not plugins).
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   *     .prefetchPagePolicy('serverAndClientQuery')          // policy only
+   *     .prefetchPagePolicy('serverAndClientQuery', 200)     // policy + hover delay (ms)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   prefetchPagePolicy<TSelf>(this: TSelf, policy: PrefetchPagePolicy, duration?: number): TSelf
   prefetchPagePolicy(
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
@@ -3701,6 +4095,17 @@ export class Point0<
 
   // transformer
 
+  /**
+   * Set how Point0 serializes data crossing the wire — query inputs/outputs, request bodies, the SSR dehydrated state,
+   * and the query key. Default is plain JSON (no `Date`/`Map`/`Set`/`BigInt`); pass `superjson` and those round-trip.
+   * Root only. Takes any `{ serialize, deserialize }` pair.
+   *
+   * Server-and-client — kept on both bundles (both sides serialize/deserialize the wire).
+   *
+   *     .transformer(superjson)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/transformer
+   */
   transformer<TSelf>(this: TSelf, transformer: DataTransformer): TSelf
   transformer(transformer: DataTransformer) {
     return this._continue({
@@ -3710,6 +4115,17 @@ export class Point0<
 
   // middlewares
 
+  /**
+   * Add values to a server-only context, computed once per request before the loaders. What you return is
+   * shallow-merged into the running ctx; every later `.ctx` and the `.loader` can read it. Use it for request-scoped
+   * values (the current user, a flag).
+   *
+   * Server-only — the callback (and its imports) is stripped from the client bundle (runs server-side).
+   *
+   *     .ctx(async ({ request }) => ({ me: await getMe({ request }) }))
+   *
+   * Full reference: https://1gr14.dev/point0/latest/ctx
+   */
   ctx<
     TCtxFn extends CtxFn<
       TCtx,
@@ -3947,6 +4363,20 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * The callback that produces this point's data, running on the SERVER. Each point has one loader; whatever it returns
+   * becomes the point's `data`. Putting a `.loader` on a mountable also makes that point a query (it gets `useQuery`,
+   * `fetchQuery`, …). Call it with no args for a passthrough loader — marks the point as server-loaded (so it still
+   * gets a server request and ctx) without custom logic.
+   *
+   * Server-only — the body (and every import only it uses — your DB client included) is stripped from the client
+   * bundle (runs server-side).
+   *
+   *     .loader(async ({ input }) => ({ idea: await prisma.idea.findUniqueOrThrow({ where: { id: input.id } }) })) // fn form
+   *     .loader()                                            // no-arg passthrough (server request + ctx, no logic)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/loader
+   */
   loader<
     TLoaderResponseFn extends LoaderFn<
       TCtx,
@@ -4052,6 +4482,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Like `.loader`, but the callback runs in the BROWSER instead of on the server — no HTTP endpoint. A query or
+   * mutation with only a `.clientLoader()` runs entirely client-side. Whatever it returns becomes the point's `data`.
+   * Call it with no args for a passthrough (passes the existing `data` through).
+   *
+   * Client-only — the body is stripped from the server bundle (runs in the browser, regardless of SSR).
+   *
+   *     .clientLoader(async ({ input }) => ({ profile: await localApi.getProfile(input.id) })) // fn form
+   *     .clientLoader()                                      // no-arg passthrough
+   *
+   * Full reference: https://1gr14.dev/point0/latest/loader
+   */
   clientLoader<
     TClientLoaderFn extends ClientLoaderFn<
       TClientInputSchema,
@@ -4120,6 +4562,20 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Fold the loader and query results into the final `data` your render reads. By default `data` is the first query's
+   * data; once you add a `.mapper`, `data` is whatever it returns. One synchronous function getting
+   * `{ data, queries, props, location }`. Reach for it when a point pulls several queries together or a query's shape
+   * isn't the shape your component wants. On a provider, the mapper's return value IS the provided value.
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
+   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on.
+   *
+   *     .mapper(({ data }) => ({ ideas: data.pages.flatMap((p) => p.ideas) }))
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mapper
+   */
   mapper<TNewMapperOutput extends MapperOutput = MapperOutput>(
     mapperFn: MapperFn<
       MountableLocation<TLetsReadyPointType, TRouteDefinition>,
@@ -4187,6 +4643,24 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Set the document `<head>` for this point — title, SEO meta, canonical. Built on unhead: pass a string, an object,
+   * or a function of the per-state context (`data` is the loaded data), so the head can come from your data. Rendered
+   * as real `<meta>` on the server and updated on client navigation. Per-state and inherited up the chain; needs
+   * `UnheadProvider` mounted. Pass a status first (`'loading' | 'error' | 'success' | 'universal' | 'global'`) to
+   * target one render state; `head('global', …)` is the app-wide base head.
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
+   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on.
+   *
+   *     .head('Ideas')                                       // string shorthand (title)
+   *     .head({ title: 'Ideas', meta: [{ name: 'robots', content: 'noindex' }] }) // object
+   *     .head(({ data: { idea } }) => ({ title: idea.title, description: idea.content.slice(0, 140) })) // fn of state
+   *     .head('loading', { title: 'Loading…' })              // per-status: 'loading' | 'error' | 'success' | 'global'
+   *
+   * Full reference: https://1gr14.dev/point0/latest/head
+   */
   head(
     head:
       | HeadFn<
@@ -4401,6 +4875,20 @@ export class Point0<
         : Point0.customValidationFnToInputSchema(inputSchema)
   }
 
+  /**
+   * Attach the input schema for a query / infiniteQuery / mutation / component / provider. The input is parsed and
+   * typed everywhere it flows — loader, component, cache key, OpenAPI spec — and validated at every call site. Any
+   * Standard Schema library (zod, valibot, arktype, …) or a plain validate function works.
+   *
+   * Server-and-client on a non-action mountable (isomorphic — kept on both bundles); server-only on an action (the
+   * server schema is stripped from the client bundle).
+   *
+   *     .input(z.object({ id: z.number() }))           // schema form (any Standard Schema)
+   *     .input((raw) => parseQuery(raw))               // custom validate-fn form
+   *     .input<{ id: number }>()                       // no-arg, type-only (no runtime validation)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/validation
+   */
   input<
     TNextServerInputSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'input'> &
@@ -4569,6 +5057,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Like `.input`, but the schema is validated on the CLIENT only — input that never reaches the server loader (e.g.
+   * params used purely by a `.clientLoader` or a `.with` selector). Pairs with `.input` (server) and `.sharedInput`.
+   *
+   * Client-only — the schema is stripped from the server bundle (validated in the browser, regardless of SSR).
+   *
+   *     .clientInput(z.object({ tab: z.string() }))    // schema form
+   *     .clientInput((raw) => parseTab(raw))           // custom validate-fn form
+   *     .clientInput<{ tab: string }>()                // no-arg, type-only
+   *
+   * Full reference: https://1gr14.dev/point0/latest/validation
+   */
   clientInput<
     TNextClientInputSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientInput'> &
@@ -4740,6 +5240,19 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Like `.input`, but the schema applies on BOTH the server and the client at once — shorthand for the common case
+   * where the same input is validated on each side. Equivalent to declaring `.input` and `.clientInput` with the same
+   * schema.
+   *
+   * Server-and-client — kept on both bundles (it is `.input` + `.clientInput`, so each side validates).
+   *
+   *     .sharedInput(z.object({ id: z.number() }))     // schema form
+   *     .sharedInput((raw) => parseId(raw))            // custom validate-fn form
+   *     .sharedInput<{ id: number }>()                 // no-arg, type-only
+   *
+   * Full reference: https://1gr14.dev/point0/latest/validation
+   */
   sharedInput<
     TNextInputSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'sharedInput'> &
@@ -4915,6 +5428,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Attach the schema for a page/layout/action's route segments — the `:id` parts of `/ideas/:id`. Parsed and typed
+   * into `params` everywhere it flows. Use coercion (`z.coerce.number()`) since route segments arrive as strings.
+   *
+   * Server-and-client on a non-action mountable (isomorphic — kept on both bundles); server-only on an action (the
+   * schema is stripped from the client bundle).
+   *
+   *     .page('/ideas/:id').params(z.object({ id: z.coerce.number() })) // schema form
+   *     .params((raw) => ({ id: Number(raw.id) }))                      // custom validate-fn form
+   *
+   * Full reference: https://1gr14.dev/point0/latest/validation
+   */
   params<
     TNextParamsSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'params'> &
@@ -5016,6 +5541,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Attach the schema for a page/layout/action's query string — `?page=2&limit=10`. Parsed and typed into `search`,
+   * with `setSearch` available in the render. Use coercion/defaults since query values arrive as strings.
+   *
+   * Server-and-client on a non-action mountable (isomorphic — kept on both bundles); server-only on an action (the
+   * schema is stripped from the client bundle).
+   *
+   *     .page('/ideas').search(z.object({ page: z.coerce.number().default(0) })) // schema form
+   *     .search((raw) => ({ page: Number(raw.page ?? 0) }))            // custom validate-fn form
+   *
+   * Full reference: https://1gr14.dev/point0/latest/validation
+   */
   search<
     TNextSearchSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'search'> &
@@ -5159,6 +5696,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Attach the schema for an action's request body. Parsed and typed into `body` in the loader. Action-only — queries
+   * and mutations carry a flat `.input` instead.
+   *
+   * Server-only — the schema is stripped from the client bundle (validated server-side in the loader).
+   *
+   *     .action('PUT', '/api/ideas/:id').body(z.object({ title: z.string() })) // schema form
+   *     .body((raw) => parseBody(raw))                 // custom validate-fn form
+   *     .body<{ title: string }>()                     // no-arg, type-only
+   *
+   * Full reference: https://1gr14.dev/point0/latest/validation
+   */
   body<
     TNextBodySchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'body'> &
@@ -5282,6 +5831,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Attach the schema for request headers — parsed and typed into `headers` in the loader. Available on every point
+   * that issues a request.
+   *
+   * Server-only — the schema is stripped from the client bundle (validated server-side in the loader).
+   *
+   *     .headers(z.object({ 'x-api-key': z.string() })) // schema form
+   *     .headers((raw) => ({ key: raw['x-api-key'] }))  // custom validate-fn form
+   *     .headers<{ 'x-api-key': string }>()             // no-arg, type-only
+   *
+   * Full reference: https://1gr14.dev/point0/latest/validation
+   */
   headers<
     TNextHeadersSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'headers'> &
@@ -5391,6 +5952,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Attach the schema for request cookies — parsed and typed into `cookies` in the loader. Available on every point
+   * that issues a request.
+   *
+   * Server-only — the schema is stripped from the client bundle (validated server-side in the loader).
+   *
+   *     .cookies(z.object({ session: z.string() }))    // schema form
+   *     .cookies((raw) => ({ session: raw.session }))  // custom validate-fn form
+   *     .cookies<{ session: string }>()                // no-arg, type-only
+   *
+   * Full reference: https://1gr14.dev/point0/latest/validation
+   */
   cookies<
     TNextCookiesSchema extends InputSchema,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'cookies'> &
@@ -5500,6 +6073,17 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Declare the response schema for an action's endpoint — one schema for the success response, or a map keyed by HTTP
+   * status. Used for typing and OpenAPI; the server validates the response against it. Action-only.
+   *
+   * Server-only — the schema is stripped from the client bundle (validated/served server-side).
+   *
+   *     .response(ideaSchema)                          // single success schema
+   *     .response({ 200: ideaSchema, 404: errorSchema }) // per-status map
+   *
+   * Full reference: https://1gr14.dev/point0/latest/validation
+   */
   response<TSelf>(this: TSelf, responseSchema: InputSchema): TSelf
   response<TSelf>(this: TSelf, responseSchemas: Record<number, InputSchema>): TSelf
   response<TSelf>(this: TSelf, responseSchemas: NormalizedResponseSchema): TSelf
@@ -5546,6 +6130,16 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Attach extra OpenAPI metadata for this endpoint (summary, examples, response docs) — merged into the generated
+   * spec. On points that issue a request (query, mutation, action).
+   *
+   * Server-only — stripped from the client bundle (OpenAPI metadata, read server-side).
+   *
+   *     .openapi({ summary: 'Fetch one idea by id' })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   openapi<TSelf>(this: TSelf, endpointSchema: NormalizedEndpointOpenapiSchema): TSelf
   openapi(endpointSchema: NormalizedEndpointOpenapiSchema) {
     return this._continue({
@@ -5553,6 +6147,17 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Register named entity schemas (your domain models) for OpenAPI components and shared typing. Accumulates across
+   * calls. On root, base, plugin.
+   *
+   * Server-only by intent — OpenAPI/docs metadata read server-side.
+   * <!-- TODO(high): add .models to the compiler client-strip list (point.ts ~1026) — it's currently shipped to the client bundle. -->
+   *
+   *     .models({ Idea: ideaSchema, User: userSchema })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
   models<TSelf>(this: TSelf, modelsSchemas: Record<string, InputSchema>): TSelf
   models(modelsSchemas: Record<string, InputSchema>) {
     return this._continue({
@@ -5563,6 +6168,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Close the root point. The root is the one point created straight from `Point0` (not inherited): it's the server's
+   * entry point and the holder of every default — server/client URLs, transformer, error class, query options,
+   * prefetch policy, loading/error UI — that every point beneath it inherits. Open with `.lets.root()`, set defaults,
+   * close with `.root()`.
+   *
+   * Server-and-client — the root closer is kept on both bundles (isomorphic).
+   *
+   *     export const root = Point0.lets.root().serverUrl(env.SERVER_URL).transformer(superjson).root()
+   *
+   * Full reference: https://1gr14.dev/point0/latest/root
+   */
   root(): NiceRootReadyPoint<
     'root',
     UndefinedReadyPointType,
@@ -5595,6 +6212,17 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Close a plugin point. A plugin bundles methods — `.ctx`, `.with`, `.middleware`, input schemas, related queries —
+   * that you inject into another point's chain with `.use(plugin)`. It does nothing on its own; it's the tool for
+   * sharing setup across points in your own app. Open with `Point0.lets.plugin()`, add methods, close with `.plugin()`.
+   *
+   * Server-and-client — the plugin closer is kept on both bundles (each bundled method keeps its own strip behavior).
+   *
+   *     export const mePlugin = Point0.lets.plugin().ctx(({ request }) => ({ me: getMe({ request }) })).plugin()
+   *
+   * Full reference: https://1gr14.dev/point0/latest/plugin
+   */
   plugin(): NicePluginReadyPoint<
     'plugin',
     UndefinedReadyPointType,
@@ -5624,6 +6252,17 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Close a base point. A base holds shared settings — a route prefix (`.basePath`), query defaults, loading/error UI,
+   * a plugin, injected queries — for a *subset* of points; every point built off it inherits them. It's authoring-time
+   * only: no route, no endpoint of its own. Open with `.lets.base()`, configure, close with a second `.base()`.
+   *
+   * Server-and-client — the base closer is kept on both bundles (isomorphic).
+   *
+   *     export const adminBase = root.lets.base().basePath('/admin').use(adminOnlyPlugin).base()
+   *
+   * Full reference: https://1gr14.dev/point0/latest/base
+   */
   base(): NiceBaseReadyPoint<
     'base',
     UndefinedReadyPointType,
@@ -5654,6 +6293,27 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Close a page point: render this component at the route set by `.lets.page('/path')`. The component receives the
+   * loaded `data`, `queries` (in `.with` order), `params`, `search`, `props`, `location`, and the resolved
+   * loading/error components. The component is OPTIONAL — omit it to render nothing (`() => null`).
+   *
+   * A page with a `.loader()` is also its own query (`page.useQuery()`, `page.fetchQuery()`, `page.getQueryKey()`, …)
+   * and, when SSR is on (or it has a server loader), a real HTTP endpoint; a loader-less page that only composes other
+   * queries is a client-only mountable, not an endpoint. Pages are lazy-loaded by default.
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
+   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on.
+   *
+   *     export const ideaPage = root.lets
+   *       .page('/ideas/:id')
+   *       .with(ideaQuery, ({ params }) => ({ id: Number(params.id) }))
+   *       .page(({ data: { idea } }) => <h1>{idea.title}</h1>) // component form
+   *     // .page()                                              // no component → renders nothing
+   *
+   * Full reference: https://1gr14.dev/point0/latest/page
+   */
   page(
     ...args: TLetsReadyPointType extends 'page'
       ? [
@@ -5737,6 +6397,20 @@ export class Point0<
     return point.X as never
   }
 
+  /**
+   * Close a component point: a reusable mountable with data and UI but NO route — you place it yourself with a JSX tag
+   * (`<BestIdea cta="..." />`), wherever you need it. It gets the full chain (`.with`, `.loader`, `.mapper`,
+   * loading/error) like a page. The component argument is optional. Declare outer props via `.component<{ … }>()`.
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
+   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on.
+   *
+   *     export const BestIdea = root.lets.component().loader(loadBest).component(({ data }) => <h2>{data.title}</h2>) // component form
+   *     // root.lets.component<{ cta: string }>().component()  // type-only outer props, no component → renders nothing
+   *
+   * Full reference: https://1gr14.dev/point0/latest/component
+   */
   component(
     ...args: TLetsReadyPointType extends 'component'
       ? [
@@ -5818,6 +6492,22 @@ export class Point0<
     return point.X as never
   }
 
+  /**
+   * Close a layout point: a shared shell (header, sidebar, frame) wrapping a set of pages, rendered where the
+   * component places `{children}`. It can own part of the route those pages sit under and load its own data with its
+   * own loading/error. Navigating between pages in the same layout keeps it mounted — no re-render, no re-fetch. The
+   * component argument is optional (omit it to render just children, e.g. to prefix a route or carry shared data).
+   * From a page chain, `.layout(someLayout)` attaches that layout to the page instead.
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
+   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on.
+   *
+   *     export const generalLayout = root.lets.layout(({ children }) => <div className="app">{children}</div>) // close a layout
+   *     root.lets.page('/ideas/:id').layout(generalLayout).page(IdeaScreen) // attach a layout to a page
+   *
+   * Full reference: https://1gr14.dev/point0/latest/layout
+   */
   layout(
     ...args: TLetsReadyPointType extends 'layout'
       ? [
@@ -6022,6 +6712,22 @@ export class Point0<
     }
   }
 
+  /**
+   * Close a provider point: produce one value and expose it down the tree, read with `.useValue()` (a hook,
+   * fine-grained) or `.getValue()` (a plain read) — no prop drilling. The value can be computed, loaded, or built from
+   * injected queries. The closing argument is the value mapper (same as `.mapper`); omit it to provide `data` as-is.
+   * Mount the provider once high in the tree; it renders its `{children}`.
+   *
+   * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and
+   * the imports it pulls in are removed from the server build. Kept in the client build always, and in the server
+   * build only when SSR is on.
+   *
+   *     export const AppProvider = root.lets.provider().provider(() => ({ x: 1, y: 2 })) // mapper form
+   *     // root.lets.provider().loader(loadValue).provider()   // omit mapper → provide loaded data as-is
+   *     const { x } = AppProvider.useValue()
+   *
+   * Full reference: https://1gr14.dev/point0/latest/provider
+   */
   provider<
     TNewMapperOutput extends MapperOutput = MountableSuccessData<
       WithSelfQueryIfShouldBeFinalized<
@@ -6140,6 +6846,17 @@ export class Point0<
     return [...new Set([...a, ...b])]
   }
 
+  /**
+   * Inject a plugin into this point's chain. Everything the plugin bundled — `.ctx`, `.with`, `.middleware`, input
+   * schemas, related queries — is applied here as if written inline, and its types flow through (e.g. `ctx.me` becomes
+   * available). The way to share setup across points in your app.
+   *
+   * Server-and-client — `.use` itself is kept on both bundles; each applied method keeps its own strip behavior.
+   *
+   *     .use(authorizedOnlyPlugin) // brings ctx.me — the current user
+   *
+   * Full reference: https://1gr14.dev/point0/latest/plugin
+   */
   use<
     T extends NicePluginReadyPoint<
       any,
@@ -6440,6 +7157,27 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Close a query point. The optional argument is the query's default react-query options (`staleTime`, `retry`,
+   * `select`, `refetch*`, …); `queryKey` and `queryFn` are supplied by Point0. A query with a server `.loader()` is a
+   * real HTTP endpoint (and shows up in the OpenAPI spec); a `.clientLoader()`-only query runs in the browser with no
+   * endpoint. Defaults set here are overridable at every call site, and on the server a few (`retry`, refetch-on-*,
+   * `staleTime`/`gcTime`) are hard-overridden so a render fetches once.
+   *
+   * Every query method takes the INPUT first — `useQuery(input, options?)`, `fetchQuery(input)`, `getQueryKey(input)`,
+   * `setQueryData(input, updater)`, … — and that input forms the cache key.
+   *
+   * Server-and-client — the query closer is kept on both bundles (the query runs from whichever side calls it).
+   *
+   *     export const ideaQuery = root.lets
+   *       .query()
+   *       .input(z.object({ id: z.number() }))
+   *       .loader(async ({ input }) => ({ idea: await findIdea(input.id) }))
+   *       .query()                  // no-arg close
+   *     // .query({ staleTime: 60_000 }) // options form: default react-query options
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   query(
     ...args: TLetsReadyPointType extends 'query'
       ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
@@ -6606,6 +7344,19 @@ export class Point0<
   }
 
   /**
+   * Close a query as an infinite (paginated) query. You write a loader that returns one page; Point0 turns it into a
+   * real TanStack `useInfiniteQuery` with a page cache, `fetchNextPage`, and `hasNextPage`. The closing argument takes
+   * the same options as `useInfiniteQuery` (`getNextPageParam`, `initialPageParam`, `maxPages`, …) plus one
+   * Point0-specific required key, `pageParamFromInput`, telling Point0 where the cursor lives in the input. Any
+   * mountable can also close with `.infiniteQuery({…})` after its loader to make its self-query infinite.
+   *
+   * Server-and-client — the infiniteQuery closer is kept on both bundles (the query runs from whichever side calls it).
+   *
+   *     export const ideaListQuery = root.lets.infiniteQuery().input(schema).loader(loadPage)
+   *       .infiniteQuery({ getNextPageParam: (last) => last.nextCursor, initialPageParam: undefined, pageParamFromInput: 'cursor' })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   *
    * Finalize this point as an infinite query. ONE signature (deliberately not overloads) — same reason as `with`: with
    * 3 overloads the language server can't pick which to complete the options object against, so `.infiniteQuery({ ▮ })`
    * offers a useless global list ("never until correct") and a wrong call collapses to "No overload matches this call".
@@ -6847,6 +7598,19 @@ export class Point0<
     }
   }
 
+  /**
+   * Close a mutation point: an input schema plus a write loader. It's a real HTTP `POST` endpoint (in the OpenAPI
+   * spec) and a thin wrapper over a TanStack mutation at once — call it anywhere with `.useMutation()` /
+   * `.fetchMutation(input)`. The optional argument is the default react-query `useMutation` options. A `.loader` (or
+   * `.clientLoader`) is required before closing. The first argument to every call is the input.
+   *
+   * Server-and-client — the mutation closer is kept on both bundles (the mutation runs from whichever side calls it).
+   *
+   *     export const ideaCreateMutation = root.lets.mutation().input(schema).loader(createIdea).mutation() // no-arg close
+   *     // .mutation({ retry: 1 })   // options form: default useMutation options
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mutation
+   */
   mutation(
     ...args: TLetsReadyPointType extends 'mutation'
       ? FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
@@ -6997,6 +7761,19 @@ export class Point0<
     TInnerProps,
     TQueriesDefinitions
   >
+  /**
+   * Close an action point: a real HTTP endpoint with a method and path you choose (`.action('GET', '/api/health')`),
+   * and — unlike a query — the freedom to return a native `Response`. Reach for it for webhooks, REST-ish endpoints,
+   * or raw bytes; otherwise prefer a query/mutation, which give caching at a framework URL for free. Needs a server
+   * `.loader()`. `action.route` is callable like any other route.
+   *
+   * Server-only — the action's server fn (and its loader body) is stripped from the client bundle (runs server-side);
+   * the route stays callable from the client.
+   *
+   *     export const healthAction = root.lets.action('GET', '/api/health').action(() => new Response('OK'))
+   *
+   * Full reference: https://1gr14.dev/point0/latest/action
+   */
   action(
     ...args: FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
       ? []
@@ -7497,6 +8274,16 @@ export class Point0<
 
   // fetching and queries
 
+  /**
+   * The query's `useQuery` hook — input first (it forms the cache key), react-query options second. Returns the
+   * standard TanStack `useQuery` result. `useQuery(undefined, { enabled: false })` reads the cache without fetching.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaQuery.useQuery({ id: 123 }, { enabled: !!id })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   useQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -7532,6 +8319,16 @@ export class Point0<
     return query as never
   }
 
+  /**
+   * The infinite query's `useInfiniteQuery` hook — the real TanStack infinite result (`data.pages`, `fetchNextPage`,
+   * `hasNextPage`, `isFetchingNextPage`), typed to your loader's page shape. Input first, options second.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     const q = ideaListQuery.useInfiniteQuery(); q.data?.pages.flatMap((p) => p.ideas)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   useInfiniteQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -8102,6 +8899,16 @@ export class Point0<
     throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
   }
 
+  /**
+   * Build the TanStack query key tuple for an input — the same key Point0 uses for this query's cache. Handy for
+   * manual cache reads or `queryClient` calls.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaQuery.getQueryKey({ id: 123 })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   getQueryKey(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -8352,6 +9159,14 @@ export class Point0<
     } as never
   }
 
+  /**
+   * Build the fully-resolved `UseQueryOptions` for an input — `queryKey`, `queryFn`, and merged defaults — ready to
+   * hand to react-query's `useQuery` / `queryClient` directly.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   getQueryOptions(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -8779,10 +9594,28 @@ export class Point0<
     return useInfiniteQuery(infiniteQueryOptions) as never
   }
 
+  /**
+   * The mutation's key tuple — takes NO arguments (unlike `getQueryKey`), since a mutation has one key regardless of
+   * input. Use it to find this mutation's entries in the mutation cache.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaCreateMutation.getMutationKey()
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mutation
+   */
   getMutationKey(): MutationKey {
     return ['point0', { scope: this.scope, type: this.type, name: this.name, tags: this.tags }]
   }
 
+  /**
+   * Build the resolved react-query `MutationOptions` (key, `mutationFn`, merged defaults) — ready to hand to TanStack's
+   * `useMutation` / `queryClient` directly.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mutation
+   */
   getMutationOptions(
     mutationOptions?: ExtraUseMutationOptions,
     options?: { fetchOptions?: FetchOptions },
@@ -8887,6 +9720,14 @@ export class Point0<
     >
   }
 
+  /**
+   * Get the single `Mutation` cache entry matching an exact input (`undefined` if none) — for inspecting a specific
+   * call's state. For an array of matches use `getMutationsCache`.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mutation
+   */
   getMutationCache = (
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -8932,6 +9773,18 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Get an array of `Mutation` cache entries for this mutation — match by exact input (variables), a predicate over
+   * variables, or pass `true` for all entries. Always returns an array.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaCreateMutation.getMutationsCache({ id: 1 })  // exact input
+   *     ideaCreateMutation.getMutationsCache((v) => v.id === 1) // predicate over variables
+   *     ideaCreateMutation.getMutationsCache(true)       // all entries
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mutation
+   */
   getMutationsCache = (
     input?:
       | FinalInputRawOrUndefined<
@@ -9019,6 +9872,16 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * The mutation's `useMutation` hook — returns the standard TanStack `UseMutationResult`. Pass the input to
+   * `mutate` / `mutateAsync`, not to the hook. Per-call options merge over the defaults set at close.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     const m = ideaCreateMutation.useMutation(); await m.mutateAsync({ title, content })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mutation
+   */
   useMutation = (
     mutationOptions?: ExtraUseMutationOptions | undefined,
     options?: { fetchOptions?: FetchOptions | undefined },
@@ -9037,6 +9900,16 @@ export class Point0<
     return useMutation(this.getMutationOptions(mutationOptions, options))
   }
 
+  /**
+   * Run the mutation imperatively, outside React — input first, returns a `Promise` of the data. The non-hook
+   * counterpart to `useMutation` for event handlers, loaders, and plain functions.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     const { idea } = await ideaUpdateMutation.fetchMutation({ id, title })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/mutation
+   */
   fetchMutation = async (
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9149,6 +10022,16 @@ export class Point0<
     }
   }
 
+  /**
+   * Imperatively fetch and cache the query, outside React — input first, returns a `Promise` of the data. Reads the
+   * cache if fresh; otherwise runs the loader. Use it in event handlers, loaders, or other queries.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     const { idea } = await ideaQuery.fetchQuery({ id: 123 })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   async fetchQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9170,6 +10053,13 @@ export class Point0<
     return (await queryClient.fetchQuery(normalizedQueryOptions)) as never
   }
 
+  /**
+   * Read this query's cached data for an input synchronously, without fetching — `undefined` if nothing is cached.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   getQueryData(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9189,6 +10079,14 @@ export class Point0<
     return queryClient.getQueryData(queryKey) as never
   }
 
+  /**
+   * Warm the cache for an input without returning the data (`Promise<void>`) — fetches only if not already cached.
+   * Ideal for prefetching on hover or before navigation.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   async prefetchQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9210,6 +10108,14 @@ export class Point0<
     await queryClient.prefetchQuery(normalizedQueryOptions as never)
   }
 
+  /**
+   * Return the cached data for an input if present, otherwise fetch it — like `fetchQuery` but never refetches when
+   * data already exists. Returns a `Promise` of the data.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   async ensureQueryData(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9231,6 +10137,14 @@ export class Point0<
     return (await queryClient.ensureQueryData(normalizedQueryOptions)) as never
   }
 
+  /**
+   * Force a refetch of the exact-input query, ignoring staleness (`Promise<void>`). Exact-key — pass the same input
+   * you queried with.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   async refetchQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9251,6 +10165,14 @@ export class Point0<
     await queryClient.refetchQueries({ queryKey, exact: true }, refetchOptions)
   }
 
+  /**
+   * Write this query's cache for an input directly — `updater` is a value or `(prev) => next`. Returns the new data.
+   * For an optimistic value to stick, set `staleTime: Infinity` so it isn't immediately refetched. Exact-key.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   setQueryData(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9278,6 +10200,14 @@ export class Point0<
     >
   }
 
+  /**
+   * Get the single TanStack `Query` cache entry for an exact input (`undefined` if none) — the low-level cache object,
+   * for inspecting state or observers. For many entries use `getQueriesCache`.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   getQueryCache(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9305,6 +10235,18 @@ export class Point0<
     return cache.find({ queryKey, exact: true }) as never
   }
 
+  /**
+   * Get an array of `Query` cache entries for this query — match by exact input, by a predicate, or pass `true` for
+   * every entry of this query. The fuzzy counterpart to the exact-key `getQueryCache`.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaQuery.getQueriesCache({ id: 1 })          // exact input
+   *     ideaQuery.getQueriesCache((i) => i.id > 10)   // predicate
+   *     ideaQuery.getQueriesCache(true)               // all entries for this query
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   getQueriesCache(
     input?:
       | FinalInputRawOrUndefined<
@@ -9351,6 +10293,14 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Read the TanStack `QueryState` for an exact input (`status`, `fetchStatus`, `dataUpdatedAt`, `error`, …), or
+   * `undefined` if uncached — for inspecting state without subscribing.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   getQueryState(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9370,6 +10320,14 @@ export class Point0<
     return queryClient.getQueryState(queryKey) as never
   }
 
+  /**
+   * Cancel any in-flight fetch for the exact-input query (`Promise<void>`) — typically before an optimistic
+   * `setQueryData` so a racing response doesn't clobber it. Exact-key.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   async cancelQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9390,6 +10348,14 @@ export class Point0<
     await queryClient.cancelQueries({ queryKey, exact: true }, cancelOptions)
   }
 
+  /**
+   * Mark the exact-input query stale and refetch it if active (`Promise<void>`) — the usual way to refresh after a
+   * mutation. Exact-key; to match many inputs use `getQueriesCache(true)` or a predicate.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   async invalidateQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9410,6 +10376,13 @@ export class Point0<
     await queryClient.invalidateQueries({ queryKey, exact: true }, invalidateOptions)
   }
 
+  /**
+   * Drop the exact-input query from the cache entirely (`void`) — no refetch, the entry is gone. Exact-key.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   removeQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -9429,6 +10402,14 @@ export class Point0<
     queryClient.removeQueries({ queryKey, exact: true })
   }
 
+  /**
+   * Reset the exact-input query to its initial state and refetch if active (`Promise<void>`) — clears data/error, not
+   * just staleness. Exact-key.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
   async resetQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -11155,6 +12136,19 @@ export class Point0<
     return `${start}_${this._getTransformer().stringify(input)}`
   }
 
+  /**
+   * Read a provider's value WITHOUT subscribing — not a hook, so callable anywhere (event handlers, loaders, plain
+   * functions). Pass a key, an array of keys (a Pick), or nothing for the whole value. The non-reactive counterpart to
+   * `.useValue()`.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     AppProvider.getValue('theme')          // one key
+   *     AppProvider.getValue(['theme', 'lang']) // Pick of keys
+   *     AppProvider.getValue()                 // the whole value
+   *
+   * Full reference: https://1gr14.dev/point0/latest/provider
+   */
   getValue(
     input?: FinalInputRawOrUndefined<
       TPointType,
@@ -11247,6 +12241,19 @@ export class Point0<
     )
   }
 
+  /**
+   * Read a provider's value inside render — a React hook, fine-grained: reading one key re-renders only when that key
+   * changes. Pass a key, an array of keys (a Pick), or nothing for the whole value. Throws if called outside a mounted
+   * provider. Use `.getValue()` for the non-reactive read.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     AppProvider.useValue('x')              // one key (re-renders only on that key)
+   *     AppProvider.useValue(['x', 'y'])       // Pick of keys
+   *     const { x } = AppProvider.useValue()   // the whole value
+   *
+   * Full reference: https://1gr14.dev/point0/latest/provider
+   */
   useValue<K extends keyof MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(
     key: K,
   ): MountableSuccessData<TQueriesDefinitions, TMapperOutput>[K]

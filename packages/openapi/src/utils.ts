@@ -14,6 +14,15 @@ type OpenapiOptionsGeneral = {
   hideTransformHeader?: boolean
 }
 
+/**
+ * Document-level options for {@link getOpenapiSchemaFromPoints} and the {@link openapi} middleware: any top-level
+ * OpenAPI document field (`info`, `servers`, `tags`, `security`, `components`, …) merged into the output with your
+ * values overriding the generated ones, plus a few Point0 extras — `models` (named schemas for `components.schemas`
+ * and `$ref` dedup), `helpers` (schema helpers), and `hideTransformHeader` (drop the auto-added `X-Point0-Transform`
+ * header). The `openapi` version string discriminates: a `'3.1...'` value selects the OpenAPI 3.1 types.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/openapi
+ */
 export type OpenapiOptionsV3 = OpenapiOptionsGeneral & {
   openapi?: `3.0${string}`
 } & Partial<OpenAPIV3.Document>
@@ -407,6 +416,16 @@ const getModelsSchemasFromPoints = (points: Array<ReadyPoint | { point: ReadyPoi
 
 const _cache = new Map<string, OpenapiSchemaV3_1 | OpenapiSchemaV3>()
 
+/**
+ * Build the OpenAPI document from a list of ready points — the same generation the {@link openapi} middleware runs,
+ * exposed for tooling that needs the spec outside a request (writing it to a file at build time, say). Takes ready
+ * points (or `{ point }` wrappers) and the document-level options; returns the spec object. An `openapi: '3.1.x'`
+ * option switches the input and output types to OpenAPI 3.1.
+ *
+ *     const spec = getOpenapiSchemaFromPoints(points, { info: { title: 'My API', version: '1.0.0' } })
+ *
+ * Full reference: https://1gr14.dev/point0/latest/openapi
+ */
 export function getOpenapiSchemaFromPoints(
   points: Array<ReadyPoint | { point: ReadyPoint }>,
   options: OpenapiOptionsV3_1 & { cache?: string },
