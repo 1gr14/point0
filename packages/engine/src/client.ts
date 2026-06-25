@@ -764,7 +764,7 @@ try {
           const originalIndexHtml = await viteDevServer.transformIndexHtml(request.url, srcIndexHtmlContent)
           return new Response(originalIndexHtml, {
             headers: {
-              'Content-Type': 'text/html',
+              'Content-Type': 'text/html; charset=utf-8',
             },
           })
         }

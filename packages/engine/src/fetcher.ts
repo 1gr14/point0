@@ -852,7 +852,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             waitForAllReady: true,
           })
           const response = new Response(readableStream, {
-            headers: { 'Content-Type': 'text/html' },
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
           })
           if (!point) {
             effects.set.status(404)
@@ -883,7 +883,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           }
           const indexHtml = await client.getOriginalIndexHtmlWithEnvs(request.original.url)
           const response = new Response(indexHtml, {
-            headers: { 'Content-Type': 'text/html' },
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
           })
           const error0 = ErrorClass.from(error)
           return {
@@ -895,7 +895,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       } else if (client.indexHtml) {
         const indexHtml = await client.getOriginalIndexHtmlWithEnvs(request.original.url)
         const response = new Response(indexHtml, {
-          headers: { 'Content-Type': 'text/html' },
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
           status: !point && client.points ? 404 : 200,
         })
         return {

@@ -131,7 +131,7 @@ export const openapi = <TOpenapiVersion extends string>(
           const scalarHtml = getScalarHtml(scalarOptionsNormalized as never)
           return new Response(scalarHtml, {
             headers: {
-              'Content-Type': 'text/html',
+              'Content-Type': 'text/html; charset=utf-8',
             },
           })
         }
@@ -140,7 +140,7 @@ export const openapi = <TOpenapiVersion extends string>(
           const swaggerHtml = getSwaggerHtml(swaggerOptionsNormalized)
           return new Response(swaggerHtml, {
             headers: {
-              'Content-Type': 'text/html',
+              'Content-Type': 'text/html; charset=utf-8',
             },
           })
         }

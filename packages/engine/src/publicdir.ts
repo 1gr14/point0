@@ -319,12 +319,13 @@ export class Publicdir<TPrepared extends boolean, TError extends ErrorPoint0> {
             const distAbsPath = nodePath.resolve(outdir, fileRoutePath.replace(/^\/+/, ''))
             fileOperations.push(
               (async () => {
-                const content = await withError(
-                  async () => await Bun.file(fileAbsPath).text(),
+                // Copy raw bytes — never `.text()`, which decodes as UTF-8 and turns every non-UTF-8 byte of a binary
+                // file (images, fonts, …) into U+FFFD, corrupting it on disk. `Bun.write(dest, BunFile)` is a
+                // binary-safe native copy and also creates parent dirs.
+                await withError(
+                  async () => await Bun.write(distAbsPath, Bun.file(fileAbsPath)),
                   `Failed while building publicdir for ${this.scope}`,
                 )
-                // await nodeFs.mkdir(nodePath.dirname(distAbsPath), { recursive: true })
-                await Bun.write(distAbsPath, content)
                 return distAbsPath
               })(),
             )
