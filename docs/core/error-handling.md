@@ -200,16 +200,23 @@ statics (and instance methods that delegate to them):
 
 ```tsx
 AppError.serializePublic(error)
-// => { name, message, code? , redirect? }   ← what an untrusted client may see
+// => { message, code?, redirect? }   ← what an untrusted client may see
 
 AppError.serializePrivate(error)
-// => { name, message, code?, status?, meta?, stack?, redirect?, cause? }  ← the operator view
+// => { message, code?, status?, meta?, stack?, redirect?, cause? }  ← the operator view
 ```
 
 `serializePublic` **never** emits a stack, `status`, `meta`, or the cause chain
-— regardless of environment. `serializePrivate` is the full picture: identity,
+— regardless of environment. `serializePrivate` is the full picture: `status`,
 stack, `meta` (JSON-roundtripped; silently dropped if not serializable), and the
 whole `cause` chain.
+
+Neither projection carries the **class name**. Every error is coerced to one
+class (`ErrorPoint0`, or your `.errorClass`), so the name is a constant that
+identifies nothing; the receiver reconstructs an error from the fields it
+recognizes (`from()` type-checks each one), not from a name. Each link of the
+private `cause` chain still keeps its own native name — there a `TypeError` vs a
+`RangeError` is real signal for the operator.
 
 The serializer itself never reads the environment — **the caller picks the
 audience by env**. The rule everywhere:
@@ -244,8 +251,8 @@ console.error({
 
 There's also a safety net: `ErrorPoint0` defines a non-enumerable `toJSON` that
 returns the **public** projection. So an accidental `JSON.stringify` of a
-payload that happens to carry an error leaks only `{ name, message, code? }`,
-never the stack or meta:
+payload that happens to carry an error leaks only `{ message, code? }`, never
+the stack or meta:
 
 ```tsx
 JSON.stringify({ error: new ErrorPoint0('x', { meta: { secret: 1 } }) })
@@ -462,11 +469,11 @@ HTML.) Two rules that follow:
 
 ### Static methods (the `.errorClass` contract)
 
-| Static                    | Returns                                                               | Use                                           |
-| ------------------------- | --------------------------------------------------------------------- | --------------------------------------------- |
-| `from(error: unknown)`    | an instance                                                           | coerce anything thrown into the class         |
-| `serializePublic(error)`  | `{ name, message, code?, redirect? }`                                 | untrusted client / production wire — no stack |
-| `serializePrivate(error)` | `{ name, message, code?, status?, meta?, stack?, redirect?, cause? }` | logs / development — full view                |
+| Static                    | Returns                                                         | Use                                           |
+| ------------------------- | --------------------------------------------------------------- | --------------------------------------------- |
+| `from(error: unknown)`    | an instance                                                     | coerce anything thrown into the class         |
+| `serializePublic(error)`  | `{ message, code?, redirect? }`                                 | untrusted client / production wire — no stack |
+| `serializePrivate(error)` | `{ message, code?, status?, meta?, stack?, redirect?, cause? }` | logs / development — full view                |
 
 Instance methods `error.serializePublic()` / `error.serializePrivate()` delegate
 to the statics.

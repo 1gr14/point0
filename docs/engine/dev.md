@@ -447,7 +447,6 @@ await engine.dev({
 | `POINT0_DEV_RESTART_GRACE_MS`         | `1500`  | Per-respawn SIGTERM → SIGKILL grace.                                                     |
 | `POINT0_DEV_SERVER_HOT_RESTART_EVERY` | `200`   | Restart instead of hot-swap every Nth reload, to release Bun's module cache (`0` = off). |
 | `POINT0_DEV_SERVER_HOT_GC_GRACE_MS`   | `30000` | Disk-GC grace before sweeping stale store files.                                         |
-| `POINT0_DEV_SERVER_TOUCH_ON_WATCH`    | `false` | Restart by touching the entry's bytes instead of respawning.                             |
 
 `POINT0_DEV_CHILD` and `POINT0_DEV_STORE_DIR` are set internally by the
 orchestrator on the server child (they mark it as orchestrator-owned and hand it

@@ -55,6 +55,11 @@ The scaffolder checks for Bun first. With `-I` and no Bun on `PATH`, it errors
 out (`Bun is required but was not found in PATH`). Interactively, it offers to
 install Bun globally with `npm install -g bun` before continuing.
 
+`bun create point0-app` is the only supported entry point — there's no `npx` /
+`pnpm dlx` / `yarn create` equivalent. Those would resolve the
+`create-point0-app` bin, but both the scaffolder and the app it writes run on
+Bun, so they'd dead-end the moment you tried to use the result.
+
 ### Bun or Vite — pick at scaffold time
 
 The `--vite` choice changes which files you get. The two are mutually exclusive:
@@ -341,7 +346,10 @@ scaffolded `bunfig.toml` sets `[run] noOrphans = true`. Together they tie the
 whole process tree to its launcher: close the terminal and the dev server (and
 all its children) exits with it — no orphaned servers holding ports.
 
-<!-- TODO(low): `--no-orphans` needs Bun >= 1.3.14 (the template pins `@types/bun` to `^1.3.14`), but the generated app declares no `engines` floor. Decide whether to add an `engines` requirement and document the minimum Bun version. -->
+`--no-orphans` landed in **Bun 1.3.14**, so that's the floor — the generated
+`package.json` declares it as `"engines": { "bun": ">=1.3.14" }`. On an older
+Bun the dev server still runs, but it can leak orphaned processes that keep
+holding ports; upgrade with `bun upgrade`.
 
 ## Reference
 
@@ -374,5 +382,3 @@ all its children) exits with it — no orphaned servers holding ports.
 | `src/app.client.tsx`   | React app shell (providers + router), default export       |
 | `src/index.client.tsx` | browser entry; `mount(<App/>, points)`                     |
 | `src/index.html`       | HTML template with `#root` + the client `<script>`         |
-
-<!-- TODO(low): only `bun create point0-app` is documented. `npx` / `pnpm dlx` / `yarn create` would technically resolve the bin, but the scaffolder and the generated app both require Bun, so list alternatives only if we decide to support them. -->

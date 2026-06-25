@@ -27,7 +27,7 @@ describe('ErrorPoint0 meta & code', () => {
 })
 
 describe('ErrorPoint0 serializePublic / serializePrivate', () => {
-  it('serializePublic carries identity and code, never stack, meta, or cause', () => {
+  it('serializePublic carries message and code, never the class name, stack, meta, or cause', () => {
     const error = new ErrorPoint0('boom', {
       code: 'POINT0_TEST',
       status: 500,
@@ -35,21 +35,22 @@ describe('ErrorPoint0 serializePublic / serializePrivate', () => {
       cause: new Error('inner'),
     })
     const json = ErrorPoint0.serializePublic(error)
-    expect(json).toEqual({ name: 'ErrorPoint0', message: 'boom', code: 'POINT0_TEST' })
+    expect(json).toEqual({ message: 'boom', code: 'POINT0_TEST' })
+    expect('name' in json).toBe(false)
   })
 
-  it('serializePrivate carries name, code, status, json-safe meta, stack, and the cause chain', () => {
+  it('serializePrivate carries message, code, status, json-safe meta, stack, and the cause chain', () => {
     const deep = new Error('deep')
     const inner = new Error('inner', { cause: deep })
     const error = new ErrorPoint0('boom', { code: 'POINT0_TEST', status: 502, meta: { a: { b: 2 } }, cause: inner })
     const json = ErrorPoint0.serializePrivate(error)
     expect(json).toMatchObject({
-      name: 'ErrorPoint0',
       message: 'boom',
       code: 'POINT0_TEST',
       status: 502,
       meta: { a: { b: 2 } },
     })
+    expect('name' in json).toBe(false)
     expect(typeof json.stack).toBe('string')
     const cause = json.cause as Record<string, unknown>
     expect(cause).toMatchObject({ name: 'Error', message: 'inner' })
@@ -78,7 +79,7 @@ describe('ErrorPoint0 serializePublic / serializePrivate', () => {
   it('JSON.stringify uses the public projection (toJSON safety net)', () => {
     const error = new ErrorPoint0('boom', { code: 'POINT0_TEST', meta: { secret: 1 } })
     const parsed = JSON.parse(JSON.stringify({ error })) as { error: Record<string, unknown> }
-    expect(parsed.error).toEqual({ name: 'ErrorPoint0', message: 'boom', code: 'POINT0_TEST' })
+    expect(parsed.error).toEqual({ message: 'boom', code: 'POINT0_TEST' })
   })
 
   it('instance methods mirror the statics', () => {

@@ -744,24 +744,17 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
      */
     devStore?: { storeDir: string; entries: string[]; appSrcDir: string }
   }): Promise<void> {
-    // The server child runs under `bun --watch` (see the spawn below). That matters twice: bun reloads it in-process on
-    // change, and — crucially for the dev lifecycle — it keeps the child ALIVE (printing the error) when the code
-    // throws, instead of letting the process exit. So a developer's syntax/runtime error never makes `child.exited`
-    // resolve, and the unexpected-exit teardown is never tripped by a code error you can just fix. On top of bun's own
-    // watch, the orchestrator watches the entry's deep-import graph and forces a restart there:
-    // - respawn (default): SIGKILL the child and spawn a fresh one (marked in `intentionalKills` so its exit is not
-    //   mistaken for a crash).
-    // - touch (POINT0_DEV_SERVER_TOUCH_ON_WATCH=true): rewrite the entry file's bytes so bun's own watcher restarts it.
-    //
-    // Hot mode (`devStore` set) keeps `--watch` on, and it lands exactly where we want: bun's watcher only sees the
-    // entry's STATIC import graph — i.e. the boot/cold chain (`*.server.ts` -> engine -> env) — while the points/pages
-    // are reached DYNAMICALLY through the store (`import(storeFile)` per request) and are invisible to it (bun#5844).
-    // So `--watch` gives the cold chain its restart-on-edit + keep-alive-on-crash for free, and never fights the
-    // hot-swap. The orchestrator's import-graph watcher still owns the decision per change: a HOT file (in the point
-    // store) -> rebuild the store + bump the manifest, NO restart (the child re-imports the fresh aggregator on its
-    // next request, with no React tear); anything else (the cold-marker/cold-config subtree, the boot entry, files
-    // outside the store) -> a full child restart.
-    const useTouch = process.env.POINT0_DEV_SERVER_TOUCH_ON_WATCH === 'true'
+    // The orchestrator is the sole watcher. The server child runs as a plain `bun run` (see the spawn below for why
+    // NEVER `bun --watch`), and this orchestrator owns every restart. It watches the entry's deep-import graph — deep,
+    // because in hot mode the points/pages are reached DYNAMICALLY through the store (`import(storeFile)` per request)
+    // and a shallow watcher would miss them (bun#5844). On a change it decides per file:
+    // - respawn: SIGKILL the child and spawn a fresh one (marked in `intentionalKills` so its exit is not mistaken for a
+    //   crash). This is the restart for anything on the cold/boot chain (`*.server.ts` -> engine -> env), the
+    //   cold-marker/cold-config subtree, or any file outside the store.
+    // - hot-swap (hot mode only): a HOT file in the point store -> rebuild the store + bump the manifest, NO restart
+    //   (the child re-imports the fresh aggregator on its next request, with no React tear).
+    // A code error the developer can just fix makes the child exit on its own; the unexpected-exit handler drops the
+    // corpse and the next save respawns it.
 
     const activeEntries = Object.values(this.entry || []).filter((entryFile) => entriesFiles.includes(entryFile))
 
@@ -806,10 +799,10 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     // flips the live aggregators. See ServerHotStore.
     // Hot mode initial store build. A failure here (a compile error in the points graph; an un-flattenable import in an
     // aggregator) must NOT tear the dev tree down — that would break "infinite dev" (you'd re-run `point0 dev` for every
-    // typo). Instead mirror what `bun --watch` does for a crashing boot entry: log the cause and keep the orchestrator +
-    // file watcher ALIVE, DEFERRING the server child until a save fixes the build. `storeReady` gates the first spawn;
-    // the watcher below retries the build on every change and starts the server the moment it succeeds. (Non-hot dev has
-    // no store, so it's always "ready" and spawns immediately — bun --watch keeps a crashing child alive on its own.)
+    // typo). Instead, log the cause and keep the orchestrator + file watcher ALIVE, DEFERRING the server child until a
+    // save fixes the build. `storeReady` gates the first spawn; the watcher below retries the build on every change and
+    // starts the server the moment it succeeds. (Non-hot dev has no store, so it's always "ready" and spawns
+    // immediately — there's nothing to build, hence nothing to defer.)
     let storeReady = true
     if (hotStore) {
       try {
@@ -970,12 +963,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       return precise
     }
 
-    const touchEntry = async (entryFile: string): Promise<void> => {
-      const original = await nodeFs.readFile(entryFile)
-      await nodeFs.writeFile(entryFile, Buffer.concat([original, Buffer.from('\n')]))
-      await nodeFs.writeFile(entryFile, original)
-    }
-
     // Stop a child the way the tree-wide teardown does: catchable SIGTERM first, a grace window for the app's own
     // shutdown hooks, SIGKILL only for a straggler. The exit is marked intentional BEFORE the signal so it can never
     // race the unexpected-exit handler.
@@ -1014,8 +1001,6 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       childByEntry.set(entryFile, spawnEntry(entryFile))
     }
 
-    const restartEntry = useTouch ? touchEntry : respawnEntry
-
     // Per-entry restart scheduler: at most ONE restart queued at a time, executed strictly one after another. A burst
     // of save events (an agent editing many files back-to-back) requests many restarts; the first waits SETTLE ms (so
     // the burst's tail joins it) and the rest coalesce into it — the entry restarts ONCE per burst, never N times, and
@@ -1039,7 +1024,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
           return
         }
         try {
-          await restartEntry(entryFile)
+          await respawnEntry(entryFile)
         } catch (error) {
           this.log({
             level: 'error',

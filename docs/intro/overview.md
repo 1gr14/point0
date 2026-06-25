@@ -2946,10 +2946,10 @@ export const root = Point0.lets.root().errorClass(AppError).root()
 An error travels from the server to the client, and we don't want to leak the
 stack and the internals. That's why, when an error is passed, it's serialized in
 two different ways: `serializePublic` in production (the client sees only what's
-safe — name, message, code, redirect) and `serializePrivate` in dev mode
-(everything is visible — stack, meta, status). The full, private version always
-goes to the logs. So in production the user won't see anything extra, while you
-see everything in the logs.
+safe — message, code, redirect) and `serializePrivate` in dev mode (everything
+is visible — stack, meta, status). The full, private version always goes to the
+logs. So in production the user won't see anything extra, while you see
+everything in the logs.
 
 Read more in the docs [about error handling](error-handling).
 

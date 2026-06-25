@@ -120,18 +120,21 @@ export class ErrorPoint0 extends Error {
     return error0
   }
 
-  // The two audiences, named. Public — what an untrusted client may see: never a stack, never
-  // meta, regardless of env (the caller picks the projection per env, not the serializer).
+  // The two audiences. Public — what an untrusted client may see: message, code, and an optional
+  // redirect; never a stack, never meta, regardless of env (the caller picks the projection per env,
+  // not the serializer). The class name is omitted: every error is coerced to this one class, so the
+  // name carries nothing, and `from()` reconstructs by field type — it never reads it.
   static serializePublic(error: ErrorPoint0): Record<string, unknown> {
     return {
-      name: error.name,
       message: error.message,
       ...(error.code ? { code: error.code } : {}),
       ...(error.redirect ? { redirect: error.redirect.serialize() } : {}),
     }
   }
 
-  // Private — the full operator view (logs, dev tooling): identity, stack, meta, cause chain.
+  // Private — the full operator view (logs, dev tooling): message, code, status, meta, stack, and the
+  // cause chain (each link keeps its own native name). The top-level class name is omitted for the same
+  // reason as the public projection — it's a constant, and the stack already carries it.
   static serializePrivate(error: ErrorPoint0): Record<string, unknown> {
     const meta = (() => {
       if (!error.meta) {
@@ -145,7 +148,6 @@ export class ErrorPoint0 extends Error {
     })()
     const cause = serializeCauseChainForLog((error as { cause?: unknown }).cause)
     return {
-      name: error.name,
       message: error.message,
       ...(error.code ? { code: error.code } : {}),
       ...(error.status ? { status: error.status } : {}),

@@ -269,9 +269,10 @@ const stackToShow = _point0_env.mode.is.production
   : stack || error.stack
 ```
 
-- **Production** uses `serializePublic` → `{ name, message, code?, redirect? }`.
-  No stack, no meta. The stack is never written into the HTML the client
-  receives. (When there is no stack, nothing is rendered — no empty `<pre>`.)
+- **Production** uses `serializePublic` → `{ message, code?, redirect? }`. No
+  stack, no meta, no class name. The stack is never written into the HTML the
+  client receives. (When there is no stack, nothing is rendered — no empty
+  `<pre>`.)
 - **Development** uses `serializePrivate` → the full chain (`status`, `meta`,
   `stack`, `cause`, …) and renders the stack in a `<pre>`.
 - **Logs always use `serializePrivate`**, regardless of environment — so the

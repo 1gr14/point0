@@ -352,7 +352,7 @@ describe('action', () => {
     const result = await engine.fetch(request)
     const json = await result.json()
     delete json.stack
-    expect(json).toEqual({ name: 'ErrorPoint0', message: 'Not Found', code: 'POINT0_NOT_FOUND', status: 404 })
+    expect(json).toEqual({ message: 'Not Found', code: 'POINT0_NOT_FOUND', status: 404 })
   })
 
   it('can be infinite query', async () => {

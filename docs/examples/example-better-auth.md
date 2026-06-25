@@ -24,6 +24,12 @@ run server-side only, so the handler body never reaches the browser bundle:
 .middleware('/api/auth/*', async ({ request }) => await authServer.handler(request.original))
 ```
 
+That one mount hands every `/api/auth/*` request to Better Auth's handler, so
+its whole endpoint set — `sign-in/email`, `sign-up/email`, `get-session`, and
+the rest — is served without you declaring any of them. The full list is owned
+by Better Auth, not this repo: see its
+[API reference](https://www.better-auth.com/docs/concepts/api).
+
 Second, gating is a [plugin](plugin). A plugin bundles [`.ctx`](ctx) (server)
 and [`.with`](with) (render, client + SSR), so one `.use(...)` protects a point
 on both sides:
@@ -60,8 +66,6 @@ plugin, marked public so it survives serialization), and the error component
 branches on it — `UNAUTHORIZED` renders a sign-in link, `FORBIDDEN` shows the
 message. See [`.middleware`](middleware), [`.with`](with), [Plugin](plugin),
 [Env](env), and [Error handling](error-handling) for the mechanics.
-
-<!-- TODO(low): the exact endpoints under /api/auth/* (sign-in/email, get-session, …) live inside Better Auth, not this repo — link the Better Auth docs for the full list. -->
 
 ## Running it
 

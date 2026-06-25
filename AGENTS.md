@@ -124,5 +124,6 @@ Inside an example: `bun run dev | build | start | generate`.
   command, an endpoint, observable behavior, the compiler's strip categories. If
   so, update the matching `docs/<category>/<slug>.md` page **and** its JSDoc
   (they must stay in sync), and re-check the `<!-- TODO(...) -->` markers. How
-  the docs are structured and written: [dev/docs/docs.md](dev/docs/docs.md); the
-  open backlog: [dev/backlog/docs-todo.md](dev/backlog/docs-todo.md).
+  the docs are structured and written: [dev/docs/docs.md](dev/docs/docs.md) — it
+  covers the `<!-- TODO -->` markers and the extractor that collects them into a
+  `dev/backlog/docs-todo.md` on demand (no file in the tree when none are open).

@@ -87,6 +87,24 @@ A page that started life as a bare `index.html` and fetched on the client ends
 up identical to its SSR'd version. SSR changes _when_ the data arrives (with the
 HTML vs. after a client fetch), not the final result.
 
+The HTML ships **whole**. Point0 waits for the entire React tree
+(`stream.allReady`) before it sends a byte — there's no progressive,
+Suspense-boundary streaming and no out-of-order chunks. That's the intent: if
+you turned SSR on, you asked for the finished page in the first response, and
+streaming a half-built page full of spinners would undo that. When you _do_ want
+a slow part to load in pieces, reach for the explicit tools instead — turn SSR
+off so the whole page fetches on the client (`ssr: false`), or mark just that
+part client-only with `.clientOnly()` / `<ClientOnly>`
+([below](#turning-ssr-off)), so SSR ships its fallback and the real content
+mounts after hydration. React Server Components aren't supported either — not a
+current goal. Point0's render-to-discover SSR already fetches on the server and
+strips server-only code from the client bundle; we don't see much additional
+value in RSC on top of that. If you do have a concrete picture of what RSC would
+unlock here — why you need it and who it would help — we're open to the likely
+first step: letting a `.loader()` return React elements directly. Spell out that
+motivation in a [GitHub issue](https://github.com/1gr14/point0) — who it helps
+and why the current model isn't enough.
+
 When the server render throws (anything that isn't a [redirect](navigation)),
 the engine falls back to serving the bare `index.html` with the error attached —
 the page still loads as an SPA instead of 500-ing.
@@ -538,5 +556,3 @@ delay, default 30ms), or per `<Link>` / `navigate`. When you set none of them,
 the policy is `'none'` — no prefetch. The `pageDehydratedState*` ones require
 SSR. Resolution and link wiring are on [navigation](navigation); the setter gist
 is in [stage-methods](stage-methods).
-
-<!-- TODO(low): Point0 waits for the full tree (`stream.allReady`) before shipping HTML — no progressive / Suspense-boundary streaming, and RSC is unsupported. Document the non-streaming model once it's confirmed as an intentional, stable guarantee. -->

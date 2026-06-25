@@ -228,5 +228,3 @@ by hand. See [generator](generator) for how it's produced and
 | Point name            | read from the variable | passed explicitly           |
 | Runs at runtime as-is | no — rewritten         | yes                         |
 | Used in these docs    | yes (default)          | only where a name is pinned |
-
-<!-- TODO(low): the claim "everything is a point" covers every building block you author with `.lets`. Point0 also has non-point primitives (env, error, navigation, eventer, super-store) — scope the claim to the authored surface, not *literally* everything. -->

@@ -378,10 +378,9 @@ export const adminExportAction = root.lets
 - **A missing action returns 404.** Fetching a route whose point isn't
   registered (deleted on the server, stale client) returns a `404`. The body's
   shape follows the environment: development gets the **private** projection
-  (`{ name, message, code, status, stack, … }`), production the **public** one
-  (`{ name, message, code }`, dropping `status`, `stack`, and `meta`). So in
-  production the body is
-  `{ name: 'ErrorPoint0', message: 'Not Found', code: 'POINT0_NOT_FOUND' }`.
+  (`{ message, code, status, stack, … }`), production the **public** one
+  (`{ message, code }`, dropping `status`, `stack`, and `meta`). So in
+  production the body is `{ message: 'Not Found', code: 'POINT0_NOT_FOUND' }`.
 
 - **A preset `rawBody` wins.** If a middleware sets `request.rawBody` before
   body parsing, point0 uses it and leaves `request.original.bodyUsed` `false` —

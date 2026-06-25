@@ -215,9 +215,10 @@ never renders on the site:
 
 A pure **coverage gap** (the behavior is correct but lacks a test) does NOT
 belong in the docs — record it in **`dev/backlog/add-tests.md`** instead, and
-state the behavior plainly in the page. Markers collect, sorted, in
-**`dev/backlog/docs-todo.md`** (regenerate with the extractor below after page
-edits):
+state the behavior plainly in the page. When any markers exist, collect them —
+sorted by priority — into **`dev/backlog/docs-todo.md`** with the extractor
+below. It's a generated artifact: there's no such file in the tree when no
+markers are open (the current state).
 
 ```sh
 # from the worktree root
