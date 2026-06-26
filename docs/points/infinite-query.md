@@ -308,14 +308,16 @@ export const addIdeaMutation = root.lets
   .loader(async ({ input }) => ({ ideaId: await createIdea(input) }))
   .mutation({
     onSuccess: async ({ ideaId }) => {
-      void ideaListPage.invalidateInfiniteQuery() // refetch the list
+      void ideaListPage.invalidateInfiniteQuery(true) // refetch the list
     },
   })
 ```
 
-Like the finite helpers, the infinite cache helpers are **exact-key**: they
-target the precise input you pass. To match many inputs at once, use
-`getInfiniteQueriesCache(true)` or a predicate.
+Like the finite helpers, the infinite cache mutators (`invalidateInfiniteQuery`,
+`refetchInfiniteQuery`, `removeInfiniteQuery`, `resetInfiniteQuery`,
+`cancelInfiniteQuery`) take an exact input, a predicate `(input) => boolean`, or
+`true` for every entry of the infinite query regardless of input —
+`invalidateInfiniteQuery(true)` invalidates all of them.
 
 ## Reference
 
@@ -383,25 +385,25 @@ a client-loader-only infinite query only the server-fetch trio (`fetchServer`,
 `fetchServerDetailed`, `getFetchServerOptions`) drops off; `fetch`,
 `useInfiniteQuery`, and the cache/fetch helpers all stay.
 
-| Method                    | Signature                                      | Returns                             |
-| ------------------------- | ---------------------------------------------- | ----------------------------------- |
-| `useInfiniteQuery`        | `(input?, infiniteOptions?, options?)`         | TanStack infinite result            |
-| `fetchInfiniteQuery`      | `(input?, infiniteOptions?, options?)`         | `Promise<InfiniteData>`             |
-| `prefetchInfiniteQuery`   | `(input?, infiniteOptions?, options?)`         | `Promise<void>`                     |
-| `ensureInfiniteQueryData` | `(input?, infiniteOptions?, options?)`         | `Promise<InfiniteData>`             |
-| `getInfiniteQueryData`    | `(input?, options?)`                           | `InfiniteData \| undefined`         |
-| `setInfiniteQueryData`    | `(input?, updater, setDataOptions?, options?)` | the new `InfiniteData`              |
-| `refetchInfiniteQuery`    | `(input?, refetchOptions?, options?)`          | `Promise<void>`                     |
-| `invalidateInfiniteQuery` | `(input?, invalidateOptions?, options?)`       | `Promise<void>`                     |
-| `cancelInfiniteQuery`     | `(input?, cancelOptions?, options?)`           | `Promise<void>`                     |
-| `removeInfiniteQuery`     | `(input?, options?)`                           | `void`                              |
-| `resetInfiniteQuery`      | `(input?, resetOptions?, options?)`            | `Promise<void>`                     |
-| `getInfiniteQueryState`   | `(input?, options?)`                           | TanStack query state `\| undefined` |
-| `getInfiniteQueryCache`   | `(input?, options?)`                           | the `Query \| undefined`            |
-| `getInfiniteQueriesCache` | `(input \| predicate \| true, options?)`       | `Query[]`                           |
-| `getInfiniteQueryOptions` | `(input?, infiniteOptions?, options?)`         | fully built infinite options        |
-| `getInfiniteQueryKey`     | `(input?, options?)`                           | the infinite `QueryKey` tuple       |
-| `getQueryKey`             | `(input?, options?)`                           | the finite `QueryKey` tuple         |
+| Method                    | Signature                                                    | Returns                             |
+| ------------------------- | ------------------------------------------------------------ | ----------------------------------- |
+| `useInfiniteQuery`        | `(input?, infiniteOptions?, options?)`                       | TanStack infinite result            |
+| `fetchInfiniteQuery`      | `(input?, infiniteOptions?, options?)`                       | `Promise<InfiniteData>`             |
+| `prefetchInfiniteQuery`   | `(input?, infiniteOptions?, options?)`                       | `Promise<void>`                     |
+| `ensureInfiniteQueryData` | `(input?, infiniteOptions?, options?)`                       | `Promise<InfiniteData>`             |
+| `getInfiniteQueryData`    | `(input?, options?)`                                         | `InfiniteData \| undefined`         |
+| `setInfiniteQueryData`    | `(input?, updater, setDataOptions?, options?)`               | the new `InfiniteData`              |
+| `refetchInfiniteQuery`    | `(input \| predicate \| true, refetchOptions?, options?)`    | `Promise<void>`                     |
+| `invalidateInfiniteQuery` | `(input \| predicate \| true, invalidateOptions?, options?)` | `Promise<void>`                     |
+| `cancelInfiniteQuery`     | `(input \| predicate \| true, cancelOptions?, options?)`     | `Promise<void>`                     |
+| `removeInfiniteQuery`     | `(input \| predicate \| true, options?)`                     | `void`                              |
+| `resetInfiniteQuery`      | `(input \| predicate \| true, resetOptions?, options?)`      | `Promise<void>`                     |
+| `getInfiniteQueryState`   | `(input?, options?)`                                         | TanStack query state `\| undefined` |
+| `getInfiniteQueryCache`   | `(input?, options?)`                                         | the `Query \| undefined`            |
+| `getInfiniteQueriesCache` | `(input \| predicate \| true, options?)`                     | `Query[]`                           |
+| `getInfiniteQueryOptions` | `(input?, infiniteOptions?, options?)`                       | fully built infinite options        |
+| `getInfiniteQueryKey`     | `(input?, options?)`                                         | the infinite `QueryKey` tuple       |
+| `getQueryKey`             | `(input?, options?)`                                         | the finite `QueryKey` tuple         |
 
 ### The infinite query key
 

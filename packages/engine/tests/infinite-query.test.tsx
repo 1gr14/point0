@@ -364,17 +364,56 @@ describe('infinityQuery', () => {
       expect(q.getInfiniteQueryCache(input, options)?.state.data).toEqual(updated)
       const allCached = q.getInfiniteQueriesCache(true, options)
       expect(allCached.length).toBe(1)
-      expect((q.getInfiniteQueryState(input, options) as any)?.data).toEqual(updated)
+      expect(q.getInfiniteQueryState(input, options)?.data).toEqual(updated)
 
       await q.refetchInfiniteQuery(input, undefined, options)
       await q.cancelInfiniteQuery(input, undefined, options)
       await q.invalidateInfiniteQuery(input, undefined, options)
-      expect((q.getInfiniteQueryState(input, options) as any)?.isInvalidated).toBe(true)
+      expect(q.getInfiniteQueryState(input, options)?.isInvalidated).toBe(true)
       await q.resetInfiniteQuery(input, undefined, options)
       expect(q.getInfiniteQueryData(input, options)).toBeUndefined()
 
       q.removeInfiniteQuery(input, options)
       expect(q.getInfiniteQueryData(input, options)).toBeUndefined()
+      expect(q.getInfiniteQueriesCache(true, options)).toEqual([])
+    })
+
+    it('invalidateInfiniteQuery(true) / removeInfiniteQuery(true) act across inputs', async () => {
+      const root = createRoot()
+      const q = root
+        .lets('infiniteQuery', 'helpers-invalidate-all')
+        .sharedInput(z.object({ q: z.string(), cursor: z.number().optional() }))
+        .clientLoader(({ input }) => ({
+          items: [{ id: 1, name: input.q }],
+          nextCursor: undefined as number | undefined,
+        }))
+        .infiniteQuery({
+          pageParamFromInput: 'cursor',
+          getNextPageParam: (lastPage) => lastPage.nextCursor,
+          initialPageParam: 0,
+        })
+      const queryClient = new QueryClient()
+      const options = { queryClient, mode: 'client' as const }
+
+      await q.fetchInfiniteQuery({ q: 'a' }, undefined, options)
+      await q.fetchInfiniteQuery({ q: 'b' }, undefined, options)
+      await q.fetchInfiniteQuery({ q: 'c' }, undefined, options)
+      expect(q.getInfiniteQueriesCache(true, options).length).toBe(3)
+
+      // true → every entry of this infinite query
+      await q.invalidateInfiniteQuery(true, undefined, options)
+      expect(q.getInfiniteQueryState({ q: 'a' }, options)?.isInvalidated).toBe(true)
+      expect(q.getInfiniteQueryState({ q: 'b' }, options)?.isInvalidated).toBe(true)
+      expect(q.getInfiniteQueryState({ q: 'c' }, options)?.isInvalidated).toBe(true)
+
+      // predicate targets one input
+      await q.fetchInfiniteQuery({ q: 'a' }, undefined, options)
+      q.removeInfiniteQuery((i) => i.q === 'b', options)
+      expect(q.getInfiniteQueryData({ q: 'b' }, options)).toBeUndefined()
+      expect(q.getInfiniteQueriesCache(true, options).length).toBe(2)
+
+      // true removes the rest
+      q.removeInfiniteQuery(true, options)
       expect(q.getInfiniteQueriesCache(true, options)).toEqual([])
     })
   })

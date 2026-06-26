@@ -21,6 +21,7 @@ import type {
   MutationOptions,
   Query,
   QueryClient,
+  QueryFilters,
   QueryState,
   RefetchOptions,
   ResetOptions,
@@ -9507,6 +9508,15 @@ export class Point0<
     } as never
   }
 
+  /**
+   * Build the fully-resolved infinite-query options for an input — `queryKey`, `queryFn`, `getNextPageParam`,
+   * `initialPageParam`, and merged defaults — ready to hand to react-query's `useInfiniteQuery` / `queryClient`
+   * directly.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   getInfiniteQueryOptions(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -10071,6 +10081,38 @@ export class Point0<
   }
 
   /**
+   * Build the TanStack `QueryFilters` used by the cache-acting methods (invalidate / remove / reset / cancel /
+   * refetch).
+   *
+   * Two shapes, picked from `input`:
+   *
+   * - an exact input (object / `undefined` / omitted) → an exact-key filter (`{ queryKey, exact: true }`), the precise
+   *   single-entry match the methods have always used;
+   * - a predicate `(input) => boolean` or `true` → a predicate filter built from {@link _getQueryPredicate}, matching many
+   *   entries of this point regardless of input (`true` = every entry).
+   */
+  _getQueryFilters({
+    input,
+    outputType,
+    finiteOrInfinite,
+  }: {
+    input: InputRaw | ((input: InputRaw) => boolean) | true | undefined
+    outputType?: FetchServerOutputType
+    finiteOrInfinite: 'finite' | 'infinite'
+  }): QueryFilters {
+    if (input === true || typeof input === 'function') {
+      return {
+        predicate: this._getQueryPredicate({ outputType, input, finiteOrInfinite }),
+      }
+    }
+    const queryKey =
+      finiteOrInfinite === 'infinite'
+        ? this.getInfiniteQueryKey(input as never, { outputType })
+        : this.getQueryKey(input as never, { outputType })
+    return { queryKey, exact: true }
+  }
+
+  /**
    * Imperatively fetch and cache the query, outside React — input first, returns a `Promise` of the data. Reads the
    * cache if fresh; otherwise runs the loader. Use it in event handlers, loaders, or other queries.
    *
@@ -10186,31 +10228,51 @@ export class Point0<
   }
 
   /**
-   * Force a refetch of the exact-input query, ignoring staleness (`Promise<void>`). Exact-key — pass the same input you
-   * queried with.
+   * Force a refetch of this query, ignoring staleness (`Promise<void>`). Target by exact input, by a predicate `(input)
+   * => boolean`, or pass `true` to refetch every entry of this query regardless of input.
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaQuery.refetchQuery({ id: 1 }) // exact input
+   *     ideaQuery.refetchQuery((i) => i.id > 10) // predicate
+   *     ideaQuery.refetchQuery(true) // every entry of this query
    *
    * Full reference: https://1gr14.dev/point0/latest/query
    */
   async refetchQuery(
-    input: FinalInputRawOrUndefinedOrVoid<
-      TPointType,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema
-    >,
+    input:
+      | FinalInputRawOrUndefinedOrVoid<
+          TPointType,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema
+        >
+      | ((
+          input: FinalInputRaw<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+        ) => boolean)
+      | true,
     refetchOptions?: RefetchOptions,
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
-    const queryKey = this.getQueryKey(input, options)
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    await queryClient.refetchQueries({ queryKey, exact: true }, refetchOptions)
+    const filters = this._getQueryFilters({
+      input: input as never,
+      outputType: options?.outputType,
+      finiteOrInfinite: 'finite',
+    })
+    await queryClient.refetchQueries(filters, refetchOptions)
   }
 
   /**
@@ -10369,115 +10431,210 @@ export class Point0<
   }
 
   /**
-   * Cancel any in-flight fetch for the exact-input query (`Promise<void>`) — typically before an optimistic
-   * `setQueryData` so a racing response doesn't clobber it. Exact-key.
+   * Cancel any in-flight fetch for this query (`Promise<void>`) — typically before an optimistic `setQueryData` so a
+   * racing response doesn't clobber it. Target by exact input, by a predicate `(input) => boolean`, or pass `true` to
+   * cancel every entry of this query regardless of input.
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaQuery.cancelQuery({ id: 1 }) // exact input
+   *     ideaQuery.cancelQuery((i) => i.id > 10) // predicate
+   *     ideaQuery.cancelQuery(true) // every entry of this query
    *
    * Full reference: https://1gr14.dev/point0/latest/query
    */
   async cancelQuery(
-    input: FinalInputRawOrUndefinedOrVoid<
-      TPointType,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema
-    >,
+    input:
+      | FinalInputRawOrUndefinedOrVoid<
+          TPointType,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema
+        >
+      | ((
+          input: FinalInputRaw<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+        ) => boolean)
+      | true,
     cancelOptions?: CancelOptions,
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
-    const queryKey = this.getQueryKey(input, options)
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    await queryClient.cancelQueries({ queryKey, exact: true }, cancelOptions)
+    const filters = this._getQueryFilters({
+      input: input as never,
+      outputType: options?.outputType,
+      finiteOrInfinite: 'finite',
+    })
+    await queryClient.cancelQueries(filters, cancelOptions)
   }
 
   /**
-   * Mark the exact-input query stale and refetch it if active (`Promise<void>`) — the usual way to refresh after a
-   * mutation. Exact-key; to match many inputs use `getQueriesCache(true)` or a predicate.
+   * Mark this query stale and refetch it if active (`Promise<void>`) — the usual way to refresh after a mutation.
+   * Target by exact input, by a predicate `(input) => boolean`, or pass `true` to invalidate every entry of this query
+   * regardless of input.
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaQuery.invalidateQuery({ id: 1 }) // exact input
+   *     ideaQuery.invalidateQuery((i) => i.id > 10) // predicate
+   *     ideaQuery.invalidateQuery(true) // every entry of this query
    *
    * Full reference: https://1gr14.dev/point0/latest/query
    */
   async invalidateQuery(
-    input: FinalInputRawOrUndefinedOrVoid<
-      TPointType,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema
-    >,
+    input:
+      | FinalInputRawOrUndefinedOrVoid<
+          TPointType,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema
+        >
+      | ((
+          input: FinalInputRaw<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+        ) => boolean)
+      | true,
     invalidateOptions?: InvalidateOptions,
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
-    const queryKey = this.getQueryKey(input, options)
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    await queryClient.invalidateQueries({ queryKey, exact: true }, invalidateOptions)
+    const filters = this._getQueryFilters({
+      input: input as never,
+      outputType: options?.outputType,
+      finiteOrInfinite: 'finite',
+    })
+    await queryClient.invalidateQueries(filters, invalidateOptions)
   }
 
   /**
-   * Drop the exact-input query from the cache entirely (`void`) — no refetch, the entry is gone. Exact-key.
+   * Drop this query from the cache entirely (`void`) — no refetch, the entry is gone. Target by exact input, by a
+   * predicate `(input) => boolean`, or pass `true` to remove every entry of this query regardless of input.
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaQuery.removeQuery({ id: 1 }) // exact input
+   *     ideaQuery.removeQuery((i) => i.id > 10) // predicate
+   *     ideaQuery.removeQuery(true) // every entry of this query
    *
    * Full reference: https://1gr14.dev/point0/latest/query
    */
   removeQuery(
-    input: FinalInputRawOrUndefinedOrVoid<
-      TPointType,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema
-    >,
+    input:
+      | FinalInputRawOrUndefinedOrVoid<
+          TPointType,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema
+        >
+      | ((
+          input: FinalInputRaw<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+        ) => boolean)
+      | true,
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
     },
   ): void {
-    const queryKey = this.getQueryKey(input, options)
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    queryClient.removeQueries({ queryKey, exact: true })
+    const filters = this._getQueryFilters({
+      input: input as never,
+      outputType: options?.outputType,
+      finiteOrInfinite: 'finite',
+    })
+    queryClient.removeQueries(filters)
   }
 
   /**
-   * Reset the exact-input query to its initial state and refetch if active (`Promise<void>`) — clears data/error, not
-   * just staleness. Exact-key.
+   * Reset this query to its initial state and refetch if active (`Promise<void>`) — clears data/error, not just
+   * staleness. Target by exact input, by a predicate `(input) => boolean`, or pass `true` to reset every entry of this
+   * query regardless of input.
    *
    * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaQuery.resetQuery({ id: 1 }) // exact input
+   *     ideaQuery.resetQuery((i) => i.id > 10) // predicate
+   *     ideaQuery.resetQuery(true) // every entry of this query
    *
    * Full reference: https://1gr14.dev/point0/latest/query
    */
   async resetQuery(
-    input: FinalInputRawOrUndefinedOrVoid<
-      TPointType,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema
-    >,
+    input:
+      | FinalInputRawOrUndefinedOrVoid<
+          TPointType,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema
+        >
+      | ((
+          input: FinalInputRaw<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+        ) => boolean)
+      | true,
     resetOptions?: ResetOptions,
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
     },
   ): Promise<void> {
-    const queryKey = this.getQueryKey(input, options)
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    await queryClient.resetQueries({ queryKey, exact: true }, resetOptions)
+    const filters = this._getQueryFilters({
+      input: input as never,
+      outputType: options?.outputType,
+      finiteOrInfinite: 'finite',
+    })
+    await queryClient.resetQueries(filters, resetOptions)
   }
 
+  /**
+   * Imperatively fetch and cache the infinite query, outside React — input first, returns a `Promise` of the
+   * `InfiniteData` (`{ pages, pageParams }`). Reads the cache if fresh; otherwise runs the loader for the first page.
+   * Use it in event handlers, loaders, or other queries.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     const { pages } = await ideaFeed.fetchInfiniteQuery({ q })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   async fetchInfiniteQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -10508,6 +10665,14 @@ export class Point0<
     return (await queryClient.fetchInfiniteQuery(normalizedInfiniteQueryOptions)) as never
   }
 
+  /**
+   * Warm the infinite cache for an input without returning the data (`Promise<void>`) — fetches the first page only if
+   * not already cached. Ideal for prefetching on hover or before navigation.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   async prefetchInfiniteQuery(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -10538,6 +10703,14 @@ export class Point0<
     await queryClient.prefetchInfiniteQuery(normalizedInfiniteQueryOptions as never)
   }
 
+  /**
+   * Return the cached `InfiniteData` for an input if present, otherwise fetch it — like `fetchInfiniteQuery` but never
+   * refetches when data already exists. Returns a `Promise` of the data.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   async ensureInfiniteQueryData(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -10568,6 +10741,14 @@ export class Point0<
     return (await queryClient.ensureInfiniteQueryData(normalizedInfiniteQueryOptions)) as never
   }
 
+  /**
+   * Read this infinite query's cached `InfiniteData` for an input synchronously, without fetching — `undefined` if
+   * nothing is cached.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   getInfiniteQueryData(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -10587,15 +10768,39 @@ export class Point0<
     return queryClient.getQueryData(queryKey) as never
   }
 
+  /**
+   * Force a refetch of this infinite query, ignoring staleness (`Promise<void>`). Target by exact input, by a predicate
+   * `(input) => boolean`, or pass `true` to refetch every entry of this infinite query regardless of input.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaFeed.refetchInfiniteQuery({ q }) // exact input
+   *     ideaFeed.refetchInfiniteQuery((i) => i.q === 'react') // predicate
+   *     ideaFeed.refetchInfiniteQuery(true) // every entry of this infinite query
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   async refetchInfiniteQuery(
-    input: FinalInputRawOrUndefinedOrVoid<
-      TPointType,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema
-    >,
+    input:
+      | FinalInputRawOrUndefinedOrVoid<
+          TPointType,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema
+        >
+      | ((
+          input: FinalInputRaw<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+        ) => boolean)
+      | true,
     refetchOptions?: RefetchOptions,
     options?: {
       queryClient?: QueryClient
@@ -10603,10 +10808,23 @@ export class Point0<
     },
   ): Promise<void> {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    const queryKey = this.getInfiniteQueryKey(input, options)
-    await queryClient.refetchQueries({ queryKey, exact: true }, refetchOptions)
+    const filters = this._getQueryFilters({
+      input: input as never,
+      outputType: options?.outputType,
+      finiteOrInfinite: 'infinite',
+    })
+    await queryClient.refetchQueries(filters, refetchOptions)
   }
 
+  /**
+   * Write this infinite query's cache for an input directly — `updater` is a value or `(prev) => next` over the
+   * `InfiniteData` (`{ pages, pageParams }`). Returns the new data. For an optimistic value to stick, set `staleTime:
+   * Infinity` so it isn't immediately refetched. Exact-key.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   setInfiniteQueryData(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -10633,6 +10851,14 @@ export class Point0<
     >
   }
 
+  /**
+   * Get the single TanStack `Query` cache entry for this infinite query's exact input (`undefined` if none) — the
+   * low-level cache object, for inspecting state or observers. For many entries use `getInfiniteQueriesCache`.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   getInfiniteQueryCache(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -10661,6 +10887,18 @@ export class Point0<
     return query as never
   }
 
+  /**
+   * Get an array of `Query` cache entries for this infinite query — match by exact input, by a predicate, or pass
+   * `true` for every entry of this infinite query. The fuzzy counterpart to the exact-key `getInfiniteQueryCache`.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaFeed.getInfiniteQueriesCache({ q }) // exact input
+   *     ideaFeed.getInfiniteQueriesCache((i) => i.q === 'react') // predicate
+   *     ideaFeed.getInfiniteQueriesCache(true) // all entries for this infinite query
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   getInfiniteQueriesCache(
     input?:
       | FinalInputRawOrUndefined<
@@ -10707,6 +10945,14 @@ export class Point0<
     }) as never
   }
 
+  /**
+   * Read the TanStack `QueryState` for this infinite query's exact input (`status`, `fetchStatus`, `dataUpdatedAt`,
+   * `error`, …), or `undefined` if uncached — for inspecting state without subscribing.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   getInfiniteQueryState(
     input: FinalInputRawOrUndefinedOrVoid<
       TPointType,
@@ -10720,28 +10966,45 @@ export class Point0<
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
     },
-  ):
-    | Query<
-        FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-        TError,
-        FinalQueriedInfiniteData<TServerLoaderOutput, TClientLoaderOutput>,
-        QueryKey
-      >
-    | undefined {
+  ): QueryState<FinalQueriedInfiniteData<TServerLoaderOutput, TClientLoaderOutput>, TError> | undefined {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const queryKey = this.getInfiniteQueryKey(input, options)
     return queryClient.getQueryState(queryKey) as never
   }
 
+  /**
+   * Cancel any in-flight fetch for this infinite query (`Promise<void>`). Target by exact input, by a predicate
+   * `(input) => boolean`, or pass `true` to cancel every entry of this infinite query regardless of input.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaFeed.cancelInfiniteQuery({ q }) // exact input
+   *     ideaFeed.cancelInfiniteQuery((i) => i.q === 'react') // predicate
+   *     ideaFeed.cancelInfiniteQuery(true) // every entry of this infinite query
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   async cancelInfiniteQuery(
-    input: FinalInputRawOrUndefinedOrVoid<
-      TPointType,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema
-    >,
+    input:
+      | FinalInputRawOrUndefinedOrVoid<
+          TPointType,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema
+        >
+      | ((
+          input: FinalInputRaw<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+        ) => boolean)
+      | true,
     cancelOptions?: CancelOptions,
     options?: {
       queryClient?: QueryClient
@@ -10749,19 +11012,48 @@ export class Point0<
     },
   ): Promise<void> {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    const queryKey = this.getInfiniteQueryKey(input, options)
-    await queryClient.cancelQueries({ queryKey, exact: true }, cancelOptions)
+    const filters = this._getQueryFilters({
+      input: input as never,
+      outputType: options?.outputType,
+      finiteOrInfinite: 'infinite',
+    })
+    await queryClient.cancelQueries(filters, cancelOptions)
   }
 
+  /**
+   * Mark this infinite query stale and refetch it if active (`Promise<void>`) — the usual way to refresh after a
+   * mutation. Target by exact input, by a predicate `(input) => boolean`, or pass `true` to invalidate every entry of
+   * this infinite query regardless of input.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaFeed.invalidateInfiniteQuery({ q }) // exact input
+   *     ideaFeed.invalidateInfiniteQuery((i) => i.q === 'react') // predicate
+   *     ideaFeed.invalidateInfiniteQuery(true) // every entry of this infinite query
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   async invalidateInfiniteQuery(
-    input: FinalInputRawOrUndefinedOrVoid<
-      TPointType,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema
-    >,
+    input:
+      | FinalInputRawOrUndefinedOrVoid<
+          TPointType,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema
+        >
+      | ((
+          input: FinalInputRaw<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+        ) => boolean)
+      | true,
     invalidateOptions?: InvalidateOptions,
     options?: {
       queryClient?: QueryClient
@@ -10769,38 +11061,96 @@ export class Point0<
     },
   ): Promise<void> {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    const queryKey = this.getInfiniteQueryKey(input, options)
-    await queryClient.invalidateQueries({ queryKey, exact: true }, invalidateOptions)
+    const filters = this._getQueryFilters({
+      input: input as never,
+      outputType: options?.outputType,
+      finiteOrInfinite: 'infinite',
+    })
+    await queryClient.invalidateQueries(filters, invalidateOptions)
   }
 
+  /**
+   * Drop this infinite query from the cache entirely (`void`) — no refetch, the entry is gone. Target by exact input,
+   * by a predicate `(input) => boolean`, or pass `true` to remove every entry of this infinite query regardless of
+   * input.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaFeed.removeInfiniteQuery({ q }) // exact input
+   *     ideaFeed.removeInfiniteQuery((i) => i.q === 'react') // predicate
+   *     ideaFeed.removeInfiniteQuery(true) // every entry of this infinite query
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   removeInfiniteQuery(
-    input: FinalInputRawOrUndefinedOrVoid<
-      TPointType,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema
-    >,
+    input:
+      | FinalInputRawOrUndefinedOrVoid<
+          TPointType,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema
+        >
+      | ((
+          input: FinalInputRaw<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+        ) => boolean)
+      | true,
     options?: {
       queryClient?: QueryClient
       outputType?: FetchServerOutputType
     },
   ): void {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    const queryKey = this.getInfiniteQueryKey(input, options)
-    queryClient.removeQueries({ queryKey, exact: true })
+    const filters = this._getQueryFilters({
+      input: input as never,
+      outputType: options?.outputType,
+      finiteOrInfinite: 'infinite',
+    })
+    queryClient.removeQueries(filters)
   }
 
+  /**
+   * Reset this infinite query to its initial state and refetch if active (`Promise<void>`) — clears data/error, not
+   * just staleness. Target by exact input, by a predicate `(input) => boolean`, or pass `true` to reset every entry of
+   * this infinite query regardless of input.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     ideaFeed.resetInfiniteQuery({ q }) // exact input
+   *     ideaFeed.resetInfiniteQuery((i) => i.q === 'react') // predicate
+   *     ideaFeed.resetInfiniteQuery(true) // every entry of this infinite query
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
   async resetInfiniteQuery(
-    input: FinalInputRawOrUndefinedOrVoid<
-      TPointType,
-      TServerInputSchema,
-      TClientInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema
-    >,
+    input:
+      | FinalInputRawOrUndefinedOrVoid<
+          TPointType,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema
+        >
+      | ((
+          input: FinalInputRaw<
+            TPointType,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+        ) => boolean)
+      | true,
     resetOptions?: ResetOptions,
     options?: {
       queryClient?: QueryClient
@@ -10808,8 +11158,12 @@ export class Point0<
     },
   ): Promise<void> {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
-    const queryKey = this.getInfiniteQueryKey(input, options)
-    await queryClient.resetQueries({ queryKey, exact: true }, resetOptions)
+    const filters = this._getQueryFilters({
+      input: input as never,
+      outputType: options?.outputType,
+      finiteOrInfinite: 'infinite',
+    })
+    await queryClient.resetQueries(filters, resetOptions)
   }
 
   private async _prefetchPageQueryClientDehydratedState({

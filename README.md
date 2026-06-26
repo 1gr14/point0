@@ -5018,7 +5018,6 @@ export const ideaViewPage = generalLayout.lets
 import { Section } from '@/components/ui/section'
 import { routes } from '@/generated/point0/routes'
 import { navigate } from '@/lib/navigation'
-import { queryClient } from '@/lib/query-client'
 import { generalLayout } from '@/layouts/general'
 import { authorizedOnlyPlugin } from '@/modules/auth/plugins'
 import { FButton } from '@/modules/form/core/button'
@@ -5032,7 +5031,6 @@ import {
   ideaViewQuery,
   ideaListQuery,
 } from '@/features/idea/api'
-import { getQueryPredicate } from '@point0/core'
 
 export const ideaNewPage = generalLayout.lets
   .page('/ideas/new')
@@ -5046,9 +5044,7 @@ export const ideaNewPage = generalLayout.lets
           defaultValues={{ title: '', content: '' }}
           onSubmit={async ({ title, content }) => {
             const { idea } = await ideaCreateMutation.fetch({ title, content })
-            void queryClient.invalidateQueries({
-              predicate: getQueryPredicate({ id: ideaListQuery.id }),
-            })
+            void ideaListQuery.invalidateInfiniteQuery(true)
             ideaViewQuery.setQueryData({ sn: idea.sn }, { idea })
             return { idea }
           }}
@@ -5097,14 +5093,12 @@ import {
 import { routes } from '@/generated/point0/routes'
 import { generalLayout } from '@/layouts/general'
 import { navigate } from '@/lib/navigation'
-import { queryClient } from '@/lib/query-client'
 import { zz } from '@/lib/schema'
 import { FButton } from '@/modules/form/core/button'
 import { FFields, FFooter } from '@/modules/form/core/layout'
 import { FForm } from '@/modules/form/core/provider'
 import { FInput } from '@/modules/form/fields/input'
 import { FTextarea } from '@/modules/form/fields/textarea'
-import { getQueryPredicate } from '@point0/core'
 
 export const ideaEditPage = generalLayout.lets
   .page('/ideas/:sn/edit')
@@ -5134,9 +5128,7 @@ export const ideaEditPage = generalLayout.lets
               content,
             })
             ideaViewQuery.setQueryData({ sn: updated.sn }, { idea: updated })
-            void queryClient.invalidateQueries({
-              predicate: getQueryPredicate({ id: ideaListQuery.id }),
-            })
+            void ideaListQuery.invalidateInfiniteQuery(true)
             return { idea: updated }
           }}
           onSuccess={({ idea: updated }) => {

@@ -122,6 +122,13 @@ void queryClient.invalidateQueries({
 ideaViewQuery.setQueryData({ sn: idea.sn }, { idea }) // seed the view cache
 ```
 
+For the common case — every cache entry of one point regardless of input — the
+point's own helper is shorter: `ideaListQuery.invalidateQuery(true)`. The same
+`true` (or a `(input) => boolean` predicate) works on `refetchQuery`,
+`removeQuery`, `resetQuery`, `cancelQuery` and their infinite siblings. Reach
+for a raw `invalidateQueries` + `getQueryPredicate` when you need to match
+across points or by tag.
+
 `getQueryPredicate` is covered in full below.
 
 ## Matching cache entries: `getQueryPredicate`

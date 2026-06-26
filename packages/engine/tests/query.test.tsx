@@ -384,6 +384,79 @@ describe('query', () => {
       expect(q.getQueriesCache(true, options)).toEqual([])
     })
 
+    it('invalidateQuery(true) and predicate invalidate across inputs', async () => {
+      const root = createRoot()
+      const q = root
+        .lets('query', 'helpers-invalidate-all')
+        .sharedInput(z.object({ id: z.number() }))
+        .clientLoader(({ input }) => ({ value: input.id }))
+        .query()
+      const queryClient = new QueryClient()
+      const options = { queryClient, mode: 'client' as const }
+
+      await q.fetchQuery({ id: 1 }, undefined, options)
+      await q.fetchQuery({ id: 2 }, undefined, options)
+      await q.fetchQuery({ id: 3 }, undefined, options)
+      expect(q.getQueriesCache(true, options).length).toBe(3)
+
+      // `true` → every entry of this query, regardless of input
+      await q.invalidateQuery(true, undefined, options)
+      expect(q.getQueryState({ id: 1 }, options)?.isInvalidated).toBe(true)
+      expect(q.getQueryState({ id: 2 }, options)?.isInvalidated).toBe(true)
+      expect(q.getQueryState({ id: 3 }, options)?.isInvalidated).toBe(true)
+
+      // refetch all to clear the invalidated flag, then target one input via predicate
+      await q.fetchQuery({ id: 1 }, undefined, options)
+      await q.fetchQuery({ id: 2 }, undefined, options)
+      await q.fetchQuery({ id: 3 }, undefined, options)
+      await q.invalidateQuery((i) => i.id === 2, undefined, options)
+      expect(q.getQueryState({ id: 1 }, options)?.isInvalidated).toBe(false)
+      expect(q.getQueryState({ id: 2 }, options)?.isInvalidated).toBe(true)
+      expect(q.getQueryState({ id: 3 }, options)?.isInvalidated).toBe(false)
+
+      // exact input still works unchanged
+      await q.fetchQuery({ id: 2 }, undefined, options)
+      await q.invalidateQuery({ id: 1 }, undefined, options)
+      expect(q.getQueryState({ id: 1 }, options)?.isInvalidated).toBe(true)
+      expect(q.getQueryState({ id: 2 }, options)?.isInvalidated).toBe(false)
+    })
+
+    it('removeQuery / resetQuery accept a predicate and true across inputs', async () => {
+      const root = createRoot()
+      const q = root
+        .lets('query', 'helpers-remove-all')
+        .sharedInput(z.object({ id: z.number() }))
+        .clientLoader(({ input }) => ({ value: input.id }))
+        .query()
+      const queryClient = new QueryClient()
+      const options = { queryClient, mode: 'client' as const }
+
+      const seed = async () => {
+        await q.fetchQuery({ id: 1 }, undefined, options)
+        await q.fetchQuery({ id: 2 }, undefined, options)
+        await q.fetchQuery({ id: 3 }, undefined, options)
+      }
+
+      // predicate removes only matching entries
+      await seed()
+      q.removeQuery((i) => i.id === 2, options)
+      expect(q.getQueriesCache(true, options).length).toBe(2)
+      expect(q.getQueryData({ id: 2 }, options)).toBeUndefined()
+      expect(q.getQueryData({ id: 1 }, options)).toEqual({ value: 1 })
+
+      // true removes every entry of this query
+      await seed()
+      q.removeQuery(true, options)
+      expect(q.getQueriesCache(true, options)).toEqual([])
+
+      // resetQuery(true) clears data for every entry
+      await seed()
+      await q.resetQuery(true, undefined, options)
+      expect(q.getQueryData({ id: 1 }, options)).toBeUndefined()
+      expect(q.getQueryData({ id: 2 }, options)).toBeUndefined()
+      expect(q.getQueryData({ id: 3 }, options)).toBeUndefined()
+    })
+
     it('getQueryPredicate filters query cache by tags', async () => {
       const root = createRoot()
       const qa = root

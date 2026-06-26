@@ -232,9 +232,11 @@ apply server- and client-side).
 - **`staleTime: Infinity` for hand-managed caches.** When you write the cache by
   hand after a mutation (`setQueryData`), set `staleTime: Infinity` so it never
   silently refetches.
-- **Cache mutators are exact-key.** `invalidateQuery`, `refetchQuery`,
-  `removeQuery`, etc. target the exact input you pass. To match many inputs, use
-  `getQueriesCache(true)` or a predicate.
+- **Target one input, many, or all.** `invalidateQuery`, `refetchQuery`,
+  `removeQuery`, `resetQuery`, `cancelQuery` (and their infinite siblings) each
+  take an exact input, a predicate `(input) => boolean`, or `true` for every
+  entry of the query regardless of input — `invalidateQuery(true)` invalidates
+  all of them. The read helper `getQueriesCache` accepts the same three forms.
 
 ## Reference
 
@@ -262,25 +264,25 @@ object — `{ queryClient?, outputType?, fetchOptions? }`, members varying by
 method; `useQuery` / `useInfiniteQuery` take `{ fetchOptions? }`, and
 `getQueryKey` takes `{ outputType? }`.
 
-| Method             | Signature                                     | Returns                            |
-| ------------------ | --------------------------------------------- | ---------------------------------- |
-| `useQuery`         | `(input, queryOptions?, options?)`            | TanStack `useQuery` result         |
-| `useInfiniteQuery` | `(input, infiniteOptions?, options?)`         | TanStack infinite result           |
-| `fetchQuery`       | `(input, queryOptions?, options?)`            | `Promise<data>`                    |
-| `prefetchQuery`    | `(input, queryOptions?, options?)`            | `Promise<void>`                    |
-| `ensureQueryData`  | `(input, queryOptions?, options?)`            | `Promise<data>`                    |
-| `getQueryData`     | `(input, options?)`                           | `data \| undefined`                |
-| `setQueryData`     | `(input, updater, setDataOptions?, options?)` | the new `data`                     |
-| `refetchQuery`     | `(input, refetchOptions?, options?)`          | `Promise<void>`                    |
-| `invalidateQuery`  | `(input, invalidateOptions?, options?)`       | `Promise<void>`                    |
-| `cancelQuery`      | `(input, cancelOptions?, options?)`           | `Promise<void>`                    |
-| `removeQuery`      | `(input, options?)`                           | `void`                             |
-| `resetQuery`       | `(input, resetOptions?, options?)`            | `Promise<void>`                    |
-| `getQueryState`    | `(input, options?)`                           | TanStack `QueryState \| undefined` |
-| `getQueryCache`    | `(input, options?)`                           | the `Query \| undefined`           |
-| `getQueriesCache`  | `(input \| predicate \| true, options?)`      | `Query[]`                          |
-| `getQueryKey`      | `(input, options?)`                           | the `QueryKey` tuple               |
-| `getQueryOptions`  | `(input, queryOptions?, options?)`            | fully built `UseQueryOptions`      |
+| Method             | Signature                                                    | Returns                            |
+| ------------------ | ------------------------------------------------------------ | ---------------------------------- |
+| `useQuery`         | `(input, queryOptions?, options?)`                           | TanStack `useQuery` result         |
+| `useInfiniteQuery` | `(input, infiniteOptions?, options?)`                        | TanStack infinite result           |
+| `fetchQuery`       | `(input, queryOptions?, options?)`                           | `Promise<data>`                    |
+| `prefetchQuery`    | `(input, queryOptions?, options?)`                           | `Promise<void>`                    |
+| `ensureQueryData`  | `(input, queryOptions?, options?)`                           | `Promise<data>`                    |
+| `getQueryData`     | `(input, options?)`                                          | `data \| undefined`                |
+| `setQueryData`     | `(input, updater, setDataOptions?, options?)`                | the new `data`                     |
+| `refetchQuery`     | `(input \| predicate \| true, refetchOptions?, options?)`    | `Promise<void>`                    |
+| `invalidateQuery`  | `(input \| predicate \| true, invalidateOptions?, options?)` | `Promise<void>`                    |
+| `cancelQuery`      | `(input \| predicate \| true, cancelOptions?, options?)`     | `Promise<void>`                    |
+| `removeQuery`      | `(input \| predicate \| true, options?)`                     | `void`                             |
+| `resetQuery`       | `(input \| predicate \| true, resetOptions?, options?)`      | `Promise<void>`                    |
+| `getQueryState`    | `(input, options?)`                                          | TanStack `QueryState \| undefined` |
+| `getQueryCache`    | `(input, options?)`                                          | the `Query \| undefined`           |
+| `getQueriesCache`  | `(input \| predicate \| true, options?)`                     | `Query[]`                          |
+| `getQueryKey`      | `(input, options?)`                                          | the `QueryKey` tuple               |
+| `getQueryOptions`  | `(input, queryOptions?, options?)`                           | fully built `UseQueryOptions`      |
 
 Each has an infinite sibling (`fetchInfiniteQuery`, `getInfiniteQueryKey`, …)
 for infinite queries.
