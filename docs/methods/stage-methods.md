@@ -376,10 +376,10 @@ The trigger setters — `.prefetchPageOnNavigate` / `.prefetchPageOnLinkHover` a
 the `.prefetchPagePolicy` convenience that fans out into both — are
 **client-only**: their bodies and the imports those bodies use are cut from the
 server bundle, regardless of SSR, so the prefetch triggers never bloat the
-server build (they run in the browser as you move between pages). The exception
-is `.onPrefetchPage` — it's **server-and-client**, running on both the client
-and server prefetch paths (see below). On **root, base, page, layout** (with the
-exceptions noted).
+server build (they run in the browser as you move between pages). The exceptions
+are the `.onPrefetchPage` family — `.onPrefetchPage` is **server-and-client**,
+and `.serverOnPrefetchPage` / `.clientOnPrefetchPage` pin the same hook to one
+side (see below). On **root, base, page, layout** (with the exceptions noted).
 
 ### .prefetchPageOnNavigate / .prefetchPageOnLinkHover / .prefetchPagePolicy
 
@@ -399,17 +399,22 @@ fetches: [navigation](navigation). As a cost note, `serverAndClientQuery` is the
 cheap policy; `pageDehydratedState` runs a full SSR render and is the expensive
 one (and the `pageDehydratedState*` policies require SSR or they throw).
 
-### .onPrefetchPage
+### .onPrefetchPage / .serverOnPrefetchPage / .clientOnPrefetchPage
 
 Register a callback that runs during prefetch (accumulates across calls). On
-**root, base, page, layout** and **plugin**. **Server-and-client** — kept in
-both bundles: it runs in the browser on client-side prefetch and during
-server-side prefetch (the engine warms a page through the same prefetch path on
-the server). This is the one prefetch method that is not client-only.
+**root, base, page, layout** and **plugin**.
 
 ```tsx
 .onPrefetchPage(async ({ location, props }) => { /* warm something up */ })
 ```
+
+`.onPrefetchPage` is **server-and-client** — kept in both bundles: it runs in
+the browser on client-side prefetch and on the server once before the first
+render. This is the one prefetch method that is not client-only.
+`.serverOnPrefetchPage` (**server-only** — body and its imports cut from the
+client bundle) and `.clientOnPrefetchPage` (**client-only** — cut from the
+server bundle) are the same hook pinned to one side, for warm-up code whose
+imports should not cross the bundle boundary.
 
 ## Navigation: scroll
 
@@ -530,7 +535,9 @@ infinite-query, mutation, root, base, plugin).
 | `.clientOn`                                                       | all                                                                      | client-only                                        |
 | `.prefetchPageOnNavigate` / `.prefetchPageOnLinkHover`            | root, base, page, layout                                                 | client-only                                        |
 | `.prefetchPagePolicy`                                             | root, base, page, layout                                                 | client-only                                        |
-| `.onPrefetchPage`                                                 | root, base, page, layout, plugin                                         | server-and-client (client + server prefetch)       |
+| `.onPrefetchPage`                                                 | base, page, layout, plugin                                               | server-and-client (client + server prefetch)       |
+| `.serverOnPrefetchPage`                                           | base, page, layout, plugin                                               | server-only                                        |
+| `.clientOnPrefetchPage`                                           | base, page, layout, plugin                                               | client-only                                        |
 | `.scrollRestore` / `.scrollPosition`                              | root, base, page, layout, plugin                                         | client-only — see [navigation](navigation)         |
 | `.response`                                                       | action                                                                   | server-only                                        |
 | `.openapi`                                                        | action; base, plugin                                                     | server-only                                        |

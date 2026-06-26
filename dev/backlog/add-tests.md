@@ -100,9 +100,18 @@ stay assertive instead of hedging.
   across such a navigation.
 - **ssr — re-render tuning is read from the client, not the server.** The
   executor reads `allowedRerendersCount` / `forbiddenRerendersCount` /
-  `prefetchBeforePageRender` from the resolved client SSR options; the server
-  keeps only the boolean. No test asserts that tuning on `server.ssr` is dropped
-  while the client's value takes effect for server-rendered output.
+  `prefetchLoadersBeforePageRender` from the resolved client SSR options; the
+  server keeps only the boolean. No test asserts that tuning on `server.ssr` is
+  dropped while the client's value takes effect for server-rendered output.
+- **onPrefetchPage — client-side firing + hook-warmed collapse.**
+  `ssr-on-prefetch-page` covers the always-on server before-render step (hooks
+  fire) and the `prefetchLoadersBeforePageRender` loader collapse (on → 1
+  render, off → discover loop). Still uncovered: the hook firing during a
+  client-side navigate/hover prefetch, and that warming the page+layout queries
+  _inside_ the hook (rather than via the setting) collapses the discover loop.
+  (`serverOnPrefetchPage` / `clientOnPrefetchPage` side-stripping is covered by
+  the compiler `#shakeMethods` tests, not at runtime — uncompiled both sides
+  run.)
 - **importer — a build forces `onDeny: 'throw'` regardless of config.** Build
   paths pass `onDeny: 'throw'` (client/server
   `getCompilerOptions({ built: true })`), default is `'log'`. No test asserts a

@@ -59,12 +59,12 @@ five. You don't manage any of this; it's the price of not having to declare your
 data dependencies up front.
 
 And if you don't want to pay it, you don't have to. The re-renders are a
-convenience, not a tax: tell Point0 up front what a page needs — with
-[`.onPrefetchPage`](#onprefetchpage) or `prefetchBeforePageRender` (both below)
-— and the first render already has the data, so the loop settles in a single
-pass. So there are two comfortable modes: **convenient but with re-renders**
-(write nothing, let the loop discover), or **a little extra work and zero
-re-renders** (declare the data once). Pick per page.
+convenience, not a tax: tell Point0 up front what a page needs — warm its cache
+in [`.onPrefetchPage`](#onprefetchpage) (below), which runs once before the
+first render — and that render already has the data, so the loop settles in a
+single pass. So there are two comfortable modes: **convenient but with
+re-renders** (write nothing, let the loop discover), or **a little extra work
+and zero re-renders** (declare the data once). Pick per page.
 
 Two things the loop deliberately does **not** do:
 
@@ -205,9 +205,13 @@ round-trip.
 
 Two things make this hook pull its weight:
 
-- **It runs on both sides.** The same `.onPrefetchPage` runs on the server
-  (during SSR) and on the client (when you navigate to the page). You write the
-  prefetch once and it covers the first load and every client-side navigation.
+- **It runs on both sides, automatically.** The same `.onPrefetchPage` runs on
+  the server (once before the first render — no opt-in) and on the client (when
+  you navigate to the page). You write the prefetch once and it covers the first
+  load and every client-side navigation. Need one side only? Reach for
+  [`.serverOnPrefetchPage` / `.clientOnPrefetchPage`](#onprefetchpage) — the
+  same hook, but the body (and the imports it pulls in) is stripped from the
+  other bundle.
 - **On the client it doesn't cost an HTTP round-trip just to "be on the
   client".** A `prefetchQuery`/`fetchQuery` on a point's loader goes over the
   network on the client only because the loader is server code; that's expected.
@@ -215,8 +219,21 @@ Two things make this hook pull its weight:
   **in-process through `engine.fetch()`**, not by Point0 making an HTTP request
   back to itself. The point's `fetch` is wired straight into the engine.
 
-Warming the queries this way is what removes the data-discovery passes. A
-separate source of re-renders is store/cookie stabilization, which you cap
+Warming the queries this way removes the data-discovery passes — and by default
+you only pay for what you warm. The hook runs before the first render; on its
+own it does **not** auto-prefetch your page/layout loaders. If a page's loaders
+are predictable, flip on
+[`prefetchLoadersBeforePageRender`](#prefetchloadersbeforepagerender) to
+prefetch the declared `.loader()` queries up front as well — no hook needed:
+
+```tsx
+// a page with a layout loader + a page loader:
+//   nothing warmed                          → 3 renders (initial, layout, page)
+//   both queries warmed in .onPrefetchPage  → 1 render
+//   prefetchLoadersBeforePageRender: true   → 1 render (loaders warmed automatically)
+```
+
+A separate source of re-renders is store/cookie stabilization, which you cap
 independently with `allowedRerendersCount` (below) — set it to `0` to also stop
 those.
 
@@ -226,30 +243,32 @@ is **SSR on** unless you set `enabled: false`:
 ```ts
 export const engine = Engine.create({
   ssr: {
-    // best case: prefetch up front so the first render already has the data
-    prefetchBeforePageRender: true,
+    // best case: prefetch loaders up front so the first render already has the data
+    prefetchLoadersBeforePageRender: true,
     allowedRerendersCount: 0,
   },
 })
 ```
 
-### prefetchBeforePageRender
+### prefetchLoadersBeforePageRender
 
-By default the loop _discovers_ queries by rendering. With
-`prefetchBeforePageRender: true`, Point0 first prefetches the page and its
-layouts declaratively — running their [`.onPrefetchPage`](#onprefetchpage) hooks
-and server queries, with inputs derived from the route — **before** the first
+The `.onPrefetchPage` hooks always run before the first render; this option adds
+the **loaders** to that step. With `prefetchLoadersBeforePageRender: true`,
+Point0 also prefetches the page's and its layouts' `.loader()` server queries
+declaratively — with inputs derived from the route — **before** the first
 render. The render then finds the data already in cache and needs fewer, often
-zero, extra passes. The discover loop still runs as a fallback for queries whose
-inputs are only known at render time.
+zero, extra passes.
 
 ```tsx
 // a page with a layout loader + a page loader:
-//   default                          → 3 renders (initial, layout, page)
-//   prefetchBeforePageRender: true   → 1 render
+//   default                                → 3 renders (initial, layout, page)
+//   prefetchLoadersBeforePageRender: true  → 1 render
 ```
 
-Default `false`.
+Only queries declared as `.loader()` are prefetched here — their inputs are the
+route params, so they are always correct. Queries injected with `.with()` (or
+declared inside a component) take render-time inputs and are still discovered by
+the render loop, which runs as the fallback. Default `false`.
 
 ### allowedRerendersCount (soft cap)
 
@@ -430,9 +449,9 @@ expensive one only where coverage matters more than load.
 ## .onPrefetchPage
 
 The escape hatch for what a cheap policy misses. `.onPrefetchPage` registers a
-callback that runs during prefetch (and during `prefetchBeforePageRender`),
-where you can warm up data the policy wouldn't otherwise discover. It's on
-[base](base), [page](page), [layout](layout), and [plugin](plugin); calls
+callback that runs during prefetch (and, on the server, once before the first
+render), where you can warm up data the policy wouldn't otherwise discover. It's
+on [base](base), [page](page), [layout](layout), and [plugin](plugin); calls
 accumulate.
 
 ```tsx
@@ -445,14 +464,20 @@ export const profilePage = root.lets
   .page(/* ... */)
 ```
 
-It receives `{ location, props }`. It runs **only via prefetch** — never in the
-normal render-to-discover loop, never for the `'none'` policy, and never for the
+It receives `{ location, props }` and runs on **both sides**: on the server once
+before the first render (always — no opt-in), and on the client during prefetch
+when you navigate to the page — so the same warm-up code covers the first load
+and every navigation. On the client it never fires in the normal
+render-to-discover loop, never for the `'none'` policy, and never for the
 server-only `'pageDehydratedState'` policy (which returns right after the
 in-memory render, before the hooks fire; `pageDehydratedStateAndClientQuery`
-still runs them). As shown in [Tuning the loop](#tuning-the-loop), it runs on
-**both sides**: on the server during SSR (and `prefetchBeforePageRender`) and on
-the client when you navigate to the page — so the same warm-up code covers the
-first load and every navigation.
+still runs them).
+
+Need one side only — server-only setup, or a client-only ping —
+`.serverOnPrefetchPage` and `.clientOnPrefetchPage` are the same hook restricted
+to one bundle: the server-only body (and its imports) is stripped from the
+client build, the client-only body from the server build. Plain
+`.onPrefetchPage` stays in both.
 
 ## The dehydrated-state endpoint
 
@@ -524,7 +549,7 @@ type SsrOptions = {
   enabled?: boolean // default true when an object is given
   allowedRerendersCount?: number // soft cap; default Infinity
   forbiddenRerendersCount?: number // hard cap (+ logs an error); default 25
-  prefetchBeforePageRender?: boolean // prefetch before first render; default false
+  prefetchLoadersBeforePageRender?: boolean // also prefetch loaders before first render; default false
 }
 
 // engine config accepts: boolean | SsrOptions

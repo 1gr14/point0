@@ -351,9 +351,9 @@ UI: [`.head`](head), [`.loading`](loading-error), [`.error`](loading-error),
 `.wrapper`, [`.layout`](layout).
 
 Navigation & prefetch: `.prefetchPageOnNavigate`, `.prefetchPageOnLinkHover`,
-`.prefetchPagePolicy`, `.onPrefetchPage`, `.scrollRestore`, `.scrollPosition`,
-`.clientOnly`. See [Navigation](navigation) (and [SSR](ssr)) for the prefetch
-policies.
+`.prefetchPagePolicy`, `.onPrefetchPage` (plus `.serverOnPrefetchPage` /
+`.clientOnPrefetchPage`), `.scrollRestore`, `.scrollPosition`, `.clientOnly`.
+See [Navigation](navigation) (and [SSR](ssr)) for the prefetch policies.
 
 Shared: [`.use`](plugin) (plugins), [`.middleware`](middleware), `.on` /
 `.serverOn` / `.clientOn` (events), `.tag`, `.description`. `.middleware` runs

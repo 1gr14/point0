@@ -234,10 +234,11 @@ export const mePlugin = Point0.lets
 ```
 
 Three different strip categories sit in this one chain: `.onPrefetchPage` stays
-in both bundles (**server-and-client** — it runs on the client _and_ during
-server-side prefetch); `.ctx` is cut from the client bundle — body and imports
-removed (server-only); `.with` is cut from the server bundle when `ssr:false`
-(server-ssr-and-client).
+in both bundles (**server-and-client** — it runs on the client during prefetch
+_and_ on the server before the first render; `.serverOnPrefetchPage` /
+`.clientOnPrefetchPage` pin it to one side); `.ctx` is cut from the client
+bundle — body and imports removed (server-only); `.with` is cut from the server
+bundle when `ssr:false` (server-ssr-and-client).
 
 Then the gate — `.use(mePlugin)` to get `me`, throw on the server, return the
 error on the client:
@@ -353,7 +354,9 @@ Defaults & UI: `.queryOptions` / `.pageQueryOptions` / `.componentQueryOptions`
 `.error` (and per-state variants) are server-ssr-and-client. `.scrollPosition` /
 `.scrollRestore` are cut from the server bundle — body and imports removed
 (client-only; see [navigation](navigation)). `.onPrefetchPage` is
-**server-and-client** — it runs on the client and during server-side prefetch.
+**server-and-client** — it runs on the client during prefetch and on the server
+before the first render; `.serverOnPrefetchPage` (server-only) /
+`.clientOnPrefetchPage` (client-only) pin it to one side.
 
 Events & meta: `.on` / `.use` config (server-and-client), `.serverOn`
 (server-only), `.clientOn` (client-only), `.clientOnly` (the switch — flips the

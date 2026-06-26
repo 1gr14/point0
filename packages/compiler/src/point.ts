@@ -1022,6 +1022,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         case 'body':
         case 'ctx':
         case 'serverOn':
+        case 'serverOnPrefetchPage':
         case 'middleware':
         case 'response':
         case 'description':
@@ -1060,6 +1061,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
           'prefetchPageOnNavigate',
           'prefetchPageOnLinkHover',
           'prefetchPagePolicy',
+          'clientOnPrefetchPage',
         ].includes(method.name)
       ) {
         this.removeMethodArgs({ nodePath: method.nodePath })
@@ -1126,6 +1128,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         case 'scrollPosition':
         case 'scrollRestore':
         case 'onPrefetchPage':
+        case 'serverOnPrefetchPage':
+        case 'clientOnPrefetchPage':
         case 'prefetchPageOnNavigate':
         case 'prefetchPageOnLinkHover':
         case 'prefetchPagePolicy':

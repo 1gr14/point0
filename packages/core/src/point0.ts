@@ -540,6 +540,15 @@ export class Point0<
     )
   }
   private readonly _onPrefetchMountableFns: OnPrefetchMountableFn[]
+  /**
+   * Whether this point or any of its layouts registered an `.onPrefetchPage` / `.serverOnPrefetchPage` /
+   * `.clientOnPrefetchPage` hook. Lets the SSR executor skip the always-on before-render prefetch step (and its events)
+   * for pages that have none.
+   */
+  get _hasOnPrefetchPageFns(): boolean {
+    const allRelatedPoints = [this as never as ReadyPoint, ...this._layouts]
+    return allRelatedPoints.some((p) => p._onPrefetchMountableFns.length > 0)
+  }
   get polh(): boolean | number {
     return !this._polhPolicy ? false : (this._polhDuration ?? true)
   }
@@ -3979,11 +3988,12 @@ export class Point0<
   // prefetch mode
 
   /**
-   * Run a side-effect when this page/layout is prefetched (warm a cache, kick off an analytics ping). Fires on the
-   * client AND during server-side prefetch. On page and layout.
+   * Run a side-effect when this page/layout is prefetched (warm a cache, kick off an analytics ping). Runs on BOTH
+   * sides (use `.serverOnPrefetchPage` / `.clientOnPrefetchPage` for one side): on the server once before the first SSR
+   * render, and on the client during navigation/hover prefetch. Accumulates across calls. On base, page, layout,
+   * plugin.
    *
-   * Server-and-client — kept in both bundles. It runs in the browser on client-side prefetch and during server-side
-   * prefetch (the engine warms a page through the same prefetch path on the server).
+   * Server-and-client — kept in both bundles (the body runs on both sides).
    *
    *     .onPrefetchPage(({ location }) => warmCache(location))
    *
@@ -4028,6 +4038,109 @@ export class Point0<
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _onPrefetchMountableFns: [...this._onPrefetchMountableFns, (fn ?? (() => undefined)) as never],
+    }) as never
+  }
+
+  /**
+   * Like `.onPrefetchPage`, but runs on the SERVER side only — once before the first SSR render. The body (and the
+   * imports it pulls in) is stripped from the client bundle, so it can use server-only code. Accumulates across calls.
+   * On base, page, layout, plugin.
+   *
+   * Server-only — the body is stripped from the client bundle (runs server-side, before the first render).
+   *
+   *     .serverOnPrefetchPage(({ location }) => warmServerCache(location))
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
+  serverOnPrefetchPage<TSelf>(
+    this: TSelf,
+    fn: TLetsReadyPointType extends 'page'
+      ? OnPrefetchMountableFn<PageLocation<TRouteDefinition>, TOuterProps>
+      : TLetsReadyPointType extends 'layout'
+        ? OnPrefetchMountableFn<LayoutLocation<TRouteDefinition>, TOuterProps>
+        : OnPrefetchMountableFn<AnyLocation, TOuterProps>,
+  ): TSelf
+  serverOnPrefetchPage(
+    fn?: TLetsReadyPointType extends 'page'
+      ? OnPrefetchMountableFn<PageLocation<TRouteDefinition>, TOuterProps>
+      : TLetsReadyPointType extends 'layout'
+        ? OnPrefetchMountableFn<LayoutLocation<TRouteDefinition>, TOuterProps>
+        : OnPrefetchMountableFn<AnyLocation, TOuterProps>,
+  ) {
+    return this._continue<
+      TPointType,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >({
+      _onPrefetchMountableFns: fn ? [...this._onPrefetchMountableFns, fn as never] : [...this._onPrefetchMountableFns],
+    }) as never
+  }
+
+  /**
+   * Like `.onPrefetchPage`, but runs on the CLIENT side only — during navigation/hover prefetch. The body (and the
+   * imports it pulls in) is stripped from the server bundle. Accumulates across calls. On base, page, layout, plugin.
+   *
+   * Client-only — the body is stripped from the server bundle (runs in the browser during prefetch, regardless of SSR).
+   *
+   *     .clientOnPrefetchPage(({ location }) => warmClientCache(location))
+   *
+   * Full reference: https://1gr14.dev/point0/latest/stage-methods
+   */
+  clientOnPrefetchPage<TSelf>(
+    this: TSelf,
+    fn: TLetsReadyPointType extends 'page'
+      ? OnPrefetchMountableFn<PageLocation<TRouteDefinition>, TOuterProps>
+      : TLetsReadyPointType extends 'layout'
+        ? OnPrefetchMountableFn<LayoutLocation<TRouteDefinition>, TOuterProps>
+        : OnPrefetchMountableFn<AnyLocation, TOuterProps>,
+  ): TSelf
+  clientOnPrefetchPage(
+    fn?: TLetsReadyPointType extends 'page'
+      ? OnPrefetchMountableFn<PageLocation<TRouteDefinition>, TOuterProps>
+      : TLetsReadyPointType extends 'layout'
+        ? OnPrefetchMountableFn<LayoutLocation<TRouteDefinition>, TOuterProps>
+        : OnPrefetchMountableFn<AnyLocation, TOuterProps>,
+  ) {
+    return this._continue<
+      TPointType,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions
+    >({
+      _onPrefetchMountableFns: fn ? [...this._onPrefetchMountableFns, fn as never] : [...this._onPrefetchMountableFns],
     }) as never
   }
 

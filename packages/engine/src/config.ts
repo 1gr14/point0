@@ -184,22 +184,23 @@ export type SsrOptions = {
    */
   forbiddenRerendersCount?: number
   /**
-   * Before the first SSR render, declaratively prefetch the page and its layouts (their `onPrefetch` hooks and server
-   * queries, with inputs derived from the route) so the render finds the data in cache and needs fewer — often zero —
-   * re-render passes. The render-to-discover loop still runs as a fallback for ad-hoc queries whose params are only
-   * known at render time. Default `false`.
+   * Before the first SSR render, also prefetch the page's and its layouts' **loaders** (their server queries, with
+   * inputs derived from the route) — not just the `.onPrefetchPage` hooks, which always run before the first render
+   * regardless. The render then finds that data already in cache and needs fewer, often zero, extra passes. Only
+   * loaders declared with `.loader()` are prefetched here (their inputs come from the route); queries injected with
+   * `.with()` are still discovered by rendering. Default `false`.
    */
-  prefetchBeforePageRender?: boolean
+  prefetchLoadersBeforePageRender?: boolean
 }
 export type SsrOptionsResolved = {
   allowedRerendersCount: number
   forbiddenRerendersCount: number
-  prefetchBeforePageRender: boolean
+  prefetchLoadersBeforePageRender: boolean
 }
 export const defaultSsrOptionsResolved: SsrOptionsResolved = {
   allowedRerendersCount: Infinity,
   forbiddenRerendersCount: 25,
-  prefetchBeforePageRender: false,
+  prefetchLoadersBeforePageRender: false,
 }
 const normalizeSsrEnabled = (ssr: boolean | SsrOptions | undefined): boolean | undefined => {
   if (ssr === undefined) return undefined
@@ -211,7 +212,8 @@ const pickSsrOptionsPartial = (ssr: boolean | SsrOptions | undefined): Partial<S
   const partial: Partial<SsrOptionsResolved> = {}
   if (ssr.allowedRerendersCount !== undefined) partial.allowedRerendersCount = ssr.allowedRerendersCount
   if (ssr.forbiddenRerendersCount !== undefined) partial.forbiddenRerendersCount = ssr.forbiddenRerendersCount
-  if (ssr.prefetchBeforePageRender !== undefined) partial.prefetchBeforePageRender = ssr.prefetchBeforePageRender
+  if (ssr.prefetchLoadersBeforePageRender !== undefined)
+    partial.prefetchLoadersBeforePageRender = ssr.prefetchLoadersBeforePageRender
   return partial
 }
 /**

@@ -861,21 +861,30 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       SsrStore.commitPending()
       CookieStore.commitPending()
 
-      // Optionally warm the query client before the very first render: prefetch the
-      // page and its layouts (their onPrefetch hooks + server queries, inputs derived
-      // from the route) so the render finds the data in cache and needs fewer — often
-      // zero — re-render passes. Opt-in; the render-to-discover loop below still
-      // handles ad-hoc queries whose params are only known at render time.
-      if (rendersCount === 0 && pagePoint && ssrOptions.prefetchBeforePageRender) {
+      // Before the very first render, run the page's and its layouts' onPrefetch hooks
+      // (`.onPrefetchPage` / `.serverOnPrefetchPage`) — that is where a hook warms the cache
+      // so the render finds its data and needs fewer (often zero) extra passes. `ssr.
+      // prefetchLoadersBeforePageRender` picks how much we warm:
+      //   - off (default) → `onPrefetchOnly`: just the hooks; warm queries yourself inside
+      //     them. Skipped entirely (no events) when no point in the chain registered a hook.
+      //   - on            → `serverQuery`: also prefetch the page/layout `.loader()` server
+      //     queries, with inputs derived from the route (safe — only declared loaders, not
+      //     `.with()` queries whose inputs are render-time). Runs even without a hook.
+      const prefetchLoaders = ssrOptions.prefetchLoadersBeforePageRender
+      if (rendersCount === 0 && pagePoint && (prefetchLoaders || pagePoint._hasOnPrefetchPageFns)) {
         const input = {
           ...pageLocation.params,
           ...(pageLocation.searchString ? { '?': pageLocation.search } : {}),
         }
         // Call `_prefetchPage` (not the public `prefetchPage`): the latter dedupes via
-        // `__POINT0_PREFETCH_PAGE_PROMISES__`, which the SSR executor intentionally
-        // disables (it is a client-navigation concept). `_prefetchPage` does the actual
-        // declarative prefetch — onPrefetch hooks + page/layout server queries.
-        await pagePoint._prefetchPage({ input, options: { policy: 'serverQuery' } })
+        // `__POINT0_PREFETCH_PAGE_PROMISES__`, which the SSR executor intentionally disables
+        // (it is a client-navigation concept). Either policy runs the onPrefetch hooks
+        // (`.clientOnPrefetchPage` bodies are stripped from this bundle); `serverQuery` adds
+        // the declarative loader prefetch on top.
+        await pagePoint._prefetchPage({
+          input,
+          options: { policy: prefetchLoaders ? 'serverQuery' : 'onPrefetchOnly' },
+        })
       }
 
       const stream = await renderToReadableStream(React.createElement(App))

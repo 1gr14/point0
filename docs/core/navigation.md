@@ -571,10 +571,12 @@ export const ideaPage = root.lets
   .page(IdeaView)
 ```
 
-It runs on the client **and** during server-side prefetch — the compiler keeps
-it in both bundles (**server-and-client**), so the engine can warm a page
-through the same prefetch path on the server. This is the one prefetch method
-that is not client-only.
+It runs on the client (during the prefetch policies above) **and** on the server
+once before the first render — the compiler keeps it in both bundles
+(**server-and-client**). This is the one prefetch method that is not
+client-only. Two side-pinned variants share its shape: `.serverOnPrefetchPage`
+(kept only in the server bundle) and `.clientOnPrefetchPage` (kept only in the
+client bundle), for warm-up code whose imports belong to just one side.
 
 ### Per-call overrides
 

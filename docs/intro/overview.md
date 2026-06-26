@@ -4287,24 +4287,29 @@ So if it's important for you to avoid server re-renders, just use
 `.prefetchPageOnNavigate('serverAndClientQuery')` and write everything you need
 in `.onPrefetchPage()`.
 
-But there remains the problem that on the first visit to a page via a direct
-link we still do re-renders until we resolve all the queries. And this can also
-be solved. Just write this config in engine
+And the same `.onPrefetchPage()` solves the first visit to a page via a direct
+link too — there's nothing extra to turn on. It runs on the server once before
+the first render, so whatever you warmed there is already in the cache when
+rendering starts, collapsing the discover loop. And if your loaders are
+predictable, you don't even have to write the warm-up by hand — flip on
+`prefetchLoadersBeforePageRender` and Point0 prefetches the page's and layouts'
+declared loaders up front for you. Add `allowedRerendersCount: 0` to also stop
+the store/cookie stabilization re-renders:
 
 ```ts
 export const engine = Engine.create({
   // ...
   ssr: {
+    prefetchLoadersBeforePageRender: true,
     allowedRerendersCount: 0,
-    prefetchBeforePageRender: true,
   },
 })
 ```
 
-Then, before rendering on the server, all the page's loaders, all the layout's
-loaders, and all `onPrefetchPage()` will be called. Then only 1 render will
-happen, and regardless of whether there are unresolved queries left, you will
-get a result.
+`prefetchLoadersBeforePageRender` only prefetches queries declared as
+`.loader()` — their inputs come from the route, so they're always right. Queries
+you injected with `.with()` take render-time inputs and are still discovered by
+the render loop, so warm those in `.onPrefetchPage()` if you need them up front.
 
 This way you have to understand that the code declared in `.onPrefetchPage()`
 can be called both on the server and on the client. But there's no problem in
@@ -4312,7 +4317,9 @@ still writing `ideaViewQuery.prefetchQuery({ id: location.params.id })` there;
 on the client the request will go to the server's address on the internet. And
 if it is called on the client, then the same request, bypassing the network,
 will go directly to `engine.fetch(request)` with all the headers, cookies, and
-so on from the original client request preserved.
+so on from the original client request preserved. (Need a warm-up that lives on
+just one side, `.serverOnPrefetchPage()` / `.clientOnPrefetchPage()` are the
+same hook with the other bundle's body stripped out.)
 
 But honestly, I like just re-rendering many times, it's very convenient. I think
 that if a project doesn't have a giant load, you won't even feel it. And if a

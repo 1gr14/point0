@@ -683,14 +683,14 @@ describe('config', () => {
     it('general ssr options flow to each client as the default, filling in resolved defaults', () => {
       const parsed = parseEngineOptions(
         base({
-          general: { ssr: { allowedRerendersCount: 7, prefetchBeforePageRender: true } },
+          general: { ssr: { allowedRerendersCount: 7, prefetchLoadersBeforePageRender: true } },
           clients: [{ scope: 'web' }],
         }),
       )
       expect(parsed.clients[0].ssrOptions).toEqual({
         allowedRerendersCount: 7,
         forbiddenRerendersCount: 25,
-        prefetchBeforePageRender: true,
+        prefetchLoadersBeforePageRender: true,
       })
     })
 

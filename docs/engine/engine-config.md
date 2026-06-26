@@ -164,10 +164,10 @@ until its data store stabilizes; these options bound that:
 
 ```ts
 ssr: {
-  enabled: true,                 // default true when you pass an object
-  allowedRerendersCount: 5,      // soft budget — stop quietly once hit (default Infinity)
-  forbiddenRerendersCount: 25,   // hard cap — stop AND log a server error (default 25)
-  prefetchBeforePageRender: true, // prefetch page + layouts first, so fewer re-renders (default false)
+  enabled: true,                          // default true when you pass an object
+  allowedRerendersCount: 5,               // soft budget — stop quietly once hit (default Infinity)
+  forbiddenRerendersCount: 25,            // hard cap — stop AND log a server error (default 25)
+  prefetchLoadersBeforePageRender: true,  // prefetch declared loaders first, so fewer re-renders (default false)
 }
 ```
 
@@ -177,10 +177,12 @@ ssr: {
 - **`forbiddenRerendersCount`** is the safety net (default `25`). If a value
   keeps changing every render — say a stray `Date.now()` — the loop hits this
   cap, stops, and logs an error.
-- **`prefetchBeforePageRender`** (default `false`) declaratively prefetches the
-  page and its layouts (their `onPrefetch` hooks and server queries) before the
-  first render, so the render finds data in cache. A fallback render-to-discover
-  loop still runs for ad-hoc queries. See [ssr](ssr) and
+- **`prefetchLoadersBeforePageRender`** (default `false`) prefetches the page's
+  and its layouts' `.loader()` server queries (inputs from the route) before the
+  first render, so it finds the data in cache. The `.onPrefetchPage` hooks run
+  before the first render regardless; this adds the declared loaders on top.
+  Queries injected with `.with()` are still discovered by rendering. See
+  [ssr](../core/ssr#prefetchloadersbeforepagerender) and
   [navigation](navigation) for the prefetch model.
 
 Resolution: an explicit `server.ssr` / `client.ssr` wins, else the engine-level
@@ -189,7 +191,7 @@ Resolution: an explicit `server.ssr` / `client.ssr` wins, else the engine-level
 **The re-render tuning is read from the client, not the server.** A page is
 server-rendered through its client, so the executor reads
 `allowedRerendersCount`, `forbiddenRerendersCount`, and
-`prefetchBeforePageRender` from the resolved **client** SSR options. The
+`prefetchLoadersBeforePageRender` from the resolved **client** SSR options. The
 server's `ssr` is only a boolean: it gates whether the server runs the SSR
 machinery (and the `POINT0_SSR` const). Set the object form on the engine
 default or on the client — tuning fields on `server.ssr` are dropped.
@@ -619,16 +621,16 @@ The remaining general options are internal — you don't set them by hand:
 ### SSR options (`SsrOptions`)
 
 Set on the engine default `ssr` or on a client `ssr`. The re-render tuning
-(`allowedRerendersCount`, `forbiddenRerendersCount`, `prefetchBeforePageRender`)
-is read from the client at render time; the server keeps only the `enabled`
-boolean. See [SSR](#ssr).
+(`allowedRerendersCount`, `forbiddenRerendersCount`,
+`prefetchLoadersBeforePageRender`) is read from the client at render time; the
+server keeps only the `enabled` boolean. See [SSR](#ssr).
 
-| Option                     | Type      | Default                          | Notes                                                                    |
-| -------------------------- | --------- | -------------------------------- | ------------------------------------------------------------------------ |
-| `enabled`                  | `boolean` | `true` (when an object is given) | Toggle.                                                                  |
-| `allowedRerendersCount`    | `number`  | `Infinity`                       | Soft budget; stop quietly. `0`/`1` opts out of stabilization re-renders. |
-| `forbiddenRerendersCount`  | `number`  | `25`                             | Hard cap; stop and log a server error.                                   |
-| `prefetchBeforePageRender` | `boolean` | `false`                          | Prefetch page + layouts before the first render.                         |
+| Option                            | Type      | Default                          | Notes                                                                    |
+| --------------------------------- | --------- | -------------------------------- | ------------------------------------------------------------------------ |
+| `enabled`                         | `boolean` | `true` (when an object is given) | Toggle.                                                                  |
+| `allowedRerendersCount`           | `number`  | `Infinity`                       | Soft budget; stop quietly. `0`/`1` opts out of stabilization re-renders. |
+| `forbiddenRerendersCount`         | `number`  | `25`                             | Hard cap; stop and log a server error.                                   |
+| `prefetchLoadersBeforePageRender` | `boolean` | `false`                          | Also prefetch declared `.loader()` queries before the first render.      |
 
 ### Related pages
 

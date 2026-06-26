@@ -395,8 +395,10 @@ build only when SSR is on).
   policies (`serverQuery` / `clientQuery` / `serverAndClientQuery`), whereas a
   `.with(query)` is only discovered by rendering and is prefetched only under
   the expensive `pageDehydratedState*`.
-- `.onPrefetchPage` — server-and-client. It runs on the client AND during
-  server-side prefetch.
+- `.onPrefetchPage` — server-and-client. It runs on the client during prefetch
+  AND on the server before the first render. `.serverOnPrefetchPage`
+  (server-only) and `.clientOnPrefetchPage` (client-only) are the same hook
+  pinned to one side.
 - `.prefetchPageOnNavigate` / `.prefetchPageOnLinkHover` / `.prefetchPagePolicy`
   — client-only
 

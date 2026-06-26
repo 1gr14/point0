@@ -330,19 +330,21 @@ Where each of these runs (strip categories):
 - **server-only** — cut from the client bundle: body and the imports it uses are
   removed, so it never ships to the browser (it runs on the server):
   [`.loader`](loader), [`.ctx`](ctx), `.headers`, `.cookies`,
-  [`.middleware`](middleware), `.serverOn`, `.description`. `.params` /
-  `.search` are isomorphic on a layout (server-and-client) — they're server-only
-  only on an action.
+  [`.middleware`](middleware), `.serverOn`, `.serverOnPrefetchPage`,
+  `.description`. `.params` / `.search` are isomorphic on a layout
+  (server-and-client) — they're server-only only on an action.
 - **client-only** — cut from the server bundle: body and its imports removed (it
   runs only in the browser): `.clientLoader`, `.clientOn`,
-  `.prefetchPageOnNavigate`, `.prefetchPageOnLinkHover`, `.prefetchPagePolicy`.
+  `.clientOnPrefetchPage`, `.prefetchPageOnNavigate`,
+  `.prefetchPageOnLinkHover`, `.prefetchPagePolicy`.
 - **server-and-client** — not cut from either bundle, kept in both (isomorphic):
   the `.layout` closer's query closers [`.query`](query) /
   [`.infiniteQuery`](infinite-query) / [`.relatedQuery`](query),
-  `.onPrefetchPage` (it runs on the client and during server-side prefetch),
-  [`.use`](plugin), [`.params` / `.search`](validation), `.tag`, `.on`, and the
-  option setters [`.queryOptions`](stage-methods) / `.layoutQueryOptions` /
-  `.pageQueryOptions` / `.pageDehydratedStateQueryOptions`.
+  `.onPrefetchPage` (it runs on the client during prefetch and on the server
+  before the first render), [`.use`](plugin),
+  [`.params` / `.search`](validation), `.tag`, `.on`, and the option setters
+  [`.queryOptions`](stage-methods) / `.layoutQueryOptions` / `.pageQueryOptions`
+  / `.pageDehydratedStateQueryOptions`.
 - **server-ssr-and-client** — cut from the SERVER bundle when `ssr: false` (or
   after a `.clientOnly()`): body and imports removed from the server build; kept
   in the client build always, and in the server build only when SSR is on: the

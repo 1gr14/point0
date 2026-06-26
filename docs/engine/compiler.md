@@ -146,11 +146,15 @@ on, and in the client build always.
   `ssr` is off — `.page()` empties on the server, `.loader()` empties on the
   client.
 
-Client-only methods are cut from the other bundle: `.clientLoader`,
-`.clientInput`, `.clientOn`, and the navigation/prefetch methods
-(`.onPrefetchPage`, `.prefetchPageOnLinkHover`, `.scrollRestore`, …) have their
-bodies and imports removed from the **server** bundle regardless of `ssr` — that
-code never ships to the server (it only runs in the browser).
+Client-only methods are cut from the **server** bundle: `.clientLoader`,
+`.clientInput`, `.clientOn`, `.clientOnPrefetchPage`, and the
+navigation/prefetch triggers (`.prefetchPageOnLinkHover`, `.prefetchPagePolicy`,
+`.scrollRestore`, …) have their bodies and imports removed regardless of `ssr` —
+that code never ships to the server (it only runs in the browser). Server-only
+methods (`.loader`, `.serverOn`, `.serverOnPrefetchPage`, …) are cut the other
+way, from the client bundle. `.onPrefetchPage` is the one prefetch hook kept in
+**both** bundles (it runs on the server once before the first render and on the
+client during prefetch).
 
 > Every method's own page repeats this in its terms: which bundle the method is
 > cut from, and how `ssr` changes it. Read it there for the exact rule per

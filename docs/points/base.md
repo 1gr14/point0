@@ -319,9 +319,12 @@ Routing & defaults: `.basePath`, [`.queryOptions`](query) and the per-type
 (not cut from either bundle, kept in both). `.scrollPosition`, `.scrollRestore`,
 `.prefetchPageOnNavigate` / `.prefetchPageOnLinkHover` / `.prefetchPagePolicy`
 are **client-only** — cut from the server bundle: body and the imports they use
-removed. `.onPrefetchPage` is **server-and-client**; it runs on the client and
-during server-side prefetch. `.scrollPosition` / `.scrollRestore` are documented
-in full on the [navigation](navigation) page.
+removed. `.onPrefetchPage` is **server-and-client**; it runs on the client
+during prefetch and on the server before the first render. Its side-pinned
+variants `.serverOnPrefetchPage` (**server-only**) and `.clientOnPrefetchPage`
+(**client-only**) keep one side's body out of the other bundle.
+`.scrollPosition` / `.scrollRestore` are documented in full on the
+[navigation](navigation) page.
 
 UI: [`.loading`](loading-error) (and `.pageLoading` / `.layoutLoading` /
 `.componentLoading`), [`.error`](loading-error) (and `.pageError` /

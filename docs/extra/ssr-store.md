@@ -201,9 +201,10 @@ dependent query and it climbs (4–5 passes). You don't manage this — it's why
 query can feed an `SsrStore` whose value becomes the input of another query, and
 both end up prefetched.
 
-> `ssr` also takes `prefetchBeforePageRender` (default `false`) — a perf knob
-> that prefetches the page and its layouts up front so the loop needs fewer
-> passes. Not specific to `SsrStore`; see [ssr](ssr).
+> To collapse this loop, warm the data up front in
+> [`.onPrefetchPage`](../core/ssr#onprefetchpage) (runs server-side before the
+> first render), or flip on `prefetchLoadersBeforePageRender` to prefetch the
+> declared loaders automatically. Not specific to `SsrStore`; see [ssr](ssr).
 
 ## `useEffectSsr`: the companion hook
 
@@ -309,10 +310,10 @@ them) — not part of the author surface.
 
 ### Engine `ssr` options (loop control)
 
-| Option                     | Default    | Effect                                                           |
-| -------------------------- | ---------- | ---------------------------------------------------------------- |
-| `allowedRerendersCount`    | `Infinity` | soft budget; stop quietly when hit (staged change not committed) |
-| `forbiddenRerendersCount`  | `25`       | hard cap; stop **and** log a server error                        |
-| `prefetchBeforePageRender` | `false`    | prefetch up front to need fewer passes (not SsrStore-specific)   |
+| Option                            | Default    | Effect                                                           |
+| --------------------------------- | ---------- | ---------------------------------------------------------------- |
+| `allowedRerendersCount`           | `Infinity` | soft budget; stop quietly when hit (staged change not committed) |
+| `forbiddenRerendersCount`         | `25`       | hard cap; stop **and** log a server error                        |
+| `prefetchLoadersBeforePageRender` | `false`    | prefetch declared loaders up front to need fewer passes          |
 
 Full SSR options live in [engine-config](engine-config) and [ssr](ssr).
