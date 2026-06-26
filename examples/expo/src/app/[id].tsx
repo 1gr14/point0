@@ -4,11 +4,7 @@ import { Stack, useLocalSearchParams } from 'expo-router'
 import { StyleSheet, Text, View } from 'react-native'
 import * as z from 'zod'
 
-// and we also can have loader right in expo code
-// export const ideaScreenComponent = root.lets.component<{ id: number }>().with(ideaQuery, ({ props: { id } }) => ({ id }))...
-
-// we can use ready query here
-export const ideaScreenComponent = root.lets
+export const IdeaScreenComponent = root.lets
   .component()
   .input(z.object({ id: z.number() }))
   .loader(async ({ input: { id } }) => {
@@ -28,9 +24,7 @@ export const ideaScreenComponent = root.lets
 
 export default function IdeaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  // in case if we usu usual query and componet props
-  // return <ideaScreenComponent.X id={Number(id)} />
-  return <ideaScreenComponent.X input={{ id: Number(id) }} />
+  return <IdeaScreenComponent input={{ id: Number(id) }} />
 }
 
 const styles = StyleSheet.create({

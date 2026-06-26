@@ -5,7 +5,7 @@ import { root } from '@/lib/root'
 import gemUrl from '@/assets/gem.png'
 import GemIcon from '@/assets/gem.svg?react'
 
-export const ideaBestComponent = root.lets
+export const IdeaBestComponent = root.lets
   .component<{ cta: string }>()
   .loader(async () => {
     return {
@@ -57,7 +57,7 @@ export default generalLayout
           </p>
         </div>
         <div>
-          <ideaBestComponent.X cta="It is awesome!" />
+          <IdeaBestComponent cta="It is awesome!" />
         </div>
       </div>
     )
