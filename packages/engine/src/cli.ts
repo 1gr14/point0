@@ -1,19 +1,18 @@
-#!/usr/bin/env -S bun --no-orphans --no-env-file --config=/dev/null
+#!/usr/bin/env bun
 
-// ^ The shebang (bun >= 1.3.14; `env -S` splits it into arguments on macOS and Linux) makes the CLI
-// hermetic and leak-proof: `--no-env-file` stops Bun from auto-loading .env files before any CLI code
-// runs (with NODE_ENV unset it would assume development and load .env.development), `--config=/dev/null`
-// keeps the app's bunfig out of this process, and `--no-orphans` (bun >= 1.3.14, no-op on Windows) ties
-// the whole process tree to its parent: the CLI exits when whatever launched it dies — even by SIGKILL —
-// and on exit SIGKILLs every descendant it spawned (Bun re-verifies each descendant's parentage before
-// killing, so recycled PIDs are safe). The flag is inherited by nested bun processes, so dev children and
-// `build --watch`'s spawned builds are covered without repeating it (they still pass it explicitly for
-// invocations that bypass the shebang). Ctrl-C stays graceful: `bun run` waits for its child after
-// forwarding the signal, so the orchestrator finishes its SIGTERM + grace teardown before the wrapper
-// exits. Each command resolves its mode from flags and calls applyEnvMode (env-files.ts) to load the
-// right-mode cascade BEFORE the user's engine file is imported. Invocations that bypass the shebang
-// (Windows shims, `bun .../cli.js` directly) are detected via process.execArgv and handled by the
-// env-files.ts legacy fallback.
+// ^ A plain interpreter shebang, deliberately flag-free. It must resolve identically through two very
+// different launchers: the POSIX kernel (`/usr/bin/env bun`) AND Bun's Windows bin shim. Passing flags
+// here needs `env -S` to split them — which the Windows shim mis-parses (it takes `-S` as the
+// interpreter and the bin dies with `interpreter "-S" not found`), so the CLI could never run on
+// Windows at all. Keeping the shebang flag-free is what makes `point0` launch on every platform.
+//
+// The flags the CLI still wants — chiefly `--no-env-file` (don't let Bun auto-load a .env cascade for
+// the wrong, startup-derived NODE_ENV) — are handled in code instead of via the shebang: each command
+// resolves its mode from flags and calls applyEnvMode (env-files.ts), which makes process.env hold the
+// genuine shell environment plus exactly the resolved mode's cascade, BEFORE the user's engine file is
+// imported. When Bun did auto-load (it does whenever `--no-env-file` wasn't on the process), applyEnvMode
+// restores process.env from the native OS environment block, which Bun's JS-only auto-load never touches.
+// Dev/build children are tied to their parent for lifecycle via an explicit `--no-orphans` on each spawn.
 
 import { Compiler } from '@point0/compiler'
 import type { PointsScope } from '@point0/core'

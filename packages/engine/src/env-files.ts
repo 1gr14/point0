@@ -2,18 +2,24 @@ import type { NormalizedNodeEnv } from '@point0/core'
 import nodeFs from 'node:fs'
 import nodeOs from 'node:os'
 import nodePath from 'node:path'
+import { readOsEnviron } from './env-os.js'
 
-// Bun auto-loads .env files BEFORE any CLI code runs, picking the file set from NODE_ENV alone —
-// with NODE_ENV unset it assumes development and loads .env.development, and a NODE_ENV=development
-// line inside .env makes a later `??= 'production'` a no-op entirely. So the CLI starts Bun with
-// `--no-env-file --config=/dev/null` (see the cli.ts shebang): the process begins with the genuine
-// shell environment only and stays independent from the app's bunfig. Each command then resolves
-// its target mode from flags and calls applyEnvMode below, which loads the right-mode cascade into
-// process.env BEFORE the user's engine file is imported (it reads process.env at module scope).
+// Bun auto-loads a .env cascade BEFORE any CLI code runs, picking the file set from the startup
+// NODE_ENV alone (unset → development → .env.development). We don't want Bun choosing for us — each
+// command resolves its OWN target mode from flags and we load that mode's cascade ourselves, into
+// process.env, before the user's engine file is imported (it reads process.env at module scope).
 //
-// No hand-rolled dotenv parser: Bun itself is the only fully faithful parser of its own .env
-// loading (quotes, $REF expansion, shell-wins precedence, the mode cascade), so the cascade is read
-// by spawning a short-lived bun child in the app directory and diffing what it auto-loaded.
+// Keeping Bun from auto-loading needs the `--no-env-file` flag on the process up front. The cli.ts
+// shebang sets it on POSIX, but a Windows bin shim can't carry the flag — so there Bun DOES
+// auto-load. Crucially, Bun mutates only the JS `process.env`; the process's native OS environment
+// block stays pristine (no .env values). So on that path we simply restore process.env to the
+// genuine block via readOsEnviron() — no diffing, no "unloading", nothing to subtract — and then
+// proceed identically to the hermetic path. See env-os.ts.
+//
+// No hand-rolled dotenv parser: Bun itself is the only fully faithful parser of its own .env loading
+// (quotes, $REF expansion, shell-wins precedence, the mode cascade), so the target cascade is read
+// by spawning a short-lived bun child in the app directory and diffing what it auto-loaded on top of
+// the genuine environment.
 
 export type EnvFileMode = NormalizedNodeEnv
 
@@ -80,49 +86,22 @@ const probeBunEnvFiles = ({ cwd, env }: { cwd: string; env: Record<string, strin
 }
 
 /**
- * Legacy path — the CLI was started WITHOUT the shebang flags (Windows shims skip shebangs; `bun .../cli.js` directly),
- * so Bun already auto-loaded a cascade picked from the startup NODE_ENV. Undo it: re-read those files through a bun
- * child and drop every process.env entry whose value matches the file value, NODE_ENV included when it merely echoes
- * the files (a NODE_ENV=development line inside .env must not pick the mode — otherwise `point0 build` could never
- * default to production). Returns the file names that had been auto-loaded.
- *
- * Two caveats the heuristic can't avoid (both absent on the clean shebang path): a genuinely exported shell variable
- * that happens to equal the file value is dropped too (harmless — the target cascade or the shell re-supplies it), and
- * a file value whose $REF expansion used shell variables may not match the probe and then conservatively survives.
+ * Restore process.env to the genuine shell environment when Bun auto-loaded a .env cascade at startup (the non-hermetic
+ * path — a Windows bin shim can't pass `--no-env-file`). Bun's auto-load only ever ADDS to the JS process.env, leaving
+ * the native OS block untouched, so the genuine environment is exactly readOsEnviron(): clear process.env and reinstate
+ * it. No diffing, no mode-guessing, no risk of dropping a real shell export. Returns false when the platform's native
+ * block can't be read, so the caller can fall back to Bun's process.env as-is (best effort).
  */
-const repairStartupEnv = ({ cwd }: { cwd: string }): string[] => {
-  const startupFileMode = bunEnvFileModeFor(process.env.NODE_ENV)
-  // An env file can itself set NODE_ENV — then the current value lies about which cascade Bun used
-  // at startup (it defaulted to development), so always also repair the development cascade.
-  const candidateModes: EnvFileMode[] =
-    startupFileMode === 'development' ? ['development'] : [startupFileMode, 'development']
-  const startupFiles: string[] = []
-  let nodeEnvIsFromFiles = false
-  for (const mode of candidateModes) {
-    const files = existingCascadeFiles({ cwd, mode })
-    if (files.length === 0) {
-      continue
-    }
-    if (mode === startupFileMode) {
-      startupFiles.push(...files)
-    }
-    // For the development candidate an empty environ also reveals a file-set NODE_ENV; for
-    // production/test the probe must pin NODE_ENV so the child loads that cascade.
-    const fileValues = probeBunEnvFiles({ cwd, env: mode === 'development' ? {} : { NODE_ENV: mode } })
-    for (const [name, value] of fileValues) {
-      if (name === 'NODE_ENV') {
-        nodeEnvIsFromFiles ||= process.env.NODE_ENV === value
-        continue
-      }
-      if (process.env[name] === value) {
-        delete process.env[name]
-      }
-    }
+const restoreGenuineEnv = (): boolean => {
+  const genuine = readOsEnviron()
+  if (!genuine) {
+    return false
   }
-  if (nodeEnvIsFromFiles) {
-    delete process.env.NODE_ENV
+  for (const key of Object.keys(process.env)) {
+    delete process.env[key]
   }
-  return startupFiles
+  Object.assign(process.env, genuine)
+  return true
 }
 
 export type ApplyEnvModeOptions = {
@@ -142,9 +121,11 @@ export type ApplyEnvModeResult = {
   mode: NormalizedNodeEnv
   /** Env files now in effect, in load order. */
   files: string[]
-  /** Legacy path only: files Bun had auto-loaded at startup that are not part of the target cascade. */
-  unloadedFiles: string[]
-  /** True when the CLI ran under --no-env-file (the bin shebang) — no startup pollution ever existed. */
+  /**
+   * True when Bun was hermetic at startup (`--no-env-file` took effect, e.g. the POSIX shebang) so process.env was
+   * already the genuine shell environment. False when Bun had auto-loaded a cascade and process.env was restored from
+   * the native OS block first.
+   */
   cleanStart: boolean
 }
 
@@ -177,13 +158,15 @@ export const applyEnvMode = ({
     }
   }
 
+  // Hermetic start: Bun honored `--no-env-file`, so process.env is already the genuine shell
+  // environment with no .env values. Otherwise Bun auto-loaded a cascade into the JS process.env;
+  // restore process.env to the genuine OS environment block, discarding that injection wholesale.
   const cleanStart = process.execArgv.includes('--no-env-file')
-  let startupFiles: string[] = []
   if (!cleanStart) {
-    startupFiles = repairStartupEnv({ cwd })
+    restoreGenuineEnv()
   }
 
-  // From here process.env holds (to the legacy-path caveats above) only genuine shell exports.
+  // From here process.env holds only the genuine shell environment.
   const mode =
     flagMode ??
     (pairsNodeEnv !== undefined ? asValidMode(pairsNodeEnv, '--env NODE_ENV') : undefined) ??
@@ -212,9 +195,7 @@ export const applyEnvMode = ({
   }
   process.env.NODE_ENV = mode
 
-  const unloadedFiles = startupFiles.filter((fileName) => !files.includes(fileName))
   const filesPart = files.length > 0 ? ` · env files: ${files.join(', ')}` : ''
-  const unloadedPart = unloadedFiles.length > 0 ? ` · unloaded: ${unloadedFiles.join(', ')}` : ''
-  process.env[POINT0_ENV_MODE_LOG] = `NODE_ENV=${mode}${filesPart}${unloadedPart}`
-  return { mode, files, unloadedFiles, cleanStart }
+  process.env[POINT0_ENV_MODE_LOG] = `NODE_ENV=${mode}${filesPart}`
+  return { mode, files, cleanStart }
 }
