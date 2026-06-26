@@ -90,7 +90,7 @@ describe('assets plugin (unit)', () => {
       files: { 'logo.svg': SVG, 'entry.ts': `import logo from './logo.svg'\nexport const result = { logo }` },
     })
     expect(typeof result.logo).toBe('string')
-    expect(result.logo as string).toMatch(/^\/_point0\/asset\/[a-f0-9]{16}\.svg$/)
+    expect(result.logo as string).toMatch(/^\/_point0\/assets\/[a-f0-9]{16}\.svg$/)
   })
 
   it('url-mode writes the bytes to urlDir under the hashed name', async () => {
@@ -161,7 +161,7 @@ describe('assets plugin (unit)', () => {
         'entry.ts': `import asText from './logo.svg' with { type: 'text' }\nexport const result = { asText }`,
       },
     })
-    expect(result.asText as string).toMatch(/^\/_point0\/asset\//) // hijacked to url, NOT the svg text
+    expect(result.asText as string).toMatch(/^\/_point0\/assets\//) // hijacked to url, NOT the svg text
   })
 
   it('defaultMode:false → a bare import is left to Bun, NOT hijacked to a point0 url', async () => {
@@ -194,7 +194,7 @@ describe('assets plugin (unit)', () => {
       },
       pluginOptions: { defaultMode: false },
     })
-    expect(result.u as string).toMatch(/^\/_point0\/asset\//) // ?url still ours
+    expect(result.u as string).toMatch(/^\/_point0\/assets\//) // ?url still ours
     expect(result.t).toBe(SVG) // ?text still inlines
     expect(result.fileContent).toBe(SVG) // ?file still emits a path the runtime can read
   })
@@ -224,7 +224,7 @@ describe('assets plugin (unit)', () => {
     })
     expect(result.raw).toBe(SVG)
     expect(result.text).toBe(SVG)
-    expect(result.url as string).toMatch(/^\/_point0\/asset\//) // bare stays url, not inlined
+    expect(result.url as string).toMatch(/^\/_point0\/assets\//) // bare stays url, not inlined
   })
 
   it('?react → an SVGR React component (svg only) that renders to <svg>', async () => {
@@ -244,7 +244,7 @@ describe('assets plugin (unit)', () => {
       },
     })
     expect(result.isFn).toBe(true)
-    expect(result.url as string).toMatch(/^\/_point0\/asset\/[a-f0-9]{16}\.svg$/)
+    expect(result.url as string).toMatch(/^\/_point0\/assets\/[a-f0-9]{16}\.svg$/)
   })
 
   it('react.svg?react → still a renderable component (derived name does not collide with the React import)', async () => {
@@ -324,7 +324,7 @@ describe('assets plugin (unit)', () => {
 // Integration tests: a full point0 app (dev + build) on BOTH bundlers. Verify the end-to-end contract — SSR and the
 // client bundle agree (no hydration mismatch), assets resolve from a NESTED route, are served, and render. Covers the
 // query API too: ?text (inlined string), ?react (SVGR component, rendered on both sides), and ?file (server reads the
-// bytes at runtime, via a server action). url mode differs by bundler: Bun → /_point0/asset/<hash>; Vite → its own
+// bytes at runtime, via a server action). url mode differs by bundler: Bun → /_point0/assets/<hash>; Vite → its own
 // native asset URL — both app-absolute and identical client==server, which is all the contract requires.
 // ---------------------------------------------------------------------------
 

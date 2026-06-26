@@ -201,19 +201,19 @@ through different paths:
 ```tsx
 // 1. Imported asset — compiler-managed, content-hashed
 import logo from './logo.png'
-// → served at /_point0/asset/<hash>.png, filename hashed
+// → served at /_point0/assets/<hash>.png, filename hashed
 
 // 2. publicdir file — served verbatim, original name
 // public/logo.png → served at /logo.png
 ```
 
 [Imported assets](assets) go through the compiler: the URL is content-addressed
-(`/_point0/asset/<hash>.png`), so the browser can cache them forever. A
+(`/_point0/assets/<hash>.png`), so the browser can cache them forever. A
 **publicdir** file is served as-is at the route you declared, with its original
 name — no hashing, no compiler.
 
 **In production they converge.** The compiler writes hashed asset bytes into
-`dist/client/_point0/asset/…`, and after a build the canonical
+`dist/client/_point0/assets/…`, and after a build the canonical
 `publicdir: { source: '../public', outdir: '../dist/client' }` serves all of
 `dist/client` at `/`. So that one config does double duty — it serves your
 `public/` files **and** the compiler-emitted hashed assets, because both

@@ -48,10 +48,10 @@ stay assertive instead of hedging.
 
 - **assets — the edited-asset HMR cycle in dev.** `dev.test.ts` proves an asset
   import resolves through the hot store to a content-hashed
-  `/_point0/asset/<hash>.<ext>` and the dev route serves the bytes. The untested
-  gap is the _edit_ cycle: change the file's bytes → re-hash → new URL → new
-  bytes served. Add a test that edits an imported asset and asserts the served
-  URL/content changes.
+  `/_point0/assets/<hash>.<ext>` and the dev route serves the bytes. The
+  untested gap is the _edit_ cycle: change the file's bytes → re-hash → new URL
+  → new bytes served. Add a test that edits an imported asset and asserts the
+  served URL/content changes.
 
 - **publicdir — binary integrity through the build copy + non-`dist` `outdir`.**
   The build copies directory entries with `Bun.write(dest, Bun.file(src))`

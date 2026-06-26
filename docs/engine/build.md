@@ -27,8 +27,8 @@ dist/
   server/index.server.js   # the server entry — `bun run` this in prod
   client/index.html         # the HTML shell (server-rendered into on first load)
   client/**.js              # client chunks (lazy page chunks, shared chunks)
-  client/_point0/asset/…    # hashed asset bytes, served at /_point0/asset/<hash>
-  client/__point0_preload__.json  # per-page module preload manifest
+  client/_point0/assets/…    # hashed asset bytes, served at /_point0/assets/<hash>
+  client/_point0/preload.json     # per-page module preload manifest
 ```
 
 ## Generate runs first, always
@@ -187,9 +187,10 @@ one from [Engine config](engine-config):
 
 So the choice of `consts` vs `vars` is the choice between "frozen at build" and
 "read when the server runs". One internal const matters at runtime regardless:
-`POINT0_ENGINE_WAS_BUILT='true'` is defined into the server bundle and flips the
-engine into **built mode** — in built mode `engine.preload` is a no-op, no dev
-server spins up, and module preload links inject. See
+`POINT0_BUILT='true'` is defined into the server bundle and flips the engine
+into **built mode** — in built mode `engine.preload` skips the dev-only work (no
+plugin loading, no dev server, no `NODE_ENV` fallback) but still applies your
+server `env.vars` to `process.env`, and module preload links inject. See
 [Engine runtime](engine-runtime).
 
 ## Running the build
@@ -214,7 +215,7 @@ export const engine = Engine.create({
 ```
 
 The built server serves `dist/client` at `/`, so the HTML shell, the JS chunks,
-and the hashed assets (`GET /_point0/asset/<hash>`) all resolve out of the
+and the hashed assets (`GET /_point0/assets/<hash>`) all resolve out of the
 client build. Run it with `NODE_ENV=production` in the environment — a built
 server started with no `NODE_ENV` falls into Bun's dev cascade. In production
 that var is part of the machine's environment, so the `start` script above
@@ -255,7 +256,7 @@ maps are a separate mechanism — see [Dev](dev).
 
 ## Module preload manifest
 
-Each client build writes `dist/client/__point0_preload__.json`, a map from page
+Each client build writes `dist/client/_point0/preload.json`, a map from page
 name to the JS chunks that page needs. The built server reads it and injects
 `<link rel="modulepreload">` tags so a page's chunks download in parallel with
 the HTML instead of after hydration:
@@ -309,8 +310,8 @@ point0 build --scope root         # only the 'root' scope
 
 **Gotcha with url-mode assets.** The bytes for url-mode assets are written
 **only by the client build** (the server build references the same
-`/_point0/asset/<hash>` string but writes no bytes). So `--side server` alone
-does **not** produce servable assets — `/_point0/asset/<hash>` 404s unless a
+`/_point0/assets/<hash>` string but writes no bytes). So `--side server` alone
+does **not** produce servable assets — `/_point0/assets/<hash>` 404s unless a
 client build already populated `dist/client`. Build both sides (the default)
 whenever the app uses url-mode assets; only `?file` assets are self-contained on
 a server-only build. See [Assets](assets).

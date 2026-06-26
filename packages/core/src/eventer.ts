@@ -116,6 +116,18 @@ export type EventerEventPointFetchServerError<TError extends ErrorPoint0> = Even
     point: AnyNiceReadyPoint
   }
 >
+/**
+ * A server fetch that was CANCELLED (its `AbortSignal` fired) rather than failing — a settled, non-error outcome. Not
+ * in {@link uniqEventerErrorEventNames}, so `.on('error')` never sees it. See {@link isAbortCancellation}.
+ */
+export type EventerEventPointFetchServerCancelled = EventerEvent<
+  'client' | 'server',
+  'pointFetchServerCancelled',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+  }
+>
 
 // pointMutation
 export type EventerEventPointMutationStart = EventerEvent<
@@ -249,6 +261,23 @@ export type EventerEventPointQueryError<TError extends ErrorPoint0> = EventerEve
     mode: 'server' | 'client'
   }
 >
+/**
+ * A query whose in-flight fetch was CANCELLED (the `AbortSignal` fired — navigation away, an unmount, a `cancelRefetch`
+ * supersede) rather than failing. It is a settled, non-error outcome: TanStack reverts the query (no error in cache),
+ * so this is emitted INSTEAD of `pointQueryError` and is deliberately absent from {@link uniqEventerErrorEventNames} —
+ * `.on('error')` (and reporters keyed off it) stay quiet, while apps that want to count cancellations can still
+ * listen.
+ */
+export type EventerEventPointQueryCancelled = EventerEvent<
+  'client' | 'server',
+  'pointQueryCancelled',
+  {
+    queryKey: QueryKey
+    point: AnyNiceReadyPoint
+    input: InputRaw
+    mode: 'server' | 'client'
+  }
+>
 
 // pointInfiniteQuery
 export type EventerEventPointInfiniteQueryStart = EventerEvent<
@@ -316,6 +345,17 @@ export type EventerEventPointInfiniteQueryError<TError extends ErrorPoint0> = Ev
     input: InputRaw
     error: TError
     data: undefined
+    mode: 'server' | 'client'
+  }
+>
+/** Infinite-query analogue of {@link EventerEventPointQueryCancelled} — a cancelled fetch, settled non-error outcome. */
+export type EventerEventPointInfiniteQueryCancelled = EventerEvent<
+  'client' | 'server',
+  'pointInfiniteQueryCancelled',
+  {
+    queryKey: QueryKey
+    point: AnyNiceReadyPoint
+    input: InputRaw
     mode: 'server' | 'client'
   }
 >
@@ -438,14 +478,17 @@ export type AnyEventerEvent<TError extends ErrorPoint0> =
   | EventerEventPointFetchServerSettled<TError>
   | EventerEventPointFetchServerSuccess
   | EventerEventPointFetchServerError<TError>
+  | EventerEventPointFetchServerCancelled
   | EventerEventPointQueryStart
   | EventerEventPointQuerySettled<TError>
   | EventerEventPointQuerySuccess
   | EventerEventPointQueryError<TError>
+  | EventerEventPointQueryCancelled
   | EventerEventPointInfiniteQueryStart
   | EventerEventPointInfiniteQuerySettled<TError>
   | EventerEventPointInfiniteQuerySuccess
   | EventerEventPointInfiniteQueryError<TError>
+  | EventerEventPointInfiniteQueryCancelled
   | EventerEventPointMutationStart
   | EventerEventPointMutationSettled<TError>
   | EventerEventPointMutationSuccess

@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'bun:test'
 import type { AnyEventerEvent, UniqEventerErrorEventName } from '../src/eventer.js'
+import { uniqEventerErrorEventNames } from '../src/eventer.js'
 import type { ErrorPoint0 } from '../src/error.js'
 import { sanitizeForLog } from '../src/utils.js'
 
@@ -17,6 +18,25 @@ describe('eventer event envelope types', () => {
     // settled events: the envelope error mirrors the payload's error branch
     type SettledEvent = Extract<AnyEvent, { name: 'pointQuerySettled' }>
     expectTypeOf<SettledEvent['error']>().toEqualTypeOf<ErrorPoint0 | undefined>()
+  })
+
+  it('cancelled events are non-error outcomes, disjoint from the error aggregation', () => {
+    type AnyEvent = AnyEventerEvent<ErrorPoint0>
+    type CancelledName = 'pointQueryCancelled' | 'pointInfiniteQueryCancelled' | 'pointFetchServerCancelled'
+    // they exist on the union, with exactly these names
+    type CancelledEvent = Extract<AnyEvent, { name: CancelledName }>
+    expectTypeOf<CancelledEvent['name']>().toEqualTypeOf<CancelledName>()
+    // the envelope error is always `undefined` — a cancellation is not an error
+    expectTypeOf<CancelledEvent['error']>().toEqualTypeOf<undefined>()
+    // and the names are disjoint from the synthetic `.on('error')` aggregation
+    expectTypeOf<CancelledName & UniqEventerErrorEventName>().toEqualTypeOf<never>()
+  })
+
+  it('cancelled event names are kept out of the runtime error-aggregation list', () => {
+    // The whole point of the dedicated outcome: `.on('error')` (which fans out to these names) must NOT fire on a cancel.
+    expect(uniqEventerErrorEventNames).not.toContain('pointQueryCancelled')
+    expect(uniqEventerErrorEventNames).not.toContain('pointInfiniteQueryCancelled')
+    expect(uniqEventerErrorEventNames).not.toContain('pointFetchServerCancelled')
   })
 })
 

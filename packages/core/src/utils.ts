@@ -177,6 +177,31 @@ export const sanitizeForLog = (value: unknown): unknown => {
   return value
 }
 
+/**
+ * Whether a thrown error is a deliberate CANCELLATION of a fetch rather than a real failure. A cancellation is the
+ * correct outcome of navigating away (the last `useQuery` observer unsubscribes mid-fetch, a `cancelRefetch`
+ * supersedes, a component unmounts) — TanStack aborts its `AbortSignal`, the in-flight `fetch` rejects with a
+ * `DOMException` ("signal is aborted without reason"), and that must NOT be reported as a query error.
+ *
+ * The reliable signal is the `AbortSignal` handed to the fetch (`signal.aborted`). We also walk the error/`cause` chain
+ * for a browser `AbortError` or TanStack `CancelledError` (by name, so it works without `DOMException` in the runtime)
+ * to stay correct if a caller ever passes its own `signal` via `.fetchOptions({ signal })` and aborts it directly.
+ */
+export const isAbortCancellation = (error: unknown, signal?: { aborted?: boolean } | null): boolean => {
+  if (signal?.aborted) {
+    return true
+  }
+  let current: unknown = error
+  for (let depth = 0; current != null && depth < 5; depth++) {
+    const name = (current as { name?: unknown }).name
+    if (name === 'AbortError' || name === 'CancelledError') {
+      return true
+    }
+    current = (current as { cause?: unknown }).cause
+  }
+  return false
+}
+
 export const blankDataTransformer: DataTransformer = {
   serialize: (data) => data,
   deserialize: (data) => data,

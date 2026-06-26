@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
-import { PRELOAD_MANIFEST_BASENAME, type PreloadManifest } from '../src/preload-manifest.js'
+import { PRELOAD_MANIFEST_PATH_SEGMENTS, type PreloadManifest } from '../src/preload-manifest.js'
 import { bundlers } from './utils/focus.js'
 import type {
   TestProjectOneClient,
@@ -77,7 +77,7 @@ describe('preload', () => {
         await bp.exited
 
         // 1) the build emitted a preload manifest next to the client chunks
-        const manifestPath = tp.resolve('dist', 'client', PRELOAD_MANIFEST_BASENAME)
+        const manifestPath = tp.resolve('dist', 'client', ...PRELOAD_MANIFEST_PATH_SEGMENTS)
         expect(await Bun.file(manifestPath).exists()).toBe(true)
         const manifest = JSON.parse(await Bun.file(manifestPath).text()) as PreloadManifest
         expect(manifest.entry).toMatch(/\.js$/)

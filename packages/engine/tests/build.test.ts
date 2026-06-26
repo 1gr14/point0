@@ -111,6 +111,38 @@ describe('build', () => {
     )
 
     it(
+      'applies declared server env.vars in the built (prod) server',
+      wrp({ ssr: true, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
+        // `MY_ENV_SERVER_VARIABLE: 'SERVER1'` is a server `env.vars` entry in the engine config and is in NO .env file,
+        // so the only way it reaches the built server's `process.env` is preload applying it. A built server sets
+        // `POINT0_BUILT=true`, which used to early-return preload before the env-vars step ran — silently dropping every
+        // server `env.vars` in prod. Read it at request time through a key the bundler can't constant-fold (so it can't
+        // be inlined to a literal at build); the value can only come from the live, runtime-mutated `process.env`.
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          export const page = root.lets('page', 'home', '/').page(() => {
+            const key = ['MY_ENV_SERVER', 'VARIABLE'].join('_')
+            return <div>server-env-var: {process.env[key] ?? 'MISSING'}</div>
+          })`,
+        )
+        await tp.generate()
+        const bp = tp.spawn(['bun', 'run', 'build'])
+        await bp.exited
+        tp.spawn(['bun', 'run', 'start'])
+        await tp.waitStarted(engine.server.port)
+        const response = await tp.fetchServer('/')
+        const html = await response.text()
+        // React SSR splits the static text and the expression with a `<!-- -->` marker, hence the optional comment.
+        expect(html).toMatch(/server-env-var:\s*(?:<!--\s*-->)?SERVER1/)
+        expect(html).not.toContain('MISSING')
+      }),
+      {
+        retry: 3,
+      },
+    )
+
+    it(
       'build and start spa server',
       wrp({ ssr: false, vite: bundler === 'vite', preserve: false }, async ({ tp, engine }) => {
         await tp.write(

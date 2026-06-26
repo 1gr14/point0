@@ -7,7 +7,7 @@ description:
 ---
 
 `import` an asset and Point0 turns it into a stable, app-absolute URL —
-`/_point0/asset/<hash>.<ext>` — that is identical in the browser bundle and the
+`/_point0/assets/<hash>.<ext>` — that is identical in the browser bundle and the
 SSR runtime, so the server HTML and the client agree (no hydration mismatch).
 Query suffixes pick a different shape: `?react` gives an SVG React component,
 `?text` inlines the file as a string, `?file` gives a server-readable path.
@@ -47,7 +47,7 @@ A bare import (or `?url`) is the default: **url mode**. Three query suffixes
 change the shape.
 
 ```tsx
-import logo from './logo.png' // url mode (default) → '/_point0/asset/<hash>.png'
+import logo from './logo.png' // url mode (default) → '/_point0/assets/<hash>.png'
 import logoUrl from './logo.png?url' // same as bare — same module, same URL
 import Logo from './logo.svg?react' // react mode → an SVG React component
 import logoSvg from './logo.svg?text' // text mode → the file's utf-8 contents
@@ -60,11 +60,11 @@ module. `?raw` (Vite's spelling) is an alias for `?text`.
 ### url mode — the default
 
 The bytes are written out and the import value is the served URL
-`/_point0/asset/<hash>.<ext>`:
+`/_point0/assets/<hash>.<ext>`:
 
 ```tsx
 import gemUrl from '@/assets/gem.png'
-// gemUrl === '/_point0/asset/a1b2c3d4e5f60718.png'  (16-hex content hash)
+// gemUrl === '/_point0/assets/a1b2c3d4e5f60718.png'  (16-hex content hash)
 ;<img src={gemUrl} alt="gem" />
 ```
 
@@ -115,7 +115,7 @@ import favicon from '@/assets/favicon.svg?text'
 > **GOTCHA:** use the explicit `?text` suffix — **not**
 > `import x from './x.svg' with { type: 'text' }`. Bun doesn't expose import
 > attributes to plugins, so for a managed extension the pipeline wins and you
-> silently get a `/_point0/asset/…` URL string instead of the text. The
+> silently get a `/_point0/assets/…` URL string instead of the text. The
 > generated typings type both as `string`, so TS won't catch it. See
 > [Bun gotchas](#bun-gotchas).
 
@@ -275,13 +275,14 @@ over the general one. Merging is field-by-field — specific wins per field.
 Two different mechanisms — don't confuse them:
 
 - **The asset pipeline** (this page): `import`-driven, content-hashed, served at
-  `/_point0/asset/<hash>.<ext>`, typed, with the `?react`/`?text`/`?file` modes.
+  `/_point0/assets/<hash>.<ext>`, typed, with the `?react`/`?text`/`?file`
+  modes.
 - **The [public dir](publicdir)**: static files served **verbatim** from a
   source dir at chosen route prefixes — `favicon.ico`, `robots.txt`, and the
   like. Not hashed, not imported, not typed.
 
 In a [build](build) the same `dist/client` dir serves both — the pipeline's
-`/_point0/asset/*` lives next to your public files. Use the pipeline for
+`/_point0/assets/*` lives next to your public files. Use the pipeline for
 anything you `import` into code; use the public dir for files referenced by a
 fixed, public URL.
 
@@ -292,8 +293,8 @@ fixed, public URL.
   there. Only names matching `<hash>.<ext>` are accepted — no path traversal, no
   arbitrary file read; Point0 only ever serves assets you actually imported.
 - **[Build](build)** (Bun): the client build writes url-mode bytes to
-  `dist/client/_point0/asset/`, served by the static `dist/client` public dir in
-  production. The server build doesn't re-copy them — both sides compute the
+  `dist/client/_point0/assets/`, served by the static `dist/client` public dir
+  in production. The server build doesn't re-copy them — both sides compute the
   same hash, so the server only emits the matching URL.
 - **[Vite](bun-vs-vite)**: Vite serves url-mode assets natively (its own
   app-absolute URL, identical client and server); Point0 handles only

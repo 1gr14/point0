@@ -400,6 +400,30 @@ describe('head', () => {
       retry: 3,
     },
   )
-})
 
-// USE HEAD keep array and call all AGAIN in loading or error or usccess component of page
+  it(
+    'forces <meta charset="utf-8"> first in <head> and serves a utf-8 content-type',
+    async () => {
+      const page = root.lets('page', 'home', '/').page(() => <div id="page" />)
+      const { fetch } = await createTestThings({ ssr: true, points: [root, page] })
+
+      const response = await fetch(page.route.get({}, { origin: 'http://localhost' }))
+      // (a) authoritative transport charset — wins over the browser's content-encoding guess unconditionally.
+      expect(response.headers.get('content-type')).toContain('text/html')
+      expect(response.headers.get('content-type')).toContain('charset=utf-8')
+
+      const html = await response.text()
+      // (b) defense in depth: the charset meta is the FIRST <head> child (inside the 1024-byte prescan window), ahead
+      //     of the dehydrated super-store script that used to push it past it → UTF-8-as-Windows-1252 mojibake.
+      expect(html).toMatch(/<head\b[^>]*>\s*<meta\s+charset="utf-8">/i)
+      const charsetIndex = html.search(/<meta\s+charset="utf-8">/i)
+      expect(charsetIndex).toBeLessThan(1024)
+      expect(html.indexOf('__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__')).toBeGreaterThan(charsetIndex)
+      // exactly one charset meta — the engine dedups whatever the template declared.
+      expect(html.match(/<meta\b[^>]*charset/gi)?.length).toBe(1)
+    },
+    {
+      retry: 3,
+    },
+  )
+})

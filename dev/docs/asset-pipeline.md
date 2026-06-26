@@ -19,7 +19,7 @@ On top of the default URL behavior there is an explicit per-import query API and
 generated TS types.
 
 ```ts
-import url from './logo.png' // "/_point0/asset/<hash>.png"  (default = url; client + SSR identical)
+import url from './logo.png' // "/_point0/assets/<hash>.png"  (default = url; client + SSR identical)
 import url from './logo.png?url' // same, explicit
 import path from './logo.png?file' // a real path the SERVER can read at runtime (bytes copied into dist)
 import text from './logo.svg?text' // file contents as a string  (?raw is an accepted alias — Vite's spelling)
@@ -27,7 +27,7 @@ import Logo from './logo.svg?react' // a React component (SVGR), svg only
 ```
 
 `<hash>` = `sha256(bytes).slice(0, 16)`. URL scheme:
-`/_point0/asset/<hash>.<ext>`.
+`/_point0/assets/<hash>.<ext>`.
 
 ## Why (the bugs this fixes)
 
@@ -52,34 +52,34 @@ parallel, both with the compiler plugin (the asset pipeline rides inside it).
 For `import logo from './logo.png'` (url mode):
 
 - The plugin reads the bytes, computes the hash, and returns
-  `export default "/_point0/asset/<hash>.png"`. The import becomes a plain
+  `export default "/_point0/assets/<hash>.png"`. The import becomes a plain
   string — **identical in both bundles** because the hash is ours.
 - The **client** build also **writes** the bytes to
-  `dist/client/_point0/asset/<hash>.png`.
+  `dist/client/_point0/assets/<hash>.png`.
 - The **server** build does **not** write (`writeUrlBytes: false`) — it only
   emits the same URL string. No `dist/server` duplicate.
 
 Result in `dist`:
 
 ```
-dist/client/_point0/asset/<hash>.png   ← the only copy of the bytes (this is what gets served)
-dist/client/**.js                       ← references "/_point0/asset/<hash>.png"
+dist/client/_point0/assets/<hash>.png   ← the only copy of the bytes (this is what gets served)
+dist/client/**.js                       ← references "/_point0/assets/<hash>.png"
 dist/server/**.js                       ← references the same string; no file next to it
 ```
 
 - **Prod serving:** the built server serves static files from `dist/client` at
-  `/` (the publicdir wiring in `config.ts`), so `GET /_point0/asset/<hash>.png`
-  → `dist/client/_point0/asset/<hash>.png`.
+  `/` (the publicdir wiring in `config.ts`), so `GET /_point0/assets/<hash>.png`
+  → `dist/client/_point0/assets/<hash>.png`.
 - **Dev serving:** the plugin writes bytes to a content-addressed cache
   (`node_modules/.cache/@point0/assets`) and the engine serves
-  `/_point0/asset/*` from it via a dev-only route (`Fetcher.fetchDevAsset`).
+  `/_point0/assets/*` from it via a dev-only route (`Fetcher.fetchDevAsset`).
   Prod doesn't need that route.
 - **Per-side builds (`point0 build --side …`) — where the bytes come from:**
   url-mode bytes are written **only by the client build** (the server build runs
   with `writeUrlBytes: false` — same URL, no file, no `dist/server` duplicate).
   So `--side client` is self-sufficient for url assets (bytes → `dist/client`,
   served by whoever hosts it), but `--side server` **alone** does NOT produce
-  servable url assets — `/_point0/asset/<hash>` 404s unless a client build
+  servable url assets — `/_point0/assets/<hash>` 404s unless a client build
   already populated `dist/client`. Only `?file` (bytes → that side's own outdir)
   is self-contained on a server-only build. So build both sides (the default),
   or build the client into the same `dist`, whenever the app uses url-mode
@@ -219,7 +219,7 @@ only on the extension list, not on points), so it is emitted via a dedicated
     carries assets with dev defaults (not under Vite, not in the built runtime —
     where the compiler plugin itself is absent).
   - client build — `client.ts` `buildByBun`: merges
-    `urlDir = <dist/client>/_point0/asset`, `fileDir = <dist/client>` into
+    `urlDir = <dist/client>/_point0/assets`, `fileDir = <dist/client>` into
     `compilerOptions.assets`.
   - server build — `server.ts` `buildByBun`: passes
     `assetsDirs = { writeUrlBytes: false, fileDir: <dist/server> }` into
@@ -276,9 +276,9 @@ its length must match the source).
 ```sh
 cd examples/basic && bun run setup && bun run build       # setup = prisma generate + sqlite (needed once); png+svg in home.tsx
 SERVER_PORT=4490 CLIENT_PORT=4491 SERVER_URL=http://localhost:4490 NODE_ENV=production bun run ./dist/server/app.server.js &
-curl -s --retry 60 --retry-connrefused http://localhost:4490/ | grep -o '<img[^>]*>'   # src must be /_point0/asset/<hash>.* (absolute)
-curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://localhost:4490/_point0/asset/<hash>.png   # 200 image/png
-# and: no relative './' leak in dist/server; the only bytes copy is in dist/client/_point0/asset
+curl -s --retry 60 --retry-connrefused http://localhost:4490/ | grep -o '<img[^>]*>'   # src must be /_point0/assets/<hash>.* (absolute)
+curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://localhost:4490/_point0/assets/<hash>.png   # 200 image/png
+# and: no relative './' leak in dist/server; the only bytes copy is in dist/client/_point0/assets
 ```
 
 ## Environment notes
@@ -383,7 +383,7 @@ rather than a second Vite plugin.
 
 ## Decisions locked
 
-- URL scheme `/_point0/asset/<hash>.<ext>`; `hash = sha256(bytes).slice(0, 16)`
+- URL scheme `/_point0/assets/<hash>.<ext>`; `hash = sha256(bytes).slice(0, 16)`
   (ours; identical client + server).
 - Default managed extensions: images (`png jpg jpeg gif webp avif ico bmp svg`),
   a/v (`mp3 wav ogg mp4 webm mov`), fonts (`woff woff2 ttf otf eot`), other

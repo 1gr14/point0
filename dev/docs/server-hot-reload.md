@@ -140,7 +140,7 @@ Two more recovery paths make "infinite dev" hold even at startup (never a forced
   an asset import to its absolute real path, and that's complete — the
   compiler's asset plugin (`@point0/compiler` `assets.ts`) keys on the
   EXTENSION, not the path, so the stable child intercepts the absolute asset
-  import and emits the same content-hashed `/_point0/asset/<hash>.<ext>` served
+  import and emits the same content-hashed `/_point0/assets/<hash>.<ext>` served
   URL as non-hot dev (the `?url`/`?file`/`?text`/`?react` queries are preserved
   too). Verified by the "resolves an asset import through the hot store" test.
   Absolute paths are fine: the store is dev-only and machine-local, never
@@ -368,7 +368,7 @@ propagated from cold roots along static-import edges and halted at lazy
   asset's ABSOLUTE real path. The compiler's asset plugin (`@point0/compiler`
   `assets.ts`) keys its `onLoad`/`onResolve` on the EXTENSION (not the path), so
   the stable child intercepts that absolute import and emits the same served
-  `/_point0/asset/<hash>.<ext>` URL as non-hot dev — no separate store-build
+  `/_point0/assets/<hash>.<ext>` URL as non-hot dev — no separate store-build
   asset step needed. (`?url`/`?file`/`?text`/`?react` queries preserved.)
 - **The content-addressed boundary** — **decided by exp9:** the store
   content-addresses the **points aggregator subtree** (re-imported per request);

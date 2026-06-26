@@ -28,7 +28,7 @@
 // ASSETS (png/svg/…): rewritten to the asset's ABSOLUTE real path (keeping any `?url`/`?file`/`?text`/`?react` query).
 // That's complete, not a stopgap: the compiler's asset plugin (`@point0/compiler` `assets.ts`) keys its onLoad/onResolve
 // on the EXTENSION, not the path, so when the stable child imports that absolute asset path the plugin intercepts it and
-// emits the same content-hashed served URL (`/_point0/asset/<hash>.<ext>`) it would in non-hot dev — verified by the
+// emits the same content-hashed served URL (`/_point0/assets/<hash>.<ext>`) it would in non-hot dev — verified by the
 // "resolves an asset import through the hot store" test. Absolute paths are fine here: the store is dev-only and
 // machine-local (under `node_modules/.cache`), never shipped.
 //

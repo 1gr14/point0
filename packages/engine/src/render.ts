@@ -104,6 +104,31 @@ function prependHeadElement({
   return html.replace(pattern, replacement)
 }
 
+/** Insert `content` at the END of `<head>` (right before `</head>`) — the opposite of {@link prependHeadElement}. */
+function appendHeadElement({ html, content }: { html: string; content: string }): string {
+  return html.replace(/<\/head>/i, `${content}</head>`)
+}
+
+/**
+ * Force `<meta charset="utf-8">` to be the FIRST child of `<head>`, deduping any charset declaration the template or
+ * Unhead already produced. The transport `; charset=utf-8` response header is the primary, authoritative fix; this is
+ * defense in depth for when a proxy/CDN strips that header. Per the WHATWG "prescan a byte stream" algorithm the
+ * browser only scans the first 1024 bytes for a `<meta charset>` — and the dehydrated super-store script (~200 KB on a
+ * real page) used to sit at the very top of `<head>`, pushing the template's charset meta far past that window and
+ * leaving the browser to guess (→ intermittent UTF-8-as-Windows-1252 mojibake). Engine-owned so an app template can't
+ * drop it. Run LAST among the head injections so the meta wins the first position over the env / preload / store
+ * elements.
+ */
+function ensureHeadCharsetFirst({ html }: { html: string }): string {
+  const headPattern = /(<head\b[^>]*>)([\s\S]*?)(<\/head>)/i
+  return html.replace(headPattern, (_match, open: string, inner: string, close: string) => {
+    const withoutCharset = inner
+      .replace(/<meta\b[^>]*\bcharset\b[^>]*>/gi, '')
+      .replace(/<meta\b[^>]*\bhttp-equiv=["']?content-type["']?[^>]*>/gi, '')
+    return `${open}<meta charset="utf-8">${withoutCharset}${close}`
+  })
+}
+
 /**
  * Extracts all script tags from HTML while preserving their order and location Returns an object with scripts from head
  * and body separately
@@ -292,7 +317,7 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     })
   }
   html = fillRootElement({
-    content: content ? `<!-- __Target_START__ -->${content}<!-- __Target_END__ -->` : '<!-- __Target__ -->',
+    content: content ? `<!-- __TARGET_START__ -->${content}<!-- __TARGET_END__ -->` : '<!-- __TARGET__ -->',
     html,
     domRootElementId,
   })
@@ -302,25 +327,30 @@ export async function overrideDocumentHtml<TContent extends string | undefined =
     // parallel fetch straight from the document. Prepended to <head> so the browser sees them before the entry script.
     html = prependHeadElement({ content: renderModulePreloadLinks(modulePreloads), html })
   }
-  html = prependHeadElement({
+  // The dehydrated super-store (~200 KB on a real page) only needs to be defined before the body bootstrap module runs,
+  // so it goes at the END of <head> rather than the top — keeping the charset meta, title and preload links inside the
+  // early-parse / 1024-byte-prescan window instead of behind a huge script.
+  html = appendHeadElement({
     content: '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
     html,
   })
+  // Last, so the charset meta wins the first <head> position over everything injected above (store, preloads, env).
+  html = ensureHeadCharsetFirst({ html })
 
-  if (html.includes('<!-- __Target__ -->')) {
-    const [prefix, suffix] = html.split('<!-- __Target__ -->')
+  if (html.includes('<!-- __TARGET__ -->')) {
+    const [prefix, suffix] = html.split('<!-- __TARGET__ -->')
     return { prefix, content: undefined as TContent, suffix, html: `${prefix}${suffix}` }
-  } else if (html.includes('<!-- __Target_START__ -->') && html.includes('<!-- __Target_END__ -->')) {
-    const prefix = html.split('<!-- __Target_START__ -->')[0]
-    const suffix = html.split('<!-- __Target_END__ -->')[1]
+  } else if (html.includes('<!-- __TARGET_START__ -->') && html.includes('<!-- __TARGET_END__ -->')) {
+    const prefix = html.split('<!-- __TARGET_START__ -->')[0]
+    const suffix = html.split('<!-- __TARGET_END__ -->')[1]
     const content = html
       .replace(prefix, '')
       .replace(suffix, '')
-      .replace('<!-- __Target_START__ -->', '')
-      .replace('<!-- __Target_END__ -->', '')
+      .replace('<!-- __TARGET_START__ -->', '')
+      .replace('<!-- __TARGET_END__ -->', '')
     return { prefix, content: content as TContent, suffix, html: `${prefix}${content}${suffix}` }
   } else {
-    throw new Error('<!-- __Target__ --> not found')
+    throw new Error('<!-- __TARGET__ --> not found')
   }
 }
 

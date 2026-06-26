@@ -194,10 +194,16 @@ export class Engine<
     prepare?: TPrepare
   } = {}): Promise<TPrepare extends true ? Engine<TRequiredCtx, TError, true> : typeof this> {
     // App preload.ts calls this unconditionally (the server entry, test setups and direct script
-    // runs import preload.ts explicitly). In a process running built artifacts the work is already
-    // baked in — plugins would be dead weight and the env fallback could flip a production server
-    // to development — so preload is a no-op there.
+    // runs import preload.ts explicitly). In a process running built artifacts most of the work is
+    // already baked in, so we still run the server preload but force its dev-only parts off: bun
+    // plugins are dead weight. We keep `setEnvVars` though, because the ONE thing that must survive
+    // into a built server is server `env.vars` — the bundle keeps them as live `process.env.…` reads
+    // re-evaluated at import, and the banner carries env CONSTS only, so unless preload writes the
+    // vars through here every declared `server.env.vars` silently vanishes in prod. Re-applying the
+    // consts is a harmless no-op and `NODE_ENV` can't flip: `normalizeAndValidateNodeEnv` keeps the
+    // banner-set `process.env.NODE_ENV` and ignores the dev fallback.
     if (_point0_env.build.was) {
+      await this.server.preload({ preventSetEnvVars, nodeEnvFallback, preventLoadBunPlugins: true })
       return this as TPrepare extends true ? Engine<TRequiredCtx, TError, true> : typeof this
     }
     await this.server.preload({ preventSetEnvVars, nodeEnvFallback, preventLoadBunPlugins })

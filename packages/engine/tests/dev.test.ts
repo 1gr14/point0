@@ -1101,7 +1101,7 @@ export const page2 = root.lets('page', 'page2', '/2')
     )
 
     it(
-      'resolves an asset import through the hot store to a served /_point0/asset/ URL',
+      'resolves an asset import through the hot store to a served /_point0/assets/ URL',
       wrp({ ssr: true, vite: false }, async ({ tp }) => {
         await tp.waitPortsFree()
         await tp.write(
@@ -1123,9 +1123,9 @@ export const page2 = root.lets('page', 'page2', '/2')
         // like non-hot dev. (This is why the store's absolute-path asset rewrite is correct, not an MVP placeholder.)
         const html = await waitFor(async () => {
           const h = (await tp.fetchServerHtml('/').catch(() => '')).replace(/<!--.*?-->/g, '')
-          return h.includes('/_point0/asset/') ? h : undefined
+          return h.includes('/_point0/assets/') ? h : undefined
         }, 15000)
-        const url = html.match(/\/_point0\/asset\/[a-f0-9]+\.svg/)?.[0]
+        const url = html.match(/\/_point0\/assets\/[a-f0-9]+\.svg/)?.[0]
         expect(url).toBeTruthy()
         // …and the engine actually serves those bytes back (the dev asset route).
         const res = await tp.fetchServer(url as string)

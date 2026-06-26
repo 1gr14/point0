@@ -80,7 +80,7 @@ export class Fetcher<TError extends ErrorPoint0> {
   /**
    * Dev + Bun only. The asset pipeline (part of the compiler plugin — see `@point0/compiler` `applyAssetsBunPlugin`)
    * rewrites `file`-loader asset imports (on both the browser bundle and the SSR runtime) to a
-   * `/_point0/asset/<hash>.<ext>` URL and caches the bytes content-addressed. Here we serve those URLs back from that
+   * `/_point0/assets/<hash>.<ext>` URL and caches the bytes content-addressed. Here we serve those URLs back from that
    * same cache. Safe by construction: only names that match `<hash>.<ext>` (no slashes, no `..`) are accepted, so there
    * is no path traversal and no arbitrary file read — we only ever serve assets that were actually imported. Replaces
    * the old `POINT0_UNSAFE_FIX_BUN_STATIC_SERVE` hack, which served arbitrary files by absolute path. In prod the

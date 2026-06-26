@@ -55,7 +55,7 @@ the bottom of this page lists the deploy-relevant flags.
 ```
 dist/
   client/                              # the browser bundle, served at /
-    _point0/asset/<hash>.png           # asset bytes (only copy)
+    _point0/assets/<hash>.png           # asset bytes (only copy)
     **.js
   server/
     index.server.js                    # the production server entry — run this
@@ -68,7 +68,7 @@ dist/
   `esbuild`, and friends are marked external, so a Bun-only app runs in
   production without them installed.
 - **Assets** are content-hashed and served from `dist/client` at
-  `/_point0/asset/<hash>.<ext>`. The production server serves these statically;
+  `/_point0/assets/<hash>.<ext>`. The production server serves these statically;
   it does not use the dev-only asset route. Details on [Assets](assets).
 
 The server entry filename comes from your engine `entry` map. The basic example
@@ -77,7 +77,7 @@ uses `entry: { main: './index.server.ts' }`, which builds to
 
 > **Deploy gotcha — build both sides.** URL-mode asset bytes are written by the
 > **client** build. `point0 build --side server` alone does not populate
-> `dist/client`, so `/_point0/asset/<hash>` 404s. A real deploy builds both
+> `dist/client`, so `/_point0/assets/<hash>` 404s. A real deploy builds both
 > sides — which is the default. Only `?file` assets are self-contained on a
 > server-only build.
 

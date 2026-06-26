@@ -7,7 +7,7 @@ import { resolveTempDirPath } from './utils.js'
 
 /**
  * point0's asset pipeline for Bun (dev + build, client + server). `import logo from './logo.png'` resolves to a stable,
- * app-absolute URL (`/_point0/asset/<hash>.<ext>`) on BOTH the browser bundle and the SSR runtime, so SSR html and the
+ * app-absolute URL (`/_point0/assets/<hash>.<ext>`) on BOTH the browser bundle and the SSR runtime, so SSR html and the
  * client agree (no hydration mismatch) and it resolves from any route. The same plugin runs everywhere, so the URL is
  * computed by ONE source of truth (our own content hash) rather than by two builds coincidentally agreeing.
  *
@@ -48,8 +48,8 @@ import { resolveTempDirPath } from './utils.js'
 // the static `dist/client` publicdir in prod).
 // ---------------------------------------------------------------------------
 
-/** App-absolute URL prefix every managed asset resolves under (`/_point0/asset/<hash>.<ext>`). */
-export const ASSET_URL_PREFIX = '/_point0/asset/'
+/** App-absolute URL prefix every managed asset resolves under (`/_point0/assets/<hash>.<ext>`). */
+export const ASSET_URL_PREFIX = '/_point0/assets/'
 
 /** Content-addressed dev cache the plugin writes to and the engine dev route serves from. Stable across processes. */
 export const resolveAssetsCacheDir = (): string => resolveTempDirPath(['assets'])
@@ -115,7 +115,7 @@ export type CompilerAssetsOptions = {
   defaultMode?: AssetResolveMode | false
   /** SVGR options for `?react`, or `false` to disable our `?react` (bring your own, e.g. `vite-plugin-svgr`). */
   svgr?: AssetsSvgrOptions | false
-  /** Bun url-mode output dir (served at `/_point0/asset/`); defaults to the dev cache. (Vite owns url-mode.) */
+  /** Bun url-mode output dir (served at `/_point0/assets/`); defaults to the dev cache. (Vite owns url-mode.) */
   urlDir?: string
   /**
    * Directory file-mode bytes are written to (read by the server at runtime). When omitted (dev), file mode returns the

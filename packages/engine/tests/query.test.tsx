@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { getQueryPredicate, Point0 } from '@point0/core'
+import { ErrorPoint0, getQueryPredicate, Point0, type AnyEventerEvent } from '@point0/core'
 import { QueryClient } from '@tanstack/react-query'
 import z from 'zod'
 import { createTestThings, waitReturn } from './utils/internal-testing.js'
@@ -428,4 +428,59 @@ describe('query', () => {
       expect(byId[0]?.state.data).toEqual({ value: 'A' })
     })
   })
+
+  it(
+    'a cancelled in-flight server query emits pointQueryCancelled, not pointQueryError / error',
+    async () => {
+      // Block the server loader so the client query stays in-flight while we cancel it — the navigate-away / unmount
+      // shape that produced spurious Sentry "AbortError" noise. The loader then throws on release so the query function
+      // is guaranteed to reject even if the in-process fetch does not honour the abort: by then the signal is already
+      // aborted, so the catch must classify it as a cancellation, not an error.
+      let release: (() => void) | undefined
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const events: AnyEventerEvent<ErrorPoint0>[] = []
+      const errorEvents: AnyEventerEvent<ErrorPoint0>[] = []
+      const root = Point0.lets('root', 'root')
+        .queryOptions({ retry: false })
+        .on('*', (e) => {
+          events.push(e)
+        })
+        .on('error', (e) => {
+          errorEvents.push(e)
+        })
+        .root()
+      const page = root
+        .lets('page', 'home', '/')
+        .loader(async () => {
+          await blocked
+          throw new ErrorPoint0('should be swallowed by the cancellation')
+        })
+        .page(() => <div id="page" />)
+      const { render } = await createTestThings({ ssr: false, points: [root, page] })
+      await render(page.route(), async (state) => {
+        const has = (name: string) => events.some((e) => e.name === name)
+        const waitUntil = async (cond: () => boolean) => {
+          for (let i = 0; i < 150 && !cond(); i++) {
+            await waitReturn(10)
+          }
+        }
+        // wait until the server query's fetch is in flight, then cancel it (what TanStack does on unmount)
+        await waitUntil(() => has('pointFetchServerStart'))
+        await state.queryClient.cancelQueries()
+        release?.()
+        await waitUntil(() => has('pointQueryCancelled') || has('pointQueryError'))
+
+        // The client query settles as the dedicated cancelled outcome, NOT pointQueryError — so `.on('error')` (which
+        // fans out to pointQueryError) never reports the cancellation, which is the whole bug. (The loader is forced to
+        // throw only because the in-process fetch ignores the abort signal and would otherwise resolve; that produces an
+        // unrelated server-side engineFetchError, a harness artifact we deliberately don't assert on.)
+        expect(has('pointQueryCancelled')).toBe(true)
+        expect(has('pointQueryError')).toBe(false)
+        expect(errorEvents.map((e) => e.name)).not.toContain('pointQueryError')
+      })
+    },
+    { retry: 3 },
+  )
 })

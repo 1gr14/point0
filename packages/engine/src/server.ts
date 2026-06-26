@@ -1311,7 +1311,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
       ],
       plugins: [
         // Server build assets: `writeUrlBytes: false` because the client build already wrote the url bytes (shared
-        // content hash → the same `/_point0/asset/<hash>` URL); only `?file` bytes are copied, next to the server bundle.
+        // content hash → the same `/_point0/assets/<hash>` URL); only `?file` bytes are copied, next to the server bundle.
         ...(await this.extractBunPlugins({
           built: true,
           onDeny: 'throw',

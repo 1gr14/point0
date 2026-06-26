@@ -274,6 +274,7 @@ import {
   getWindowScrollPositionGetterBySelector,
   getWindowScrollPositionSetterByElementGetter,
   getWindowScrollPositionSetterBySelector,
+  isAbortCancellation,
   isContainsBinary,
   isErrorCode,
   mergeEndpointOpenapiSchemas,
@@ -8769,6 +8770,13 @@ export class Point0<
         error: this._Error.from(error),
         output: undefined,
       }
+      // A cancelled fetch (the caller's `AbortSignal` fired — e.g. a TanStack query whose observer left mid-flight) is
+      // not a real failure: emit the dedicated cancelled outcome rather than the error pair, but still return the
+      // result so the caller (`_fetchServer` → the query function) keeps throwing and TanStack's revert path runs.
+      if (isAbortCancellation(result.error, _fetchOptions?.signal)) {
+        this._emit('pointFetchServerCancelled', _eventData, meta)
+        return result
+      }
       const eventData = {
         ..._eventData,
         ...result,
@@ -9019,6 +9027,14 @@ export class Point0<
         return data
       } catch (error) {
         const error0 = this._Error.from(error)
+        if (isAbortCancellation(error0, signal)) {
+          // The fetch was cancelled (navigation away, an unmount, a cancelRefetch supersede) — not a failure. TanStack
+          // reverts the query (no error in cache), so emit a dedicated cancelled outcome instead of pointQueryError
+          // (it is NOT in uniqEventerErrorEventNames, so `.on('error')` and its reporters stay quiet) and still throw,
+          // leaving TanStack's cancel/revert path untouched.
+          this._emit('pointQueryCancelled', _eventData, meta)
+          throw error0
+        }
         if (error0.redirect) {
           const eventData = {
             ..._eventData,
@@ -9324,6 +9340,13 @@ export class Point0<
         return data
       } catch (error) {
         const error0 = this._Error.from(error)
+        if (isAbortCancellation(error0, signal)) {
+          // Cancelled mid-fetch (navigation/unmount/supersede), not a failure — emit the dedicated cancelled outcome
+          // (absent from uniqEventerErrorEventNames) instead of pointInfiniteQueryError, and still throw so TanStack's
+          // cancel/revert path is unchanged. See the server-query branch above.
+          this._emit('pointInfiniteQueryCancelled', _eventData, meta)
+          throw error0
+        }
         if (error0.redirect) {
           const eventData = {
             ..._eventData,

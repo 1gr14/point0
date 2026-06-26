@@ -39,7 +39,7 @@ import {
   chunkGraphFromBunMetafile,
   chunkGraphFromRollup,
   isModulePreloadDisabledByEnv,
-  PRELOAD_MANIFEST_BASENAME,
+  PRELOAD_MANIFEST_PATH_SEGMENTS,
   resolvePreloadsForPoint,
   shouldServeModulePreload,
   type PagePreloadSources,
@@ -1078,12 +1078,12 @@ try {
 
       const compilerOptions = this.getCompilerOptions({ built: true, onDeny: 'throw' })
       if (compilerOptions && compilerOptions.assets) {
-        // Bun client build's asset output dirs: url-mode bytes → the served `dist/client/_point0/asset/<hash>`,
+        // Bun client build's asset output dirs: url-mode bytes → the served `dist/client/_point0/assets/<hash>`,
         // `?file` bytes → next to the bundle. (The Vite client build below leans on Vite's native asset URLs, so it
         // sets neither.)
         compilerOptions.assets = {
           ...compilerOptions.assets,
-          urlDir: nodePath.join(buildPaths.outdir, '_point0', 'asset'),
+          urlDir: nodePath.join(buildPaths.outdir, '_point0', 'assets'),
           fileDir: buildPaths.outdir,
         }
       }
@@ -1389,7 +1389,7 @@ try {
    */
   preloadPageSources: PagePreloadSources[] = []
 
-  /** Build + write the per-client preload manifest (`<outdir>/__point0_preload__.json`) from the emitted chunk graph. */
+  /** Build + write the per-client preload manifest (`<outdir>/_point0/preload.json`) from the emitted chunk graph. */
   private async writePreloadManifest({
     outdir,
     graph,
@@ -1402,7 +1402,7 @@ try {
         return
       }
       const manifest = buildPreloadManifest({ graph, pages: this.preloadPageSources })
-      await Bun.write(nodePath.join(outdir, PRELOAD_MANIFEST_BASENAME), JSON.stringify(manifest))
+      await Bun.write(nodePath.join(outdir, ...PRELOAD_MANIFEST_PATH_SEGMENTS), JSON.stringify(manifest))
     } catch (error) {
       // Preload is a pure perf hint — never let manifest emission fail an otherwise-good build. Warn, then carry on.
       this.log({
@@ -1423,7 +1423,7 @@ try {
     try {
       const outdir = this.getBuildPaths().outdir
       if (outdir) {
-        const file = Bun.file(nodePath.join(outdir, PRELOAD_MANIFEST_BASENAME))
+        const file = Bun.file(nodePath.join(outdir, ...PRELOAD_MANIFEST_PATH_SEGMENTS))
         if (await file.exists()) {
           this._preloadManifest = JSON.parse(await file.text()) as PreloadManifest
         }

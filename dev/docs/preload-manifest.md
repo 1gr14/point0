@@ -35,8 +35,8 @@ standalone or fighting the bootstrap.)
 
 ## The manifest
 
-Each client writes `dist/client/__point0_preload__.json`
-([`PRELOAD_MANIFEST_BASENAME`](../../packages/engine/src/preload-manifest.ts)):
+Each client writes `dist/client/_point0/preload.json`
+([`PRELOAD_MANIFEST_RELPATH`](../../packages/engine/src/preload-manifest.ts)):
 
 ```jsonc
 {
@@ -144,7 +144,7 @@ returns true. Two reasons it might not:
   _only_ in the built, prod-serve runtime — the same signal the dev servers gate
   on. In dev nothing is bundled (there are no `/chunk-*.js` to point at), so the
   feature must be inert. Crucially this holds **even when a stale
-  `dist/client/__point0_preload__.json` is present** (e.g. the user ran
+  `dist/client/_point0/preload.json` is present** (e.g. the user ran
   `point0 build` once, then `point0 dev`): without the gate that leftover
   manifest would leak hashed prod chunk links into dev-served HTML — the exact
   regression this gate prevents.
