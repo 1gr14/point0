@@ -1,5 +1,13 @@
 CHANGELOG.md
+# point0-generated point aggregators & routes — emitted by `point0 generate`, not hand-written.
+# Prettier reformats them (collapses the array, rewrites `typeof x['k']` → `(typeof x)['k']`), which
+# fights the generator and churns the committed diff on every regen. Keep prettier off them.
+# (Real sources like `points-manager.ts` start with `points-`, so none of these globs touch them.)
 **/wouter-routes.tsx
+**/points.client.ts
+**/points.server.ts
+**/points.ts
+**/points[0-9]*.ts
 **/points.lazy.ts
 **/points.ready.ts
 todo.md

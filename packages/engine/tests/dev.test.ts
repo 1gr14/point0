@@ -1,5 +1,5 @@
 import assert from 'assert'
-import { readdirSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { rename, rm } from 'node:fs/promises'
 import nodePath from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
@@ -14,6 +14,25 @@ import type {
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
 setDefaultTimeout(20000)
+
+// Resolve the server-hot store dir the way the dev child actually does: walk up from its cwd (the test project dir) to
+// the nearest `node_modules`, then `.cache/server-hot/<scope>-<port>`. The engine resolves it with
+// `resolveCacheDirPath` from `process.cwd()`; replicating that walk from the project dir keeps the test robust to
+// node_modules hoisting. A fully-hoisted install (fresh git worktree, CI) has NO `packages/engine/node_modules`, so the
+// store lands in the REPO-ROOT `node_modules/.cache` — a fixed `__dirname/../node_modules` path missed it and read 0.
+const resolveStoreDirFromProject = (projectDir: string, scope: string, port: number | string): string => {
+  let dir = projectDir
+  let lastDir = ''
+  while (dir !== lastDir) {
+    const nodeModules = nodePath.join(dir, 'node_modules')
+    if (existsSync(nodeModules)) {
+      return nodePath.join(nodeModules, '.cache', 'server-hot', `${scope}-${port}`)
+    }
+    lastDir = dir
+    dir = nodePath.dirname(dir)
+  }
+  throw new Error(`No node_modules found above ${projectDir}`)
+}
 
 const tpf = TestProjectOneClientFactory.create({
   namespace: 'dev',
@@ -1070,9 +1089,10 @@ export const page2 = root.lets('page', 'page2', '/2')
         tp.spawn(['bun', 'run', 'dev', '--hot'], { env: { ...process.env, POINT0_DEV_SERVER_HOT_GC_GRACE_MS: '0' } })
         await tp.waitStarted()
 
-        // The store dir is keyed by `<scope>-<port>` and lives next to the engine package (resolved from the child's
-        // cwd, not the test project). This run's dir is `root-<serverPort>`; count the `page_*` store files in it.
-        const storeDir = nodePath.join(__dirname, '..', 'node_modules', '.cache', 'server-hot', `root-${tp.serverPort}`)
+        // The store dir is keyed by `<scope>-<port>`, resolved by walking up from the dev child's cwd (this project dir)
+        // to the nearest `node_modules` — NOT a fixed path next to the engine package, since hoisting decides which
+        // `node_modules` wins. This run's dir is `root-<serverPort>`; count the `page_*` store files in it.
+        const storeDir = resolveStoreDirFromProject(tp.dir, 'root', tp.serverPort)
         const countPageStoreFiles = (): number => {
           try {
             return readdirSync(storeDir).filter((f) => f.startsWith('page_') && f.endsWith('.tsx')).length

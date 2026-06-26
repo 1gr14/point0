@@ -16,4 +16,4 @@ export default [
     polh: true,
     point: async () => (await import('../pages/ideas.js')).default,
   },
-] as PointsDefinition<(typeof root_0)['Infer']['RequiredCtx'], (typeof root_0)['Infer']['Error']>
+] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>

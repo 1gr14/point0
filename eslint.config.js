@@ -21,9 +21,12 @@ export default defineConfig([
       '**/.git/**',
       '**/templates/**',
       '**/point0.config.js',
+      // point0-generated point aggregators (also covered above for templates/**); `points-manager.ts` is a
+      // real source and starts with `points-`, so the numbered glob never touches it.
       '**/points.client.ts',
       '**/points.server.ts',
       '**/points.ts',
+      '**/points[0-9]*.ts',
       '**/capacitor/ios/**',
       '**/capacitor/android/**',
       'eslint.config.js',
