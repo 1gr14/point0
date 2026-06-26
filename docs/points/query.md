@@ -223,6 +223,30 @@ apply server- and client-side).
   setup (one server, many clients). It's set by the root you build from, not by
   a method.
 
+## Targeting one input, many, or all
+
+The cache mutators — `invalidateQuery`, `refetchQuery`, `removeQuery`,
+`resetQuery`, `cancelQuery` (and their infinite siblings) — each take their
+first argument in one of three forms:
+
+- an **exact input** (`{ id: 1 }`) — act on that single cache entry;
+- a **predicate** `(input) => boolean` — act on every entry whose input matches;
+- **`true`** — act on every entry of this query, regardless of input.
+
+```tsx
+ideaQuery.invalidateQuery({ id: 1 }) // one entry
+ideaQuery.invalidateQuery((i) => i.id > 10) // matching entries
+ideaQuery.invalidateQuery(true) // every entry of ideaQuery
+```
+
+So `invalidateQuery(true)` is the one-liner for "refresh this query everywhere"
+after a mutation — no need to track which inputs are cached. The read helper
+`getQueriesCache` takes the same three forms.
+
+To match across _different_ queries — by tag, by scope, or several points at
+once — drop down to a raw `invalidateQueries` with
+[`getQueryPredicate`](query-client#matching-cache-entries-getquerypredicate).
+
 ## Edge cases
 
 - **A disabled query stays pending.** `useQuery(input, { enabled: false })`
@@ -232,11 +256,6 @@ apply server- and client-side).
 - **`staleTime: Infinity` for hand-managed caches.** When you write the cache by
   hand after a mutation (`setQueryData`), set `staleTime: Infinity` so it never
   silently refetches.
-- **Target one input, many, or all.** `invalidateQuery`, `refetchQuery`,
-  `removeQuery`, `resetQuery`, `cancelQuery` (and their infinite siblings) each
-  take an exact input, a predicate `(input) => boolean`, or `true` for every
-  entry of the query regardless of input — `invalidateQuery(true)` invalidates
-  all of them. The read helper `getQueriesCache` accepts the same three forms.
 
 ## Reference
 

@@ -313,11 +313,25 @@ export const addIdeaMutation = root.lets
   })
 ```
 
-Like the finite helpers, the infinite cache mutators (`invalidateInfiniteQuery`,
-`refetchInfiniteQuery`, `removeInfiniteQuery`, `resetInfiniteQuery`,
-`cancelInfiniteQuery`) take an exact input, a predicate `(input) => boolean`, or
-`true` for every entry of the infinite query regardless of input —
-`invalidateInfiniteQuery(true)` invalidates all of them.
+## Targeting one input, many, or all
+
+The infinite cache mutators — `invalidateInfiniteQuery`, `refetchInfiniteQuery`,
+`removeInfiniteQuery`, `resetInfiniteQuery`, `cancelInfiniteQuery` — take their
+first argument in the same three forms as the finite
+[query helpers](query#targeting-one-input-many-or-all):
+
+- an **exact input** — act on that single cache entry;
+- a **predicate** `(input) => boolean` — act on every entry whose input matches;
+- **`true`** — act on every entry of this infinite query, regardless of input.
+
+```tsx
+ideaListPage.invalidateInfiniteQuery(true) // refresh the whole list, any filter
+```
+
+The read helper `getInfiniteQueriesCache` takes the same three forms. To match
+across _different_ queries — by tag, by scope, or several points at once — drop
+down to a raw `invalidateQueries` with
+[`getQueryPredicate`](query-client#matching-cache-entries-getquerypredicate).
 
 ## Reference
 
