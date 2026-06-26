@@ -9,6 +9,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import matter from 'gray-matter'
 import { EMBED_DIM, EMBED_MODEL, embed } from '../src/embedder.js'
+import { splitSections } from '../src/sections.js'
 import type { Doc, DocCategory, DocSection, DocsData } from '../src/types.js'
 
 const packageDir = path.resolve(import.meta.dir, '..')
@@ -44,47 +45,24 @@ const readDocs = (categories: DocCategory[]): Doc[] => {
   return docs
 }
 
-/** Split a doc's markdown into sections at h2/h3 headings (intro before the first heading kept too). */
-const splitSections = (doc: Doc): Array<{ heading: string; content: string }> => {
-  const lines = doc.content.split('\n')
-  const sections: Array<{ heading: string; content: string }> = []
-  let heading = doc.title
-  let buffer: string[] = []
-  const flush = () => {
-    const content = buffer.join('\n').trim()
-    if (content) {
-      sections.push({ heading, content })
-    }
-    buffer = []
-  }
-  for (const line of lines) {
-    const match = /^#{2,3}\s+(.*)$/.exec(line)
-    if (match) {
-      flush()
-      heading = match[1].trim()
-    } else {
-      buffer.push(line)
-    }
-  }
-  flush()
-  return sections.length > 0 ? sections : [{ heading: doc.title, content: doc.content }]
-}
-
 const build = async () => {
   const categories = readCategories()
   const docs = readDocs(categories)
   const sections: DocSection[] = []
   for (const doc of docs) {
-    const docSections = splitSections(doc)
-    for (let i = 0; i < docSections.length; i++) {
-      const { heading, content } = docSections[i]
+    // Split at H2–H6 with GitHub-style anchors (matching the docs site's rehype-slug) — see src/sections.ts.
+    const docSections = splitSections(doc.content, doc.title)
+    for (const { headingId, heading, level, content } of docSections) {
       const embedding = await embed(`${doc.title}\n${heading}\n${content}`)
       sections.push({
-        id: `${doc.slug}#${i}`,
+        // Anchored, stable id: `slug#headingId` (just `slug` for the preamble). Replaces the old positional `slug#N`.
+        id: headingId ? `${doc.slug}#${headingId}` : doc.slug,
         docSlug: doc.slug,
         title: doc.title,
         category: doc.category,
         heading,
+        headingId,
+        level,
         content,
         embedding,
       })

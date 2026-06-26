@@ -66,6 +66,9 @@ jobs:
           name: build-files
           path: |
             packages/*/dist/
+            # @point0/docs ships its prebuilt search corpus from content/ (gitignored, built by `build:content`).
+            # Without this line the publish job restores only dist/ and publishes the docs package with no corpus.
+            packages/*/content/
             package.json
             packages/*/package.json
           retention-days: 1

@@ -7,10 +7,11 @@ description:
 ---
 
 `point0-docs-mcp` is an MCP server that gives an agent the Point0 documentation:
-it exposes three read-only tools — list, search, get — over a prebuilt docs
-corpus with local hybrid search (keyword + semantic). The point is that the
-agent answers framework questions from the real, current docs, not from what it
-made up. It ships in the `@point0/docs` package and runs over stdio.
+it exposes five read-only tools — list, search, get, outline, get-section — over
+a prebuilt docs corpus with local hybrid search (keyword + semantic). The point
+is that the agent answers framework questions from the real, current docs, not
+from what it made up — and reads only the section it needs instead of pulling a
+whole page. It ships in the `@point0/docs` package and runs over stdio.
 
 ```json
 // .mcp.json (Claude Code) — also .cursor/mcp.json (Cursor), identical content
@@ -29,8 +30,8 @@ made up. It ships in the `@point0/docs` package and runs over stdio.
 ```
 
 That's the whole setup. `create-point0-app` writes both files for you, so a
-fresh app already has the docs MCP wired. The rest of this page is what the
-three tools do and how the corpus is built.
+fresh app already has the docs MCP wired. The rest of this page is what the five
+tools do and how the corpus is built.
 
 ## What `create-point0-app` ships
 
@@ -62,10 +63,12 @@ The docs MCP takes **no arguments**. (The `--meta` flag belongs to the
 [project MCP](mcp-project), which reads your app's generated meta — a different
 server. Don't pass it here.)
 
-## The three tools
+## The five tools
 
-Every tool is read-only and returns JSON. An agent typically searches, then gets
-the full page.
+Every tool is read-only and returns JSON. The cheap path on a large page is
+**search → `get_section`** (or **`get_outline` → `get_section`**): a search hit
+names the exact section, so the agent reads just that part instead of the whole
+page.
 
 ### `search_docs` — find a section
 
@@ -75,8 +78,10 @@ search_docs({ query: "how do I gate a page behind auth" })
 //   "hits": [
 //     { "slug": "with", "title": ".with", "category": "methods",
 //       "heading": "Security: gate access in .with, not .ctx",
+//       "headingId": "security-gate-access-in-with-not-ctx",
+//       "ref": "with#security-gate-access-in-with-not-ctx",
 //       "snippet": ".with runs at render, including on the client…",
-//       "score": 0.71 },
+//       "chars": 980, "score": 0.71 },
 //     …
 //   ],
 //   "total": 12, "hasMore": true, "nextOffset": 8
@@ -87,10 +92,13 @@ Hybrid search: BM25 keyword matching plus a 384-dim vector similarity, combined
 in one query. `query` is required and natural-language; `limit` defaults to
 **8** and `offset` to **0**.
 
-Hits are **sections, not whole pages** — `heading` is the matched h2/h3, `slug`
-points to the parent page. The `snippet` is the section's first ~280 characters,
-whitespace-collapsed, with an ellipsis when truncated. After a search, call
-`get_doc(slug)` for the full page.
+Hits are **sections, not whole pages**. `heading` is the matched H2–H6 heading;
+`headingId` is its anchor (the slug the docs site renders as `#…`, deduped per
+page); `ref` is the ready-to-use `slug#headingId`; `chars` is the section body's
+size, a cheap signal of how much `get_section` would return. The `snippet` is
+the section's first ~280 characters, whitespace-collapsed, with an ellipsis when
+truncated. After a search, call `get_section(slug, headingId)` for just that
+section — or `get_doc(slug)` if you really want the whole page.
 
 ### `get_doc` — read a full page
 
@@ -105,10 +113,14 @@ get_doc({ slug: "overview" })
 category is cosmetic and not part of the slug. `content` is the full markdown
 with frontmatter stripped.
 
+This returns the **entire page**, which can be large (the overview alone is
+thousands of lines). For a big page prefer `get_outline` to see its sections,
+then `get_section` to read only the part you need.
+
 The JSON object shown above is the tool's `structuredContent`; `get_doc`'s
 plain-text channel (`content[0].text`) is just the raw markdown body, not the
-JSON. (`search_docs` and `list_docs` put `JSON.stringify(result)` in their text
-channel.)
+JSON. (`search_docs`, `list_docs`, and `get_outline` put
+`JSON.stringify(result)` in their text channel.)
 
 An unknown slug is a clean error result the agent can read, not a thrown
 exception:
@@ -116,6 +128,50 @@ exception:
 ```jsonc
 get_doc({ slug: "nope" })
 // => { content: [{ type: "text", text: 'No doc found for slug "nope".' }], isError: true }
+```
+
+### `get_outline` — a page's table of contents
+
+```jsonc
+get_outline({ slug: "overview" })
+// => {
+//   "slug": "overview", "title": "Overview",
+//   "headings": [
+//     { "headingId": "introduction", "heading": "Introduction", "level": 2, "chars": 664 },
+//     { "headingId": "query", "heading": "Query", "level": 2, "chars": 10202 },
+//     …
+//   ]
+// }
+```
+
+Every section heading on the page with its anchor (`headingId`), `level` (2–6),
+and body size (`chars`). It carries **no body**, so it's a cheap map of a large
+page: read the outline, pick a heading, then pull just that section with
+`get_section`. The preamble before the first heading is omitted (it has no
+anchor — use `get_doc` for the page top). An unknown slug is the same clean
+error result as `get_doc`.
+
+### `get_section` — read one section
+
+```jsonc
+get_section({ slug: "overview", heading: "query" })
+// => { "slug": "overview", "headingId": "query", "heading": "Query", "level": 2,
+//      "content": "## Query\n\n…just this section…" }
+```
+
+`heading` is the **anchor** — a search hit's `headingId`, the part after `#` in
+its `ref`, or an id from `get_outline`. The result is that heading plus its
+body, **including any subsections nested under it** (everything up to the next
+heading of equal-or-higher level) — so asking for an H2 gives the whole H2
+section, not just its first paragraph. Like `get_doc`, the plain-text channel
+(`content[0].text`) is the raw markdown; `structuredContent` is the object
+above.
+
+An unknown slug or anchor is a clean error result, not a throw:
+
+```jsonc
+get_section({ slug: "overview", heading: "nope" })
+// => { content: [{ type: "text", text: 'No section "nope" found in doc "overview".' }], isError: true }
 ```
 
 ### `list_docs` — the table of contents
@@ -150,10 +206,14 @@ bun run build:content
 ```
 
 `build:content` reads the repo's `docs/` directory, splits each page into
-sections at its h2/h3 headings, embeds every section locally, and writes one
-`content/docs.json`. That file is gitignored but published (it's in the
-package's `files`), so installing `@point0/docs` gives you the whole prebuilt
-index.
+sections at its **H2–H6** headings (a `#` inside a fenced code block is not a
+heading), assigns each a GitHub-style anchor (the same slug `rehype-slug`
+produces, so it matches the on-page `#…` link, deduped per page), embeds every
+section locally, and writes one `content/docs.json`. That file is gitignored but
+published (it's in the package's `files`), so installing `@point0/docs` gives
+you the whole prebuilt index. CI uploads `content/` with the build artifact and
+the publish step refuses to publish `@point0/docs` if the corpus is missing, so
+a release can never ship an empty index.
 
 The embedding model is **`Xenova/all-MiniLM-L6-v2`** (384-dim, ~23MB, via
 `@huggingface/transformers`). At query time the server only embeds _your search
@@ -167,8 +227,8 @@ query_ — the document vectors are already computed — so it loads no model fo
 
 The **first** `search_docs` call triggers the one-time ~23MB model download and
 builds the in-memory index, so it's slow; everything after is local and fast.
-`list_docs` and `get_doc` never touch the model, so they're instant even on a
-cold start.
+`list_docs`, `get_doc`, `get_outline`, and `get_section` never touch the model,
+so they're instant even on a cold start.
 
 ## A note on freshness
 
@@ -190,7 +250,7 @@ https://1gr14.dev/llms-full.txt  # the entire docs corpus in one file, for a sin
 
 Feed either URL to an agent and it can answer framework questions with no
 install step. The two paths are complementary: `point0-docs-mcp` is the local,
-searchable path (three tools, offline after the model downloads); `llms.txt` is
+searchable path (five tools, offline after the model downloads); `llms.txt` is
 the fetch-based path (zero setup, no local model). `@point0/docs` builds its
 corpus from `docs/` at package-build time; the `llms.txt` files are built and
 served by the Point0 site. Both draw on the same `docs/` source.
@@ -203,19 +263,24 @@ served by the Point0 site. Both draw on the same `docs/` source.
 | ------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------ |
 | `search_docs` | `query` (required), `limit` (default 8), `offset` (default 0) | `{ hits, total, hasMore, nextOffset }` — hits are sections               |
 | `get_doc`     | `slug` (required; bare file name)                             | the full `Doc` (`content` = full markdown), or `isError` if unknown      |
+| `get_outline` | `slug` (required; bare file name)                             | `{ slug, title, headings }` — heading anchors/levels/sizes, no bodies    |
+| `get_section` | `slug` + `heading` (the anchor / `headingId`)                 | `{ slug, headingId, heading, level, content }`, or `isError` if unknown  |
 | `list_docs`   | `limit` (optional → all), `offset` (default 0)                | `{ docs, total, hasMore, nextOffset }` — slug/category/title/description |
 
 ### A search hit
 
 ```ts
 {
-  ;(slug, title, category, heading, snippet, score)
+  ;(slug, title, category, heading, headingId, ref, snippet, chars, score)
 }
 ```
 
-`slug` is the parent page; `heading` is the matched section. Pass `slug` to
-`get_doc` for the full page. `score` is Orama's raw hybrid score — higher is a
-better match; rank by it, don't read a fixed range into it.
+`slug` is the parent page; `heading` is the matched section and `headingId` its
+anchor within the page; `ref` is the ready-to-use `slug#headingId`. Pass
+`(slug, headingId)` to `get_section` for just that section (or `slug` to
+`get_doc` for the full page). `chars` is the section body's size — a cheap
+signal of how much `get_section` returns. `score` is Orama's raw hybrid score —
+higher is a better match; rank by it, don't read a fixed range into it.
 
 ### Server facts
 
