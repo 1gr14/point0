@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { freemem, tmpdir, totalmem } from 'node:os'
+import { tmpdir } from 'node:os'
 import type { Browser } from 'playwright'
 
 /**
@@ -28,19 +28,6 @@ setDefaultTimeout(300_000)
 // (pipe transport hangs / `uv_spawn` fails), so on win32 we spawn `chrome-headless-shell` + `connectOverCDP` instead
 // (see launchBrowser and dev/docs/windows.md).
 const isWin = process.platform === 'win32'
-
-// DIAGNOSTIC (CPA_DIAG=1): step + memory markers written straight to stderr — unbuffered, so they
-// survive the OOM SIGKILL that swallows bun's buffered per-test output. Lets us see which step
-// balloons memory on a CI runner and whether the growth is bounded or a runaway. Remove once known.
-const DIAG = process.env.CPA_DIAG === '1'
-const gb = (n: number): string => (n / 1e9).toFixed(2)
-const mark = (label: string): void => {
-  if (!DIAG) return
-  process.stderr.write(`[CPA] ${label} | rss=${gb(process.memoryUsage().rss)}GB free=${gb(freemem())}/${gb(totalmem())}GB\n`)
-}
-if (DIAG) {
-  setInterval(() => mark('tick'), 1000).unref?.()
-}
 
 type Mode = { id: 'bun' | 'vite'; viteFlag: string; serverPort: number; clientPort: number }
 
@@ -141,12 +128,6 @@ async function killPorts(ports: number[]): Promise<void> {
       await Bun.$`taskkill /pid ${pid} /T /F`.nothrow().quiet()
     }
     return
-  }
-  if (DIAG) {
-    const all = await Bun.$`lsof ${ports.flatMap((port) => ['-ti', `:${port}`])}`.nothrow().quiet()
-    process.stderr.write(
-      `[CPA] killPorts ${JSON.stringify(ports)} all-holders=[${all.text().trim().split(/\s+/).join(',')}] self=${process.pid}\n`,
-    )
   }
   // Kill only the process LISTENING on each port (the dev server) — never a client connected to it.
   // `lsof -ti :PORT` also returns clients, and this very test process holds pooled keep-alive sockets to
@@ -267,7 +248,6 @@ describe('create-app e2e', () => {
 
       let dev: DevProcess | undefined
       try {
-        mark(`${mode.id}: scaffold`)
         // 1. Scaffold from the template via the real CLI (no install — deps resolve up the workspace).
         const scaffold = Bun.spawnSync(
           [process.execPath, cliPath, appName, mode.viteFlag, '--no-install', '--no-interactive'],
@@ -292,13 +272,9 @@ describe('create-app e2e', () => {
         await writeAppEnv(appDir, mode)
 
         // 2. Generate the point0 artifacts and the prisma client, then assert the scaffolded app type-checks cleanly.
-        mark(`${mode.id}: point0 generate`)
         run([process.execPath, 'run', 'generate'], appDir, `point0 generate (${mode.id})`)
-        mark(`${mode.id}: prisma generate`)
         run([process.execPath, 'run', 'prisma:generate'], appDir, `prisma generate (${mode.id})`)
-        mark(`${mode.id}: tsgo typecheck`)
         const typecheck = Bun.spawnSync([process.execPath, 'run', 'types'], { cwd: appDir, env: { ...process.env } })
-        mark(`${mode.id}: tsgo done (exit ${typecheck.exitCode})`)
         if (typecheck.exitCode !== 0) {
           throw new Error(
             `type check failed (${mode.id}):\n${typecheck.stdout.toString()}\n${typecheck.stderr.toString()}`,
@@ -307,7 +283,6 @@ describe('create-app e2e', () => {
         expect(typecheck.exitCode).toBe(0)
 
         // 3. Start the dev server (point0 dev regenerates on startup, then serves).
-        mark(`${mode.id}: dev spawn`)
         await killPorts([mode.serverPort, mode.clientPort])
         dev = spawnDev(appDir)
         await waitForOutput(dev, `started http://localhost:${mode.clientPort}`, 30_000)
@@ -318,7 +293,6 @@ describe('create-app e2e', () => {
         expect(html).toContain('Welcome to My App')
 
         // 5. Open it in a real browser and assert the rendered page (CDP on Windows — see launchBrowser).
-        mark(`${mode.id}: browser`)
         const { browser, shell } = await launchBrowser()
         try {
           const page = await browser.newPage()
