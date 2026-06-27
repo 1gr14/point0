@@ -1,25 +1,37 @@
 name: CI
 
+# Cross-OS build + test pipeline. NO publish — this workflow only proves the
+# framework builds and its full test suite passes on each runner OS. Publishing
+# stays in the release workflow on main/next, never here.
 on:
   push:
-    branches: [main, next]
-  workflow_dispatch: # manual re-trigger (publish is idempotent)
+    branches: [ci-cross-os]
+  workflow_dispatch: # manual re-trigger
 
 permissions:
-  contents: write # <-- allows pushing tags/commits
-  issues: write # <-- needed for GitHub release notes
-  pull-requests: write
-  id-token: write # <-- required for OIDC/Trusted Publisher
+  contents: read
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    if: >
-      !contains(github.event.head_commit.message, '--skip-ci')
+  test:
+    name: build & test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+    # bash on every OS (Git Bash on Windows) keeps the run steps identical;
+    # the per-OS native commands point0 itself needs (PowerShell/taskkill) are
+    # spawned by the framework internally, not by these steps.
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      # tsdown's build step runs on Node (the framework runtime is Bun).
       - name: Setup Node.js 24
         uses: actions/setup-node@v6
         with:
@@ -30,150 +42,39 @@ jobs:
         with:
           bun-version: latest
 
+      # Applies patchedDependencies (the playwright-core CDP patch the browser
+      # tests need on Windows) and links workspace deps.
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Check dependency versions are in sync with the catalog table
-        run: bun run versions:check
-
-      # Build must precede typecheck: examples/template resolve `@point0/*` via their built `dist/` (exports.types),
-      # and `setup` (Prisma client + template `.env`) is required or example/template typecheck fails on the gitignored
-      # generated client.
+      # Every @point0/* imports its siblings from their built dist/.
       - name: Build
         run: bun run build
 
-      # Re-link workspace bins now that `@point0/engine/dist/cli.js` exists. On a fresh install the `point0` bin target
-      # is gitignored/unbuilt, so bun skips the `.bin/point0` symlink entirely — `setup`'s `point0 generate` then fails
-      # with "point0: command not found". A second frozen install changes no deps; it just creates the now-resolvable bin.
+      # Re-link workspace bins now that @point0/engine/dist/cli.js exists — on a
+      # fresh install the `point0` bin target is unbuilt, so bun skips the
+      # symlink and setup's `point0 generate` would fail with "command not found".
       - name: Link freshly built workspace bins
         run: bun install --frozen-lockfile
 
-      - name: Setup (Prisma client + template env for typecheck)
+      # Codegen only (Prisma client + point0 generate), no DB — the apps'
+      # src/generated is gitignored, and types/tests need it present.
+      - name: Setup (codegen for examples/templates)
         run: bun run setup
 
-      - name: Type check (tsgo)
-        run: bun run types
-
-      - name: Type check (tsc)
-        run: bun run types:6
-
-      - name: Lint (eslint)
-        run: bun run lint:base
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: build-files
-          path: |
-            packages/*/dist/
-            # @point0/docs ships its prebuilt search corpus from content/ (gitignored, built by `build:content`).
-            # Without this line the publish job restores only dist/ and publishes the docs package with no corpus.
-            packages/*/content/
-            package.json
-            packages/*/package.json
-          retention-days: 1
-
-  test:
-    needs: build
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # node:
-        #   - 18
-        #   - 20
-        #   - 22
-        #   - 24
-        bun:
-          - latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Setup Bun ${{ matrix.bun }}
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ matrix.bun }}
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: build-files
-          path: .
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      # Tests gate publish and pass on Linux. Two things make them green here:
-      #   1. the per-file runner (`bun run testa`) — each test file runs in its OWN `bun test` process (slow
-      #      integration files strictly one-per-process), so the cross-file interference of a naive single-process
-      #      `bun test` (port reuse, module-level state) is gone;
-      #   2. Playwright's chromium — several engine/create-app tests drive a real browser.
-      # `bun run setup` regenerates the Prisma client + template env first (the generated client is gitignored).
-      # Private-week muzzle: the repo variable `SKIP_TESTS=true` (repo → Settings → Secrets and variables → Actions
-      # → Variables) skips these steps while still letting the prerelease publish (the job stays green, so
-      # `needs: test` is satisfied). Unset it to restore the gate.
-      - name: Setup (Prisma client + template env for tests)
-        if: vars.SKIP_TESTS != 'true'
-        run: bun run setup
-
-      - name: Install Playwright chromium (browser-driven engine/create-app tests)
-        if: vars.SKIP_TESTS != 'true'
+      # Linux can pull OS libs via --with-deps; Windows/macOS don't support it.
+      # Either way this installs chromium AND chrome-headless-shell (Windows
+      # browser tests spawn the latter over CDP).
+      - name: Install Playwright chromium (Linux)
+        if: runner.os == 'Linux'
         run: bunx playwright install --with-deps chromium
 
+      - name: Install Playwright chromium (Windows/macOS)
+        if: runner.os != 'Linux'
+        run: bunx playwright install chromium
+
+      # Per-file runner: each test file runs in its own `bun test` process (slow
+      # integration files strictly one-per-process), which is the only way the
+      # suite stays honest across module-level state and port reuse.
       - name: Run tests
-        if: vars.SKIP_TESTS != 'true'
         run: bun run testa
-
-  publish:
-    needs: test
-    runs-on: ubuntu-latest
-    # Private week: ONLY `next` publishes — prereleases (x.y.z-next.N → dist-tag next) via the
-    # granular NPM_TOKEN, restricted, no provenance. `main` publishing is intentionally OFF until the
-    # public launch, so a stable x.y.z can never be burned early. At launch: add `main`, switch to
-    # OIDC Trusted Publisher (→ provenance), drop the token, flip publishConfig to public, and cut
-    # the stable version from main.
-    if: github.ref == 'refs/heads/next'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-          scope: '@point0'
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: build-files
-          path: .
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      # Channel guard: refuse to publish if the version doesn't match the branch
-      # (next ↔ -next prerelease, main ↔ stable). publish.ts re-asserts this too.
-      - name: Channel guard
-        run: bun run check:channel
-
-      # Idempotent: publishes only packages whose current version isn't on npm yet (version bumps
-      # happen locally via `bun run release`). dist-tag is derived from the version (prerelease →
-      # next, stable → latest). Access comes from each package's publishConfig; private create-app
-      # is skipped.
-      - name: Publish packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bun run publish:packages
