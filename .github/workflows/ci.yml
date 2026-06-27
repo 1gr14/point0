@@ -74,6 +74,19 @@ jobs:
         run: bunx playwright install chromium
 
       # DIAGNOSTIC (temporary): run only create-app in isolation with step+memory markers (CPA_DIAG)
-      # to find which step OOM-kills the runner. Restore `bun run testa` once understood.
+      # to find why it gets SIGKILLed. Restore `bun run testa` once understood.
+      - name: Memory/swap before (diagnostic)
+        if: runner.os == 'Linux'
+        run: |
+          echo "=== nproc ==="; nproc
+          echo "=== free -h ==="; free -h
+          echo "=== swapon ==="; swapon --show || echo "(no swap)"
+          echo "=== cgroup memory.max ==="; cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo "(n/a)"
       - name: Run tests (create-app isolated — diagnostic)
         run: CPA_DIAG=1 bun test packages/create-app/tests/index.test.tsx
+      - name: OOM verdict (diagnostic)
+        if: always() && runner.os == 'Linux'
+        run: |
+          echo "=== free -h ==="; free -h
+          echo "=== dmesg: oom / killed ==="; sudo dmesg 2>/dev/null | grep -iE "out of memory|killed process|oom-kill|oom_reaper|invoked oom" | tail -40 || echo "(none)"
+          echo "=== dmesg tail ==="; sudo dmesg 2>/dev/null | tail -30 || echo "(no dmesg)"
