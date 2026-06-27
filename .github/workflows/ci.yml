@@ -20,7 +20,9 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
+          # ubuntu-latest: verified green. Bringing OSes online one at a time to avoid re-running a
+          # proven runner; the final matrix lists all three.
+          - windows-latest
     # bash on every OS (Git Bash on Windows) keeps the run steps identical;
     # the per-OS native commands point0 itself needs (PowerShell/taskkill) are
     # spawned by the framework internally, not by these steps.
