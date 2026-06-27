@@ -10,6 +10,7 @@ import ts from 'typescript'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
+import { toPosixPath } from '@point0/compiler'
 import type { EmptyProps } from '@point0/core'
 
 describe('with', () => {
@@ -1586,7 +1587,9 @@ const _complete = root.lets('page', 'm6', '/:y').with(queryReq, { /*CURSOR*/ })
 // Build one language service over the engine project, serving the probe from memory and reading the
 // real `@point0/core` *source* (via the tsconfig path mapping) — no dist build needed.
 const dxEngineDir = path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..')
-const dxProbePath = path.join(dxEngineDir, 'tests', '__with_dx_probe__.tsx')
+// TypeScript normalizes program file names to posix internally, so the probe path must be posix too — otherwise the
+// LanguageServiceHost's `f === dxProbePath` snapshot check never matches on Windows ("Could not find source file").
+const dxProbePath = toPosixPath(path.join(dxEngineDir, 'tests', '__with_dx_probe__.tsx'))
 const dxParsed = ts.parseJsonConfigFileContent(
   ts.readConfigFile(path.join(dxEngineDir, 'tsconfig.json'), ts.sys.readFile).config,
   ts.sys,

@@ -20,7 +20,11 @@ export class TestProcess {
    * Spawn a new process and wrap it in a TestProcess Automatically pipes stdout and stderr for output collection
    */
   static spawn(cmds: string[], options?: Parameters<typeof Bun.spawn>[1]): TestProcess {
-    const child = Bun.spawn(cmds, {
+    // Resolve a bare `bun` to the running bun's absolute path. On Windows the bun dir is added to PATH by the shell
+    // profile (not the OS env), so a spawned child doesn't reliably inherit it and `bun` fails with ENOENT; on posix
+    // this is the same binary either way.
+    const resolvedCmds = cmds[0] === 'bun' ? [process.execPath, ...cmds.slice(1)] : cmds
+    const child = Bun.spawn(resolvedCmds, {
       stdout: 'pipe' as never,
       stderr: 'pipe' as never,
       ...options,

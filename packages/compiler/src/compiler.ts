@@ -138,12 +138,13 @@ export class Compiler {
    *
    * ^                                     -> anchor at start
    * (?!.*(?:shim:|virtual:))              -> reject IDs containing "shim:" or "virtual:"
-   * (?!.*node_modules\/(?!.*point0))      -> reject node_modules paths unless they include "point0"
+   * (?!.*node_modules[\\/](?!.*point0))   -> reject node_modules paths unless they include "point0" (either separator,
+   *                                          since Bun/Vite hand the plugin native `\` paths on Windows)
    * .*\.                                  -> consume path up to final "."
    * (?:[cm]?[jt]sx?|md|mdx|mdc)           -> allow JS/TS variants and md/mdx/mdc
    * $                                     -> anchor at end
    */
-  static defaultFilter = /^(?!.*(?:shim:|virtual:))(?!.*node_modules\/(?!.*point0)).*\.(?:[cm]?[jt]sx?|md|mdx|mdc)$/
+  static defaultFilter = /^(?!.*(?:shim:|virtual:))(?!.*node_modules[\\/](?!.*point0)).*\.(?:[cm]?[jt]sx?|md|mdx|mdc)$/
 
   static buildMarkdownOptions({
     built,

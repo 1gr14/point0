@@ -1,6 +1,6 @@
 import type { EncodedSourceMap } from '@jridgewell/remapping'
 import remappingModule from '@jridgewell/remapping'
-import { encodeInlineSourceMap, extractInlineSourceMap, INLINE_MAP_TRAILING_RE } from '@point0/compiler'
+import { encodeInlineSourceMap, extractInlineSourceMap, INLINE_MAP_TRAILING_RE, toPosixPath } from '@point0/compiler'
 import nodeFs from 'node:fs/promises'
 import nodePath from 'node:path'
 
@@ -38,7 +38,8 @@ export function chainSourceMap(bundleMap: EncodedSourceMap, mapDir: string): Enc
         return source
       }
       const abs = source.startsWith('file://') ? new URL(source).pathname : source
-      return nodePath.isAbsolute(abs) ? nodePath.relative(mapDir, abs) : source
+      // Source-map `sources` are URL-style (forward slashes); `nodePath.relative` emits `\` on Windows.
+      return nodePath.isAbsolute(abs) ? toPosixPath(nodePath.relative(mapDir, abs)) : source
     }),
   }
 }

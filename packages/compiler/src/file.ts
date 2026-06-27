@@ -30,7 +30,7 @@ import type { Compiler, CompilerEnvConsts, ImportsTraceResult } from './compiler
 import { resolveImporterRule, writeOrCreateVirtualModulePath, type ImporterOptionsParsed } from './importer.js'
 import { CompilerPoint, POINT_METHOD_TO_TYPE_MAP } from './point.js'
 import { FileResolver } from './resolver.js'
-import { getHash, normalizeEnvConsts } from './utils.js'
+import { getHash, normalizeEnvConsts, toPosixPath } from './utils.js'
 import type { Walker } from './walker.js'
 
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends { default: infer T }
@@ -112,6 +112,10 @@ export class CompilerFile<THasContent extends boolean> {
     file: string
     content?: TContent
   }): CompilerFile<TContent extends string ? true : false> {
+    // Posix-normalize the moment a path enters the compiler: this `file` becomes the `walker.files` cache key and every
+    // key derived from it (a point's `strpos`, cycle visited-sets, resolver results). Callers may pass native paths while
+    // the resolver yields posix — without this one file gets two identities, so caches miss and cycle detection loops.
+    file = toPosixPath(file)
     const exCf = walker.files.get(file)
     const contentProvided = typeof content !== 'undefined'
     if (exCf && !contentProvided) {
@@ -532,6 +536,13 @@ export class CompilerFile<THasContent extends boolean> {
     const preUserBabelMap = this._preUserBabelMap
     const intermediateLabel = this.intermediateSourceLabel
     const chained = remapping(map as any, (file) => (file === intermediateLabel ? (preUserBabelMap as any) : null))
+    // `remapping` resolves a nested map's `sources` as URLs relative to the parent. A posix original (`/abs/page.tsx`)
+    // is URL-absolute and survives; a Windows drive path (`C:/…`) is not, so it gets joined onto the intermediate
+    // label's dir and comes out doubled, leaking the store path into stack frames. The chain has one real source — pin
+    // it back to abs (no-op on posix, already this.abs).
+    if (chained.sources.length === 1) {
+      chained.sources[0] = this.abs
+    }
     return { code, map: chained as unknown as GeneratorResult['map'] }
   }
 

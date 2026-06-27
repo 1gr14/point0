@@ -1,4 +1,4 @@
-import { Compiler, type CompilerOptions } from '@point0/compiler'
+import { Compiler, type CompilerOptions, toPosixPath } from '@point0/compiler'
 import type {
   ErrorPoint0,
   FetcherFetchDetailedResult,
@@ -854,7 +854,9 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         // branch (which keys on the child being gone) would never fire — the server stays silently dead and the fix
         // save only ever hot-swaps a corpse. A plain run exits on that crash, so the unexpected-exit handler drops the
         // corpse and the next save deterministically respawns it (the recovery the hot-node branch is written for).
-        cmd: ['bun', 'run', '--no-orphans', ...bunRunArgs, entryFile],
+        // `process.execPath` (the running bun), not a bare `bun`: on Windows the bun dir is on PATH only via the shell
+        // profile, so a spawned child may not inherit it. Same binary on posix.
+        cmd: [process.execPath, 'run', '--no-orphans', ...bunRunArgs, entryFile],
         env: {
           ...process.env,
           // Tells the child's own `serve()` it runs under this orchestrator: bind with patient retries and NEVER
@@ -1218,11 +1220,13 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         paths: [POINT0_ENGINE_CWD_BEFORE_BUILD_LOCAL, POINT0_ENGINE_CWD_AFTER_BUILD_LOCAL],
       })
       return {
+        // These suffixes are matched against the runtime engineFile dir across the build→run boundary (config.ts). Embed
+        // them posix so a native `\` suffix can't mix with the `/` prependAndDeappendSlash adds and fail to match.
         POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED: prependAndDeappendSlash(
-          POINT0_ENGINE_CWD_BEFORE_BUILD_LOCAL.replace(localDir, ''),
+          toPosixPath(POINT0_ENGINE_CWD_BEFORE_BUILD_LOCAL.replace(localDir, '')),
         ),
         POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED: prependAndDeappendSlash(
-          POINT0_ENGINE_CWD_AFTER_BUILD_LOCAL.replace(localDir, ''),
+          toPosixPath(POINT0_ENGINE_CWD_AFTER_BUILD_LOCAL.replace(localDir, '')),
         ),
       }
     })()

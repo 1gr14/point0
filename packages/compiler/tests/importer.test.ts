@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
 import { parseImporterOptions, resolveImporterRule } from '../src/importer.js'
+// Importer rules/globs are posix-normalized internally; normalize absolute expected paths (built native) to match.
+import { toPosixPath as posix } from '../src/utils.js'
 
 const tempDir = nodePath.join(__dirname, 'temp/importer')
 
@@ -64,9 +66,9 @@ describe('importer', () => {
         mock: ['./src/local.ts'],
       })
 
-      expect(options.mock.include).toEqual([nodePath.resolve(cwd, './src/local.ts')])
+      expect(options.mock.include).toEqual([posix(nodePath.resolve(cwd, './src/local.ts'))])
       expect(options.mock.exclude).toEqual([])
-      expect(options.map.mock[nodePath.resolve(cwd, './src/local.ts')]).toBe('./src/local.ts')
+      expect(options.map.mock[posix(nodePath.resolve(cwd, './src/local.ts'))]).toBe('./src/local.ts')
     })
 
     it('normalizes negative relative pattern', () => {
@@ -77,8 +79,8 @@ describe('importer', () => {
       })
 
       expect(options.mock.include).toEqual([])
-      expect(options.mock.exclude).toEqual([nodePath.resolve(cwd, './src/local.ts')])
-      expect(options.map.mock[nodePath.resolve(cwd, './src/local.ts')]).toBeUndefined()
+      expect(options.mock.exclude).toEqual([posix(nodePath.resolve(cwd, './src/local.ts'))])
+      expect(options.map.mock[posix(nodePath.resolve(cwd, './src/local.ts'))]).toBeUndefined()
     })
 
     it('expands positive package.json pattern', () => {
@@ -125,7 +127,7 @@ describe('importer', () => {
       expect(options.cwd).toBe(cwd)
       expect(options.deny.include).toContain('**/node_modules/react{,/**}')
       expect(options.deny.include).toContain('**/node_modules/lodash{,/**}')
-      expect(options.deny.include).toContain(nodePath.resolve(cwd, './src/local.ts'))
+      expect(options.deny.include).toContain(posix(nodePath.resolve(cwd, './src/local.ts')))
       expect(options.deny.include.some((rule) => rule instanceof RegExp)).toBe(true)
       expect(options.deny.exclude).toContain('**/node_modules/react{,/**}')
       expect(options.map.deny['**/node_modules/react{,/**}']).toBe('deps/package.json:react')
@@ -140,9 +142,9 @@ describe('importer', () => {
       })
 
       expect(options.mock.ordered).toEqual([
-        { type: 'include', rule: nodePath.resolve(cwd, './my/dir/**') },
-        { type: 'exclude', rule: nodePath.resolve(cwd, './my/dir/special/**') },
-        { type: 'include', rule: nodePath.resolve(cwd, './my/dir/special/also-included/**') },
+        { type: 'include', rule: posix(nodePath.resolve(cwd, './my/dir/**')) },
+        { type: 'exclude', rule: posix(nodePath.resolve(cwd, './my/dir/special/**')) },
+        { type: 'include', rule: posix(nodePath.resolve(cwd, './my/dir/special/also-included/**')) },
       ])
     })
   })
@@ -170,9 +172,10 @@ describe('importer', () => {
       })
 
       expect(result).toEqual({
-        shortPath: nodePath.join('node_modules', 'react', 'index.js'),
+        // posix-normalized display paths on every OS (see toPosixPath in importer.ts).
+        shortPath: 'node_modules/react/index.js',
         shortRule: 'deps/package.json:react',
-        shortImporter: `src${nodePath.sep}page.tsx:12:8`,
+        shortImporter: `src/page.tsx:12:8`,
       })
     })
 
@@ -215,9 +218,10 @@ describe('importer', () => {
       })
 
       expect(result).toEqual({
-        shortPath: nodePath.join('my/dir/special/also-included/file.ts'),
+        // `resolveImporterRule` emits posix-normalized display paths on every OS (see toPosixPath in importer.ts).
+        shortPath: 'my/dir/special/also-included/file.ts',
         shortRule: './my/dir/special/also-included/**',
-        shortImporter: `src${nodePath.sep}page.tsx:5:2`,
+        shortImporter: `src/page.tsx:5:2`,
       })
     })
 

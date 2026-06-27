@@ -1,4 +1,4 @@
-import type { Compiler } from '@point0/compiler'
+import { type Compiler, toPosixPath } from '@point0/compiler'
 import type { AsyncSubscription } from '@parcel/watcher'
 import { minimatch } from 'minimatch'
 import * as nodeFs from 'node:fs/promises'
@@ -300,18 +300,19 @@ export class FilesWatcher {
   }
 
   matches(path: string): boolean {
-    const relativePath = nodePath.relative(this.watchDir, path)
-    const matchPositive = this.patterns.some((pattern) => {
-      const resolvedPattern = nodePath.resolve(this.watchDir, pattern)
-      const relativePattern = nodePath.relative(this.watchDir, resolvedPattern)
-      return minimatch(relativePath, relativePattern, { dot: true }) || minimatch(path, resolvedPattern, { dot: true })
-    })
-    const matchNegative = this.excludes.some((pattern) => {
-      const resolvedPattern = nodePath.resolve(this.watchDir, pattern)
-      const relativePattern = nodePath.relative(this.watchDir, resolvedPattern)
-      return minimatch(relativePath, relativePattern, { dot: true }) || minimatch(path, resolvedPattern, { dot: true })
-    })
-    return matchPositive && !matchNegative
+    // minimatch reads `\` as an escape, so posix-normalize every path and pattern before matching.
+    const posixPath = toPosixPath(path)
+    const relativePath = toPosixPath(nodePath.relative(this.watchDir, path))
+    const matchAgainst = (patterns: string[]): boolean =>
+      patterns.some((pattern) => {
+        const resolvedPattern = toPosixPath(nodePath.resolve(this.watchDir, pattern))
+        const relativePattern = toPosixPath(nodePath.relative(this.watchDir, resolvedPattern))
+        return (
+          minimatch(relativePath, relativePattern, { dot: true }) ||
+          minimatch(posixPath, resolvedPattern, { dot: true })
+        )
+      })
+    return matchAgainst(this.patterns) && !matchAgainst(this.excludes)
   }
 
   private async emitError(error: unknown): Promise<void> {

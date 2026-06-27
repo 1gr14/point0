@@ -266,9 +266,10 @@ export const makeAssetsBunPlugin = (options: CompilerAssetsOptions = {}): BunPlu
         return { contents: `export default ${JSON.stringify(realPath)}`, loader: 'js' }
       }
       await writeAssetOnce(fileDir, name, buffer)
-      // Resolve next to the emitted chunk at runtime, so it works regardless of the server's cwd.
+      // Resolve next to the emitted chunk at runtime, so it works regardless of the server's cwd. `fileURLToPath` (not
+      // `URL.pathname`) is required for a usable filesystem path on Windows, where `pathname` is the URL form `/C:/…`.
       return {
-        contents: `export default new URL(${JSON.stringify('./' + name)}, import.meta.url).pathname`,
+        contents: `import { fileURLToPath as __p0FileURLToPath } from 'node:url'\nexport default __p0FileURLToPath(new URL(${JSON.stringify('./' + name)}, import.meta.url))`,
         loader: 'js',
       }
     }

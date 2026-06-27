@@ -1,7 +1,116 @@
+import * as nodeFs from 'node:fs/promises'
+import * as nodeOs from 'node:os'
+import * as nodePath from 'node:path'
 import type { FetchServerOutputType, PointName, PointsScope, ReadyPointType } from '@point0/core'
 import { type Browser, chromium, type Page } from 'playwright'
 import { HtmlView } from './html-view.js'
 import { throwOnHelperLogFnCalling } from './other.js'
+
+// On Windows, Playwright can't launch a browser under Bun (`chromium.launch()`'s pipe transport hangs / `uv_spawn`
+// fails). `chrome-headless-shell` does start and Bun drives it over CDP, so on win32 we spawn the shell ourselves with a
+// debug port and `connectOverCDP`; `patches/playwright-core@*.patch` swaps in Bun's working `ws` shim for the CDP
+// transport. Everywhere else the normal `chromium.launch()` path is untouched. See dev/docs/windows.md.
+const useCdpLaunch = process.platform === 'win32'
+
+// Track every chrome-headless-shell we spawn so none outlive the test process. `close()` reaps them normally;
+// `recreate()`'s ownership shuffle could otherwise orphan one, and a leaked shell holds a debug port + memory across the
+// suite. The `exit` hook is a sync best-effort backstop for abnormal teardown.
+const liveCdpShells = new Set<Bun.Subprocess>()
+let cdpExitHookRegistered = false
+function registerCdpExitHook(): void {
+  if (cdpExitHookRegistered) return
+  cdpExitHookRegistered = true
+  // `exit` handlers must be synchronous, so reap the tree with spawnSync `taskkill /T` (the async path in `killCdpShell`
+  // may not finish — test files do their final `tpf.cleanup(...)` fire-and-forget with `void`). Children (renderer/gpu)
+  // would otherwise survive a bare parent kill on Windows.
+  process.on('exit', () => {
+    for (const shell of liveCdpShells) {
+      try {
+        if (shell.pid && process.platform === 'win32') {
+          Bun.spawnSync(['taskkill', '/pid', String(shell.pid), '/T', '/F'], { stdout: 'ignore', stderr: 'ignore' })
+        } else {
+          shell.kill()
+        }
+      } catch {}
+    }
+  })
+}
+
+/** Kill a spawned shell and its renderer/gpu children — on Windows killing only the parent leaves them orphaned. */
+async function killCdpShell(shell: Bun.Subprocess): Promise<void> {
+  const pid = shell.pid
+  try {
+    if (pid && process.platform === 'win32') {
+      await Bun.$`taskkill /pid ${pid} /T /F`.nothrow().quiet()
+    } else {
+      shell.kill()
+    }
+  } catch {}
+  // Delete AFTER the kill, not before: a `void`ed `tpf.cleanup(...)` can let the process exit mid-`await`, and the sync
+  // `process.on('exit')` backstop must still find this shell in the set to reap it (and its renderer/gpu children).
+  // Re-killing a dead pid there is a harmless no-op.
+  liveCdpShells.delete(shell)
+}
+
+/**
+ * Derive the chrome-headless-shell path from the installed chromium: `…/chromium-<rev>/chrome-win64/chrome.exe` →
+ * `…/chromium_headless_shell-<rev>/chrome-headless-shell-win64/chrome-headless-shell.exe` (same Playwright revision,
+ * installed alongside by `playwright install chromium`).
+ */
+function resolveHeadlessShellPath(): string {
+  const headed = chromium.executablePath()
+  return headed.replace(
+    /chromium-(\d+)([\\/])chrome-win64\2chrome\.exe$/,
+    (_match, rev: string, sep: string) =>
+      `chromium_headless_shell-${rev}${sep}chrome-headless-shell-win64${sep}chrome-headless-shell.exe`,
+  )
+}
+
+/** win32 only — spawn chrome-headless-shell with an auto-assigned debug port and connect Playwright to it over CDP. */
+async function launchHeadlessShellOverCdp(): Promise<{ original: Browser; cdpProcess: Bun.Subprocess }> {
+  const shellPath = resolveHeadlessShellPath()
+  const userDataDir = nodePath.join(nodeOs.tmpdir(), `point0-cdp-${crypto.randomUUID()}`)
+  const cdpProcess = Bun.spawn(
+    [
+      shellPath,
+      '--headless',
+      '--remote-debugging-port=0', // 0 → OS picks a free port; chrome writes it to DevToolsActivePort
+      `--user-data-dir=${userDataDir}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-gpu',
+    ],
+    { stdout: 'ignore', stderr: 'ignore' },
+  )
+  registerCdpExitHook()
+  liveCdpShells.add(cdpProcess)
+  // chrome-headless-shell writes the chosen port to <userDataDir>/DevToolsActivePort (first line) once it's listening.
+  const portFile = nodePath.join(userDataDir, 'DevToolsActivePort')
+  let port: number | undefined
+  for (let i = 0; i < 300; i++) {
+    if (cdpProcess.exitCode !== null) {
+      throw new Error(
+        `chrome-headless-shell exited early (code ${cdpProcess.exitCode}). Run \`bunx playwright install chromium\` to install it.`,
+      )
+    }
+    try {
+      const firstLine = (await nodeFs.readFile(portFile, 'utf8')).split('\n')[0]?.trim()
+      if (firstLine) {
+        port = Number(firstLine)
+        break
+      }
+    } catch {
+      /* not written yet */
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+  if (!port) {
+    await killCdpShell(cdpProcess)
+    throw new Error('Timed out waiting for chrome-headless-shell to report its CDP port')
+  }
+  const original = await chromium.connectOverCDP(`http://127.0.0.1:${port}`)
+  return { original, cdpProcess }
+}
 
 export interface PlaywrightBrowserInitOptions {
   headless?: boolean
@@ -20,6 +129,8 @@ export class PlaywrightBrowser {
   timeout: number
   pages = new Set<PlaywrightPage>()
   options: PlaywrightBrowserInitOptions
+  // win32 only: the chrome-headless-shell process backing the CDP connection, killed on close (see useCdpLaunch).
+  private cdpProcess: Bun.Subprocess | undefined
 
   constructor(options: Required<PlaywrightBrowserConstructoeOptions>) {
     this.original = options.original
@@ -29,6 +140,12 @@ export class PlaywrightBrowser {
   }
 
   static async init(options: PlaywrightBrowserInitOptions = {}): Promise<PlaywrightBrowser> {
+    if (useCdpLaunch) {
+      const { original, cdpProcess } = await launchHeadlessShellOverCdp()
+      const browser = new PlaywrightBrowser({ headless: true, timeout: options.timeout ?? 7000, original })
+      browser.cdpProcess = cdpProcess
+      return browser
+    }
     const original = await chromium.launch({
       headless: options.headless,
     })
@@ -44,6 +161,7 @@ export class PlaywrightBrowser {
     this.headless = newInstance.headless
     this.timeout = newInstance.timeout
     this.options = newInstance.options
+    this.cdpProcess = newInstance.cdpProcess
     this.pages = new Set()
     return newInstance
   }
@@ -84,6 +202,12 @@ export class PlaywrightBrowser {
       this.pages.clear()
       await this.original.close()
     } catch {}
+    // win32: closing the CDP connection only disconnects — it doesn't stop the browser we spawned, so kill its process
+    // tree too.
+    if (this.cdpProcess) {
+      await killCdpShell(this.cdpProcess)
+      this.cdpProcess = undefined
+    }
   }
 }
 

@@ -1,7 +1,7 @@
 import { minimatch } from 'minimatch'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
-import { getHash } from './utils.js'
+import { getHash, toPosixPath } from './utils.js'
 
 export type ImporterOptionsInput = {
   // `mock` + `deny` are COMPILE-TIME import rules: they match an import's TARGET specifier and rewrite/forbid it in
@@ -101,7 +101,8 @@ export const parseImporterOptions = (options: ImporterOptionsInput): ImporterOpt
       if (nodePath.isAbsolute(pattern)) {
         return {
           short: pattern,
-          full: pattern,
+          // posix the glob so an absolute native pattern still matches the posix path.
+          full: toPosixPath(pattern),
         }
       }
       if (pattern.startsWith('*')) {
@@ -124,7 +125,8 @@ export const parseImporterOptions = (options: ImporterOptionsInput): ImporterOpt
       }
       return {
         short: pattern,
-        full: nodePath.resolve(cwd, pattern),
+        // `full` is a minimatch glob (and the short-form map key), so posix it — `nodePath.resolve` emits `\` on Windows.
+        full: toPosixPath(nodePath.resolve(cwd, pattern)),
       }
     }
     return {
@@ -237,11 +239,14 @@ export const resolveImporterRule = ({
   importer: string
   loc: { line: number; column: number } | undefined
 }): ResolvedImporterRule | undefined => {
+  // Import rules (globs/regexes) are authored posix, so normalize the path before matching — a Windows `\` path would
+  // never match a `/` glob and every rule would silently miss.
+  const posixPath = toPosixPath(path)
   const isMatch = (rule: string | RegExp): boolean => {
     if (typeof rule === 'string') {
-      return minimatch(path, rule)
+      return minimatch(posixPath, rule)
     }
-    return rule.test(path)
+    return rule.test(posixPath)
   }
   const matchIncludeRule = (() => {
     let foundIncludeRule = undefined as string | RegExp | undefined
@@ -261,9 +266,10 @@ export const resolveImporterRule = ({
   }
   const fullRuleString = matchIncludeRule.toString()
   const shortRuleString = map[fullRuleString] as string | undefined
-  const shortPath = cwd ? nodePath.relative(cwd, path) : path
+  // Posix-normalize display paths: they go into virtual-module ids and diagnostics, which must match across OSes.
+  const shortPath = toPosixPath(cwd ? nodePath.relative(cwd, path) : path)
   const locString = loc ? `:${loc.line}:${loc.column}` : ''
-  const shortImporter = `${cwd ? nodePath.relative(cwd, importer) : importer}${locString}`
+  const shortImporter = `${toPosixPath(cwd ? nodePath.relative(cwd, importer) : importer)}${locString}`
   return { shortPath, shortRule: shortRuleString ?? fullRuleString, shortImporter }
 }
 

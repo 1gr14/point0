@@ -7,7 +7,7 @@ import type {
 } from './utils/project.one-client.js'
 import { bundlers } from './utils/focus.js'
 
-setDefaultTimeout(20000)
+setDefaultTimeout(80000)
 
 const tpf = TestProjectOneClientFactory.create({
   namespace: 'publicdir',

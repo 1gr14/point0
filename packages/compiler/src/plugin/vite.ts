@@ -66,8 +66,11 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
     const buffer = await nodeFs.promises.readFile(filepath)
     const name = `${assetHash(buffer)}.${ext}`
     await writeAssetOnce(assets.fileDir, name, buffer)
-    // Resolve next to the emitted server chunk at runtime, cwd-independent (same shape as the Bun build).
-    return { code: `export default new URL(${JSON.stringify('./' + name)}, import.meta.url).pathname` }
+    // Resolve next to the emitted server chunk at runtime, cwd-independent (same shape as the Bun build). `fileURLToPath`
+    // (not `URL.pathname`) is required for a usable filesystem path on Windows, where `pathname` is the URL form `/C:/…`.
+    return {
+      code: `import { fileURLToPath as __p0FileURLToPath } from 'node:url'\nexport default __p0FileURLToPath(new URL(${JSON.stringify('./' + name)}, import.meta.url))`,
+    }
   }
 
   return {

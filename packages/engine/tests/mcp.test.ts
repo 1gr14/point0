@@ -5,7 +5,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import type { TestProjectOneClient } from './utils/project.one-client.js'
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
-setDefaultTimeout(20000)
+setDefaultTimeout(80000)
 
 const packageRoot = nodePath.resolve(__dirname, '..')
 const tpf = TestProjectOneClientFactory.create({

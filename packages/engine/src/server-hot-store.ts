@@ -37,7 +37,13 @@
 // stable child's compiler onLoad plugin never re-transforms the already-compiled store files). We assert this invariant
 // after writing (a future rename that reintroduces "point0" fails loudly, not silently).
 import type { Compiler } from '@point0/compiler'
-import { appendInlineSourceMap, FileResolver, isImporterColdPath, resolveCacheDirPath } from '@point0/compiler'
+import {
+  appendInlineSourceMap,
+  FileResolver,
+  isImporterColdPath,
+  resolveCacheDirPath,
+  toPosixPath,
+} from '@point0/compiler'
 import type { LogFn, PointsDefinitionSource } from '@point0/core'
 import {
   existsSync,
@@ -83,7 +89,10 @@ type ServerHotStoreBuildResult = {
   }
 }
 
-const norm = (p: string): string => p.split('?', 1)[0] as string
+// Strip `?query` and posix-normalize at the single keying chokepoint. The hot-store sets are keyed on posix graph paths
+// (FileResolver), but the watcher reports changes native-separator — so without this a hot edit misses the `hotNodes`
+// set and is misclassified as cold, forcing a full restart instead of a hot-swap.
+const norm = (p: string): string => toPosixPath(p.split('?', 1)[0] as string)
 /**
  * Split a specifier into its path and its trailing `?query` (the `?` included), e.g. `x.svg?react` → `['x.svg',
  * '?react']`.
@@ -306,7 +315,9 @@ export class ServerHotStore {
     this.dir = opts.dir
     this.log = opts.log
     this.compiler = opts.compiler
-    this.appSrcDir = opts.appSrcDir
+    // Posix-normalize: the graph keys on posix `FileResolver` results, so a native `appSrcDir` would make `isInApp`'s
+    // prefix check reject every resolved import on Windows (deps then "cannot flatten").
+    this.appSrcDir = opts.appSrcDir === undefined ? undefined : toPosixPath(opts.appSrcDir)
   }
 
   /** Orchestrator side: a store that can build + watch. */
@@ -410,7 +421,8 @@ export class ServerHotStore {
     const appSrcDir = this.appSrcDir as string
     const storeDir = this.dir
     const entryAbsList = [...this.aggregators]
-    const srcPrefix = appSrcDir.endsWith(nodePath.sep) ? appSrcDir : appSrcDir + nodePath.sep
+    // `appSrcDir` is posix (see constructor) and graph paths are posix, so the prefix uses `/`, not `nodePath.sep`.
+    const srcPrefix = appSrcDir.endsWith('/') ? appSrcDir : appSrcDir + '/'
     const isInApp = (abs: string | undefined): abs is string =>
       !!abs && compiler.filter.test(abs) && norm(abs).startsWith(srcPrefix)
 
@@ -656,7 +668,9 @@ export class ServerHotStore {
     //     re-transform an already-compiled file). This is the contract that lets us skip the store dir for free via path
     //     placement + "point0"-free names — assert it so a regression is loud, not silent.
     for (const abs of order) {
-      const storeFileAbs = nodePath.join(storeDir, hashedByAbs[abs] as string)
+      // Test the posix form: `compiler.filter` excludes `node_modules/` with a forward slash, so a native store path
+      // (`…\node_modules\.cache\…`) would slip past the exclusion and falsely look compilable on Windows.
+      const storeFileAbs = toPosixPath(nodePath.join(storeDir, hashedByAbs[abs] as string))
       if (compiler.filter.test(storeFileAbs)) {
         throw new Error(
           `Server hot-reload store file would be re-compiled by the point0 compiler plugin (matches compiler.filter): ` +

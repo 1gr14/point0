@@ -3,6 +3,7 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Compiler } from '../src/compiler.js'
 import { parseVirtualModulePath } from '../src/importer.js'
+import { toPosixPath } from '../src/utils.js'
 import { toText } from './utils.js'
 
 // The whole file runs ~1s alone, but under the parallel runner (test-parallel.ts saturates every core) a single
@@ -16,7 +17,8 @@ const tempDir = nodePath.join(__dirname, 'temp/compiler')
 
 const prepareRandomFile = () => {
   const basename = crypto.randomUUID()
-  const path = nodePath.join(tempDir, basename + '.tsx')
+  // The compiler reports file identities in posix form, so build the test path the same way (Bun + fs accept `/`).
+  const path = toPosixPath(nodePath.join(tempDir, basename + '.tsx'))
   const importpath = './' + basename + '.js'
   return Object.assign(Bun.file(path), { path, basename, importpath })
 }

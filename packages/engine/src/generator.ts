@@ -5,6 +5,7 @@ import {
   Walker,
   generateAssetsDts,
   resolveTempDirPath,
+  toPosixPath,
   type AssetResolveMode,
 } from '@point0/compiler'
 import { generateId, log } from '@point0/core'
@@ -265,10 +266,10 @@ export class FilesGenerator {
 
   private async collectFiles() {
     for (const pattern of this.globIncludes) {
-      // Convert absolute pattern to relative pattern for fast-glob
-      const relativePattern = nodePath.relative(this.cwd, pattern)
+      // Relative pattern for fast-glob, posix-normalized — fast-glob can't match a `\` pattern.
+      const relativePattern = toPosixPath(nodePath.relative(this.cwd, pattern))
       const entries = await fg([relativePattern], {
-        cwd: this.cwd,
+        cwd: toPosixPath(this.cwd),
         absolute: true,
         onlyFiles: true,
         ignore: this.globExcludes,
@@ -280,30 +281,38 @@ export class FilesGenerator {
   }
 
   removeDirOrFile(fileOrDirAbs: string): void {
+    // `this.files` keys are posix (fast-glob); a watch event arrives native-separator, so normalize before the prefix test.
+    const prefix = toPosixPath(fileOrDirAbs)
     for (const file of this.files) {
-      if (file.startsWith(fileOrDirAbs)) {
+      if (file.startsWith(prefix)) {
         this.files.delete(file)
       }
     }
   }
 
   addOrUpdateFile(fileAbs: string): void {
-    this.files.add(fileAbs)
+    // Keep file identity posix so a watch event and a fast-glob sync entry for the same file share one key.
+    this.files.add(toPosixPath(fileAbs))
   }
 
   isFileSuitableToGlob(fileAbs: string): boolean {
+    // Globs are posix; normalize the candidate so a native fs-event path still matches.
+    const filePosix = toPosixPath(fileAbs)
     return (
       this.globIncludes.some((g) => {
-        return minimatch(fileAbs, g, { dot: true })
+        return minimatch(filePosix, g, { dot: true })
       }) &&
       !this.globExcludes.some((g) => {
-        return minimatch(fileAbs, g, { dot: true })
+        return minimatch(filePosix, g, { dot: true })
       })
     )
   }
 
   isFileOrDirSuitableToFiles(fileOrDirAbs: string): boolean {
-    return [...this.files].some((f) => f.startsWith(fileOrDirAbs))
+    // Normalize like removeDirOrFile: without it a Windows `delete` event (native `\`) never prefix-matches the posix
+    // file set, so the deletion is silently skipped and the route never drops.
+    const prefix = toPosixPath(fileOrDirAbs)
+    return [...this.files].some((f) => f.startsWith(prefix))
   }
 
   /**
@@ -1106,13 +1115,16 @@ export class FilesGenerator {
         .filter((point) => point.type === 'layout')
         .map((point) => [`${point.scope}::${point.name}`, point] as const),
     )
+    // Escape for a single-quoted JS string literal: a Windows path value's `\` would otherwise be read as a string
+    // escape when this generated code runs. Values without `\` or `'` (ids, route defs) are unchanged, so snapshots hold.
+    const sq = (value: string): string => `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
     const literal = (value: unknown): string =>
       value === undefined
         ? 'undefined'
         : typeof value === 'string'
-          ? `'${value}'`
+          ? sq(value)
           : Array.isArray(value) && value.every((v) => typeof v === 'string')
-            ? `[${value.map((v) => `'${v}'`).join(', ')}]`
+            ? `[${value.map((v) => sq(v)).join(', ')}]`
             : JSON.stringify(value)
     const pushLinkedPointBlock = ({
       lines,
@@ -1350,6 +1362,8 @@ export class FilesGenerator {
   // wathcer
 
   getCollectedPointsRelatedToPath(path: string): CompilerPoint[] {
+    // `pointsByPaths` keys are posix (`point.file.abs`); normalize the lookup so a native watch path still hits.
+    path = toPosixPath(path)
     const exactPoints = this.pointsByPaths.get(path)
     if (exactPoints) {
       return exactPoints

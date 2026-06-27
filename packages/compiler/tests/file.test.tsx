@@ -4,6 +4,7 @@ import * as nodePath from 'node:path'
 import { Compiler } from '../src/compiler.js'
 import { CompilerFile } from '../src/file.js'
 import { parseImporterOptions, parseVirtualModulePath } from '../src/importer.js'
+import { toPosixPath as posix } from '../src/utils.js'
 import { Walker } from '../src/walker.js'
 import { toText } from './utils.js'
 
@@ -20,7 +21,7 @@ const tempDir = nodePath.join(__dirname, 'temp/file')
 
 const prepareRandomFile = (walker: Walker): TestFile => {
   const basename = crypto.randomUUID()
-  const path = nodePath.join(tempDir, basename + '.tsx')
+  const path = posix(nodePath.join(tempDir, basename + '.tsx'))
   const importpath = './' + basename + '.js'
   const cf: CompilerFile<false> = CompilerFile.create({ walker, file: path })
   const bunFile = Bun.file(path)
@@ -2478,7 +2479,7 @@ describe('CompilerFile', () => {
           normalizeImports([
             {
               pathOriginal: fileB.importpath,
-              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              pathResolved: posix(nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath)),
               exportNames: ['unusedC', 'usedA', 'usedB'],
             },
           ]),
@@ -2502,7 +2503,7 @@ describe('CompilerFile', () => {
           normalizeImports([
             {
               pathOriginal: fileB.importpath,
-              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              pathResolved: posix(nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath)),
               exportNames: ['alpha', 'beta'],
             },
           ]),
@@ -2525,12 +2526,12 @@ describe('CompilerFile', () => {
           normalizeImports([
             {
               pathOriginal: fileB.importpath,
-              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              pathResolved: posix(nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath)),
               exportNames: ['one', 'two'],
             },
             {
               pathOriginal: fileC.importpath,
-              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileC.importpath),
+              pathResolved: posix(nodePath.resolve(nodePath.dirname(fileA.path), fileC.importpath)),
               exportNames: ['four', 'three'],
             },
           ]),
@@ -2556,17 +2557,17 @@ describe('CompilerFile', () => {
           normalizeImports([
             {
               pathOriginal: fileB.importpath,
-              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              pathResolved: posix(nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath)),
               exportNames: ['r1', 'r2'],
             },
             {
               pathOriginal: fileC.importpath,
-              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileC.importpath),
+              pathResolved: posix(nodePath.resolve(nodePath.dirname(fileA.path), fileC.importpath)),
               exportNames: ['r3', 'r4'],
             },
             {
               pathOriginal: fileD.importpath,
-              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileD.importpath),
+              pathResolved: posix(nodePath.resolve(nodePath.dirname(fileA.path), fileD.importpath)),
               exportNames: ['r5', 'r6'],
             },
           ]),
@@ -2589,12 +2590,12 @@ describe('CompilerFile', () => {
           normalizeImports([
             {
               pathOriginal: fileB.importpath,
-              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              pathResolved: posix(nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath)),
               exportNames: [],
             },
             {
               pathOriginal: fileC.importpath,
-              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileC.importpath),
+              pathResolved: posix(nodePath.resolve(nodePath.dirname(fileA.path), fileC.importpath)),
               exportNames: ['UnusedA', 'UnusedB'],
             },
           ]),
@@ -2619,7 +2620,7 @@ describe('CompilerFile', () => {
           normalizeImports([
             {
               pathOriginal: fileB.importpath,
-              pathResolved: nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath),
+              pathResolved: posix(nodePath.resolve(nodePath.dirname(fileA.path), fileB.importpath)),
               exportNames: ['a', 'b', 'c', 'd'],
             },
           ]),

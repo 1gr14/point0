@@ -343,7 +343,9 @@ export class TestProjectOneClient {
       await this.waitPortsFree()
     }
     if (files) {
-      await nodeFs.rm(this.dir, { recursive: true, force: true })
+      // Windows releases a terminated process's file handles asynchronously, so a dir `rm` right after killTree can hit
+      // EBUSY/EPERM even though the holders are gone. Node retries those codes when maxRetries > 0 — give the OS a beat.
+      await nodeFs.rm(this.dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
     }
   }
 
@@ -497,7 +499,13 @@ export class TestProjectOneClientFactory {
       await this.browser?.close()
     }
     if (files) {
-      await nodeFs.rm(nodePath.resolve(testsGeneralTempDir, this.namespace), { recursive: true, force: true })
+      // Windows releases handles asynchronously after process kill — retry the dir removal (see cleanup()).
+      await nodeFs.rm(nodePath.resolve(testsGeneralTempDir, this.namespace), {
+        recursive: true,
+        force: true,
+        maxRetries: 20,
+        retryDelay: 100,
+      })
     }
   }
 

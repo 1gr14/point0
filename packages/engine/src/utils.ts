@@ -1,4 +1,4 @@
-import type { CompilerOptions } from '@point0/compiler'
+import { type CompilerOptions, toPosixPath } from '@point0/compiler'
 import type { NormalizedNodeEnv, PointsScope } from '@point0/core'
 import { env } from '@point0/core'
 import type { BuildConfig, BunPlugin } from 'bun'
@@ -932,16 +932,21 @@ export const parseGlobs = ({
   const patterns: string[] = []
   const includes: string[] = []
   const excludes: string[] = []
+  // Glob patterns must be posix (fast-glob/minimatch read `\` as an escape, not a separator), but `dir` is derived by
+  // getDirByPaths' native-separator prefix math — so keep a native copy of the includes just for that.
+  const includesNative: string[] = []
   for (const glob of globs) {
     const isExclude = glob.startsWith('!')
     const pathMaybeRel = isExclude ? glob.slice(1) : glob
-    const pathAbs = nodePath.resolve(cwd, pathMaybeRel)
+    const pathAbsNative = nodePath.resolve(cwd, pathMaybeRel)
+    const pathAbs = toPosixPath(pathAbsNative)
     patterns.push(isExclude ? `!${pathAbs}` : pathAbs)
     if (isExclude) {
       excludes.push(pathAbs)
     } else {
       includes.push(pathAbs)
+      includesNative.push(pathAbsNative)
     }
   }
-  return { patterns, includes, excludes, dir: includes.length > 0 ? getDirByPaths({ paths: includes }) : cwd }
+  return { patterns, includes, excludes, dir: includes.length > 0 ? getDirByPaths({ paths: includesNative }) : cwd }
 }

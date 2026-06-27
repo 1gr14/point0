@@ -1,0 +1,13 @@
+diff --git a/lib/coreBundle.js b/lib/coreBundle.js
+index bc601fcf741792e3fc76884a28a3c43f80c6472f..01e5311763aa72133827361fc475a3fce33a4e91 100644
+--- a/lib/coreBundle.js
++++ b/lib/coreBundle.js
+@@ -38023,7 +38023,7 @@ var init_transport = __esm({
+     "use strict";
+     init_happyEyeballs();
+     init_task();
+-    ws = require("./utilsBundle").ws;
++    ws = require("ws");
+     perMessageDeflate2 = {
+       clientNoContextTakeover: true,
+       zlibDeflateOptions: {

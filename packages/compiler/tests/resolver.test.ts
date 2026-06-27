@@ -2,6 +2,8 @@ import { beforeAll, describe, expect, it } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { FileResolver } from '../src/resolver.js'
+// `resolveFilePath` returns posix identifiers; normalize expected paths (built native by `node:path`) to match.
+import { toPosixPath as posix } from '../src/utils.js'
 
 const generalTempDir = nodePath.join(__dirname, 'temp/resolver')
 
@@ -51,7 +53,7 @@ describe('FileResolver', () => {
           importer: file1Path,
         })
 
-        expect(resolved).toBe(file2Path)
+        expect(resolved).toBe(posix(file2Path))
       }),
     )
 
@@ -68,7 +70,7 @@ describe('FileResolver', () => {
           importer: file1Path,
         })
 
-        expect(resolved).toBe(file2Path)
+        expect(resolved).toBe(posix(file2Path))
       }),
     )
 
@@ -94,7 +96,7 @@ describe('FileResolver', () => {
         })
 
         // Resolver prefers .ts first, but if it doesn't exist, should find .tsx
-        expect(resolved).toBe(file2TsxPath)
+        expect(resolved).toBe(posix(file2TsxPath))
       }),
     )
 
@@ -120,7 +122,7 @@ describe('FileResolver', () => {
         })
 
         // Resolver prefers .ts first, but if it doesn't exist, should find .js
-        expect(resolved).toBe(file2JsPath)
+        expect(resolved).toBe(posix(file2JsPath))
       }),
     )
 
@@ -139,7 +141,7 @@ describe('FileResolver', () => {
           importer: file1Path,
         })
 
-        expect(resolved).toBe(file2Path)
+        expect(resolved).toBe(posix(file2Path))
       }),
     )
 
@@ -158,7 +160,7 @@ describe('FileResolver', () => {
           importer: file1Path,
         })
 
-        expect(resolved).toBe(file2Path)
+        expect(resolved).toBe(posix(file2Path))
       }),
     )
 
@@ -188,7 +190,7 @@ describe('FileResolver', () => {
           importer: undefined,
         })
 
-        expect(resolved).toBe(file1Path)
+        expect(resolved).toBe(posix(file1Path))
       }),
     )
 
@@ -242,7 +244,7 @@ describe('FileResolver', () => {
         })
 
         // Resolver prefers .ts first, but if it doesn't exist, should find .mjs
-        expect(resolved).toBe(file2MjsPath)
+        expect(resolved).toBe(posix(file2MjsPath))
       }),
     )
 
@@ -270,7 +272,7 @@ describe('FileResolver', () => {
         })
 
         // Resolver prefers .ts first, but if it doesn't exist, should find .cjs
-        expect(resolved).toBe(file2CjsPath)
+        expect(resolved).toBe(posix(file2CjsPath))
       }),
     )
 
@@ -290,7 +292,7 @@ describe('FileResolver', () => {
         })
 
         // Should prefer .ts over .js
-        expect(resolved).toBe(file2TsPath)
+        expect(resolved).toBe(posix(file2TsPath))
       }),
     )
 
@@ -323,7 +325,7 @@ describe('FileResolver', () => {
           importer: file1Path,
         })
 
-        expect(resolved).toBe(aliasedFile)
+        expect(resolved).toBe(posix(aliasedFile))
       }),
     )
 
@@ -354,7 +356,7 @@ describe('FileResolver', () => {
         })
 
         // TypeScript resolver should resolve to index.ts
-        expect(resolved).toBe(indexFile)
+        expect(resolved).toBe(posix(indexFile))
       }),
     )
   })

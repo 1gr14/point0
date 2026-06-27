@@ -8,7 +8,7 @@ import type {
 } from './utils/project.one-client.js'
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
-setDefaultTimeout(15000)
+setDefaultTimeout(60000)
 
 const tpf = TestProjectOneClientFactory.create({
   namespace: 'preload',

@@ -1,3 +1,4 @@
+import { toPosixPath } from '@point0/compiler'
 import { prependAndDeappendSlash } from '@point0/core'
 import type { PointsScope } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
@@ -194,8 +195,10 @@ export class Publicdir<TPrepared extends boolean, TError extends ErrorPoint0> {
           const dirRoutePath = dirRoutePathOrFilePath
           const dirAbsPath = dirAbsPathOrContentFn
           for await (const fileAbsPath of getAllFiles(dirAbsPath)) {
-            const relPath = nodePath.relative(dirAbsPath, fileAbsPath)
-            const fileRoutePath = prependAndDeappendSlash(nodePath.join(dirRoutePath, relPath))
+            // `fileRoutePath` is a URL route path, so build it posix — a native `\` would survive into
+            // `nodePath.resolve(outdir, …)` as a drive-root path (`/favicon.ico` → `C:\favicon.ico`).
+            const relPath = toPosixPath(nodePath.relative(dirAbsPath, fileAbsPath))
+            const fileRoutePath = prependAndDeappendSlash(nodePath.posix.join(dirRoutePath, relPath))
             this.files.set(fileRoutePath, fileAbsPath)
           }
         } else {
@@ -314,8 +317,10 @@ export class Publicdir<TPrepared extends boolean, TError extends ErrorPoint0> {
           const dirRoutePath = dirRoutePathOrFilePath
           const dirAbsPath = dirAbsPathOrContentFn
           for await (const fileAbsPath of getAllFiles(dirAbsPath)) {
-            const relPath = nodePath.relative(dirAbsPath, fileAbsPath)
-            const fileRoutePath = prependAndDeappendSlash(nodePath.join(dirRoutePath, relPath))
+            // `fileRoutePath` is a URL route path, so build it posix — a native `\` would survive into
+            // `nodePath.resolve(outdir, …)` as a drive-root path (`/favicon.ico` → `C:\favicon.ico`).
+            const relPath = toPosixPath(nodePath.relative(dirAbsPath, fileAbsPath))
+            const fileRoutePath = prependAndDeappendSlash(nodePath.posix.join(dirRoutePath, relPath))
             const distAbsPath = nodePath.resolve(outdir, fileRoutePath.replace(/^\/+/, ''))
             fileOperations.push(
               (async () => {

@@ -8,7 +8,7 @@ import type {
 } from './utils/project.two-clients.js'
 import { TestProjectTwoClientFactory } from './utils/project.two-clients.js'
 
-setDefaultTimeout(20000)
+setDefaultTimeout(80000)
 
 const tpf = TestProjectTwoClientFactory.create({
   namespace: 'two-clients',

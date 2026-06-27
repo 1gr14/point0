@@ -2,7 +2,7 @@ import type { AnyRoute } from '@1gr14/route0'
 import { type AnyLocation, Route0 } from '@1gr14/route0'
 import type { CompilerOptions } from '@point0/compiler'
 import type { StaticCompilerRef } from '@point0/compiler/plugin/bun-static'
-import { FileResolver, resolveTempDirPath } from '@point0/compiler'
+import { FileResolver, resolveTempDirPath, toPosixPath } from '@point0/compiler'
 import type {
   AppComponent,
   ErrorPoint0,
@@ -506,17 +506,17 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
 plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
 `
 
-    // This broke everything, I do not know why, so hmr will be always enabled for now
-    // please do not try this... Very hard to debug...
-    // development: {
-    //   hmr: ${this.hmrPort ? 'true' : 'false'},
-    // },
+    // No explicit `development: { hmr }` block — Bun enables dev mode + HMR by default when NODE_ENV !== 'production'.
+    // Embedded paths must be posix: this string is written out as a real JS module, so a native `\` would be read as a
+    // string escape (`\t`, `\U`, …). Import specifiers and path args accept `/` on every OS.
+    const indexHtmlPosix = toPosixPath(this.indexHtml)
+    const engineFilePosix = toPosixPath(this.engineFile)
     const scriptContent = `
-import indexHtml from '${this.indexHtml}';
+import indexHtml from '${indexHtmlPosix}';
 import { Engine } from '@point0/engine';
 import { fetchRetryingConnectionRefused, registerOnProcessExit } from '@point0/engine/utils';
 import { env } from '@point0/core';
-const { engine } = await Engine.findAndImportSelf({ engineFile: '${this.engineFile}' });
+const { engine } = await Engine.findAndImportSelf({ engineFile: '${engineFilePosix}' });
 try {
   // No engine.preload() here: this child's html/static pipeline gets its plugins from the generated
   // bunfig's [serve.static] (resolved by @point0/compiler/plugin/bun-static), and nothing in this
@@ -658,8 +658,16 @@ try {
     }
 
     const spawnChild = (): Bun.Subprocess<'ignore', 'pipe', 'pipe'> => {
-      const child = Bun.spawn(['bun', 'run', '--no-orphans', scriptPath], {
-        cwd: tempDir,
+      // Two Windows-driven spawn choices (both no-ops on posix):
+      // 1. `process.execPath` (the running bun), not bare `bun` — a spawned child may not inherit the shell-profile bun
+      //    dir on PATH (see server.ts spawnEntry).
+      // 2. cwd = the app root, NOT `tempDir`. Bun's HTMLBundle dev server only watches files under its cwd for HMR
+      //    (oven-sh/bun#19479); our generated serve.js/bunfig.toml live in `tempDir`, so running there left every app
+      //    source unwatched and no edit ever hot-updated. serve.js uses absolute paths, so cwd is free to move; we pin
+      //    `--config=<tempDir/bunfig.toml>` so the `[serve.static]` plugins still load. The `=` is required — with a
+      //    space, bun's `run` parser swallows the script path and exits 0 without starting the server.
+      const child = Bun.spawn([process.execPath, `--config=${bunfigTomlPath}`, 'run', '--no-orphans', scriptPath], {
+        cwd: this.cwd,
         stdout: 'pipe',
         stderr: 'pipe',
         stdin: 'ignore',

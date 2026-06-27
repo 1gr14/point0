@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
-import { mkdir, rm, writeFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
+import type { Browser } from 'playwright'
 
 /**
  * End-to-end tests for `create-point0-app`.
@@ -19,7 +21,13 @@ const packageRoot = resolve(import.meta.dir, '..')
 const cliPath = resolve(packageRoot, 'src/index.ts')
 const tempDir = resolve(packageRoot, 'tests/temp')
 
-setDefaultTimeout(120_000)
+// Windows runs the whole scaffold→generate→prisma→typecheck→dev→browser sequence noticeably slower; give it headroom.
+setDefaultTimeout(300_000)
+
+// This E2E opens the scaffolded app's home page in a real Chromium. On Windows `chromium.launch()` can't run under Bun
+// (pipe transport hangs / `uv_spawn` fails), so on win32 we spawn `chrome-headless-shell` + `connectOverCDP` instead
+// (see launchBrowser and dev/docs/windows.md).
+const isWin = process.platform === 'win32'
 
 type Mode = { id: 'bun' | 'vite'; viteFlag: string; serverPort: number; clientPort: number }
 
@@ -33,7 +41,9 @@ type DevProcess = { proc: Bun.Subprocess; output: () => string }
 
 function spawnDev(cwd: string): DevProcess {
   const chunks: Uint8Array[] = []
-  const proc = Bun.spawn(['bun', 'run', 'dev'], {
+  // `process.execPath` (the running bun), not bare `bun`: on Windows a spawned child doesn't reliably inherit the
+  // shell-profile bun dir on PATH. Same reasoning throughout this file.
+  const proc = Bun.spawn([process.execPath, 'run', 'dev'], {
     cwd,
     stdout: 'pipe',
     stderr: 'pipe',
@@ -89,6 +99,11 @@ async function getDescendantPids(rootPid: number): Promise<number[]> {
 
 async function killTree(pid: number | undefined): Promise<void> {
   if (!pid) return
+  if (isWin) {
+    // Windows has no pgrep; `taskkill /T` kills the whole process tree (renderer/gpu/dev children) in one call.
+    await Bun.$`taskkill /pid ${pid} /T /F`.nothrow().quiet()
+    return
+  }
   const pids = [...(await getDescendantPids(pid)), pid].reverse()
   for (const target of pids) {
     await Bun.$`kill -9 ${target}`.nothrow().quiet()
@@ -96,6 +111,24 @@ async function killTree(pid: number | undefined): Promise<void> {
 }
 
 async function killPorts(ports: number[]): Promise<void> {
+  if (isWin) {
+    // No lsof on Windows — read `netstat -ano`, match LISTENING rows on our ports, taskkill their owners.
+    const result = await Bun.$`netstat -ano -p tcp`.nothrow().quiet()
+    const pids = new Set<number>()
+    for (const line of result.text().split('\n')) {
+      if (!/LISTENING/i.test(line)) continue
+      for (const port of ports) {
+        if (new RegExp(`:${port}\\s`).test(line)) {
+          const pid = Number(line.trim().split(/\s+/).pop())
+          if (Number.isInteger(pid) && pid > 0) pids.add(pid)
+        }
+      }
+    }
+    for (const pid of pids) {
+      await Bun.$`taskkill /pid ${pid} /T /F`.nothrow().quiet()
+    }
+    return
+  }
   const result = await Bun.$`lsof ${ports.flatMap((port) => ['-ti', `:${port}`])}`.nothrow().quiet()
   for (const pid of result
     .text()
@@ -104,6 +137,63 @@ async function killPorts(ports: number[]): Promise<void> {
     .map(Number)
     .filter((value) => Number.isInteger(value) && value > 0)) {
     await Bun.$`kill -9 ${pid}`.nothrow().quiet()
+  }
+}
+
+// Open a real Chromium for the render assertion. On Windows `chromium.launch()` can't run under Bun (pipe transport
+// hangs / `uv_spawn` fails), so spawn `chrome-headless-shell` with an auto-assigned debug port and `connectOverCDP`;
+// everywhere else use the normal headless launch.
+async function launchBrowser(): Promise<{ browser: Browser; shell?: Bun.Subprocess }> {
+  const { chromium } = await import('playwright')
+  if (!isWin) return { browser: await chromium.launch() }
+  const shellPath = chromium
+    .executablePath()
+    .replace(
+      /chromium-(\d+)([\\/])chrome-win64\2chrome\.exe$/,
+      (_m, rev: string, sep: string) =>
+        `chromium_headless_shell-${rev}${sep}chrome-headless-shell-win64${sep}chrome-headless-shell.exe`,
+    )
+  const userDataDir = join(tmpdir(), `cpa-cdp-${crypto.randomUUID()}`)
+  const shell = Bun.spawn(
+    [
+      shellPath,
+      '--headless',
+      '--remote-debugging-port=0',
+      `--user-data-dir=${userDataDir}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-gpu',
+    ],
+    { stdout: 'ignore', stderr: 'ignore' },
+  )
+  const portFile = join(userDataDir, 'DevToolsActivePort')
+  let port: number | undefined
+  for (let i = 0; i < 300; i++) {
+    if (shell.exitCode !== null) {
+      throw new Error(`chrome-headless-shell exited ${shell.exitCode} — run \`bunx playwright install chromium\``)
+    }
+    try {
+      const first = (await readFile(portFile, 'utf8')).split('\n')[0]?.trim()
+      if (first) {
+        port = Number(first)
+        break
+      }
+    } catch {
+      /* port file not written yet */
+    }
+    await Bun.sleep(100)
+  }
+  if (!port) throw new Error('chrome-headless-shell did not report a CDP port')
+  return { browser: await chromium.connectOverCDP(`http://127.0.0.1:${port}`), shell }
+}
+
+async function closeBrowser(browser: Browser, shell?: Bun.Subprocess): Promise<void> {
+  try {
+    await browser.close()
+  } catch {}
+  // connectOverCDP only disconnects — kill the shell process tree we spawned ourselves.
+  if (shell?.pid) {
+    Bun.spawnSync(['taskkill', '/pid', String(shell.pid), '/T', '/F'], { stdout: 'ignore', stderr: 'ignore' })
   }
 }
 
@@ -122,6 +212,8 @@ async function writeAppEnv(appDir: string, mode: Mode): Promise<void> {
   )
 }
 
+// `cmd[0]` should be the running bun (`process.execPath`) — callers pass it — so spawned children resolve bun on
+// Windows without relying on PATH.
 function run(cmd: string[], cwd: string, label: string): void {
   const result = Bun.spawnSync(cmd, { cwd, env: { ...process.env } })
   if (result.exitCode !== 0) {
@@ -151,10 +243,10 @@ describe('create-app e2e', () => {
       let dev: DevProcess | undefined
       try {
         // 1. Scaffold from the template via the real CLI (no install — deps resolve up the workspace).
-        const scaffold = Bun.spawnSync(['bun', cliPath, appName, mode.viteFlag, '--no-install', '--no-interactive'], {
-          cwd: tempDir,
-          env: { ...process.env },
-        })
+        const scaffold = Bun.spawnSync(
+          [process.execPath, cliPath, appName, mode.viteFlag, '--no-install', '--no-interactive'],
+          { cwd: tempDir, env: { ...process.env } },
+        )
         if (scaffold.exitCode !== 0) {
           throw new Error(`scaffold failed:\n${scaffold.stdout.toString()}\n${scaffold.stderr.toString()}`)
         }
@@ -174,9 +266,9 @@ describe('create-app e2e', () => {
         await writeAppEnv(appDir, mode)
 
         // 2. Generate the point0 artifacts and the prisma client, then assert the scaffolded app type-checks cleanly.
-        run(['bun', 'run', 'generate'], appDir, `point0 generate (${mode.id})`)
-        run(['bun', 'run', 'prisma:generate'], appDir, `prisma generate (${mode.id})`)
-        const typecheck = Bun.spawnSync(['bun', 'run', 'types'], { cwd: appDir, env: { ...process.env } })
+        run([process.execPath, 'run', 'generate'], appDir, `point0 generate (${mode.id})`)
+        run([process.execPath, 'run', 'prisma:generate'], appDir, `prisma generate (${mode.id})`)
+        const typecheck = Bun.spawnSync([process.execPath, 'run', 'types'], { cwd: appDir, env: { ...process.env } })
         if (typecheck.exitCode !== 0) {
           throw new Error(
             `type check failed (${mode.id}):\n${typecheck.stdout.toString()}\n${typecheck.stderr.toString()}`,
@@ -194,16 +286,15 @@ describe('create-app e2e', () => {
         const html = await fetch(serverUrl, { redirect: 'follow' }).then((response) => response.text())
         expect(html).toContain('Welcome to My App')
 
-        // 5. Open it in a real browser and assert the rendered page.
-        const { chromium } = await import('playwright')
-        const browser = await chromium.launch()
+        // 5. Open it in a real browser and assert the rendered page (CDP on Windows — see launchBrowser).
+        const { browser, shell } = await launchBrowser()
         try {
           const page = await browser.newPage()
           await page.goto(serverUrl, { waitUntil: 'networkidle' })
           expect(await page.locator('body').textContent()).toContain('Welcome to My App!')
           expect(await page.title()).toBe('My App Forever!')
         } finally {
-          await browser.close()
+          await closeBrowser(browser, shell)
         }
       } finally {
         await killTree(dev?.proc.pid)

@@ -273,8 +273,16 @@ function removeVitePackages(deps?: Record<string, string>) {
   }
 }
 
+// Read a template file with line endings normalized to LF. Windows git checks the template out CRLF (autocrlf), but the
+// marker constants/regexes driving the vite/bun surgery below are LF-anchored — a stray `\r` makes every `.replace()`
+// silently no-op, so e.g. a `--no-vite` app would keep its vite config and fail to type-check. Normalizing on read fixes
+// it on every OS (the scaffolded file ends up LF, which is fine everywhere).
+async function readTemplateLf(path: string): Promise<string> {
+  return (await readFile(path, 'utf8')).replace(/\r\n/g, '\n')
+}
+
 async function patchEngine(enginePath: string, useVite: boolean) {
-  const current = await readFile(enginePath, 'utf8')
+  const current = await readTemplateLf(enginePath)
   let next: string
 
   if (useVite) {
@@ -298,13 +306,13 @@ async function patchPreload(preloadPath: string, useVite: boolean) {
   if (!useVite) {
     return
   }
-  const current = await readFile(preloadPath, 'utf8')
+  const current = await readTemplateLf(preloadPath)
   const next = current.replace(PRELOAD_DEFAULT, PRELOAD_VITE)
   await writeFile(preloadPath, next, 'utf8')
 }
 
 async function patchIndexHtml(indexHtmlPath: string, useVite: boolean) {
-  const current = await readFile(indexHtmlPath, 'utf8')
+  const current = await readTemplateLf(indexHtmlPath)
   let next = current
 
   if (useVite) {

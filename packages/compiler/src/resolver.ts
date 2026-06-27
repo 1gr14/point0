@@ -1,6 +1,7 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPath from 'node:path'
 import * as ts from 'typescript'
+import { toPosixPath } from './utils.js'
 
 export class FileResolver {
   // Cache for TypeScript compiler options per directory
@@ -24,9 +25,13 @@ export class FileResolver {
       return FileResolver.tsConfigCache.get(dir) ?? null
     }
 
-    // Find the nearest tsconfig.json by walking up the directory tree
-    let currentDir = nodeFsPath.resolve(dir)
-    const root = nodeFsPath.parse(currentDir).root
+    // Find the nearest tsconfig.json by walking up. Every path is posix-normalized so the comparisons are
+    // separator-agnostic — callers pass posix `dir`s but `nodeFsPath.resolve`/`parse`/`dirname` emit `\` on Windows.
+    // Mixing the two used to spin forever (`dirname('C:/') === 'C:/'` never equals a `C:\` root); normalizing plus the
+    // fixed-point guards make the walk terminate everywhere.
+    const startDir = toPosixPath(nodeFsPath.resolve(dir))
+    let currentDir = startDir
+    const root = toPosixPath(nodeFsPath.parse(currentDir).root)
 
     while (currentDir !== root) {
       const tsConfigPath = nodeFsPath.join(currentDir, 'tsconfig.json')
@@ -49,10 +54,12 @@ export class FileResolver {
           )
 
           // Cache for this directory and all parent directories we checked
-          let cacheDir = dir
+          let cacheDir = startDir
           while (cacheDir !== currentDir && cacheDir !== root) {
             FileResolver.tsConfigCache.set(cacheDir, parsedConfig)
-            cacheDir = nodeFsPath.dirname(cacheDir)
+            const parentCacheDir = toPosixPath(nodeFsPath.dirname(cacheDir))
+            if (parentCacheDir === cacheDir) break
+            cacheDir = parentCacheDir
           }
           FileResolver.tsConfigCache.set(currentDir, parsedConfig)
           FileResolver.tsConfigCache.set(dir, parsedConfig)
@@ -63,7 +70,7 @@ export class FileResolver {
         // File doesn't exist, continue searching up
       }
 
-      const parentDir = nodeFsPath.dirname(currentDir)
+      const parentDir = toPosixPath(nodeFsPath.dirname(currentDir))
       if (parentDir === currentDir) break
       currentDir = parentDir
     }
@@ -104,8 +111,21 @@ export class FileResolver {
   /**
    * Detects the actual file path for an import path. First tries TypeScript resolution (for path aliases and relative
    * paths), then falls back to relative path resolution with extension guessing.
+   *
+   * The result is posix-normalized so resolved identifiers match on every OS — TS's resolver already returns posix, and
+   * normalizing the filesystem fallback keeps the two consistent.
    */
-  static resolveFilePath({
+  static resolveFilePath(args: {
+    importer?: string
+    path?: string
+    ts?: boolean
+    existsing?: boolean
+  }): string | undefined {
+    const resolved = FileResolver.resolveFilePathRaw(args)
+    return resolved === undefined ? undefined : toPosixPath(resolved)
+  }
+
+  private static resolveFilePathRaw({
     path,
     importer,
     ts = true,

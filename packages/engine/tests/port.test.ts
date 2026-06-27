@@ -42,7 +42,9 @@ describe('describePortHolders', () => {
       scriptPath,
       `Bun.serve({ port: ${port}, fetch: () => new Response('x') })\nsetInterval(() => {}, 1000)\n`,
     )
-    const child = Bun.spawn(['bun', scriptPath], { stdout: 'ignore', stderr: 'ignore', stdin: 'ignore' })
+    // Spawn via the running bun's absolute path, not a bare `bun` — on Windows the bun dir isn't reliably on the
+    // spawn's PATH (it's added by the shell profile, not the OS env), so PATH resolution of `bun` flakes.
+    const child = Bun.spawn([process.execPath, scriptPath], { stdout: 'ignore', stderr: 'ignore', stdin: 'ignore' })
     trackedChildren.push(child)
     // Wait until the child actually binds.
     const deadline = Date.now() + 5000

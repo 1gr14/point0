@@ -1,3 +1,4 @@
+import { toPosixPath } from '@point0/compiler'
 import * as nodePath from 'node:path'
 
 /**
@@ -92,19 +93,20 @@ type BunMetafile = { outputs?: Record<string, BunMetafileOutput> }
 
 /** Normalize an emitted-output path (`./chunk-x.js`, `dist/client/chunk-x.js`) to a client public path (`/chunk-x.js`). */
 const toPublicPath = (outputPath: string, outdir: string): string => {
-  let rel = outputPath
-  if (nodePath.isAbsolute(rel)) {
-    rel = nodePath.relative(outdir, rel)
+  // Public paths are posix throughout: bun metafile keys use `/`, but `nodePath.relative`/`process.cwd()` emit `\` on
+  // Windows, so a native outdir prefix would never strip from a posix key.
+  let rel = toPosixPath(outputPath)
+  if (nodePath.isAbsolute(outputPath)) {
+    rel = toPosixPath(nodePath.relative(outdir, outputPath))
   } else {
     // Bun metafile keys are cwd-relative and usually start with the outdir (e.g. `dist/client/chunk-x.js`).
-    const outdirRel = nodePath.relative(process.cwd(), outdir)
+    const outdirRel = toPosixPath(nodePath.relative(process.cwd(), outdir))
     if (outdirRel && rel.startsWith(`${outdirRel}/`)) {
       rel = rel.slice(outdirRel.length + 1)
     } else if (rel.startsWith('./')) {
       rel = rel.slice(2)
     }
   }
-  rel = rel.replaceAll('\\', '/')
   return rel.startsWith('/') ? rel : `/${rel}`
 }
 

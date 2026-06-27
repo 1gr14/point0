@@ -3,7 +3,7 @@ import nodePath from 'node:path'
 import type { TestProjectOneClient } from './utils/project.one-client.js'
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
-setDefaultTimeout(20000)
+setDefaultTimeout(80000)
 
 const packageRoot = nodePath.resolve(__dirname, '..')
 const cliPath = nodePath.resolve(packageRoot, 'src', 'cli.ts')

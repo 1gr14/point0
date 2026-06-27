@@ -13,7 +13,7 @@ import type {
 } from './utils/project.one-client.js'
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
-setDefaultTimeout(20000)
+setDefaultTimeout(80000)
 
 // Resolve the server-hot store dir the way the dev child actually does: walk up from its cwd (the test project dir) to
 // the nearest `node_modules`, then `.cache/server-hot/<scope>-<port>`. The engine resolves it with
@@ -574,7 +574,8 @@ export const page2 = root.lets('page', 'page2', '/2')
             .page(() => <div>{x}</div>)`,
         )
         tp.spawn(['bun', 'run', 'dev'])
-        await tp.waitOutput('Import denied on side "server"')
+        // win32's vite SSR boot is slow enough that the deny can land past waitOutput's short default; widen it.
+        await tp.waitOutput('Import denied on side "server"', 60000)
       }),
       {
         retry: 3,

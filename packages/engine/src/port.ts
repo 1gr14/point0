@@ -205,7 +205,18 @@ export async function describePortHolders(ports: number[]): Promise<string> {
     for (const pid of pids) {
       const command =
         platform === 'win32'
-          ? ''
+          ? // Windows has no `ps`; read the holder's full command line from the CIM process table (PowerShell is always
+            // on PATH via System32). Best-effort — any failure falls back to a bare `pid N`.
+            (
+              (
+                await Bun.$`powershell -NoProfile -NonInteractive -Command ${`(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").CommandLine`}`
+                  .nothrow()
+                  .quiet()
+              )
+                .text()
+                .trim()
+                .split('\n')[0] ?? ''
+            ).trim()
           : ((await Bun.$`ps -p ${pid} -o command=`.nothrow().quiet()).text().trim().split('\n')[0] ?? '')
       parts.push(command ? `pid ${pid} (${command})` : `pid ${pid}`)
     }

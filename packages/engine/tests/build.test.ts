@@ -11,7 +11,7 @@ import nodeFs from 'node:fs/promises'
 import nodePath from 'node:path'
 import { originalPositionFor, TraceMap } from '@jridgewell/trace-mapping'
 
-setDefaultTimeout(15000)
+setDefaultTimeout(60000)
 
 const tpf = TestProjectOneClientFactory.create({
   namespace: 'build',
@@ -430,7 +430,8 @@ return (
         )
         await tp.generate()
         const bp = tp.spawn(['bun', 'run', 'build'])
-        await bp.waitOutput('Import denied on side "client"')
+        // The deny is thrown mid-build; on slow (Windows) builds the default `waitOutput` timeout can lapse first.
+        await bp.waitOutput('Import denied on side "client"', 60000)
         expect(await bp.exited).toBe(1)
       }),
       {
@@ -466,7 +467,8 @@ return (
         )
         await tp.generate()
         const bp = tp.spawn(['bun', 'run', 'build'])
-        await bp.waitOutput('Import denied on side "server"')
+        // See the client-side deny test above — same slow-build allowance.
+        await bp.waitOutput('Import denied on side "server"', 60000)
         expect(await bp.exited).toBe(1)
       }),
       {

@@ -5,6 +5,7 @@ import path from 'node:path'
 import url from 'node:url'
 import ts from 'typescript'
 import z from 'zod'
+import { toPosixPath } from '@point0/compiler'
 import { createTestThings, waitReturn } from './utils/internal-testing.js'
 
 describe('infinityQuery', () => {
@@ -457,7 +458,9 @@ root.lets('infiniteQuery', 'noload').infiniteQuery({}) /* NOLOADER */
 `
 
 const iqEngineDir = path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..')
-const iqProbePath = path.join(iqEngineDir, 'tests', '__iq_dx_probe__.tsx')
+// TypeScript normalizes program file names to posix internally, so the probe path must be posix too — otherwise the
+// LanguageServiceHost's `f === iqProbePath` snapshot check never matches on Windows ("Could not find source file").
+const iqProbePath = toPosixPath(path.join(iqEngineDir, 'tests', '__iq_dx_probe__.tsx'))
 const iqParsed = ts.parseJsonConfigFileContent(
   ts.readConfigFile(path.join(iqEngineDir, 'tsconfig.json'), ts.sys.readFile).config,
   ts.sys,

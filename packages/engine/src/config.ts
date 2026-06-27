@@ -1,5 +1,5 @@
 import type { RoutesPretty } from '@1gr14/route0'
-import { normalizeEnvConsts } from '@point0/compiler'
+import { normalizeEnvConsts, toPosixPath } from '@point0/compiler'
 import type {
   AssetResolveMode,
   AssetsSvgrOptions,
@@ -750,13 +750,19 @@ const parseEngineGeneralOptions = ({
             `You should provide POINT0_ENGINE_CWD_BEFORE_BUILD and POINT0_ENGINE_CWD_AFTER_BUILD and engineFile if itWasBuilt is true and cwdBeforeBuild and cwdAfterBuild are not provided`,
           )
         }
-        const CWD_AFTER_BUILD_CURRENT = nodePath.dirname(engineFile)
+        // The CUTTED suffixes are embedded posix at build time (server.ts), so compare in posix; nodePath.join re-nativizes below.
+        const CWD_AFTER_BUILD_CURRENT = toPosixPath(nodePath.dirname(engineFile))
         if (!CWD_AFTER_BUILD_CURRENT.endsWith(POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED)) {
           throw new Error(
             `POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED "${POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED}" is not a subdirectory of CWD_AFTER_BUILD_CURRENT "${CWD_AFTER_BUILD_CURRENT}"`,
           )
         }
-        const localDir = CWD_AFTER_BUILD_CURRENT.replace(new RegExp(`${POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED}$`), '')
+        // endsWith already verified above, so slicing the suffix off recovers the relocation root without a path-derived
+        // RegExp (which could carry unescaped metacharacters).
+        const localDir = CWD_AFTER_BUILD_CURRENT.slice(
+          0,
+          CWD_AFTER_BUILD_CURRENT.length - POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED.length,
+        )
         generalOptions.cwdBeforeBuild = nodePath.join(localDir, POINT0_ENGINE_CWD_BEFORE_BUILD_CUTTED)
         generalOptions.cwdAfterBuild = nodePath.join(localDir, POINT0_ENGINE_CWD_AFTER_BUILD_CUTTED)
       }

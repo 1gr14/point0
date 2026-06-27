@@ -51,3 +51,15 @@ export const resolveTempDirPath = (subdir: string[] = []): string => {
 export const getHash = (data: string): string => {
   return crypto.createHash('sha256').update(data).digest('hex')
 }
+
+/**
+ * Normalize a path to posix form (forward slashes). point0 keys files, modules, routes and globs by their posix
+ * identity on every OS — the convention TypeScript, Vite, Bun, fast-glob and minimatch already use — so a `\` from
+ * `node:path` or a platform API never becomes a second identity for the same file. Only Windows uses `\` as a
+ * separator, so off Windows this is the identity function — that skips a pointless scan and, more importantly, leaves a
+ * `\` that is a legitimate filename character on macOS/Linux untouched. Node's `fs`, `Bun.file` and `node:path` all
+ * accept `/` on Windows, so the result stays usable everywhere. Rationale and the full list of boundaries:
+ * dev/docs/windows.md.
+ */
+export const toPosixPath: (path: string) => string =
+  process.platform === 'win32' ? (path) => path.replaceAll('\\', '/') : (path) => path

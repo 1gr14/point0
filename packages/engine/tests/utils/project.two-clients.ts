@@ -478,7 +478,8 @@ export class TestProjectTwoClient {
       await this.waitPortsFree()
     }
     if (files) {
-      await nodeFs.rm(this.dir, { recursive: true, force: true })
+      // Windows releases handles asynchronously after process kill — retry the dir removal.
+      await nodeFs.rm(this.dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
     }
   }
 
@@ -670,7 +671,13 @@ export class TestProjectTwoClientFactory {
       await this.browser?.close()
     }
     if (files) {
-      await nodeFs.rm(nodePath.resolve(testsGeneralTempDir, this.namespace), { recursive: true, force: true })
+      // Windows releases handles asynchronously after process kill — retry the dir removal.
+      await nodeFs.rm(nodePath.resolve(testsGeneralTempDir, this.namespace), {
+        recursive: true,
+        force: true,
+        maxRetries: 20,
+        retryDelay: 100,
+      })
     }
   }
 

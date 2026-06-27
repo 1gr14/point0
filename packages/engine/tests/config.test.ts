@@ -2,6 +2,10 @@ import nodePath from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import { parseEngineOptions } from '../src/config.js'
 
+// Config returns native absolute paths (it's an fs-path resolver — see dev/docs/windows.md). `p()` pushes a posix
+// fixture to the platform's native form so expectations match on every OS (identity on posix, `C:\repo\…` on Windows).
+const p = (posixAbs: string): string => nodePath.resolve(posixAbs)
+
 const base = ({
   general = {},
   server = {},
@@ -37,7 +41,7 @@ describe('config', () => {
         }),
       )
 
-      expect(parsed.server.outdir).toBe('/repo/dist/server')
+      expect(parsed.server.outdir).toBe(p('/repo/dist/server'))
     })
 
     it('keeps non-relative paths as-is', () => {
@@ -70,7 +74,7 @@ describe('config', () => {
         }),
       )
 
-      expect(parsed.server.outdir).toBe('/repo/build/server/dist/server')
+      expect(parsed.server.outdir).toBe(p('/repo/build/server/dist/server'))
     })
 
     it('nulls relative vite config paths in built mode with autoFixBuiltPaths', () => {
@@ -124,10 +128,10 @@ describe('config', () => {
       )
 
       expect(parsed.server.entry).toEqual({
-        main: '/repo/dist/server/server-entry.js',
+        main: p('/repo/dist/server/server-entry.js'),
       })
-      expect(parsed.clients[0].outdir).toBe('/repo/dist/client')
-      expect(parsed.clients[0].indexHtml).toBe('/repo/dist/client/index.html')
+      expect(parsed.clients[0].outdir).toBe(p('/repo/dist/client'))
+      expect(parsed.clients[0].indexHtml).toBe(p('/repo/dist/client/index.html'))
       expect(nodePath.extname(parsed.server.entry?.main ?? '')).toBe('.js')
     })
   })
@@ -581,7 +585,7 @@ describe('config', () => {
           server: { publicdir: { source: './public', outdir: './dist/public' } },
         }),
       )
-      expect(parsed.server.publicdir?.source).toEqual([['/', '/repo/public']])
+      expect(parsed.server.publicdir?.source).toEqual([['/', p('/repo/public')]])
     })
 
     it('expands an object map into multiple entries', () => {
@@ -596,8 +600,8 @@ describe('config', () => {
         }),
       )
       expect(parsed.server.publicdir?.source).toEqual([
-        ['/assets', '/repo/public/assets'],
-        ['/static', '/repo/public/static'],
+        ['/assets', p('/repo/public/assets')],
+        ['/static', p('/repo/public/static')],
       ])
     })
 
@@ -613,9 +617,9 @@ describe('config', () => {
         }),
       )
       expect(parsed.server.publicdir?.source).toEqual([
-        ['/', '/repo/public'],
-        ['/extra', '/repo/public/extra'],
-        ['/foo', '/repo/public/foo'],
+        ['/', p('/repo/public')],
+        ['/extra', p('/repo/public/extra')],
+        ['/foo', p('/repo/public/foo')],
       ])
     })
 

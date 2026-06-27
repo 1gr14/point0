@@ -1,4 +1,6 @@
+import { fileURLToPath } from 'node:url'
 import type { EncodedSourceMap } from '@jridgewell/remapping'
+import { toPosixPath } from './utils.js'
 
 /**
  * Source-map plumbing that works around Bun ignoring the inline maps we emit (Bun #6173). One module, two concerns:
@@ -64,19 +66,20 @@ export function extractInlineSourceMap(content: string | null | undefined): Enco
 type DevSourceMapRegistry = { set: (file: string, map: string) => void; get: (source: string) => string | undefined }
 
 /**
- * Normalize a module path/URL to the key form used by both `set` (filepath) and `get` (stack-frame source): strip a
- * `?query` suffix and resolve a `file://` URL to its pathname, so the producer and consumer agree on the key.
+ * Normalize a module path/URL to the key both `set` (a native filepath) and `get` (a `file://` URL) agree on: strip
+ * `?query`, resolve `file://` to a path, then posix-normalize. `fileURLToPath` (not `URL.pathname`, which yields
+ * `/C:/…` on Windows) + `toPosixPath` collapse both forms to one key.
  */
 function normSourceKey(p: string): string {
   let s = p.split('?', 1)[0] ?? p
   if (s.startsWith('file://')) {
     try {
-      s = new URL(s).pathname
+      s = fileURLToPath(s)
     } catch {
       /* keep raw */
     }
   }
-  return s
+  return toPosixPath(s)
 }
 
 /**
