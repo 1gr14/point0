@@ -142,13 +142,25 @@ async function killPorts(ports: number[]): Promise<void> {
     }
     return
   }
-  const result = await Bun.$`lsof ${ports.flatMap((port) => ['-ti', `:${port}`])}`.nothrow().quiet()
+  if (DIAG) {
+    const all = await Bun.$`lsof ${ports.flatMap((port) => ['-ti', `:${port}`])}`.nothrow().quiet()
+    process.stderr.write(
+      `[CPA] killPorts ${JSON.stringify(ports)} all-holders=[${all.text().trim().split(/\s+/).join(',')}] self=${process.pid}\n`,
+    )
+  }
+  // Kill only the process LISTENING on each port (the dev server) — never a client connected to it.
+  // `lsof -ti :PORT` also returns clients, and this very test process holds pooled keep-alive sockets to
+  // the dev server from the step-4 `fetch` (which follows the redirect onto the client port too). Without
+  // the LISTEN filter killPorts `kill -9`s itself — a silent SIGKILL (exit 137) with no test output, and
+  // only on a slow runner where the socket is still pooled when cleanup runs. Excluding our own pid is a
+  // belt-and-suspenders backstop.
+  const result = await Bun.$`lsof -t -sTCP:LISTEN ${ports.flatMap((port) => ['-i', `tcp:${port}`])}`.nothrow().quiet()
   for (const pid of result
     .text()
     .trim()
     .split(/\s+/)
     .map(Number)
-    .filter((value) => Number.isInteger(value) && value > 0)) {
+    .filter((value) => Number.isInteger(value) && value > 0 && value !== process.pid)) {
     await Bun.$`kill -9 ${pid}`.nothrow().quiet()
   }
 }
