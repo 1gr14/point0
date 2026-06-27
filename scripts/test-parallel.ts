@@ -203,15 +203,22 @@ if (!liveTestOutput) {
   }
 }
 
-const final = () => {
+const final = async () => {
   const endTime = Date.now()
-  process.stdout.write(`\n===== Total time: ${formatDuration(endTime - startTime)} =====\n`)
-
+  // Flush every buffered stdout write before exiting. `process.exit()` drops async stdout writes
+  // mid-stream; on a CI pipe that truncated the log exactly at the failure — the per-file dumps and
+  // the "===== Failures =====" summary never made it out, so a red run showed no cause at all. Awaiting
+  // one final write drains everything queued ahead of it (stream writes flush in order).
+  await new Promise<void>((resolve) => {
+    process.stdout.write(`\n===== Total time: ${formatDuration(endTime - startTime)} =====\n`, () => {
+      resolve()
+    })
+  })
   process.exit(failed)
 }
 
 if (failed) {
-  final()
+  await final()
 }
 
 if (pendingSlowFiles.length > 0) {
@@ -235,4 +242,4 @@ if (pendingSlowFiles.length > 0) {
   }
 }
 
-final()
+await final()
