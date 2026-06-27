@@ -73,8 +73,7 @@ jobs:
         if: runner.os != 'Linux'
         run: bunx playwright install chromium
 
-      # Per-file runner: each test file runs in its own `bun test` process (slow
-      # integration files strictly one-per-process), which is the only way the
-      # suite stays honest across module-level state and port reuse.
-      - name: Run tests
-        run: bun run testa
+      # DIAGNOSTIC (temporary): run only create-app in isolation with live output to learn why it
+      # dies silently at the tail of a full `testa`. Restore `bun run testa` once understood.
+      - name: Run tests (create-app isolated — diagnostic)
+        run: bun test packages/create-app/tests/index.test.tsx
