@@ -1,9 +1,9 @@
 # Point0
 
-![Point0](./assets/point0-card-dark@2x.png)
-
 > A fullstack TypeScript framework on Bun — your whole app, pages to endpoints,
 > from one typed building block.
+
+![Point0](https://1gr14.dev/images/point0-card-black@2x.png)
 
 <!-- docs:start -->
 
