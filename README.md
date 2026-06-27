@@ -1,14 +1,9 @@
 # Point0
 
-![Point0](https://1gr14.dev/images/point0-card-dark@2x.png)
+![Point0](./assets/point0-card-dark@2x.png)
 
 > A fullstack TypeScript framework on Bun — your whole app, pages to endpoints,
 > from one typed building block.
-
-[![CI](https://github.com/1gr14/point0/actions/workflows/ci.yml/badge.svg)](https://github.com/1gr14/point0/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/@point0/core.svg)](https://www.npmjs.com/package/@point0/core)
-[![gzip](https://deno.bundlejs.com/badge?q=@point0/core)](https://bundlejs.com/?q=@point0/core)
-[![license](https://img.shields.io/npm/l/@point0/core.svg)](./LICENSE)
 
 <!-- docs:start -->
 
