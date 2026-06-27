@@ -73,7 +73,7 @@ jobs:
         if: runner.os != 'Linux'
         run: bunx playwright install chromium
 
-      # DIAGNOSTIC (temporary): run only create-app in isolation with live output to learn why it
-      # dies silently at the tail of a full `testa`. Restore `bun run testa` once understood.
+      # DIAGNOSTIC (temporary): run only create-app in isolation with step+memory markers (CPA_DIAG)
+      # to find which step OOM-kills the runner. Restore `bun run testa` once understood.
       - name: Run tests (create-app isolated — diagnostic)
-        run: bun test packages/create-app/tests/index.test.tsx
+        run: CPA_DIAG=1 bun test packages/create-app/tests/index.test.tsx
