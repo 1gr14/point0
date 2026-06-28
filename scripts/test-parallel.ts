@@ -239,6 +239,20 @@ if (pendingSlowFiles.length > 0) {
     if (code !== 0) {
       failed = 1
     }
+    // Windows leaks browser processes across the suite: each chrome-headless-shell (driven over CDP — Bun
+    // can't launch chromium on win32, see dev/docs/windows.md) holds renderer/gpu children + memory, and a
+    // test that crashes or times out may not reap its own. Over the whole slow phase they accumulate until
+    // the runner starves and "loses communication". Between sequential files (never during one) reap leftover
+    // headless shells — safe: it's our test browser, never the user's chrome.exe. The count line is a cheap
+    // accumulation probe. No-op off Windows (Linux/macOS use chromium.launch, no headless-shell).
+    if (process.platform === 'win32') {
+      const tasks = (await Bun.$`tasklist /NH /FO CSV`.nothrow().quiet()).stdout.toString()
+      const count = (re: RegExp) => (tasks.match(re) ?? []).length
+      console.info(
+        `[win-procs] after ${relativeSlowFile}: bun=${count(/"bun\.exe"/gi)} headless-shell=${count(/"chrome-headless-shell\.exe"/gi)} node=${count(/"node\.exe"/gi)}`,
+      )
+      await Bun.$`taskkill /F /IM chrome-headless-shell.exe /T`.nothrow().quiet()
+    }
   }
 }
 

@@ -15,7 +15,8 @@ jobs:
   test:
     name: build & test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    # Windows runs the whole scaffold→build→browser suite markedly slower than posix; give headroom.
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
