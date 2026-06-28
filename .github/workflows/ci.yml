@@ -40,7 +40,8 @@ jobs:
       - id: matrix
         run: |
           echo 'oses=["windows-latest"]' >> "$GITHUB_OUTPUT"
-          echo "slow=$(bun scripts/test-parallel.ts --print-slow-files)" >> "$GITHUB_OUTPUT"
+          # TEMP diagnostic: only the assets shard, to capture the dev-server crash on Windows.
+          echo 'slow=["engine/tests/assets.test.tsx"]' >> "$GITHUB_OUTPUT"
 
   build:
     name: build (${{ matrix.os }})
