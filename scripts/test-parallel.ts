@@ -23,6 +23,13 @@ const slowTests =
       ]
 const testUtilsTests = ['engine/tests/utils/*']
 
+// Single source of truth for CI's slow-test shard matrix (one runner per file). `discover` calls this
+// to build the matrix; each shard then runs `bun test packages/<file>`. Paths are relative to packages/.
+if (process.argv.includes('--print-slow-files')) {
+  process.stdout.write(JSON.stringify(slowTests))
+  process.exit(0)
+}
+
 const cwd = nodePath.resolve(__dirname, '..', 'packages')
 const glob = new Bun.Glob('**/*.{test,spec}.{ts,tsx,js,jsx}')
 

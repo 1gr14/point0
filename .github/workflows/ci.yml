@@ -1,83 +1,163 @@
 name: CI
 
-# Cross-OS build + test pipeline. NO publish — this workflow only proves the
-# framework builds and its full test suite passes on each runner OS. Publishing
-# stays in the release workflow on main/next, never here.
+# Cross-OS build + test. NO publish — this workflow only proves the framework builds and its tests pass
+# on each runner OS. Publishing stays in the release workflow on main/next, never here.
+#
+# Sharded so no runner sits for ~an hour:
+#   discover  → emits the OS list + the slow-test file list (single source of truth: test-parallel.ts)
+#   build     → one runner per OS: build once, upload dist as an artifact
+#   test-fast → one runner per OS: all the fast/parallel files in a single `testfu`
+#   test-slow → one runner per (OS × slow file): each heavy integration file on its OWN runner
+# Fanning the slow files out also keeps Windows healthy — a single file per runner can't accumulate
+# leaked browser/dev processes to the point of starving the runner (which a full sequential run did).
 on:
   push:
     branches: [ci-cross-os]
-  workflow_dispatch: # manual re-trigger
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
-    name: build & test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    # Windows runs the whole scaffold→build→browser suite markedly slower than posix; give headroom.
-    timeout-minutes: 90
+  discover:
+    name: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      # OS list is defined ONCE here and consumed by every job below — bring OSes online by editing
+      # this single line (start: ubuntu-latest only; grow to windows-latest, macos-latest).
+      oses: ${{ steps.matrix.outputs.oses }}
+      slow: ${{ steps.matrix.outputs.slow }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - id: matrix
+        run: |
+          echo 'oses=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
+          echo "slow=$(bun scripts/test-parallel.ts --print-slow-files)" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: build (${{ matrix.os }})
+    needs: discover
     strategy:
       fail-fast: false
       matrix:
-        os:
-          # ubuntu-latest: verified green. Bringing OSes online one at a time to avoid re-running a
-          # proven runner; the final matrix lists all three.
-          - windows-latest
-    # bash on every OS (Git Bash on Windows) keeps the run steps identical;
-    # the per-OS native commands point0 itself needs (PowerShell/taskkill) are
-    # spawned by the framework internally, not by these steps.
+        os: ${{ fromJSON(needs.discover.outputs.oses) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
+      - uses: actions/checkout@v6
       # tsdown's build step runs on Node (the framework runtime is Bun).
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
-
-      - name: Setup Bun latest
-        uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-
-      # Applies patchedDependencies (the playwright-core CDP patch the browser
-      # tests need on Windows) and links workspace deps.
+      # Applies patchedDependencies (the playwright-core CDP patch the browser tests need on Windows).
       - name: Install dependencies
         run: bun install --frozen-lockfile
-
       # Every @point0/* imports its siblings from their built dist/.
       - name: Build
         run: bun run build
-
-      # Re-link workspace bins now that @point0/engine/dist/cli.js exists — on a
-      # fresh install the `point0` bin target is unbuilt, so bun skips the
-      # symlink and setup's `point0 generate` would fail with "command not found".
+      # Re-link workspace bins now that @point0/engine/dist/cli.js exists, so downstream `point0` resolves.
       - name: Link freshly built workspace bins
         run: bun install --frozen-lockfile
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-${{ matrix.os }}
+          # @point0/docs ships its prebuilt search corpus from content/ (gitignored, built in `build`).
+          path: |
+            packages/*/dist/
+            packages/*/content/
+          retention-days: 1
 
-      # Codegen only (Prisma client + point0 generate), no DB — the apps'
-      # src/generated is gitignored, and types/tests need it present.
+  test-fast:
+    name: fast (${{ matrix.os }})
+    needs: [discover, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(needs.discover.outputs.oses) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: build-${{ matrix.os }}
+          path: .
+      # dist is already in place, so this install also relinks the `point0` bin.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
       - name: Setup (codegen for examples/templates)
         run: bun run setup
-
-      # Linux can pull OS libs via --with-deps; Windows/macOS don't support it.
-      # Either way this installs chromium AND chrome-headless-shell (Windows
-      # browser tests spawn the latter over CDP).
       - name: Install Playwright chromium (Linux)
         if: runner.os == 'Linux'
         run: bunx playwright install --with-deps chromium
-
       - name: Install Playwright chromium (Windows/macOS)
         if: runner.os != 'Linux'
         run: bunx playwright install chromium
+      # All non-slow files, run in parallel within this one runner (the slow files are sharded below).
+      - name: Run fast tests
+        run: bun run testfu
 
-      # Per-file runner: each test file runs in its own `bun test` process (slow
-      # integration files strictly one-per-process), which is the only way the
-      # suite stays honest across module-level state and port reuse.
-      - name: Run tests
-        run: bun run testa
+  test-slow:
+    name: slow ${{ matrix.file }} (${{ matrix.os }})
+    needs: [discover, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(needs.discover.outputs.oses) }}
+        file: ${{ fromJSON(needs.discover.outputs.slow) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: build-${{ matrix.os }}
+          path: .
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Setup (codegen for examples/templates)
+        run: bun run setup
+      - name: Install Playwright chromium (Linux)
+        if: runner.os == 'Linux'
+        run: bunx playwright install --with-deps chromium
+      - name: Install Playwright chromium (Windows/macOS)
+        if: runner.os != 'Linux'
+        run: bunx playwright install chromium
+      # One slow integration file, on its own runner — fast wall-clock and no cross-file process buildup.
+      - name: Run slow test file
+        run: bun test packages/${{ matrix.file }}
