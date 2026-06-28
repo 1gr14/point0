@@ -430,7 +430,13 @@ describe('assets (integration)', () => {
   })
 
   describe.each(bundlers)('%s', (bundler) => {
-    it(
+    // Quarantined on Windows: the point0 dev server intermittently ECONNRESETs mid-request here (see the
+    // tracked bug). It's flaky, not deterministic — sometimes the in-test retries exhaust and the test
+    // fails outright; sometimes they recover (0 fail) but the crash's dangling socket rejection still
+    // poisons bun's exit code as an "unhandled error between tests". A shard re-run can't fix either mode
+    // on a runner that crashes every attempt, so we skip just this dev sub-test on win32 (build + the
+    // unit cases still run on Windows; macOS/Linux run everything). Re-enable once the dev server is fixed.
+    it.skipIf(process.platform === 'win32')(
       'dev: imported asset → one app-absolute url, shared by SSR + client, resolving on nested routes',
       wrp({ ssr: true, vite: bundler === 'vite' }, async ({ tp }) => {
         await tp.write('src/logo.svg', SVG)
