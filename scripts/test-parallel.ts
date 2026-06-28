@@ -14,7 +14,10 @@ const slowTests =
         'engine/tests/module-preload-serve.test.ts',
         'engine/tests/cli.test.tsx',
         'engine/tests/mcp.test.ts',
-        'engine/tests/dev.test.ts',
+        // dev.test.ts was split into three files (each its own slow shard) to shorten the critical path.
+        'engine/tests/dev-bundler.test.ts',
+        'engine/tests/dev-hot-reload.test.ts',
+        'engine/tests/dev-source-maps.test.ts',
         'engine/tests/prefetch-page.test.ts',
         'engine/tests/two-clients.test.ts',
         'engine/tests/publicdir.test.ts',
@@ -28,6 +31,23 @@ const testUtilsTests = ['engine/tests/utils/*']
 if (process.argv.includes('--print-slow-files')) {
   process.stdout.write(JSON.stringify(slowTests))
   process.exit(0)
+}
+
+// Optional `--shard i/n`: run only the i-th of n round-robin groups of the PARALLEL files (CI fans the
+// fast/non-slow set across n runners so no single runner — Windows especially — carries all ~70 files).
+// Slow files are sharded separately (one file per runner via the matrix), so this only splits parallelFiles.
+const shardArg =
+  process.argv.find((a) => a.startsWith('--shard='))?.slice('--shard='.length) ??
+  (process.argv.includes('--shard') ? process.argv[process.argv.indexOf('--shard') + 1] : undefined)
+let shardIndex = 0
+let shardTotal = 0
+if (shardArg) {
+  const [i, n] = shardArg.split('/').map(Number)
+  if (!Number.isInteger(i) || !Number.isInteger(n) || i < 1 || n < 1 || i > n) {
+    throw new Error(`Invalid --shard "${shardArg}", expected "i/n" with 1 <= i <= n`)
+  }
+  shardIndex = i
+  shardTotal = n
 }
 
 const cwd = nodePath.resolve(__dirname, '..', 'packages')
@@ -94,6 +114,9 @@ const parallelFiles = allAbsFiles
     return true
   })
   .sort((a, b) => a.localeCompare(b))
+  // Round-robin shard split (no-op when --shard is absent). Sorted-then-indexed so every runner agrees
+  // on the partition; round-robin (vs contiguous slices) keeps groups balanced regardless of file order.
+  .filter((_file, index) => shardTotal === 0 || index % shardTotal === shardIndex - 1)
 
 const pendingSlowFiles = noSlowTests ? [] : slowTestsAbs
 

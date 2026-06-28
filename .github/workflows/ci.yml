@@ -88,12 +88,16 @@ jobs:
           retention-days: 1
 
   test-fast:
-    name: fast (${{ matrix.os }})
+    name: fast ${{ matrix.shard }}/3 (${{ matrix.os }})
     needs: [discover, build]
     strategy:
       fail-fast: false
       matrix:
         os: ${{ fromJSON(needs.discover.outputs.oses) }}
+        # Fan the ~70 fast/non-slow files across 3 runners per OS — one runner (Windows especially) running
+        # them all is both slow and prone to accumulating leaked browser processes. Keep the /3 here in sync
+        # with the --shard denominator below.
+        shard: [1, 2, 3]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -123,9 +127,9 @@ jobs:
       - name: Install Playwright chromium (Windows/macOS)
         if: runner.os != 'Linux'
         run: bunx playwright install chromium
-      # All non-slow files, run in parallel within this one runner (the slow files are sharded below).
-      - name: Run fast tests
-        run: bun run testfu
+      # This runner's third of the non-slow files (testfu = NO_SLOW_TESTS=1), run in parallel within it.
+      - name: Run fast tests (shard ${{ matrix.shard }}/3)
+        run: NO_SLOW_TESTS=1 bun scripts/test-parallel.ts --shard ${{ matrix.shard }}/3
 
   test-slow:
     name: slow ${{ matrix.file }} (${{ matrix.os }})
