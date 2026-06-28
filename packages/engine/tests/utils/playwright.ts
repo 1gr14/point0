@@ -308,10 +308,15 @@ export class PlaywrightPage {
       let lastHtml = undefined as string | undefined
 
       const notify = () => {
-        // Check if documentElement is available yet
-
+        // Skip frames captured mid-parse. While the document is still 'loading', an SSR page's <html>
+        // already exists but its <body> hasn't been parsed in yet, so `documentElement.outerHTML` is a
+        // spurious "(Empty)" snapshot. On a slow machine (CI, especially Windows) that empty frame is
+        // distinct long enough to race into the tale; on a fast one it's never seen — which made the
+        // inline snapshots machine-speed-dependent (a transient "(Empty)" before the real content on the
+        // landing route). Capture only from DOMContentLoaded onward. A genuine pre-hydration empty (spa,
+        // whose served shell really is empty) is still present at DOMContentLoaded, so it's still kept.
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (!document.documentElement) return
+        if (!document.documentElement || document.readyState === 'loading') return
 
         const currentHtml = document.documentElement.outerHTML
         if (currentHtml !== lastHtml) {

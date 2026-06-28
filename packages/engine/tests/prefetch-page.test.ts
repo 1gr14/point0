@@ -176,7 +176,7 @@ async function navigatePages(
   await click('/with-none')
   await page.waitContent('#with-none')
 
-  return { tale: getTale(page, mark, tp.ssr), requestsTale: getRequestsTale(page, mark), page }
+  return { tale: getTale(page, mark), requestsTale: getRequestsTale(page, mark), page }
 }
 
 const getRequestsTale = (page: PlaywrightPage, mark: string) => {
@@ -197,9 +197,9 @@ const getRequestsTale = (page: PlaywrightPage, mark: string) => {
   // -polh-false-pon-false → ''
 }
 
-const getTale = (page: PlaywrightPage, mark: string, ssr: boolean) => {
+const getTale = (page: PlaywrightPage, mark: string) => {
   const originalTale = page.tale
-  const tale = originalTale
+  return originalTale
     .replaceAll(
       `
   nav:
@@ -215,13 +215,6 @@ const getTale = (page: PlaywrightPage, mark: string, ssr: boolean) => {
     )
     .replaceAll(`/${mark}/`, '/')
     .replaceAll(`/${mark}`, '/')
-  // SSR ships the home route already rendered, so it never legitimately shows an empty frame. On a
-  // slow machine (loaded CI) the in-page MutationObserver can still catch the sub-frame moment where
-  // <html> exists but the body hasn't parsed yet, recording a spurious "(Empty)" preview before
-  // "#home: home". Drop that single transient frame so the SSR tale is deterministic regardless of
-  // machine speed. The spa block keeps its "(Empty)" — there it's the genuine, stable pre-hydration
-  // state and is asserted on purpose.
-  return ssr ? tale.replace(/^ *\(Empty\)\n *\n(?= *#home: )/m, '') : tale
 }
 
 type ItFn = (done: (err?: unknown) => void) => void | Promise<void>
