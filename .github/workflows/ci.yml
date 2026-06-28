@@ -39,7 +39,7 @@ jobs:
           bun-version: latest
       - id: matrix
         run: |
-          echo 'oses=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
+          echo 'oses=["windows-latest"]' >> "$GITHUB_OUTPUT"
           echo "slow=$(bun scripts/test-parallel.ts --print-slow-files)" >> "$GITHUB_OUTPUT"
 
   build:
