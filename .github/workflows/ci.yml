@@ -28,8 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      # OS list is defined ONCE here and consumed by every job below — bring OSes online by editing
-      # this single line (start: ubuntu-latest only; grow to windows-latest, macos-latest).
+      # OS list is defined ONCE here (in the `matrix` step below) and consumed by every job — add or
+      # drop an OS in that single place and the whole pipeline follows. Default: Linux + Windows.
       oses: ${{ steps.matrix.outputs.oses }}
       slow: ${{ steps.matrix.outputs.slow }}
     steps:
@@ -39,7 +39,14 @@ jobs:
           bun-version: latest
       - id: matrix
         run: |
-          echo 'oses=["ubuntu-latest", "windows-latest", "macos-latest"]' >> "$GITHUB_OUTPUT"
+          # Default matrix is Linux + Windows. macOS is intentionally OUT: its runner minutes bill at ×10
+          # on a private repo (Linux ×1, Windows ×2), and it adds almost no signal — macOS shares POSIX
+          # path/process semantics with Linux (so a green Linux run implies a green macOS run), and the
+          # maintainer develops on macOS daily, catching any macOS-only regression locally. The genuinely
+          # divergent OS — the one that surfaced every real cross-OS bug here (path separators, file locks,
+          # self-kill, dev-server ECONNRESET) — is Windows. To run macOS for a one-off check, add
+          # "macos-latest" to the list below (one edit, consumed by every job) or dispatch with it manually.
+          echo 'oses=["ubuntu-latest", "windows-latest"]' >> "$GITHUB_OUTPUT"
           echo "slow=$(bun scripts/test-parallel.ts --print-slow-files)" >> "$GITHUB_OUTPUT"
 
   build:

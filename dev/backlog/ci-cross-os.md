@@ -111,25 +111,29 @@ each commit explains its own "why", but in short:
 
 ## What's left to do
 
-1. **Validate the last commit (`f546f77f`).** The dev split + fast sharding have
-   only been checked locally (transpile-clean, all 33 `dev` tests preserved,
-   in-block helpers intact) — never run in CI. To minimise spend, validate
-   **Linux-only first** (×1 minutes): in `discover`, set
-   `oses=["ubuntu-latest"]`, push, confirm green (this exercises the split-dev
-   shards + the `--shard` fast fan-out mechanics). Then restore
-   `oses=["ubuntu-latest", "windows-latest", "macos-latest"]` for one final
-   full-matrix run.
-2. **Decide where this CI should actually live / trigger.** Right now it only
+1. **Validate the last commit (`f546f77f`) — IN PROGRESS.** The dev split + fast
+   sharding were checked locally only; the validation run is the **Linux+Windows**
+   matrix (see the macOS decision below). The full 3-OS run on this exact code
+   (run `28318126032`, on the handoff commit, which is byte-identical CI/test code)
+   got `discover` ✓ + all three `build` ✓ before being **cancelled on purpose** to
+   stop the queued macOS ×10 slow shards; the fresh Linux+Windows run is the
+   source of truth. Confirm it's green, then the branch is validated.
+2. **macOS dropped from the default matrix (DONE).** The maintainer chose to
+   remove macOS: it bills at ×10 on a private repo, shares POSIX semantics with
+   Linux (green Linux ⇒ green macOS), and the maintainer develops on macOS daily
+   so macOS-only regressions surface locally. Windows is the one genuinely
+   divergent OS (it surfaced every real cross-OS bug here). Default `oses` is now
+   `["ubuntu-latest", "windows-latest"]`; macOS re-enables with a one-word edit to
+   the `discover` matrix step (documented inline there).
+3. **Decide where this CI should actually live / trigger.** Right now it only
    triggers on push to `ci-cross-os`. For real use you'll want to point it at the
-   right branches (and likely keep the expensive full matrix off day-to-day
-   branches — e.g. macOS/Windows only on `next`/tags, Linux on everything).
-   It is intentionally separate from the existing publish workflow.
-3. **Tidy the branch history before merging.** It's exploratory: several `TEMP
+   right branches. It is intentionally separate from the existing publish workflow.
+4. **Tidy the branch history before merging.** It's exploratory: several `TEMP
    diagnostic` commits, and `0bdd8961` (a per-test prefetch-page fix) was later
    reverted by `142c23a3` in favour of the shared-harness fix. The **final tree
    is clean** (no diagnostics, no dead code), but the history wants a
    squash/cleanup pass before it goes near `dev`.
-4. **Optional cleanup:** the 3 `dev-*.test.ts` files **duplicate the ~90-line
+5. **Optional cleanup:** the 3 `dev-*.test.ts` files **duplicate the ~90-line
    shared header** (imports + `tpf`/`wrp`/`waitFor`/`resolveStoreDirFromProject`)
    — done that way for a safe mechanical split with no local validation. Extract
    a shared module if you want it tidy. (Runtime-safe as-is; bun ignores the
@@ -142,8 +146,10 @@ each commit explains its own "why", but in short:
   conclusion with `gh run view <id> --json status,conclusion`.
 - **Runner death = no logs.** When a runner "loses communication" (starvation)
   the step log is lost; that's part of why the suite is sharded.
-- **Costs:** macOS = ×10, Windows = ×2 minute multipliers on this private repo.
-  The full matrix is ~49 jobs; mind the spend.
+- **Costs:** minute multipliers on this private repo are Linux ×1, Windows ×2,
+  macOS ×10. The default Linux+Windows matrix is ~26 jobs (1 discover + 2 build +
+  6 fast + 2×12 slow); adding macOS back pushes it to ~49 and roughly triples the
+  bill (macOS dominates at ×10). Mind the spend before re-enabling macOS.
 - **Commits:** the user authorised committing + pushing **on this branch only**.
   Keep using `--no-verify` in the worktree (no node_modules). Do not merge
   elsewhere.
