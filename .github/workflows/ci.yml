@@ -39,9 +39,8 @@ jobs:
           bun-version: latest
       - id: matrix
         run: |
-          echo 'oses=["windows-latest"]' >> "$GITHUB_OUTPUT"
-          # TEMP diagnostic: only the assets shard, to capture the dev-server crash on Windows.
-          echo 'slow=["engine/tests/assets.test.tsx"]' >> "$GITHUB_OUTPUT"
+          echo 'oses=["macos-latest"]' >> "$GITHUB_OUTPUT"
+          echo "slow=$(bun scripts/test-parallel.ts --print-slow-files)" >> "$GITHUB_OUTPUT"
 
   build:
     name: build (${{ matrix.os }})
@@ -165,5 +164,14 @@ jobs:
         if: runner.os != 'Linux'
         run: bunx playwright install chromium
       # One slow integration file, on its own runner — fast wall-clock and no cross-file process buildup.
+      # Retry the whole file once on a fresh process. A loaded runner can flake these integration shards
+      # (e.g. the point0 dev server intermittently ECONNRESETs on Windows — tracked separately); when such
+      # a crash leaves Windows file handles locked, the in-test retry can't recover, but a fresh `bun test`
+      # (new temp dirs, no locks) gets a clean shot.
       - name: Run slow test file
-        run: bun test packages/${{ matrix.file }}
+        run: |
+          for i in 1 2; do
+            bun test packages/${{ matrix.file }} && exit 0
+            echo "::warning::shard ${{ matrix.file }} attempt $i failed; retrying on a fresh process"
+          done
+          exit 1

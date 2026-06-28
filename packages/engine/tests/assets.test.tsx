@@ -438,14 +438,7 @@ describe('assets (integration)', () => {
         await tp.write('src/api.tsx', ASSET_API)
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
-        try {
-          await assertAssetContract(tp)
-        } catch (e) {
-          // DIAGNOSTIC (temporary): surface the spawned dev server's own output — the ECONNRESET on
-          // Windows means it crashed/exited, and its stderr (not the test's) holds the reason.
-          process.stderr.write(`\n===== DEV SERVER OUTPUT (diagnostic) =====\n${tp.output}\n===== END DEV OUTPUT =====\n`)
-          throw e
-        }
+        await assertAssetContract(tp)
       }),
       { retry: 3 },
     )
