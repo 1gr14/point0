@@ -76,8 +76,13 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: build-${{ matrix.os }}
+          # upload-artifact roots the archive at the LEAST COMMON ANCESTOR of its paths. The root-level
+          # package.json anchors that ancestor at the repo root so `packages/*/dist` keeps its full path on
+          # download (without it the `packages/` prefix is stripped and dist lands in the wrong place — the
+          # `point0` bin then never links and setup fails with "point0: command not found").
           # @point0/docs ships its prebuilt search corpus from content/ (gitignored, built in `build`).
           path: |
+            package.json
             packages/*/dist/
             packages/*/content/
           retention-days: 1
