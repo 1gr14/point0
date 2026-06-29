@@ -10,6 +10,11 @@ name: context7
 #   workflow_dispatch              manual re-index.
 #
 # Needs the org secret CONTEXT7_API_KEY (granted to this repo). The repo guard keeps forks from firing a no-op 401.
+#
+# Context7 rate-limits a project to one refresh per ~10 days; a refresh asked sooner answers 400 "too-early". That's
+# not a failure — the hosted docs are simply already current — so the step below treats 2xx AND that 400 as success,
+# and only fails on a real misconfig (bad/missing key → 401/403, or a 5xx). Without this a release or docs push inside
+# the window would turn the workflow red for no reason.
 on:
   push:
     branches: [main]
@@ -37,7 +42,18 @@ jobs:
         env:
           CONTEXT7_API_KEY: ${{ secrets.CONTEXT7_API_KEY }}
         run: |
-          curl -fsS -X POST https://context7.com/api/v1/refresh \
+          code=$(curl -sS -o /tmp/c7.json -w '%{http_code}' -X POST https://context7.com/api/v1/refresh \
             -H 'Content-Type: application/json' \
             -H "Authorization: Bearer ${CONTEXT7_API_KEY}" \
-            -d '{"libraryName": "/${{ github.repository }}"}'
+            -d '{"libraryName": "/${{ github.repository }}"}')
+          body=$(cat /tmp/c7.json 2>/dev/null || true)
+          echo "HTTP $code: $body"
+          # 2xx → refresh accepted. 400 "too-early" → already fresh (rate-limited to one refresh / ~10 days).
+          # Both mean the hosted docs are current; anything else is a real failure worth a red check.
+          if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then exit 0; fi
+          if [ "$code" = '400' ] && printf '%s' "$body" | grep -q '"too-early"'; then
+            echo "::notice::Context7 already fresh (rate-limited to one refresh per ~10 days) — nothing to do."
+            exit 0
+          fi
+          echo "::error::Context7 refresh failed (HTTP $code): $body"
+          exit 1
