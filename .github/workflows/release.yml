@@ -45,8 +45,15 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: bun scripts/ci-decide.ts >> "$GITHUB_OUTPUT"
 
-  test:
+  # Build ONCE (ubuntu-only) → `dist` artifact, consumed by BOTH test and publish. Runs on every tag with no
+  # oses gate, so a --skip-tests prerelease (oses=[], test skipped) still has the exact artifact to publish —
+  # the publish job no longer builds its own, so what ships is byte-identical to what the matrix tested.
+  build:
     needs: decide
+    uses: ./.github/workflows/build.yml
+
+  test:
+    needs: [decide, build]
     if: ${{ needs.decide.outputs.oses != '[]' }}
     uses: ./.github/workflows/test.yml
     with:
@@ -54,14 +61,14 @@ jobs:
       slow: ${{ needs.decide.outputs.slow }}
 
   publish:
-    needs: [decide, test]
-    # Publish when `decide` succeeded AND the gate is GREEN or was deliberately SKIPPED (a prerelease with
-    # --skip-tests → the test job never runs → result 'skipped'). Never on a failed/cancelled gate, and never
-    # if `decide` itself failed. `!cancelled()` is required so this still evaluates when `test` was skipped
-    # (a skipped dependency would otherwise skip this job too).
+    needs: [decide, build, test]
+    # Publish when `decide` + `build` succeeded AND the gate is GREEN or was deliberately SKIPPED (a prerelease
+    # with --skip-tests → the test job never runs → result 'skipped'). Never on a failed/cancelled gate, a
+    # failed build, or a failed `decide`. `!cancelled()` is required so this still evaluates when `test` was
+    # skipped (a skipped dependency would otherwise skip this job too).
     if:
-      ${{ !cancelled() && needs.decide.result == 'success' && (needs.test.result == 'success' || needs.test.result ==
-      'skipped') }}
+      ${{ !cancelled() && needs.decide.result == 'success' && needs.build.result == 'success' &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -77,12 +84,15 @@ jobs:
       # npm's OIDC trusted publishing needs a recent npm.
       - name: Update npm
         run: npm install -g npm@latest
-      # Self-contained: tests may have been skipped (no build artifact to reuse), so build here.
+      # Publish the EXACT artifact the test matrix ran against (build.yml, ubuntu) — never a fresh rebuild, so
+      # what reaches npm is byte-identical to what was tested cross-OS.
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: .
+      # dist is already in place, so this install just relinks the `point0` bin — it does not rebuild.
       - name: Install dependencies
-        uses: ./.github/actions/install
-      - name: Build
-        run: bun run build
-      - name: Link freshly built workspace bins
         uses: ./.github/actions/install
       # Tag guard: the tag MUST equal v${version in package.json}, so the bump and the tag can't drift.
       - name: Channel guard (tag ↔ version)

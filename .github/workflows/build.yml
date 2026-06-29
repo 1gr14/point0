@@ -1,0 +1,52 @@
+name: build
+
+# Build the framework ONCE — on ubuntu — and publish the result as the single `dist` artifact that every
+# downstream job consumes: the cross-OS test runners AND the publish job. So we test exactly the bytes we
+# ship, the published package is byte-identical to the tested one, and the same code is never built twice.
+#
+# Why ubuntu-only is correct (not just cheaper): @point0/* are platform-agnostic JS + .d.ts (tsdown), and what
+# npm receives is this ubuntu build. Users install that prebuilt dist — they never build @point0/* on Windows
+# (their Windows machine only builds THEIR app, via the engine, which the runtime tests still cover). So a
+# Windows build of the packages would test an artifact no one ever ships or installs.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      # tsdown's build step runs on Node (the framework runtime is Bun).
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        uses: ./.github/actions/install
+      # Every @point0/* imports its siblings from their built dist/.
+      - name: Build
+        run: bun run build
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          # upload-artifact roots the archive at the LEAST COMMON ANCESTOR of its paths. The root-level
+          # package.json anchors that ancestor at the repo root so `packages/*/dist` keeps its full path on
+          # download (without it the `packages/` prefix is stripped and dist lands in the wrong place — the
+          # `point0` bin then never links and downstream fails with "point0: command not found").
+          # @point0/docs ships its prebuilt search corpus from content/ (gitignored, built in `build`).
+          path: |
+            package.json
+            packages/*/dist/
+            packages/*/content/
+          retention-days: 1

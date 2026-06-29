@@ -49,8 +49,15 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: bun scripts/ci-decide.ts >> "$GITHUB_OUTPUT"
 
-  test:
+  # Build ONCE (ubuntu-only) → `dist` artifact. The test shards download it instead of each building per-OS,
+  # so every runner exercises the exact bytes that ship.
+  build:
     needs: decide
+    if: ${{ needs.decide.outputs.oses != '[]' }}
+    uses: ./.github/workflows/build.yml
+
+  test:
+    needs: [decide, build]
     if: ${{ needs.decide.outputs.oses != '[]' }}
     uses: ./.github/workflows/test.yml
     with:

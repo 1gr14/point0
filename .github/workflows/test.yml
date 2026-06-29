@@ -1,10 +1,11 @@
 name: test
 
-# Reusable cross-OS test pipeline. Proves the framework builds and its tests pass on each runner OS.
-# Called by ci.yml (the PR/branch gate) and release.yml (before publishing a tag). NO publish here.
+# Reusable cross-OS test pipeline. Proves the PREBUILT framework's tests pass on each runner OS.
+# Called by ci.yml (the PR/branch gate) and release.yml (before publishing a tag). NO build, NO publish here:
+# the `dist` artifact is built ONCE (build.yml, ubuntu-only) by the caller and downloaded here, so every OS —
+# Windows included — tests exactly the bytes that ship to npm.
 #
 # Sharded so no runner sits for ~an hour:
-#   build     → one runner per OS: build once, upload dist as an artifact
 #   test-fast → one runner per (OS × shard 1..3): the ~70 fast/parallel files, fanned 3 ways
 #   test-slow → one runner per (OS × slow file): each heavy integration file on its OWN runner
 # Fanning the slow files out also keeps Windows healthy — a single file per runner can't accumulate
@@ -28,53 +29,8 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: build (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ${{ fromJSON(inputs.oses) }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v6
-      # tsdown's build step runs on Node (the framework runtime is Bun).
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      # Applies patchedDependencies (the playwright-core CDP patch the browser tests need on Windows).
-      - name: Install dependencies
-        uses: ./.github/actions/install
-      # Every @point0/* imports its siblings from their built dist/.
-      - name: Build
-        run: bun run build
-      # Re-link workspace bins now that @point0/engine/dist/cli.js exists, so downstream `point0` resolves.
-      - name: Link freshly built workspace bins
-        uses: ./.github/actions/install
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: build-${{ matrix.os }}
-          # upload-artifact roots the archive at the LEAST COMMON ANCESTOR of its paths. The root-level
-          # package.json anchors that ancestor at the repo root so `packages/*/dist` keeps its full path on
-          # download (without it the `packages/` prefix is stripped and dist lands in the wrong place — the
-          # `point0` bin then never links and setup fails with "point0: command not found").
-          # @point0/docs ships its prebuilt search corpus from content/ (gitignored, built in `build`).
-          path: |
-            package.json
-            packages/*/dist/
-            packages/*/content/
-          retention-days: 1
-
   test-fast:
     name: fast ${{ matrix.shard }}/3 (${{ matrix.os }})
-    needs: build
     strategy:
       fail-fast: false
       matrix:
@@ -96,10 +52,11 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      # The single ubuntu-built `dist` (build.yml) — every OS tests the exact bytes that ship.
       - name: Download build artifact
         uses: actions/download-artifact@v8
         with:
-          name: build-${{ matrix.os }}
+          name: dist
           path: .
       # dist is already in place, so this install also relinks the `point0` bin.
       - name: Install dependencies
@@ -118,7 +75,6 @@ jobs:
 
   test-slow:
     name: slow ${{ matrix.file }} (${{ matrix.os }})
-    needs: build
     strategy:
       fail-fast: false
       matrix:
@@ -137,10 +93,11 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      # The single ubuntu-built `dist` (build.yml) — every OS tests the exact bytes that ship.
       - name: Download build artifact
         uses: actions/download-artifact@v8
         with:
-          name: build-${{ matrix.os }}
+          name: dist
           path: .
       - name: Install dependencies
         uses: ./.github/actions/install
