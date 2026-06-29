@@ -230,12 +230,6 @@ your shutdown path so handles (DB pools, the server) close cleanly:
 // src/app.server.ts (start0)
 onShutdown('engine', ['prisma'], async () => await engine.dispose())
 await Promise.all([engine.serve(), createInitialAdmin()])
-
-if (import.meta.hot) {
-  // Vite only
-  import.meta.hot.dispose(async () => await engine.dispose())
-  import.meta.hot.accept()
-}
 ```
 
 ## preload(): one call that sets up the process
@@ -287,8 +281,25 @@ preload first, then the actual server code:
 // src/index.server.ts
 await import('./preload.js')
 await import('./app.server.js')
+
+// Vite dev only: the server-HMR teardown belongs on THIS entry — the module the engine re-imports on a
+// reload. A bare accept here makes any edit that bubbles up to the entry (a page, a layout, a lib) a
+// granular re-run that disposes the old server before the next serve() rebinds; without it that edit is a
+// full SSR reload, which skips dispose and leaves the old server bound → "port already in use". `engine` is
+// grabbed dynamically so the preload-first order holds. No-op under Bun and in a build (`import.meta.hot`).
+if (import.meta.hot) {
+  const { engine } = await import('./engine.js')
+  import.meta.hot.dispose(() => engine.dispose())
+  import.meta.hot.accept()
+}
+
 export {} // marks the file as a module
 ```
+
+> **GOTCHA — the HMR block goes on the entry, not `app.server.ts`.** A bare
+> `import.meta.hot.accept()` only catches edits to its _own_ module, so on
+> `app.server.ts` (which the entry imports) a page edit bubbles _past_ it to the
+> un-accepting entry and Vite full-reloads. Put it on `index.server.ts`.
 
 > **GOTCHA — dynamic imports only, in order.** A static `import` hoists above
 > any `await`, so a static preload import would run _after_ the app code it's
@@ -381,7 +392,7 @@ The shell: a mount target and the client entry script.
 <script type="module" src="./index.client.tsx"></script>
 ```
 
-> With Vite the shell is `index.client.html` instead, and `app.server.ts` /
+> With Vite the shell is `index.client.html` instead, and `index.server.ts` /
 > `index.client.tsx` use `import.meta.hot` for dispose + accept. See
 > [bun-vs-vite](bun-vs-vite) and [example-vite](example-vite).
 

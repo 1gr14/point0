@@ -44,11 +44,12 @@ wiring (`--no-vite` is the Bun default).
 
 Beyond `engine.ts`, the Vite path differs in a few small ways: `preload.ts`
 passes `preventLoadBunPlugins: true`, `index.html` uses an absolute script src
-plus an explicit stylesheet `<link>`, `app.server.ts` self-accepts Vite's SSR
-entry via `import.meta.hot`, and there is a thin `vite.config.ts` so external
-tooling (vitest, the IDE) sees a normal Vite project. Two behavioral notes:
-`--hot` is a no-op under Vite (Bun-native feature), and the build is
-`vite build` for both client and server.
+plus an explicit stylesheet `<link>`, `index.server.ts` (the entry) self-accepts
+Vite's SSR program via `import.meta.hot` (dispose → re-serve granularly, not a
+full reload), and there is a thin `vite.config.ts` so external tooling (vitest,
+the IDE) sees a normal Vite project. Two behavioral notes: `--hot` is a no-op
+under Vite (Bun-native feature), and the build is `vite build` for both client
+and server.
 
 For why you'd pick one bundler over the other and how each pipeline works, see
 [bun-vs-vite](bun-vs-vite) — that page owns the full Vite story.

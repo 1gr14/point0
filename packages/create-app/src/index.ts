@@ -25,6 +25,11 @@ const VITE_CONFIG_START = '  // viteConfig start\n'
 const VITE_CONFIG_END = '  // viteConfig end\n'
 const VITE_CONFIG_BLOCK = /[ \t]*\/\/ viteConfig start\n[\s\S]*?[ \t]*\/\/ viteConfig end\n/
 const BUN_PLUGINS_LINE = "    bunPlugins: ['bun-plugin-tailwind'],\n"
+// `src/index.server.ts` ships the vite server-HMR block fenced by these markers. For vite we drop the marker
+// lines (keeping the block); for bun we cut the whole block (Bun's dev path never sets `import.meta.hot`).
+const VITE_HMR_START = '// vite hmr start\n'
+const VITE_HMR_END = '// vite hmr end\n'
+const VITE_HMR_BLOCK = /[ \t]*\/\/ vite hmr start\n[\s\S]*?[ \t]*\/\/ vite hmr end\n\n?/
 const PRELOAD_DEFAULT = "engine.preload({ nodeEnvFallback: 'development' })"
 const PRELOAD_VITE = "engine.preload({ nodeEnvFallback: 'development', preventLoadBunPlugins: true })"
 const TAILWIND_LINK_COMMENT = '<!-- <link rel="stylesheet" href="/styles/index.css" /> -->'
@@ -225,6 +230,7 @@ async function patchTemplate(appName: string, useVite: boolean) {
   const packageJsonPath = resolve(appRoot, 'package.json')
   const enginePath = resolve(appRoot, 'src/engine.ts')
   const preloadPath = resolve(appRoot, 'src/preload.ts')
+  const indexServerPath = resolve(appRoot, 'src/index.server.ts')
   const indexHtmlPath = resolve(appRoot, 'src/index.html')
   const viteConfigPath = resolve(appRoot, 'vite.config.ts')
   const gitignorePath = resolve(appRoot, '.gitignore')
@@ -232,6 +238,7 @@ async function patchTemplate(appName: string, useVite: boolean) {
   await patchPackageJson(packageJsonPath, useVite)
   await patchEngine(enginePath, useVite)
   await patchPreload(preloadPath, useVite)
+  await patchIndexServer(indexServerPath, useVite)
   await patchIndexHtml(indexHtmlPath, useVite)
   await patchViteConfig(viteConfigPath, useVite)
   await patchGitignore(gitignorePath)
@@ -309,6 +316,16 @@ async function patchPreload(preloadPath: string, useVite: boolean) {
   const current = await readTemplateLf(preloadPath)
   const next = current.replace(PRELOAD_DEFAULT, PRELOAD_VITE)
   await writeFile(preloadPath, next, 'utf8')
+}
+
+// The template's `src/index.server.ts` carries the vite server-HMR block (dispose + self-accept on the
+// entry). Vite keeps it (markers dropped); Bun's dev path never sets `import.meta.hot`, so cut it whole.
+async function patchIndexServer(indexServerPath: string, useVite: boolean) {
+  const current = await readTemplateLf(indexServerPath)
+  const next = useVite
+    ? current.replace(VITE_HMR_START, '').replace(VITE_HMR_END, '')
+    : current.replace(VITE_HMR_BLOCK, '')
+  await writeFile(indexServerPath, next, 'utf8')
 }
 
 async function patchIndexHtml(indexHtmlPath: string, useVite: boolean) {

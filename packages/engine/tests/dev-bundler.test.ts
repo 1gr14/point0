@@ -1,10 +1,6 @@
 import assert from 'assert'
-import { existsSync, readdirSync } from 'node:fs'
-import { rename, rm } from 'node:fs/promises'
-import nodePath from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
-import { resolveServerHotStoreDir } from '../src/server-hot-store.js'
 import { bundlers } from './utils/focus.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 import type {
@@ -14,25 +10,6 @@ import type {
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
 setDefaultTimeout(80000)
-
-// Resolve the server-hot store dir the way the dev child actually does: walk up from its cwd (the test project dir) to
-// the nearest `node_modules`, then `.cache/server-hot/<scope>-<port>`. The engine resolves it with
-// `resolveCacheDirPath` from `process.cwd()`; replicating that walk from the project dir keeps the test robust to
-// node_modules hoisting. A fully-hoisted install (fresh git worktree, CI) has NO `packages/engine/node_modules`, so the
-// store lands in the REPO-ROOT `node_modules/.cache` — a fixed `__dirname/../node_modules` path missed it and read 0.
-const resolveStoreDirFromProject = (projectDir: string, scope: string, port: number | string): string => {
-  let dir = projectDir
-  let lastDir = ''
-  while (dir !== lastDir) {
-    const nodeModules = nodePath.join(dir, 'node_modules')
-    if (existsSync(nodeModules)) {
-      return nodePath.join(nodeModules, '.cache', 'server-hot', `${scope}-${port}`)
-    }
-    lastDir = dir
-    dir = nodePath.dirname(dir)
-  }
-  throw new Error(`No node_modules found above ${projectDir}`)
-}
 
 const tpf = TestProjectOneClientFactory.create({
   namespace: 'dev',
@@ -146,6 +123,47 @@ describe('dev', () => {
       }),
       {
         retry: 3,
+      },
+    )
+
+    it(
+      're-serves the same port across page edits without a port conflict',
+      wrp({ ssr: true, serverHmr: true, vite: bundler === 'vite', preserve: false }, async ({ tp }) => {
+        await tp.waitPortsFree()
+        await tp.write(
+          'src/page.tsx',
+          `import { root } from './lib/root.js'
+          export const page = root.lets('page', 'home', '/').page(() => <div id="probe">marker=MARK_A</div>)`,
+        )
+        tp.spawn(['bun', 'run', 'dev'])
+        await tp.waitStarted()
+
+        const marker = async (): Promise<string | undefined> => {
+          const html = (await tp.fetchServerHtml('/').catch(() => '')).replace(/<!--.*?-->/g, '')
+          return html.match(/marker=(MARK_\w+)/)?.[1]
+        }
+        await waitFor(async () => ((await marker()) === 'MARK_A' ? true : undefined), 15000)
+
+        // `serverHmr` matters here: it connects the vite SSR module-runner HMR client (without it no reload
+        // event fires and this path is never exercised). A page reaches the SSR graph only through the dynamic
+        // points loader, so on the vite path editing it is not a granular HMR boundary: vite does a FULL SSR
+        // program reload, which re-runs the app entry (→ engine.serve()) WITHOUT calling the
+        // `import.meta.hot.dispose(() => engine.dispose())` handler. Each edit must still re-bind the SAME port
+        // — the engine hands the port over from its own previous in-process server instead of failing with
+        // EADDRINUSE (the regression this guards). The bun path restarts the child per edit
+        // (orchestrator-serialized), which must likewise never conflict. Each waitFor below resolving to the
+        // new marker proves the re-serve actually succeeded.
+        let current = 'MARK_A'
+        for (const next of ['MARK_B', 'MARK_C', 'MARK_D']) {
+          await tp.replace('src/page.tsx', current, next)
+          await waitFor(async () => ((await marker()) === next ? true : undefined), 15000)
+          current = next
+        }
+        expect(tp.output).not.toContain('is already in use')
+      }),
+      {
+        retry: 2,
+        timeout: 90000,
       },
     )
 

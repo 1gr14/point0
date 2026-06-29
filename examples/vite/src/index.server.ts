@@ -4,5 +4,13 @@
 await import('./preload.js')
 await import('./app.server.js')
 
-// Only dynamic imports above (the order matters); this marks the file as a module for TypeScript.
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+if (import.meta.hot) {
+  // Server HMR (Vite dev). Bun is fine without it
+  const { engine } = await import('./engine.js')
+  import.meta.hot.dispose(() => engine.dispose())
+  import.meta.hot.accept()
+}
+
+// The imports above are dynamic on purpose (order matters); this marks the file as a module for TypeScript.
 export {}
