@@ -234,6 +234,6 @@
     "zod": "^4.4.3"
   },
   "publishConfig": {
-    "access": "restricted"
+    "access": "public"
   }
 }

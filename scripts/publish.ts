@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 /**
  * publish — publish every packages/* whose current version isn't on npm yet. Idempotent: already-published versions are
- * skipped, so it's safe to run on every push. Access comes from each package's publishConfig (restricted now, public at
- * launch). `private: true` packages (create-app while unscoped) are skipped. Runs in CI with npm auth.
+ * skipped, so it's safe to run on every push. Access comes from each package's publishConfig (public). `private: true`
+ * packages are skipped. Runs in CI with OIDC trusted publishing — no NPM_TOKEN.
  *
  * The dist-tag comes from the version: a prerelease x.y.z-next.N publishes under `--tag next`, a stable x.y.z under
  * `latest`. The tag ↔ version guard (scripts/check-channel.ts) is asserted first, so the git tag that triggered the
  * release must match the version being published. Packages whose publishConfig.access is `public` publish with npm
- * provenance (`--provenance`, via the workflow's OIDC id-token); restricted packages skip it (provenance needs a
- * public package), so this is a no-op until the launch-day access flip.
+ * provenance (`--provenance`, via the workflow's OIDC id-token); a restricted package would skip it (provenance needs a
+ * public package), but all @point0/* are public.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'

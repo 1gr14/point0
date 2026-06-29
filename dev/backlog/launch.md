@@ -5,8 +5,20 @@ record of the versioning + local-install refactor done in prep. Cross-repo:
 point0 (`~/cc/opensource/1gr14/point0`), igrich (`~/cc/projects/1gr14`), start0
 (`~/cc/projects/start0`).
 
-**Sequencing:** point0 → npm (private week) → igrich on Railway → point0 public
-→ start0 first release.
+> **✅ LAUNCHED — 2026-06-29, classic single-`main` model.** point0 is public.
+> The CI/release train (`dev → next → main`) is gone: one `main` trunk,
+> contributors PR into it, and `v*` tags drive publishing (prerelease `-next.N`
+> → npm `next`, stable → `latest`). All 8 `@point0/*` + `create-point0-app`
+> publish **public, via OIDC trusted publishing with provenance — no
+> `NPM_TOKEN`**. The current mechanics live in [dev/docs/ci.md](../docs/ci.md)
+> and [dev/docs/releasing.md](../docs/releasing.md). Everything below is the
+> **historical** launch plan and the "why" behind the versioning / local-install
+> design — kept for the record; the train-era prose (private week, branch ↔
+> channel, `next`-only publish) describes how we got here, not the current
+> model.
+
+**Sequencing (historical):** point0 → npm (private week) → igrich on Railway →
+point0 public → start0 first release.
 
 > **⚠️ Release tooling — UPDATED.** We dropped semantic-release **and**
 > changesets: both fight a lockstep + 0.x + caret-peer-deps monorepo (they
@@ -33,8 +45,8 @@ point0 (`~/cc/opensource/1gr14/point0`), igrich (`~/cc/projects/1gr14`), start0
 
 > **🧪 DONE: the test suite is green in CI (Linux + Windows).** Done on the
 > `ci-cross-os` branch — the sharded cross-OS runner (`test.yml`: build / fast
-> ×3 / one slow file per runner) replaced naive `bun test`, with the latent
-> bugs it surfaced fixed. How CI works: `dev/docs/ci.md`. There is **no**
+> ×3 / one slow file per runner) replaced naive `bun test`, with the latent bugs
+> it surfaced fixed. How CI works: `dev/docs/ci.md`. There is **no**
 > `SKIP_TESTS` repo variable anymore — test control moved into commit-message
 > flags (`--skip-tests` / `--run-tests`, see `scripts/ci-decide.ts`).
 
@@ -151,9 +163,9 @@ compiler so the published `.d.ts` resolves for consumers.
   scope owner is on a plan that allows private publish (personal Pro vs npm org
   Team).
 - **Tests (wired).** The cross-OS suite gates publishing. **A stable tag always
-  tests — it can never be skipped.** A prerelease tag may skip via `--skip-tests`
-  in the release commit (it already passed CI as a PR). There is no
-  `SKIP_TESTS_ON_NEXT` repo variable; see `scripts/ci-decide.ts` +
+  tests — it can never be skipped.** A prerelease tag may skip via
+  `--skip-tests` in the release commit (it already passed CI as a PR). There is
+  no `SKIP_TESTS_ON_NEXT` repo variable; see `scripts/ci-decide.ts` +
   `dev/docs/releasing.md`.
 - **Branch protection (BLOCKED until public / GitHub Pro).** Rulesets and
   classic protection both 403 on this private repo: "Upgrade to GitHub Pro or
@@ -167,15 +179,17 @@ compiler so the published `.d.ts` resolves for consumers.
 ### Manual GitHub setup needed (you, in repo settings)
 
 - Add Actions secret `NPM_TOKEN` (granular, @point0 read+write).
-- At launch: make repo public, add branch protection, remove `NPM_TOKEN`
-  (→ OIDC + provenance), flip `publishConfig.access` to public.
+- At launch: make repo public, add branch protection, remove `NPM_TOKEN` (→
+  OIDC + provenance), flip `publishConfig.access` to public.
 
-> **NOTE — model changed to classic OSS (single `main` + `v*` tags).** This file
-> still describes the old `dev → next → main` train (branch protection on
-> `next`, default branch `next`, the "semantic-release bot" mention). The CI +
-> release scripts now follow the classic model — one `main` trunk, contributors
-> PR into it, tags drive publishing. `dev/docs/releasing.md` is current; this
-> launch plan needs a reconcile pass when the branches are reorganized.
+> **NOTE — reconciled 2026-06-29 to classic OSS (single `main` + `v*` tags).**
+> The branches were reorganized at launch: `dev` fast-forwarded into `main`,
+> `main` became the default branch, and `dev` + `next` were deleted. The CI +
+> release scripts follow the classic model — one `main` trunk, contributors PR
+> into it, tags drive publishing. `dev/docs/releasing.md` is current. The
+> train-era sections above (branch protection on `next`, default branch `next`,
+> the "semantic-release bot" mention) are historical, superseded by the banner
+> at the top of this file.
 
 ### Private week
 

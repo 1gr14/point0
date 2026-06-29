@@ -59,7 +59,9 @@ jobs:
     # --skip-tests → the test job never runs → result 'skipped'). Never on a failed/cancelled gate, and never
     # if `decide` itself failed. `!cancelled()` is required so this still evaluates when `test` was skipped
     # (a skipped dependency would otherwise skip this job too).
-    if: ${{ !cancelled() && needs.decide.result == 'success' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    if:
+      ${{ !cancelled() && needs.decide.result == 'success' && (needs.test.result == 'success' || needs.test.result ==
+      'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -72,7 +74,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      # npm's OIDC trusted publishing needs a recent npm; harmless while still on token auth.
+      # npm's OIDC trusted publishing needs a recent npm.
       - name: Update npm
         run: npm install -g npm@latest
       # Self-contained: tests may have been skipped (no build artifact to reuse), so build here.
@@ -87,8 +89,7 @@ jobs:
         run: bun run check:channel
       # Idempotent: publishes only packages whose version isn't on npm yet; dist-tag derived from the
       # version; provenance is added automatically for packages whose publishConfig.access is public.
-      # NODE_AUTH_TOKEN is used while the token exists; drop the secret at launch to switch to OIDC.
+      # Auth is OIDC trusted publishing (id-token: write above) — no NPM_TOKEN; the publish job exchanges
+      # the workflow's OIDC identity for a short-lived npm credential against the package's trusted publisher.
       - name: Publish packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: bun run publish:packages

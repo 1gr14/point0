@@ -1,7 +1,6 @@
 {
   "name": "create-point0-app",
   "version": "0.1.0-next.4",
-  "private": true,
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
