@@ -629,7 +629,7 @@ export const ideaPage = ideaLayout.lets.page('/').page(() => {
 
 Read more in the docs [about layouts](layout).
 
-## Root
+## Root point
 
 The root is the very first point from which all other points are built. It's
 convenient to set in it some settings that all other points need. Also, in the
