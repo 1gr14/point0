@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.2 — 2026-06-29
+
 ## 0.1.1 — 2026-06-29
 
 - Initial release.
