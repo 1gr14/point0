@@ -1,0 +1,166 @@
+name: test
+
+# Reusable cross-OS test pipeline. Proves the framework builds and its tests pass on each runner OS.
+# Called by ci.yml (the PR/branch gate) and release.yml (before publishing a tag). NO publish here.
+#
+# Sharded so no runner sits for ~an hour:
+#   build     → one runner per OS: build once, upload dist as an artifact
+#   test-fast → one runner per (OS × shard 1..3): the ~70 fast/parallel files, fanned 3 ways
+#   test-slow → one runner per (OS × slow file): each heavy integration file on its OWN runner
+# Fanning the slow files out also keeps Windows healthy — a single file per runner can't accumulate
+# leaked browser/dev processes to the point of starving the runner (which a full sequential run did).
+#
+# The matrices come from the caller (ci-decide.ts is the single source): `oses` is the OS list and
+# `slow` the slow-test file list — both JSON strings, fromJSON'd below.
+on:
+  workflow_call:
+    inputs:
+      oses:
+        description: 'JSON array of runner OS labels to test on'
+        required: true
+        type: string
+      slow:
+        description: 'JSON array of slow-test files (relative to packages/), one runner each'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.oses) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      # tsdown's build step runs on Node (the framework runtime is Bun).
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # Applies patchedDependencies (the playwright-core CDP patch the browser tests need on Windows).
+      - name: Install dependencies
+        uses: ./.github/actions/install
+      # Every @point0/* imports its siblings from their built dist/.
+      - name: Build
+        run: bun run build
+      # Re-link workspace bins now that @point0/engine/dist/cli.js exists, so downstream `point0` resolves.
+      - name: Link freshly built workspace bins
+        uses: ./.github/actions/install
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-${{ matrix.os }}
+          # upload-artifact roots the archive at the LEAST COMMON ANCESTOR of its paths. The root-level
+          # package.json anchors that ancestor at the repo root so `packages/*/dist` keeps its full path on
+          # download (without it the `packages/` prefix is stripped and dist lands in the wrong place — the
+          # `point0` bin then never links and setup fails with "point0: command not found").
+          # @point0/docs ships its prebuilt search corpus from content/ (gitignored, built in `build`).
+          path: |
+            package.json
+            packages/*/dist/
+            packages/*/content/
+          retention-days: 1
+
+  test-fast:
+    name: fast ${{ matrix.shard }}/3 (${{ matrix.os }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.oses) }}
+        # Fan the ~70 fast/non-slow files across 3 runners per OS — one runner (Windows especially) running
+        # them all is both slow and prone to accumulating leaked browser processes. Keep the /3 here in sync
+        # with the --shard denominator below.
+        shard: [1, 2, 3]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: build-${{ matrix.os }}
+          path: .
+      # dist is already in place, so this install also relinks the `point0` bin.
+      - name: Install dependencies
+        uses: ./.github/actions/install
+      - name: Setup (codegen for examples/templates)
+        run: bun run setup
+      - name: Install Playwright chromium (Linux)
+        if: runner.os == 'Linux'
+        run: bunx playwright install --with-deps chromium
+      - name: Install Playwright chromium (Windows/macOS)
+        if: runner.os != 'Linux'
+        run: bunx playwright install chromium
+      # This runner's third of the non-slow files (testfu = NO_SLOW_TESTS=1), run in parallel within it.
+      - name: Run fast tests (shard ${{ matrix.shard }}/3)
+        run: NO_SLOW_TESTS=1 bun scripts/test-parallel.ts --shard ${{ matrix.shard }}/3
+
+  test-slow:
+    name: slow ${{ matrix.file }} (${{ matrix.os }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.oses) }}
+        file: ${{ fromJSON(inputs.slow) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: build-${{ matrix.os }}
+          path: .
+      - name: Install dependencies
+        uses: ./.github/actions/install
+      - name: Setup (codegen for examples/templates)
+        run: bun run setup
+      - name: Install Playwright chromium (Linux)
+        if: runner.os == 'Linux'
+        run: bunx playwright install --with-deps chromium
+      - name: Install Playwright chromium (Windows/macOS)
+        if: runner.os != 'Linux'
+        run: bunx playwright install chromium
+      # One slow integration file, on its own runner — fast wall-clock and no cross-file process buildup.
+      # Retry the whole file once on a fresh process. A loaded runner can flake these integration shards
+      # (e.g. the point0 dev server intermittently ECONNRESETs on Windows — tracked separately); when such
+      # a crash leaves Windows file handles locked, the in-test retry can't recover, but a fresh `bun test`
+      # (new temp dirs, no locks) gets a clean shot.
+      - name: Run slow test file
+        run: |
+          for i in 1 2; do
+            bun test packages/${{ matrix.file }} && exit 0
+            echo "::warning::shard ${{ matrix.file }} attempt $i failed; retrying on a fresh process"
+          done
+          exit 1

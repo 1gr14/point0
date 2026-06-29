@@ -1,0 +1,94 @@
+name: release
+
+# The ONLY publish path. Reachable exclusively via a `v*` release tag — never from a PR, a fork, or a
+# branch push (a fork cannot push a tag to this repo), which makes "no untrusted code ever publishes" a
+# structural guarantee, not a convention. Versions are bumped + tagged together by `bun run release`.
+#
+#   tag v1.2.3        stable      → full test matrix (MANDATORY) → publish, dist-tag `latest`
+#   tag v1.2.3-next.N prerelease  → tests unless the release commit says --skip-tests → publish, dist-tag `next`
+#
+# The dist-tag and the stable/prerelease split are derived from the version (scripts/publish.ts), and the
+# tag↔version match is asserted before anything is published (scripts/check-channel.ts).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch: # re-publish is idempotent — dispatch on a tag ref to retry a failed publish
+
+permissions:
+  contents: read
+  id-token: write # OIDC: npm provenance / trusted publishing (active once packages are public)
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false # never cancel a publish mid-flight
+
+jobs:
+  # Same brain as the gate: decide the OS matrix. On a tag it returns the full matrix for a stable
+  # release (flags ignored) or honors --skip-tests for a prerelease. publish is gated separately below.
+  decide:
+    name: decide
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      oses: ${{ steps.d.outputs.oses }}
+      slow: ${{ steps.d.outputs.slow }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - id: d
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: bun scripts/ci-decide.ts >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: decide
+    if: ${{ needs.decide.outputs.oses != '[]' }}
+    uses: ./.github/workflows/test.yml
+    with:
+      oses: ${{ needs.decide.outputs.oses }}
+      slow: ${{ needs.decide.outputs.slow }}
+
+  publish:
+    needs: [decide, test]
+    # Publish when `decide` succeeded AND the gate is GREEN or was deliberately SKIPPED (a prerelease with
+    # --skip-tests → the test job never runs → result 'skipped'). Never on a failed/cancelled gate, and never
+    # if `decide` itself failed. `!cancelled()` is required so this still evaluates when `test` was skipped
+    # (a skipped dependency would otherwise skip this job too).
+    if: ${{ !cancelled() && needs.decide.result == 'success' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          scope: '@point0'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # npm's OIDC trusted publishing needs a recent npm; harmless while still on token auth.
+      - name: Update npm
+        run: npm install -g npm@latest
+      # Self-contained: tests may have been skipped (no build artifact to reuse), so build here.
+      - name: Install dependencies
+        uses: ./.github/actions/install
+      - name: Build
+        run: bun run build
+      - name: Link freshly built workspace bins
+        uses: ./.github/actions/install
+      # Tag guard: the tag MUST equal v${version in package.json}, so the bump and the tag can't drift.
+      - name: Channel guard (tag ↔ version)
+        run: bun run check:channel
+      # Idempotent: publishes only packages whose version isn't on npm yet; dist-tag derived from the
+      # version; provenance is added automatically for packages whose publishConfig.access is public.
+      # NODE_AUTH_TOKEN is used while the token exists; drop the secret at launch to switch to OIDC.
+      - name: Publish packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: bun run publish:packages

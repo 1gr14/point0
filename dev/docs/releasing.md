@@ -4,19 +4,22 @@ We publish on our own terms — no version is derived from commits, nothing is
 auto-cut. All `@point0/*` packages move in **lockstep** (one shared version),
 and the version can never accidentally reach 1.0.0.
 
-## Two channels
+The model is classic OSS: one `main` trunk, and **a `v*` git tag is the only
+thing that publishes**. Pushing code never releases — you release by tagging.
 
-| Branch | Version                   | npm dist-tag | Auth                                                             |
-| ------ | ------------------------- | ------------ | ---------------------------------------------------------------- |
-| `next` | prerelease `x.y.z-next.N` | `next`       | granular `NPM_TOKEN` (no provenance)                             |
-| `main` | stable `x.y.z`            | `latest`     | OIDC Trusted Publisher → provenance _(enabled at public launch)_ |
+## Two channels, one branch
 
-The **branch ↔ version invariant** is enforced by
-[`scripts/check-channel.ts`](../../scripts/check-channel.ts): `next` may only
-publish a `-next.N` prerelease, `main` may only publish a stable version. It
-runs in the CI publish job, in the local `pre-push` hook, and inside
-`publish.ts` — so a prerelease can never land on `latest` (and a stable can
-never land on `next`), even if branches or versions get crossed.
+| Version                   | git tag           | npm dist-tag | Auth                                                              |
+| ------------------------- | ----------------- | ------------ | ----------------------------------------------------------------- |
+| prerelease `x.y.z-next.N` | `vX.Y.Z-next.N`   | `next`       | `NPM_TOKEN` now → OIDC at launch (provenance for public packages) |
+| stable `x.y.z`            | `vX.Y.Z`          | `latest`     | same                                                              |
+
+The channel is derived from the **version itself** (prerelease vs stable), not
+from a branch. The **tag ↔ version invariant** is enforced by
+[`scripts/check-channel.ts`](../../scripts/check-channel.ts): a release tag must
+be exactly `v${version}` from `package.json`. It runs in the CI publish job and
+in the local `pre-push` hook, so a stale or mistyped tag can never publish the
+wrong version.
 
 Consumers get a prerelease only on purpose — via the `next` dist-tag
 (`"@point0/core": "next"`) or an exact `x.y.z-next.N`. A normal `^0.1.0` range
@@ -25,14 +28,15 @@ never resolves a prerelease.
 ## The scripts
 
 - [`scripts/release.ts`](../../scripts/release.ts) (`bun run release`) — bumps
-  the version everywhere
-  - fixes dep ranges + (on a stable cut) promotes the changelog. You run it
-    locally.
+  the version everywhere (lockstep), fixes dep ranges, promotes the changelog (on
+  a stable cut), then **commits + tags** `v<version>`. You run it locally; it
+  pushes nothing. Add `--no-git` to bump only.
 - [`scripts/publish.ts`](../../scripts/publish.ts) (`bun run publish:packages`)
-  — publishes to npm, picking the dist-tag from the version. CI runs it; it's
-  idempotent (skips versions already on npm).
+  — publishes to npm, dist-tag from the version, `--provenance` for public
+  packages. CI runs it from the tag; it's idempotent (skips versions already on
+  npm).
 - [`scripts/check-channel.ts`](../../scripts/check-channel.ts)
-  (`bun run check:channel`) — the guard.
+  (`bun run check:channel`) — the tag ↔ version guard.
 
 ```sh
 bun run release prerelease   # 0.1.0        → 0.1.0-next.0   (re-run → -next.1, -next.2 …)
@@ -48,43 +52,45 @@ Add a bullet under `## Unreleased` in [CHANGELOG.md](../../CHANGELOG.md)
 whenever you do something worth mentioning. Prereleases leave `## Unreleased`
 untouched; only a **stable** cut promotes it.
 
-## Cut a prerelease (the private week)
+## Cut a release
 
-On `dev`:
-
-```sh
-bun run release prerelease                 # e.g. 0.1.0-next.0 → -next.1
-git add -A && git commit -m "chore(release): <version>"
-git checkout next && git merge --ff-only dev && git push origin next
-```
-
-The push triggers build → tests → channel guard → `publish:packages`, which
-publishes each scoped package as the new prerelease under the `next` dist-tag
-(`restricted`, token auth). Watch the Action.
-
-## Cut a stable release (the public launch)
-
-When the prerelease has proven itself and the repo is public (so OIDC +
-provenance work):
+From `main` (with a clean tree):
 
 ```sh
-bun run release stable                     # 0.1.0-next.N → 0.1.0  (promotes the changelog)
-git add -A && git commit -m "chore(release): 0.1.0" && git tag v0.1.0
-git checkout main && git merge --ff-only dev && git push origin main --follow-tags
+bun run release prerelease    # or: stable | patch | minor | <explicit>
+                              # → bumps, commits "chore(release): v<version>", tags v<version>
+git show v<version>           # review — nothing is pushed yet
+git push origin main --follow-tags   # the TAG triggers CI to build → test → publish
 ```
 
-Launch switches (one-time, see
-[backlog/launch-plan.md](../../backlog/launch-plan.md)): flip every
+What the tag run does ([`.github/workflows/release.yml`](../../.github/workflows/release.yml)):
+build → **tests** → tag guard → `publish:packages`. The dist-tag (`next` /
+`latest`) comes from the version.
+
+**Tests on a release:**
+- A **stable** tag always runs the full test matrix — it can never be skipped.
+- A **prerelease** tag runs it too, but you can skip it by putting `--skip-tests`
+  (or `--skip-tests=windows`) in the release commit message — the commit already
+  passed CI as a PR, so re-testing is optional. See
+  [`scripts/ci-decide.ts`](../../scripts/ci-decide.ts) for the full flag set.
+
+## Launch switches (one-time, going public)
+
+See [dev/backlog/launch.md](../backlog/launch.md). Flip every
 `publishConfig.access` to `public`; remove `"private": true` from
-`packages/create-app`; turn the `publish` job on for `main` and switch CI auth
-from `NPM_TOKEN` to OIDC Trusted Publisher; make the repo public and add branch
-protection.
+`packages/create-app`; configure an npm **Trusted Publisher** for each
+`@point0/*` package (repo + `release.yml`) and drop the `NPM_TOKEN` secret to
+switch to OIDC; make the repo public; protect `main` (no force-push/delete,
+require PR + green CI, linear history) and add tag protection for `v*`. Until the
+Trusted Publisher exists, keep `NPM_TOKEN` set — the publish job uses it
+automatically when present, OIDC when not.
 
 ## Notes
 
 - **GitHub setup** (one-time): repo Actions secret `NPM_TOKEN` (granular,
-  `@point0` read+write); repo variable `SKIP_TESTS=true` mutes the (currently
-  Linux-broken) test gate during the private week — unset it once the suite is
-  fixed (see backlog) to restore the gate.
+  `@point0` read+write) for the token phase; remove it at launch to switch to
+  OIDC. There is **no** `SKIP_TESTS` repo variable — test control lives in commit
+  flags now.
 - `create-point0-app` is `private: true` (unscoped → can't be private on npm),
   so it's skipped while private and goes public at launch.
+```

@@ -5,8 +5,10 @@
  * launch). `private: true` packages (create-app while unscoped) are skipped. Runs in CI with npm auth.
  *
  * The dist-tag comes from the version: a prerelease x.y.z-next.N publishes under `--tag next`, a stable x.y.z under
- * `latest`. The branch ↔ version channel invariant (scripts/check-channel.ts) is asserted first, so a prerelease can
- * never land on main/latest (and a stable can never land on next).
+ * `latest`. The tag ↔ version guard (scripts/check-channel.ts) is asserted first, so the git tag that triggered the
+ * release must match the version being published. Packages whose publishConfig.access is `public` publish with npm
+ * provenance (`--provenance`, via the workflow's OIDC id-token); restricted packages skip it (provenance needs a
+ * public package), so this is a no-op until the launch-day access flip.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -53,7 +55,7 @@ const assertCorpusPresent = (dir: string, files: string[], id: string): void => 
 let published = 0
 for (const dir of readdirSync(packagesDir)) {
   const pkgPath = join(packagesDir, dir, 'package.json')
-  let pkg: { name?: string; version?: string; private?: boolean; files?: string[] }
+  let pkg: { name?: string; version?: string; private?: boolean; files?: string[]; publishConfig?: { access?: string } }
   try {
     pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
   } catch {
@@ -71,8 +73,10 @@ for (const dir of readdirSync(packagesDir)) {
   }
 
   const tag = distTag(pkg.version)
-  console.info(`publish ${id} (tag: ${tag})`)
-  const res = Bun.spawnSync(['npm', 'publish', '--tag', tag], {
+  // Provenance only for public packages — npm rejects --provenance on a restricted publish.
+  const provenance = pkg.publishConfig?.access === 'public' ? ['--provenance'] : []
+  console.info(`publish ${id} (tag: ${tag}${provenance.length ? ', provenance' : ''})`)
+  const res = Bun.spawnSync(['npm', 'publish', '--tag', tag, ...provenance], {
     cwd: join(packagesDir, dir),
     stdout: 'inherit',
     stderr: 'inherit',

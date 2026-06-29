@@ -1,29 +1,13 @@
 import { cpus } from 'node:os'
 import * as nodePath from 'node:path'
+import { SLOW_TESTS } from './slow-tests.js'
 
 const slowTestsOnly = process.env.SLOW_TESTS_ONLY === '1'
 const noSlowTests = process.env.NO_SLOW_TESTS === '1'
 const noTestUtilsTests = process.env.NO_TEST_UTILS_TESTS === '1'
 const liveTestOutput = process.env.LIVE_TEST_OUTPUT === '1'
 
-const slowTests =
-  process.env.SLOW_TESTS_NOT_SLOW === '1'
-    ? []
-    : [
-        'engine/tests/build.test.ts',
-        'engine/tests/module-preload-serve.test.ts',
-        'engine/tests/cli.test.tsx',
-        'engine/tests/mcp.test.ts',
-        // dev.test.ts was split into three files (each its own slow shard) to shorten the critical path.
-        'engine/tests/dev-bundler.test.ts',
-        'engine/tests/dev-hot-reload.test.ts',
-        'engine/tests/dev-source-maps.test.ts',
-        'engine/tests/prefetch-page.test.ts',
-        'engine/tests/two-clients.test.ts',
-        'engine/tests/publicdir.test.ts',
-        'engine/tests/assets.test.tsx',
-        'create-app/tests/index.test.tsx',
-      ]
+const slowTests = process.env.SLOW_TESTS_NOT_SLOW === '1' ? [] : [...SLOW_TESTS]
 const testUtilsTests = ['engine/tests/utils/*']
 
 // Single source of truth for CI's slow-test shard matrix (one runner per file). `discover` calls this

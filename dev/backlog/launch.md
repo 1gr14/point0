@@ -31,14 +31,12 @@ point0 (`~/cc/opensource/1gr14/point0`), igrich (`~/cc/projects/1gr14`), start0
 > the publish job to `main` + OIDC. A `-next` build physically cannot reach
 > `latest`.
 
-> **🧪 TODO (later, not blocking launch): get the test suite green on Linux.**
-> The CI `test` job has never passed on Linux — naive `bun test` runs everything
-> in one process (1010 pass / 294 fail), and even the proper fast runner needs
-> Playwright browsers + env-specific fixes (e.g. `port.test.ts` times out). For
-> now the gate is muted via repo var `SKIP_TESTS=true`. Task: run the full suite
-> in a Linux/Docker env, fix the offending tests/code (Playwright install step,
-> env-specific tests, isolation), switch CI off naive `bun test` → the repo
-> runner, then unset `SKIP_TESTS` to restore the real gate on `next`/`main`.
+> **🧪 DONE: the test suite is green in CI (Linux + Windows).** Done on the
+> `ci-cross-os` branch — the sharded cross-OS runner (`test.yml`: build / fast
+> ×3 / one slow file per runner) replaced naive `bun test`, with the latent
+> bugs it surfaced fixed. How CI works: `dev/docs/ci.md`. There is **no**
+> `SKIP_TESTS` repo variable anymore — test control moved into commit-message
+> flags (`--skip-tests` / `--run-tests`, see `scripts/ci-decide.ts`).
 
 ---
 
@@ -152,11 +150,11 @@ compiler so the published `.d.ts` resolves for consumers.
   Actions secret **`NPM_TOKEN`**; revoke after release. Confirm the `@point0`
   scope owner is on a plan that allows private publish (personal Pro vs npm org
   Team).
-- **Tests (wired).** CI `test` job runs `bun test` sequentially and gates
-  `release`. On `main` tests ALWAYS run (publication never bypasses them). On
-  `next` set repo variable **`SKIP_TESTS_ON_NEXT=true`** to skip during the
-  early phase (steps skip but the job still succeeds, so the prerelease still
-  publishes). Unset it later to enable tests on `next` too.
+- **Tests (wired).** The cross-OS suite gates publishing. **A stable tag always
+  tests — it can never be skipped.** A prerelease tag may skip via `--skip-tests`
+  in the release commit (it already passed CI as a PR). There is no
+  `SKIP_TESTS_ON_NEXT` repo variable; see `scripts/ci-decide.ts` +
+  `dev/docs/releasing.md`.
 - **Branch protection (BLOCKED until public / GitHub Pro).** Rulesets and
   classic protection both 403 on this private repo: "Upgrade to GitHub Pro or
   make the repo public." So protect `main` + `next` at **launch day** (repo goes
@@ -169,9 +167,15 @@ compiler so the published `.d.ts` resolves for consumers.
 ### Manual GitHub setup needed (you, in repo settings)
 
 - Add Actions secret `NPM_TOKEN` (granular, @point0 read+write).
-- Add Actions variable `SKIP_TESTS_ON_NEXT=true` for the early private phase.
-- At launch: make repo public, add the branch-protection ruleset above, remove
-  `NPM_TOKEN` (→ OIDC + provenance), flip `publishConfig.access` to public.
+- At launch: make repo public, add branch protection, remove `NPM_TOKEN`
+  (→ OIDC + provenance), flip `publishConfig.access` to public.
+
+> **NOTE — model changed to classic OSS (single `main` + `v*` tags).** This file
+> still describes the old `dev → next → main` train (branch protection on
+> `next`, default branch `next`, the "semantic-release bot" mention). The CI +
+> release scripts now follow the classic model — one `main` trunk, contributors
+> PR into it, tags drive publishing. `dev/docs/releasing.md` is current; this
+> launch plan needs a reconcile pass when the branches are reorganized.
 
 ### Private week
 
