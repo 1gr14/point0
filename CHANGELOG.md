@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.1 — 2026-06-29
+
 - Initial release.
 - Per-page module preloading: production builds emit a preload manifest and the
   server injects `<link rel="modulepreload">` per request for the entry's shared
