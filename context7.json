@@ -1,0 +1,14 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "Point0",
+  "description": "A fullstack TypeScript framework on Bun — your whole app, pages to endpoints, from one typed building block.",
+  "folders": ["docs"],
+  "excludeFiles": ["AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", "CHANGELOG.md"],
+  "rules": [
+    "Point0 runs on Bun. Scaffold an app with `bun create point0-app`, and use the `point0` CLI (from @point0/engine) for dev, build, and generate.",
+    "Points are the core primitive: pages, layouts, queries, and mutations are all points, authored through a single typed builder.",
+    "Everything that affects a page lives in the page's builder methods — server and client code share one builder, and the compiler strips the loader body and its imports out of the client bundle.",
+    "Types are not generated — inference rides entirely on the builder's generics.",
+    "Point0's own packages publish under the @point0/* scope (e.g. @point0/core, @point0/engine, @point0/compiler, @point0/react-dom)."
+  ]
+}

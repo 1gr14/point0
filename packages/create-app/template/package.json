@@ -31,7 +31,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "bun-plugin-tailwind": "^0.1.2",
     "tailwindcss": "^4.3.0",
-    "@1gr14/error0": "^0.4.0",
+    "@1gr14/error0": "^0.4.6",
     "@1gr14/route0": "^0.1.0",
     "@1gr14/flat": "^0.1.0",
     "wouter": "^3.10.0",

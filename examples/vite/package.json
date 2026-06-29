@@ -26,7 +26,7 @@
     "setup": "bun run prisma:migrate:deploy && bun run prisma:generate && point0 generate && bun run seed"
   },
   "dependencies": {
-    "@1gr14/error0": "^0.4.0",
+    "@1gr14/error0": "^0.4.6",
     "@1gr14/flat": "^0.1.0",
     "@1gr14/route0": "^0.1.0",
     "@point0/basic-auth": "^0.1.2",
