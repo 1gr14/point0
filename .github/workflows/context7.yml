@@ -1,0 +1,43 @@
+name: context7
+
+# Tell Context7 to re-index point0's docs so the hosted docs/code-search corpus stays current.
+#
+# Triggers:
+#   push → main touching docs/**   Context7 indexes the default branch, so a docs edit is exactly when to refresh.
+#   push of a stable v* tag        a release is a natural refresh point. `paths` filters are IGNORED for tag pushes,
+#                                  so the `docs/**` filter above does NOT gate tags — the `if` below drops `-next`
+#                                  prereleases (docs follow the stable release, not the prerelease channel).
+#   workflow_dispatch              manual re-index.
+#
+# Needs the org secret CONTEXT7_API_KEY (granted to this repo). The repo guard keeps forks from firing a no-op 401.
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**']
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: context7-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    name: refresh
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Skip prerelease tags (-next.N); branch pushes and manual dispatch always pass. Forks have no secret → skip.
+    if: >-
+      github.repository == '1gr14/point0' && (!startsWith(github.ref, 'refs/tags/') || !contains(github.ref_name, '-'))
+    steps:
+      - name: Trigger Context7 refresh
+        env:
+          CONTEXT7_API_KEY: ${{ secrets.CONTEXT7_API_KEY }}
+        run: |
+          curl -fsS -X POST https://context7.com/api/v1/refresh \
+            -H 'Content-Type: application/json' \
+            -H "Authorization: Bearer ${CONTEXT7_API_KEY}" \
+            -d '{"libraryName": "/${{ github.repository }}"}'
