@@ -1541,6 +1541,138 @@ describe('with', () => {
       await waitContent('#page:x=1')
     })
   })
+
+  // ── with(component) — a point that is BOTH callable and a query ────────────────────────────────
+  // A component point is a real React component (callable) AND a point carrying a query. Passing one
+  // to `.with` must read it AS A QUERY — inject its data, never render its UI — exactly like
+  // `.with(query)`. Regression: the signature used to see the call signature first and treat the
+  // component as a with-fn, which silently dropped the injected query, refused the `input` argument,
+  // and skipped the "input required" check. These prove a point is detected before the function form.
+
+  it('with component point injects its query (not its UI), no input', async () => {
+    const root = createRoot()
+    const stats = root
+      .lets('component', 'stats')
+      .loader(() => ({ x: 1 }))
+      .component(({ data }) => <div id="stats">x={data.x}</div>)
+
+    const page = root
+      .lets('page', 'home', '/home')
+      .with(stats)
+      .page(({ data, props }) => {
+        expectTypeOf<typeof props>().toEqualTypeOf<EmptyProps>()
+        expectTypeOf<typeof data>().toEqualTypeOf<{ x: number }>()
+        return (
+          <div id="page">
+            x={data.x}, props.length={Object.keys(props).length}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, stats] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #loading: ...
+
+          #page: x=1, props.length=0
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      component.stats (client) < {}
+      "
+    `)
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page: x=1, props.length=0
+      "
+    `)
+  })
+
+  it('with component point that requires input — with(component, input)', async () => {
+    const root = createRoot()
+    const mul = root
+      .lets('component', 'mul')
+      .input(z.object({ a: z.number(), b: z.number() }))
+      .loader(({ input }) => ({ mul: input.a * input.b }))
+      .component(({ data }) => <div id="mul">mul={data.mul}</div>)
+
+    const page = root
+      .lets('page', 'home', '/:a/:b')
+      .with(mul, ({ params }) => ({ a: +params.a, b: +params.b }))
+      .page(({ data, location }) => {
+        expectTypeOf<typeof data>().toEqualTypeOf<{ mul: number }>()
+        return (
+          <div id="page">
+            mul={data.mul} a={location.params.a} b={location.params.b}
+          </div>
+        )
+      })
+
+    const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, page, mul] })
+    await render(page.route({ a: 3, b: 4 }), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /3/4
+          #loading: ...
+
+          #page: mul=12 a=3 b=4
+        "
+      `)
+    })
+    expect(await fetchesTale()).toMatchInlineSnapshot(`
+      "
+      component.mul (client) < {"a":3,"b":4}
+      "
+    `)
+    expect(await fetchPreview(page, { a: '3', b: '4' })).toMatchInlineSnapshot(`
+      "
+      #page: mul=12 a=3 b=4
+      "
+    `)
+  })
+
+  it('forbid by types: with(component) without the required input', () => {
+    const root = createRoot()
+    const mul = root
+      .lets('component', 'mul')
+      .input(z.object({ a: z.number(), b: z.number() }))
+      .loader(({ input }) => ({ mul: input.a * input.b }))
+      .component(({ data }) => <div id="mul">mul={data.mul}</div>)
+    root
+      .lets('page', 'home', '/:a/:b')
+      // @ts-expect-error -- a component point requires its input, exactly like a query
+      .with(mul)
+      .page()
+  })
+
+  it('with component point + resolve true spreads its data into props', async () => {
+    const root = createRoot()
+    const stats = root
+      .lets('component', 'stats')
+      .loader(() => ({ x: 1 }))
+      .component(({ data }) => <div id="stats">x={data.x}</div>)
+
+    const page = root
+      .lets('page', 'home', '/home')
+      // queryOptions undefined, resolve true — all three arg-tail positions are accepted for a
+      // component now; before the fix the component was a with-fn and refused every extra argument.
+      .with(stats, undefined, undefined, true)
+      .page(({ props }) => {
+        expectTypeOf<typeof props.x>().toEqualTypeOf<number>()
+        return <div id="page">x={props.x}</div>
+      })
+
+    const { render } = await createTestThings({ ssr: true, points: [root, page, stats] })
+    await render(page.route(), async ({ waitContent }) => {
+      await waitContent('#page:x=1')
+    })
+  })
 })
 
 // ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1576,12 +1708,32 @@ const queryOpt = root
   .loader(() => ({ x: 1 }))
   .query()
 
+// a COMPONENT whose input is REQUIRED ({ a, b }). A component is BOTH callable (it renders) and a
+// point carrying a query, so \`with\` must still feel it as a query — require the input, complete its
+// fields — and never mistake it for a with-fn just because it has a call signature.
+const componentReq = root
+  .lets('component', 'comp')
+  .input(z.object({ a: z.number(), b: z.number() }))
+  .loader(({ input }) => ({ mul: input.a * input.b }))
+  .component(() => null)
+
+// a COMPONENT with NO input
+const componentOpt = root
+  .lets('component', 'compOpt')
+  .loader(() => ({ x: 1 }))
+  .component(() => null)
+
 root.lets('page', 'm1', '/:y').with(queryReq) /* MISSING */
 root.lets('page', 'm2', '/:y').with(queryReq, {}) /* EMPTY */
 root.lets('page', 'm3', '/:y').with(queryReq, { y: 'str' }) /* WRONG */
 root.lets('page', 'm4', '/:y').with(queryReq, { y: 1 }) /* OKAY */
 root.lets('page', 'm5', '/:y').with(queryOpt) /* OPTOK */
 const _complete = root.lets('page', 'm6', '/:y').with(queryReq, { /*CURSOR*/ })
+
+root.lets('page', 'c1', '/:y').with(componentReq) /* CMISSING */
+root.lets('page', 'c2', '/:y').with(componentReq, { a: 1, b: 2 }) /* COKAY */
+root.lets('page', 'c3', '/:y').with(componentOpt) /* COPTOK */
+const _completeC = root.lets('page', 'c4', '/:y').with(componentReq, { /*CCURSOR*/ })
 `
 
 // Build one language service over the engine project, serving the probe from memory and reading the
@@ -1697,5 +1849,43 @@ describe('with — what the developer sees in the editor (autocomplete & type er
     //
     //     page.with(queryOpt)            // queryOpt has no input
     expect(dxCodesOf('/* OPTOK */')).toEqual([])
+  })
+
+  // ── A component point is BOTH callable and a query. The editor must feel it as a query, the same as
+  // a `.query()` point — because a component is a real React component, an earlier function-first
+  // discriminator saw the call signature and treated it as a with-fn: no input arg, no "input
+  // required" error, no member completion. These four mirror the query cases above, one tier harder.
+
+  it('treats a component with a required input as a query: "Expected N arguments" when it is forgotten', () => {
+    // A component is callable, yet `with(componentReq)` must still demand its input — exactly like a
+    // query — instead of silently accepting it as a zero-arg with-fn:
+    //
+    //     page.with(componentReq)        // ← missing the required { a, b } input
+    expect(dxCodesOf('/* CMISSING */')).toContain(2554)
+    expect(dxMessageOf('/* CMISSING */')).toContain('Expected')
+  })
+
+  it('accepts a component with its correct required input — no error', () => {
+    // The input argument the function-first signature used to refuse is now accepted:
+    //
+    //     page.with(componentReq, { a: 1, b: 2 })
+    expect(dxCodesOf('/* COKAY */')).toEqual([])
+  })
+
+  it('lets a component with no input be used without an input argument', () => {
+    //     page.with(componentOpt)        // componentOpt has no input
+    expect(dxCodesOf('/* COPTOK */')).toEqual([])
+  })
+
+  it('offers the component input fields while typing its input object', () => {
+    // Member completion must work for a component's input just like a query's:
+    //
+    //     page.with(componentReq, { ▮ })   // componentReq input is { a, b }
+    const completions = dxService.getCompletionsAtPosition(dxProbePath, dxProbe.indexOf('/*CCURSOR*/'), {})
+    const names = (completions?.entries ?? []).map((e) => e.name)
+    expect(completions?.isMemberCompletion).toBe(true)
+    expect(names).toContain('a')
+    expect(names).toContain('b')
+    expect(names).not.toContain('Point0')
   })
 })

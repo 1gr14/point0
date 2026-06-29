@@ -68,6 +68,22 @@ export const ideaPage = root.lets
   )
 ```
 
+The point you inject doesn't have to be a standalone [`.query()`](query). Any
+point that carries a query works — including a [component](component) (or a
+[layout](layout)/[page](page)). It's read as its **query**: the data is injected
+and flows into `data`, while its own UI is **not** rendered. So a component
+built for one screen can be reused elsewhere purely for its data, and the input
+is required exactly when that point's input is — the same rule as a query:
+
+```tsx
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  // IdeaStats is a component with its own loader and UI, but here we inject it
+  // for its query alone: its data lands in `data`, its UI is never rendered
+  .with(IdeaStats, ({ params }) => ({ id: params.id }))
+  .page(({ data: { fans } }) => <h1>{fans} fans</h1>)
+```
+
 But the same thing can be written by passing a function — each `.with` mimics a
 component wrapper around the component below it, so you can freely call hooks
 inside:
