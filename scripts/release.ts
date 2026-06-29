@@ -120,7 +120,7 @@ const tagName = `v${next}`
 if (process.argv.includes('--no-git')) {
   console.info(
     `\nBumped to ${next} (--no-git: no commit/tag made). When ready:\n` +
-      `  git add -A && git commit -m "chore(release): ${tagName}" && git tag ${tagName}\n` +
+      `  git add -A && git commit -m "chore(release): ${tagName}" && git tag -a ${tagName} -m ${tagName}\n` +
       `  git push origin main --follow-tags   # the tag triggers CI to publish`,
   )
 } else {
@@ -134,7 +134,8 @@ if (process.argv.includes('--no-git')) {
   }
   git('add', '-A')
   git('commit', '-m', `chore(release): ${tagName}`)
-  git('tag', tagName)
+  // Annotated tag (-a) on purpose: `git push --follow-tags` only pushes annotated tags, never lightweight ones.
+  git('tag', '-a', tagName, '-m', tagName)
   console.info(
     `\nCommitted + tagged ${tagName} (dist-tag: ${isPre ? 'next' : 'latest'}). Nothing pushed yet — review with ` +
       `\`git show ${tagName}\`, then publish with:\n` +
