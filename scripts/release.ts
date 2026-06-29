@@ -127,9 +127,9 @@ if (process.argv.includes('--no-git')) {
   // Commit + tag together so the bump and the tag can never drift (CI re-asserts tag ↔ version before publishing).
   const git = (...args: string[]) => {
     const r = Bun.spawnSync(['git', ...args], { cwd: rootDir, stdout: 'inherit', stderr: 'inherit' })
-    if (r.exitCode !== 0) {
+    if (!r.success) {
       console.error(`git ${args[0]} failed`)
-      process.exit(r.exitCode ?? 1)
+      process.exit(1)
     }
   }
   git('add', '-A')
