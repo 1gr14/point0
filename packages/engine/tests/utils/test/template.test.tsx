@@ -30,14 +30,19 @@ function wrp(
     preventFinalFilesCleanup = true
   }
   const tp = tpf.create(tpOptions)
+  // ports: false on purpose — this suite never starts a server (portsRange [0, Infinity], nothing is bound),
+  // and its engine config uses tiny ports (4, 5). killPort on Windows matches PIDs with `netstat | findstr <port>`,
+  // a SUBSTRING match, so freeing port "4" would force-kill every process whose netstat line contains a "4" — it
+  // hangs the runner. Nothing is bound here, so there is simply nothing to free. (killPort's win32 substring match
+  // is a latent bug tracked separately; large unique ports elsewhere don't trip it.)
   return async () => {
     try {
       await tp.init()
       const engine = await tp.importEngine()
       await callback({ tp, engine })
-      await tp.cleanup({ files: !preserve, ports: true, processes: true })
+      await tp.cleanup({ files: !preserve, ports: false, processes: true })
     } catch (error) {
-      await tp.cleanup({ files: !preserve, ports: true, processes: true })
+      await tp.cleanup({ files: !preserve, ports: false, processes: true })
       throw error
     }
   }
