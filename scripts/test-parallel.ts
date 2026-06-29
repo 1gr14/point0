@@ -145,7 +145,31 @@ const formatDuration = (ms: number) => {
 
 const startTime = Date.now()
 
-const runFile = async (filePath: string) => {
+// A spawned `bun test <file>` can hang indefinitely — most often on Windows, where a test that doesn't reap
+// its dev-server / chrome-headless-shell child leaves a handle that keeps the process alive even after the
+// assertions pass. Without a per-file deadline ONE hung file freezes the whole parallel phase until the CI
+// job's 30-min timeout, and because each file's output is buffered and only flushed after Promise.all, the
+// log can't even name the culprit. So: guard every file with a wall-clock timeout and emit live breadcrumbs,
+// turning a silent 30-min hang into a fast, attributable failure.
+const FILE_TIMEOUT_MS = Number(process.env.TEST_FILE_TIMEOUT_MS ?? 5 * 60_000)
+const FILE_RETRIES = Number(process.env.TEST_FILE_RETRIES ?? 1) // extra attempts when a file times out
+const rel = (filePath: string) => nodePath.relative(cwd, filePath)
+
+// Kill the whole process tree of a timed-out test. On Windows the bun process spawns chrome-headless-shell
+// (CDP) children that survive a plain kill — `taskkill /T` takes the tree; on POSIX SIGKILL the process.
+const killTree = async (pid: number) => {
+  if (process.platform === 'win32') {
+    await Bun.$`taskkill /F /T /PID ${pid}`.nothrow().quiet()
+  }
+}
+// After a forced kill, sweep orphaned test browsers (Windows only — Linux/macOS reap chromium.launch).
+const reapTestBrowsers = async () => {
+  if (process.platform === 'win32') {
+    await Bun.$`taskkill /F /IM chrome-headless-shell.exe /T`.nothrow().quiet()
+  }
+}
+
+const runOnce = async (filePath: string): Promise<{ code: number; output: string; timedOut: boolean }> => {
   let output = ''
   const decoder = new TextDecoder()
   const terminal = liveTestOutput
@@ -165,21 +189,63 @@ const runFile = async (filePath: string) => {
     terminal,
   })
 
-  const code = await proc.exited
-  exitCodes.set(filePath, code)
-  if (code !== 0) {
-    failed = 1
+  // Race the test process against a wall-clock deadline. Deriving timedOut from the RACE RESULT (not a flag
+  // flipped inside a timer callback) keeps the control flow legible to TS/eslint, and a hung file gets its
+  // process tree killed + browsers reaped instead of freezing the phase until the 30-min job timeout.
+  const TIMED_OUT = Symbol('timed-out')
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<typeof TIMED_OUT>((resolve) => {
+    timer = setTimeout(() => resolve(TIMED_OUT), FILE_TIMEOUT_MS)
+  })
+
+  const raced = await Promise.race([proc.exited, deadline])
+  if (timer) clearTimeout(timer)
+  const timedOut = raced === TIMED_OUT
+  if (timedOut) {
+    proc.kill(9)
+    await killTree(proc.pid)
+    await reapTestBrowsers()
+    await proc.exited // make sure the killed process is fully reaped before this slot frees up
   }
+
   if (terminal) {
     terminal.close()
     output += decoder.decode()
   }
+  if (timedOut) {
+    output += `\n[harness] TIMED OUT after ${Math.round(FILE_TIMEOUT_MS / 1000)}s — process tree killed.\n`
+  }
+  // A killed process may report exit 0; force a non-zero code so a timeout always fails the run.
+  const code = typeof raced === 'number' ? raced : 124
+  return { code, output, timedOut }
+}
+
+const runFile = async (filePath: string) => {
+  const started = Date.now()
+  // START breadcrumb, flushed immediately (NOT buffered into the per-file Terminal): if the phase hangs, the
+  // log shows every ▶ with no matching ✓/✗ — that's the file that froze the runner.
+  process.stdout.write(`▶ ${rel(filePath)}\n`)
+
+  let result = await runOnce(filePath)
+  for (let attempt = 1; result.timedOut && attempt <= FILE_RETRIES; attempt++) {
+    process.stdout.write(`⟲ ${rel(filePath)} timed out — retry ${attempt}/${FILE_RETRIES} on a fresh process\n`)
+    result = await runOnce(filePath)
+  }
+
+  const { code, output, timedOut } = result
+  exitCodes.set(filePath, code)
+  if (code !== 0) {
+    failed = 1
+  }
+  process.stdout.write(
+    `${code === 0 ? '✓' : '✗'} ${rel(filePath)} (${formatDuration(Date.now() - started)})${timedOut ? ' [TIMED OUT]' : ''}\n`,
+  )
+
   if (!liveTestOutput) {
     const header = `\n===== ${filePath} =====\n`
-    const body = output
-    outputs.set(filePath, `${header}${body}`)
+    outputs.set(filePath, `${header}${output}`)
     if (code !== 0) {
-      failureLines.set(filePath, extractFailureLines(body))
+      failureLines.set(filePath, extractFailureLines(output))
     }
   }
 }
