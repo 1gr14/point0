@@ -70,8 +70,19 @@ jobs:
         if: runner.os != 'Linux'
         run: bunx playwright install chromium
       # This runner's third of the non-slow files (testfu = NO_SLOW_TESTS=1), run in parallel within it.
+      # tee to a log so the ▶/✓/✗ breadcrumbs survive even a job CANCELLATION — a 30-min timeout cancels the job
+      # and drops its step logs, which once hid which file hung. pipefail keeps bun's exit code (not tee's).
       - name: Run fast tests (shard ${{ matrix.shard }}/3)
-        run: NO_SLOW_TESTS=1 bun scripts/test-parallel.ts --shard ${{ matrix.shard }}/3
+        run: |
+          set -o pipefail
+          NO_SLOW_TESTS=1 bun scripts/test-parallel.ts --shard ${{ matrix.shard }}/3 2>&1 | tee "fast-${{ matrix.os }}-${{ matrix.shard }}.log"
+      - name: Upload fast-test log (diagnostic; survives cancellation)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fast-log-${{ matrix.os }}-${{ matrix.shard }}
+          path: fast-${{ matrix.os }}-${{ matrix.shard }}.log
+          retention-days: 1
 
   test-slow:
     name: slow ${{ matrix.file }} (${{ matrix.os }})

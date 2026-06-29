@@ -202,10 +202,13 @@ const runOnce = async (filePath: string): Promise<{ code: number; output: string
   if (timer) clearTimeout(timer)
   const timedOut = raced === TIMED_OUT
   if (timedOut) {
+    // Best-effort kill of the whole tree, then move on. Crucially do NOT `await proc.exited` here: on Windows a
+    // process killed externally (taskkill) may never resolve Bun's exited promise, so awaiting it would re-hang
+    // the phase until the 30-min job timeout — the exact failure this guard exists to prevent. taskkill /F is
+    // synchronous, so by the time killTree resolves the tree is already gone and the slot can free immediately.
     proc.kill(9)
     await killTree(proc.pid)
     await reapTestBrowsers()
-    await proc.exited // make sure the killed process is fully reaped before this slot frees up
   }
 
   if (terminal) {
