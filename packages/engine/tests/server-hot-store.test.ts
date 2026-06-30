@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { existsSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import nodePath from 'node:path'
-import { stronglyConnectedComponents, sweepStaleStoreFiles } from '../src/server-hot-store.js'
+import { replaceSpecifier, stronglyConnectedComponents, sweepStaleStoreFiles } from '../src/server-hot-store.js'
 
 // Pure unit tests for the SCC primitive that drives the hot store's cycle-safe cascade hashing. The store hashes each
 // SCC as a unit and rewrites intra-cycle imports to consistent names, so the two properties it relies on — correct
@@ -92,6 +92,44 @@ describe('stronglyConnectedComponents', () => {
       m4: ['leaf'],
       leaf: [],
     })
+  })
+})
+
+describe('replaceSpecifier', () => {
+  const ABS = '/abs/app/src/components/ui/section.tsx'
+
+  it('rewrites the specifier in real import / export-from / dynamic-import positions', () => {
+    const code = [
+      `import { Section } from '@/components/ui/section'`,
+      `export { Section } from '@/components/ui/section'`,
+      `const m = await import('@/components/ui/section')`,
+    ].join('\n')
+    const out = replaceSpecifier(code, '@/components/ui/section', ABS)
+    expect(out).toBe(
+      [`import { Section } from '${ABS}'`, `export { Section } from '${ABS}'`, `const m = await import('${ABS}')`].join(
+        '\n',
+      ),
+    )
+  })
+
+  // KNOWN BUG (see replaceSpecifier's JSDoc): the regex also rewrites the specifier where it appears quoted inside a
+  // string / template literal — e.g. a page that renders `import x from '@/foo'` as a CODE SAMPLE. The hot store then
+  // serves that literal with the real import path baked in, and SSR renders the wrong text (the maintainer's absolute
+  // path leaks into the page). The fix must be AST-aware. `it.failing`: this asserts the desired behaviour and passes
+  // only while the bug exists; once replaceSpecifier is fixed it flips red — drop the `.failing` then.
+  it.failing('does NOT rewrite the specifier inside a string / template literal (code samples)', () => {
+    const code = [
+      `import { Section } from '@/components/ui/section'`, // real import — should be rewritten
+      'export const sample = `// a code sample shown on the page',
+      `import { Section } from '@/components/ui/section'`, // inside a template literal — must stay verbatim
+      'const x = 1`',
+    ].join('\n')
+    const out = replaceSpecifier(code, '@/components/ui/section', ABS)
+    // The template-literal occurrence must survive untouched; only the real import is rewritten.
+    expect(out).toContain(
+      `sample = \`// a code sample shown on the page\nimport { Section } from '@/components/ui/section'`,
+    )
+    expect(out.match(new RegExp(ABS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) ?? []).toHaveLength(1)
   })
 })
 

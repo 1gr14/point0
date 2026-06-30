@@ -104,8 +104,18 @@ const splitQuery = (s: string): [string, string] => {
 const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const ASSET_RE = /\.(png|jpe?g|gif|webp|avif|ico|bmp|svg|mp[34]|wav|ogg|webm|mov|woff2?|ttf|otf|eot|pdf|css|wasm)$/i
 
-/** Replace quoted occurrences of an exact import specifier (import/export/dynamic-import positions). */
-function replaceSpecifier(code: string, spec: string, replacement: string): string {
+/**
+ * Replace quoted occurrences of an exact import specifier with `replacement`, meant for import/export/dynamic-import
+ * source positions.
+ *
+ * KNOWN BUG: this is a text-level regex replace, so it also rewrites the specifier where it appears quoted INSIDE a
+ * string or template literal (e.g. a page that shows `import x from '@/foo'` as a code sample). The dev hot store then
+ * serves — and SSR renders — that literal with the specifier swapped for its absolute store/real path. A correct fix
+ * must be AST-aware (rewrite only real import/export/`import()`/`require()` source nodes); a keyword anchor isn't
+ * enough, since a code sample contains a literal `from '...'` too. Regression test: `replaceSpecifier` in
+ * `tests/server-hot-store.test.ts` (currently `it.failing`).
+ */
+export function replaceSpecifier(code: string, spec: string, replacement: string): string {
   const re = new RegExp(`(['"])${escapeRe(spec)}\\1`, 'g')
   return code.replace(re, (_m, q: string) => `${q}${replacement}${q}`)
 }
