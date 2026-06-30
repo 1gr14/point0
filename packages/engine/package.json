@@ -165,6 +165,9 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@babel/parser": "^7.29.7",
+    "@babel/traverse": "^7.29.7",
+    "@babel/types": "^7.29.7",
     "@jridgewell/remapping": "^2.3.5",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@parcel/watcher": "^2.5.1",
@@ -189,6 +192,7 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@types/babel__traverse": "^7.28.0",
     "@types/source-map-support": "^0.5.10",
     "superjson": "^2.2.6",
     "@1gr14/error0": "^0.4.6",

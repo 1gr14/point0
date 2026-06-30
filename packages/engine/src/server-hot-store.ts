@@ -36,6 +36,10 @@
 // `node_modules/`, and hashed names strip "point0" — so `compiler.filter` rejects the whole store dir for free (the
 // stable child's compiler onLoad plugin never re-transforms the already-compiled store files). We assert this invariant
 // after writing (a future rename that reintroduces "point0" fails loudly, not silently).
+import babelParser from '@babel/parser'
+import traverseModule from '@babel/traverse'
+import type traverseType from '@babel/traverse'
+import * as t from '@babel/types'
 import type { Compiler } from '@point0/compiler'
 import {
   appendInlineSourceMap,
@@ -101,23 +105,90 @@ const splitQuery = (s: string): [string, string] => {
   const i = s.indexOf('?')
   return i === -1 ? [s, ''] : [s.slice(0, i), s.slice(i)]
 }
-const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const ASSET_RE = /\.(png|jpe?g|gif|webp|avif|ico|bmp|svg|mp[34]|wav|ogg|webm|mov|woff2?|ttf|otf|eot|pdf|css|wasm)$/i
 
+// @babel/traverse ships as CJS with a default-wrapped namespace under ESM; unwrap to the callable (same shim the
+// compiler uses for it).
+const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends {
+  default: infer T
+}
+  ? T
+  : typeof traverseType
+
+/** Byte range (quotes included) and unquoted value of one import-source string literal in a node's code. */
+type ImportSourceRange = { start: number; end: number; value: string }
+
+// Import-specifier rewriting is AST-based, NOT a text replace: only real import / export-from / dynamic-`import()` /
+// `require()` SOURCE positions are touched. A regex over the code string also hits a specifier sitting inside a string
+// or template literal (e.g. a page that renders `import x from '@/foo'` as a CODE SAMPLE), baking the resolved store/
+// real path into that literal — which then SSRs as wrong text. Parse → collect ranges once per node (cached across the
+// build's hash + write passes), then splice. Path RESOLUTION still comes from the compiler (FileResolver); only the
+// parse lives here, since the store rewrites the compiler's OUTPUT and the engine is its only consumer.
+
 /**
- * Replace quoted occurrences of an exact import specifier with `replacement`, meant for import/export/dynamic-import
- * source positions.
- *
- * KNOWN BUG: this is a text-level regex replace, so it also rewrites the specifier where it appears quoted INSIDE a
- * string or template literal (e.g. a page that shows `import x from '@/foo'` as a code sample). The dev hot store then
- * serves — and SSR renders — that literal with the specifier swapped for its absolute store/real path. A correct fix
- * must be AST-aware (rewrite only real import/export/`import()`/`require()` source nodes); a keyword anchor isn't
- * enough, since a code sample contains a literal `from '...'` too. Regression test: `replaceSpecifier` in
- * `tests/server-hot-store.test.ts` (currently `it.failing`).
+ * Collect the source string-literal ranges of every import / export-from / `export *` / dynamic-`import()` /
+ * `require()` in `code`. A hard parse failure yields `[]`, so the caller leaves the code untouched.
  */
-export function replaceSpecifier(code: string, spec: string, replacement: string): string {
-  const re = new RegExp(`(['"])${escapeRe(spec)}\\1`, 'g')
-  return code.replace(re, (_m, q: string) => `${q}${replacement}${q}`)
+export function collectImportSourceRanges(code: string): ImportSourceRange[] {
+  let ast: ReturnType<typeof babelParser.parse>
+  try {
+    ast = babelParser.parse(code, {
+      sourceType: 'module',
+      errorRecovery: true,
+      plugins: [
+        'typescript',
+        'jsx',
+        'decorators-legacy',
+        'classProperties',
+        'classPrivateProperties',
+        'classPrivateMethods',
+        'throwExpressions',
+      ],
+    })
+  } catch {
+    return []
+  }
+  const ranges: ImportSourceRange[] = []
+  const push = (node: t.Node | null | undefined): void => {
+    if (node && t.isStringLiteral(node) && typeof node.start === 'number' && typeof node.end === 'number') {
+      ranges.push({ start: node.start, end: node.end, value: node.value })
+    }
+  }
+  traverse(ast, {
+    ImportDeclaration: (p) => push(p.node.source),
+    ExportNamedDeclaration: (p) => push(p.node.source),
+    ExportAllDeclaration: (p) => push(p.node.source),
+    CallExpression: (p) => {
+      const callee = p.node.callee
+      if (t.isImport(callee) || (t.isIdentifier(callee) && callee.name === 'require')) {
+        push(p.node.arguments[0])
+      }
+    },
+  })
+  return ranges
+}
+
+/**
+ * Apply replacements to pre-collected import-source `ranges` in place: `resolve(value)` returns the new specifier, or
+ * `undefined` to leave it. Right-to-left so offsets stay valid; the original quote char is kept. A specifier never
+ * spans lines, so line structure is byte-for-byte preserved and an inline/line-level source map over `code` stays
+ * valid.
+ */
+export function applyImportSourceRewrites(
+  code: string,
+  ranges: ImportSourceRange[],
+  resolve: (value: string) => string | undefined,
+): string {
+  let out = code
+  for (const { start, end, value } of [...ranges].sort((a, b) => b.start - a.start)) {
+    const replacement = resolve(value)
+    if (replacement === undefined) {
+      continue
+    }
+    const quote = code[start] ?? "'"
+    out = out.slice(0, start) + quote + replacement + quote + out.slice(end)
+  }
+  return out
 }
 
 /**
@@ -445,6 +516,10 @@ export class ServerHotStore {
     const codeByAbs = new Map<string, string>()
     const mapByAbs = new Map<string, unknown>()
     const outByAbs = new Map<string, Array<{ pathOriginal: string; pathResolved: string }>>()
+    // Import-source string-literal ranges per node, parsed ONCE here. `rewriteNode` runs each node's rewrite several
+    // times per build (hash pass + write pass, across externalization rounds), so caching the parse keeps it to one
+    // AST parse per node instead of re-parsing on every rewrite.
+    const rangesByAbs = new Map<string, ImportSourceRange[]>()
     const importMeta: string[] = []
     // Nodes using a LOCATION-relative `import.meta` (`.url`/`.dir`/`.dirname`/`.path`/`.filename`/`.file`/`.resolve`):
     // these resolve against the MODULE's own path, which a flattened store file moves to the store dir — so the path
@@ -467,6 +542,7 @@ export class ServerHotStore {
       const r = compiler.compile({ file: abs, map: true, writeVirtual: true })
       codeByAbs.set(abs, r.code)
       mapByAbs.set(abs, r.map)
+      rangesByAbs.set(abs, collectImportSourceRanges(r.code))
       let isColdRoot = isImporterColdPath({ path: abs, importer: compiler.importer })
       const outs: Array<{ pathOriginal: string; pathResolved: string }> = []
       for (const im of r.imports) {
@@ -548,16 +624,19 @@ export class ServerHotStore {
       const misses: Array<{ file: string; spec: string }> = []
       let rewritten = 0
       // Rewrite one node's import specifiers: hot dep -> its store name (`nameOf`); cold dep -> its absolute real path
-      // (singleton); asset -> its absolute path, keeping any `?query` (e.g. `?react` for svgr).
+      // (singleton); asset -> its absolute path, keeping any `?query` (e.g. `?react` for svgr). Built as a specifier ->
+      // target map, then applied to the node's pre-collected import-source ranges (AST positions only — never a quoted
+      // specifier sitting inside a string/template literal, e.g. a code sample).
       const rewriteNode = (abs: string, nameOf: (target: string) => string): string => {
-        let code = codeByAbs.get(abs) ?? ''
+        const code = codeByAbs.get(abs) ?? ''
+        const targets = new Map<string, string>()
         for (const e of outByAbs.get(abs) ?? []) {
-          if (isHot(e.pathResolved)) code = replaceSpecifier(code, e.pathOriginal, './' + nameOf(e.pathResolved))
-          else if (coldSet.has(e.pathResolved)) code = replaceSpecifier(code, e.pathOriginal, e.pathResolved)
+          if (isHot(e.pathResolved)) targets.set(e.pathOriginal, './' + nameOf(e.pathResolved))
+          else if (coldSet.has(e.pathResolved)) targets.set(e.pathOriginal, e.pathResolved)
           else if (ASSET_RE.test(e.pathResolved))
-            code = replaceSpecifier(code, e.pathOriginal, e.pathResolved + splitQuery(e.pathOriginal)[1])
+            targets.set(e.pathOriginal, e.pathResolved + splitQuery(e.pathOriginal)[1])
         }
-        return code
+        return applyImportSourceRewrites(code, rangesByAbs.get(abs) ?? [], (spec) => targets.get(spec))
       }
       for (const scc of sccs) {
         const sccSet = new Set(scc)

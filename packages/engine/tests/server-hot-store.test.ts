@@ -2,7 +2,12 @@ import { describe, expect, it } from 'bun:test'
 import { existsSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import nodePath from 'node:path'
-import { replaceSpecifier, stronglyConnectedComponents, sweepStaleStoreFiles } from '../src/server-hot-store.js'
+import {
+  applyImportSourceRewrites,
+  collectImportSourceRanges,
+  stronglyConnectedComponents,
+  sweepStaleStoreFiles,
+} from '../src/server-hot-store.js'
 
 // Pure unit tests for the SCC primitive that drives the hot store's cycle-safe cascade hashing. The store hashes each
 // SCC as a unit and rewrites intra-cycle imports to consistent names, so the two properties it relies on — correct
@@ -95,41 +100,60 @@ describe('stronglyConnectedComponents', () => {
   })
 })
 
-describe('replaceSpecifier', () => {
+describe('import-source rewriting', () => {
+  const SPEC = '@/components/ui/section'
   const ABS = '/abs/app/src/components/ui/section.tsx'
 
-  it('rewrites the specifier in real import / export-from / dynamic-import positions', () => {
+  it('collects only real import / export-from / export-all / dynamic-import / require source positions', () => {
     const code = [
       `import { Section } from '@/components/ui/section'`,
       `export { Section } from '@/components/ui/section'`,
-      `const m = await import('@/components/ui/section')`,
+      `export * from '@/components/ui/section'`,
+      `const a = await import('@/components/ui/section')`,
+      `const b = require('@/components/ui/section')`,
     ].join('\n')
-    const out = replaceSpecifier(code, '@/components/ui/section', ABS)
-    expect(out).toBe(
-      [`import { Section } from '${ABS}'`, `export { Section } from '${ABS}'`, `const m = await import('${ABS}')`].join(
-        '\n',
-      ),
-    )
+    const ranges = collectImportSourceRanges(code)
+    expect(ranges.map((r) => r.value)).toEqual(Array(5).fill(SPEC))
+    for (const r of ranges) expect(code.slice(r.start, r.end)).toBe(`'${SPEC}'`)
   })
 
-  // KNOWN BUG (see replaceSpecifier's JSDoc): the regex also rewrites the specifier where it appears quoted inside a
-  // string / template literal — e.g. a page that renders `import x from '@/foo'` as a CODE SAMPLE. The hot store then
-  // serves that literal with the real import path baked in, and SSR renders the wrong text (the maintainer's absolute
-  // path leaks into the page). The fix must be AST-aware. `it.failing`: this asserts the desired behaviour and passes
-  // only while the bug exists; once replaceSpecifier is fixed it flips red — drop the `.failing` then.
-  it.failing('does NOT rewrite the specifier inside a string / template literal (code samples)', () => {
+  // The regression: a quoted specifier sitting INSIDE a string / template literal (e.g. a page that renders
+  // `import x from '@/foo'` as a code sample) is NOT a source position, so it must be left verbatim. A text-level regex
+  // used to rewrite it and leak the resolved path into the SSR'd page.
+  it('ignores specifier-looking text inside strings and template literals', () => {
     const code = [
-      `import { Section } from '@/components/ui/section'`, // real import — should be rewritten
-      'export const sample = `// a code sample shown on the page',
-      `import { Section } from '@/components/ui/section'`, // inside a template literal — must stay verbatim
+      `import { Section } from '@/components/ui/section'`, // real import
+      'export const sample = `// shown on the page',
+      `import { Section } from '@/components/ui/section'`, // inside a template literal
       'const x = 1`',
+      `const note = 'see @/components/ui/section'`, // inside a plain string
     ].join('\n')
-    const out = replaceSpecifier(code, '@/components/ui/section', ABS)
-    // The template-literal occurrence must survive untouched; only the real import is rewritten.
-    expect(out).toContain(
-      `sample = \`// a code sample shown on the page\nimport { Section } from '@/components/ui/section'`,
+    expect(collectImportSourceRanges(code)).toHaveLength(1)
+
+    const out = applyImportSourceRewrites(code, collectImportSourceRanges(code), (s) => (s === SPEC ? ABS : undefined))
+    expect(out).toContain(`import { Section } from '${ABS}'`) // real import rewritten
+    expect(out).toContain(`// shown on the page\nimport { Section } from '${SPEC}'`) // sample untouched
+    expect(out).toContain(`const note = 'see @/components/ui/section'`) // plain string untouched
+    expect(out.split(ABS)).toHaveLength(2) // exactly one rewrite
+  })
+
+  it('returns [] on unparseable code instead of throwing', () => {
+    expect(collectImportSourceRanges('const = = =')).toEqual([])
+  })
+
+  it('applyImportSourceRewrites keeps line structure and the original quote char', () => {
+    const code = `import { Section } from "@/components/ui/section"\nconst x = 1`
+    const out = applyImportSourceRewrites(code, collectImportSourceRanges(code), () => ABS)
+    expect(out.split('\n')).toHaveLength(2)
+    expect(out).toContain(`from "${ABS}"`) // double quotes preserved
+  })
+
+  it('applyImportSourceRewrites leaves specifiers the resolver does not claim', () => {
+    const code = `import a from '@/keep'\nimport b from '@/swap'`
+    const out = applyImportSourceRewrites(code, collectImportSourceRanges(code), (s) =>
+      s === '@/swap' ? ABS : undefined,
     )
-    expect(out.match(new RegExp(ABS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) ?? []).toHaveLength(1)
+    expect(out).toBe(`import a from '@/keep'\nimport b from '${ABS}'`)
   })
 })
 
