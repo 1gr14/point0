@@ -20,32 +20,41 @@ Bun does two things to a process BEFORE the first line of user code runs:
    `staging`) behaves as development.
 2. **bunfig preload.** `preload = [...]` from `bunfig.toml` in the cwd runs in
    EVERY bun process started there. Under `bun test`, a `[test].preload`
-   REPLACES the main preload (verified, not merged).
+   REPLACES the main preload (it does not merge).
 
-Consequences we got burned by: `point0 build` setting
-`NODE_ENV ??= 'production'` in CLI code was too late (dev values already loaded;
-with a `NODE_ENV=development` line inside `.env` the `??=` was a no-op
-entirely), and an app preload that validates env at import crashed or captured
-wrong values before any CLI code could fix anything.
+Why this matters: the mode must be resolved before any .env loads, not after.
+Setting `NODE_ENV ??= 'production'` in CLI code is too late — dev values are
+already loaded, and a `NODE_ENV=development` line inside `.env` makes the `??=`
+a no-op entirely. And an app preload that validates env at import would capture
+wrong values before any CLI code could fix them.
 
 ## The CLI: hermetic process, explicit env mode
 
-The `point0` bin (`packages/engine/src/cli.ts`) starts with:
+The `point0` bin (`packages/engine/src/cli.ts`) ships a flag-free shebang:
 
 ```
-#!/usr/bin/env -S bun --no-orphans --no-env-file --config=/dev/null
+#!/usr/bin/env bun
 ```
 
-- `--no-orphans` (bun >= 1.3.14 — hence the `engines` field in
-  `@point0/engine`): ties the CLI's process tree to its parent — out of scope
-  here, see [dev-lifecycle](./dev-lifecycle.md).
-- `--no-env-file` (bun >= 1.3.3): no .env auto-loading; process.env is the
-  genuine shell environment.
-- `--config=/dev/null`: the app's bunfig (and so its preload) never runs in the
-  CLI process. The CLI does not need it — see "who needs plugins" below.
-- `env -S` splits the shebang into arguments (macOS, Linux). Windows shims and
-  direct `bun .../cli.js` runs bypass the shebang — detected via
-  `process.execArgv` and handled by a legacy fallback (below).
+It is deliberately flag-free: passing flags needs `env -S` to split them, and
+Bun's Windows bin shim mis-parses `-S` (it takes `-S` as the interpreter and
+dies with `interpreter "-S" not found`), so a flagged shebang would make
+`point0` unlaunchable on Windows. The flags the CLI wants are handled in code
+instead:
+
+- `--no-env-file` (don't let Bun auto-load a .env cascade for the wrong,
+  startup-derived NODE_ENV) is the job of `applyEnvMode` below — each command
+  resolves its own mode and makes process.env the genuine shell environment plus
+  exactly that mode's cascade. Since the flag-free shebang lets Bun auto-load on
+  every platform, the genuine environment is recovered from the native OS env
+  block (`env-os.ts`), which Bun's JS-only auto-load never touches.
+- `--no-orphans` (bun >= 1.3.14 — hence the `engines` field in `@point0/engine`)
+  ties each dev/build child's process tree to its parent — it is passed on every
+  spawn, not on the shebang; out of scope here, see
+  [dev-lifecycle](./dev-lifecycle.md).
+- The app's bunfig (and so its preload) never runs in the CLI process: the CLI
+  imports the engine directly and does not need it — see "who needs plugins"
+  below.
 
 Every command that imports the user engine (`dev`, `build`, `generate`,
 `compile`, `trace`, `prune`) calls `applyEnvMode`
@@ -57,13 +66,17 @@ the user's `engine.ts` reads `process.env` at module scope. It:
    `--env NODE_ENV=...` > shell-exported NODE_ENV > the command default
    (**production for build, development for everything else**). Invalid values
    throw.
-2. Loads the right-mode cascade into process.env. **There is no hand-rolled
-   dotenv parser**: a short-lived bun child is spawned in the app cwd with the
-   current env plus the target NODE_ENV, and whatever its auto-load added is
-   copied over (shell-wins precedence and $REF expansion are therefore Bun's
-   own, forever). The probe passes `--config=<empty tmp bunfig>` so the app's
-   bunfig never runs in probes either (note: `--config` must be the `=` form —
-   with a space bun treats the value as a script path).
+2. Makes process.env the genuine shell environment, then loads the right-mode
+   cascade on top. Because the shebang is flag-free, Bun auto-loads a cascade on
+   every launch, so `restoreGenuineEnv` clears process.env and reinstates it
+   wholesale from the native OS block (`readOsEnviron`), with no diffing and no
+   risk of dropping a real shell export. **There is no hand-rolled dotenv
+   parser**: a short-lived bun child is spawned in the app cwd with the genuine
+   env plus the target NODE_ENV, and whatever its auto-load added is copied over
+   (so shell-wins precedence and $REF expansion are Bun's own). The probe passes
+   `--config=<empty tmp bunfig>` so the app's bunfig never runs in probes either
+   (note: `--config` must be the `=` form — with a space bun treats the value as
+   a script path).
 3. Sets `process.env.NODE_ENV` to the resolved mode and stores a one-line
    summary in the hidden `POINT0_ENV_MODE_LOG` env var — the logger isn't
    configured yet at this point, so the engine logs it later
@@ -78,16 +91,11 @@ ever loaded; `cross-env NODE_ENV=...` still works (genuine shell env wins over
 the default) but is no longer needed; `point0 dev --mode test` /
 `point0 build --mode development` do what they say.
 
-**Legacy fallback** (shebang bypassed): Bun already polluted process.env with a
-startup cascade. `repairStartupEnv` re-reads those files through a bun probe and
-drops every entry whose value matches the file value (NODE_ENV included when it
-merely echoes the files). Two documented caveats (shell var that coincidentally
-equals the file value; $REF-of-shell-var mismatch) exist ONLY on this path — the
-shebang path never deletes anything.
-
 ## The explicit preload convention (no ambient preload)
 
-Apps do NOT have a main `preload = [...]` in bunfig anymore (only `[test]`).
+Apps have no `preload = [...]` in bunfig at all anymore — the in-repo examples'
+bunfig carries only `[run] noOrphans`; an app that ships a test suite adds a
+`[test].preload` pointing at its test setup (e.g. start0), nothing else.
 `src/preload.ts` stays — it is the app's process-initialization file, but it is
 **imported explicitly** by the processes that need it, never run ambiently:
 
@@ -95,8 +103,8 @@ Apps do NOT have a main `preload = [...]` in bunfig anymore (only `[test]`).
   `entry: { main: './index.server.ts' }`, used for dev AND build):
 
   ```ts
-  await import('./preload')
-  await import('./app.server')
+  await import('./preload.js')
+  await import('./app.server.js')
 
   export {} // only dynamic imports here — the order matters; this marks the file as a module for TS
   ```
@@ -104,7 +112,7 @@ Apps do NOT have a main `preload = [...]` in bunfig anymore (only `[test]`).
 - `src/preload.ts` — no guards, no conditions ("called means called"):
 
   ```ts
-  import { engine } from './engine'
+  import { engine } from './engine.js'
 
   await engine.preload({
     nodeEnvFallback: 'development',
@@ -134,29 +142,29 @@ Apps do NOT have a main `preload = [...]` in bunfig anymore (only `[test]`).
 default filter matches every ts/js/md/mdx outside node_modules anywhere on disk,
 which is why it must never run in foreign processes). Per process:
 
-| process                          | plugins from                                                                                                                             |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| point0 CLI (dev/build/generate)  | NONE — generate is static analysis (Walker), builds pass plugins explicitly to `Bun.build`/vite                                          |
-| dev server child                 | `index.server.ts` → `preload.ts`                                                                                                         |
-| client dev child                 | generated bunfig `[serve.static]` (bun-static re-imports the engine via `POINT0_STATIC_*` env refs); it runs `engine.applyLogger()` only |
-| built prod server (`dist/`)      | none needed — `Engine.preload` is a no-op when `_point0_env.build.was` (the bundle still contains the call; the gate makes it inert)     |
-| user scripts / tests             | their explicit `await import('@/preload')`                                                                                               |
-| foreign bun tools in the app dir | nothing runs at all — no ambient preload                                                                                                 |
+| process                          | plugins from                                                                                                                                                                                              |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| point0 CLI (dev/build/generate)  | NONE — generate is static analysis (Walker), builds pass plugins explicitly to `Bun.build`/vite                                                                                                           |
+| dev server child                 | `index.server.ts` → `preload.ts`                                                                                                                                                                          |
+| client dev child                 | generated bunfig `[serve.static]` (bun-static re-imports the engine via `POINT0_STATIC_*` env refs); it runs `engine.applyLogger()` only                                                                  |
+| built prod server (`dist/`)      | none — when `_point0_env.build.was` the bundle still runs `Engine.preload`, but the gate forces `preventLoadBunPlugins: true` so only `setEnvVars` runs (the env vars must survive into prod), no plugins |
+| user scripts / tests             | their explicit `await import('@/preload')`                                                                                                                                                                |
+| foreign bun tools in the app dir | nothing runs at all — no ambient preload                                                                                                                                                                  |
 
 Because the CLI no longer runs the app preload,
 `engine.dev/build/buildWatch/ generate` call `this.applyLogger()` themselves so
 the orchestrator's logs use the app's logger config.
 
-### Why the old guard died
+### No guard inside preload.ts
 
-`preload.ts` used to wrap everything in
-`if (engine.isFileInEngineDir() || engine.isCliFile())` to keep point0's plugins
-out of foreign bun tools. But the guard ran AFTER `import { engine }` — a
-foreign tool still executed the whole app engine module (~500ms import of the
-engine dependency graph, plus any module-scope side effects). With no ambient
-preload, foreign tools execute nothing, the guard has no job, and
-`Bun.main`-based heuristics are gone from the system. The only gate left inside
-`Engine.preload` is the objective `_point0_env.build.was` check.
+`preload.ts` has no guard — it runs unconditionally ("called means called").
+There is nothing to guard against: with no ambient bunfig preload, a foreign bun
+tool in the app dir imports nothing of point0's, so the plugins can only load in
+processes that explicitly import `preload.ts`. A guard would also be too late to
+help — it sits after `import { engine }`, so reaching it already means the whole
+app engine module (~500ms of dependency-graph import, plus any module-scope side
+effects) has run. The only gate left inside `Engine.preload` is the objective
+`_point0_env.build.was` check.
 
 ### Engine file must be side-effect free
 
@@ -180,8 +188,7 @@ app conventions as the examples.
 
 ## Runtime (out of scope here)
 
-`bun dist/server/app.server.js` run locally without NODE_ENV still gets Bun's
+`bun dist/server/index.server.js` run locally without NODE_ENV still gets Bun's
 own development-cascade auto-load — the CLI can't help a process it doesn't
 start. On platforms NODE_ENV comes from the environment; locally use
-`bun run start` knowing `.env`/`.env.development` apply. If this ever hurts, the
-wrapper entry could pin it, but that's a deliberate non-goal for now.
+`bun run start` knowing `.env`/`.env.development` apply.

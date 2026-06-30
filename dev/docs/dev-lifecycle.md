@@ -1,31 +1,31 @@
-# Dev-tree lifecycle: one invariant, no bookkeeping (the 2026-06 simplification)
+# Dev-tree lifecycle: one invariant, no bookkeeping
 
 How the `point0 dev` process tree (orchestrator + server child + client
 children) is tied together and torn down. The model is deliberately primitive —
 **a process dies with its parent, period** — and everything else follows from
 it. The code is [dev-shutdown.ts](../../packages/engine/src/dev-shutdown.ts)
-(~100 lines, the only lifecycle module) plus the bind loop in
+(~135 lines, the only lifecycle module) plus the bind loop in
 [server.ts](../../packages/engine/src/server.ts) `serve`.
 
-This replaced a much heavier design (dev lockfiles keyed by cwd+ports, a
-`point0 stop` command, reap-on-start, `ps`-based PID/port identity verification
-before every kill). All of it existed to answer one question — "how do we find
-and kill a tree we lost?" — and the honest fix was to make losing a tree
-impossible instead. If you are tempted to reintroduce any of it, first re-read
-"What we deliberately do NOT do" below.
+There is no PID bookkeeping — no lockfile, no `point0 stop`, no reap-on-start,
+no `ps`-based identity checks before a kill. Those all exist to find and kill a
+tree you lost; the invariant makes losing a tree impossible, so the whole
+problem they solve is gone. Before reintroducing any of it, re-read "What we
+deliberately do NOT do" below.
 
 ## The invariant and who enforces it
 
 **No point0 process can outlive whatever launched it.**
 
 - **`--no-orphans`** (bun >= 1.3.14 — the reason for `@point0/engine`'s
-  `engines` field) sits in the CLI shebang (`cli.ts`). A flagged process exits
-  when its _parent_ dies — even by SIGKILL (Linux: `PR_SET_PDEATHSIG`; macOS:
-  kqueue `NOTE_EXIT`) — and on its own exit SIGKILLs every descendant, with Bun
-  re-verifying parentage before each kill so recycled PIDs are safe. The flag is
-  inherited by nested bun processes, so the dev children and `build --watch`'s
-  spawned builds are covered automatically (the dev spawns also pass it
-  explicitly for direct `bun .../cli.js` runs that bypass the shebang).
+  `engines` field) is passed explicitly on the dev child spawns
+  (`bun run --no-orphans …` in `server.ts`/`client.ts`); the CLI shebang stays
+  flag-free so `point0` launches through Bun's Windows shim. A flagged process
+  exits when its _parent_ dies — even by SIGKILL (Linux: `PR_SET_PDEATHSIG`;
+  macOS: kqueue `NOTE_EXIT`) — and on its own exit SIGKILLs every descendant,
+  with Bun re-verifying parentage before each kill so recycled PIDs are safe.
+  The flag is inherited by nested bun processes, so each spawn's own children
+  are covered automatically.
 - **`[run] noOrphans = true`** in each app's `bunfig.toml` (examples + the
   create-app template) extends the same invariant one level up, to the user's
   `bun run dev` wrapper: terminal dies — even SIGKILLed — wrapper dies → CLI
@@ -58,8 +58,8 @@ bun 1.3.14).
 
 point0 **never kills a port holder**. Since trees cannot leak, a busy port
 always means a _live_ process someone owns — another dev instance in a second
-terminal, some unrelated server. Killing it (the old takeover/`killPort`
-behavior) is exactly how a dev tool murders an innocent process.
+terminal, some unrelated server. Killing it is exactly how a dev tool murders an
+innocent process.
 
 - Under the orchestrator (`POINT0_DEV_CHILD=true`) the server child binds with
   patient retries up to `POINT0_DEV_BIND_TIMEOUT_MS` (10s) — respawns are
@@ -76,14 +76,9 @@ behavior) is exactly how a dev tool murders an innocent process.
 
 - **No lockfile / PID registry.** A lockfile is a claim that goes stale the
   moment an orchestrator is SIGKILLed; acting on stale claims means signaling
-  recycled PIDs and sweeping ports now owned by innocent processes. We tried the
-  verified version (ps-based identity checks) — it worked, but it was a pile of
-  subtle code solving a problem the invariant removes outright. That full
-  implementation (lockfile keyed by cwd+ports, `point0 stop`, reap-on-start,
-  `ps`-verified kills, honest stale-lock reporting) is preserved on the
-  **`devlock-hygiene` branch** — if a real need ever brings it back (e.g. heavy
-  native-Windows demand), start from there, not from scratch; its Windows path
-  is unverified-legacy and would still need PowerShell-based identity checks.
+  recycled PIDs and sweeping ports now owned by innocent processes. The
+  invariant removes the problem a registry exists to solve, so there is no
+  registry to keep honest.
 - **No `point0 stop`.** Nothing can be running that you don't already own a
   terminal/parent for.
 - **No port takeover.** See above; the clear error is the feature.

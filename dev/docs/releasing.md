@@ -9,10 +9,10 @@ thing that publishes**. Pushing code never releases — you release by tagging.
 
 ## Two channels, one branch
 
-| Version                   | git tag           | npm dist-tag | Auth                                                              |
-| ------------------------- | ----------------- | ------------ | ----------------------------------------------------------------- |
-| prerelease `x.y.z-next.N` | `vX.Y.Z-next.N`   | `next`       | `NPM_TOKEN` now → OIDC at launch (provenance for public packages) |
-| stable `x.y.z`            | `vX.Y.Z`          | `latest`     | same                                                              |
+| Version                   | git tag         | npm dist-tag | Auth              |
+| ------------------------- | --------------- | ------------ | ----------------- |
+| prerelease `x.y.z-next.N` | `vX.Y.Z-next.N` | `next`       | OIDC + provenance |
+| stable `x.y.z`            | `vX.Y.Z`        | `latest`     | OIDC + provenance |
 
 The channel is derived from the **version itself** (prerelease vs stable), not
 from a branch. The **tag ↔ version invariant** is enforced by
@@ -28,9 +28,9 @@ never resolves a prerelease.
 ## The scripts
 
 - [`scripts/release.ts`](../../scripts/release.ts) (`bun run release`) — bumps
-  the version everywhere (lockstep), fixes dep ranges, promotes the changelog (on
-  a stable cut), then **commits + tags** `v<version>`. You run it locally; it
-  pushes nothing. Add `--no-git` to bump only.
+  the version everywhere (lockstep), fixes dep ranges, promotes the changelog
+  (on a stable cut), then **commits + tags** `v<version>`. You run it locally;
+  it pushes nothing. Add `--no-git` to bump only.
 - [`scripts/publish.ts`](../../scripts/publish.ts) (`bun run publish:packages`)
   — publishes to npm, dist-tag from the version, `--provenance` for public
   packages. CI runs it from the tag; it's idempotent (skips versions already on
@@ -63,34 +63,24 @@ git show v<version>           # review — nothing is pushed yet
 git push origin main --follow-tags   # the TAG triggers CI to build → test → publish
 ```
 
-What the tag run does ([`.github/workflows/release.yml`](../../.github/workflows/release.yml)):
-build → **tests** → tag guard → `publish:packages`. The dist-tag (`next` /
-`latest`) comes from the version.
+What the tag run does
+([`.github/workflows/release.yml`](../../.github/workflows/release.yml)): build
+→ **tests** → tag guard → `publish:packages`. The dist-tag (`next` / `latest`)
+comes from the version.
 
 **Tests on a release:**
+
 - A **stable** tag always runs the full test matrix — it can never be skipped.
-- A **prerelease** tag runs it too, but you can skip it by putting `--skip-tests`
-  (or `--skip-tests=windows`) in the release commit message — the commit already
-  passed CI as a PR, so re-testing is optional. See
+- A **prerelease** tag runs it too, but you can skip it by putting
+  `--skip-tests` (or `--skip-tests=windows`) in the release commit message — the
+  commit already passed CI as a PR, so re-testing is optional. See
   [`scripts/ci-decide.ts`](../../scripts/ci-decide.ts) for the full flag set.
-
-## Launch switches (one-time, going public)
-
-See [dev/backlog/launch.md](../backlog/launch.md). Flip every
-`publishConfig.access` to `public`; remove `"private": true` from
-`packages/create-app`; configure an npm **Trusted Publisher** for each
-`@point0/*` package (repo + `release.yml`) and drop the `NPM_TOKEN` secret to
-switch to OIDC; make the repo public; protect `main` (no force-push/delete,
-require PR + green CI, linear history) and add tag protection for `v*`. Until the
-Trusted Publisher exists, keep `NPM_TOKEN` set — the publish job uses it
-automatically when present, OIDC when not.
 
 ## Notes
 
-- **GitHub setup** (one-time): repo Actions secret `NPM_TOKEN` (granular,
-  `@point0` read+write) for the token phase; remove it at launch to switch to
-  OIDC. There is **no** `SKIP_TESTS` repo variable — test control lives in commit
-  flags now.
-- `create-point0-app` is `private: true` (unscoped → can't be private on npm),
-  so it's skipped while private and goes public at launch.
-```
+- **Publishing is OIDC + provenance.** Each `@point0/*` package has an npm
+  **Trusted Publisher** (this repo + `release.yml`), so CI publishes with
+  provenance and no `NPM_TOKEN`. There is **no** `SKIP_TESTS` repo variable —
+  test control lives in commit flags.
+- `create-point0-app` publishes **public** (unscoped), alongside the `@point0/*`
+  packages.

@@ -189,10 +189,10 @@ any key on any point.
 | `UseQueryOptions`                                     | the options type the point's `useQuery` accepts                                    |
 | `UseQueryResult`                                      | the result type of the point's `useQuery`                                          |
 | `FetchServerOutput`                                   | the server-loader output if present, else `never`                                  |
-| `FetchOutput`                                         | the final loader output (client wins over server)                                  |
+| `FetchOutput`                                         | the loader output (whichever the point has, server or client)                      |
 | `ServerQueryFiniteData` / `ClientQueryFiniteData`     | server / client finite-query data                                                  |
 | `ServerQueryInfiniteData` / `ClientQueryInfiniteData` | server / client infinite-query data                                                |
-| `QueriedFiniteData` / `QueriedInfiniteData`           | final finite / infinite data (client over server)                                  |
+| `QueriedFiniteData` / `QueriedInfiniteData`           | final finite / infinite data                                                       |
 | `ServerQueryData` / `ClientQueryData`                 | server / client query data, shaped by result type                                  |
 | `QueriedData`                                         | **the canonical data key** — final query data, react-query-shaped                  |
 | `ServerExecuteResult`                                 | the full server-execution result (`{ ctx, data, response, redirect, error, … }`)   |
@@ -203,9 +203,10 @@ any key on any point.
 
 For most data extraction, reach for **`QueriedData`** (the final, react-query
 shaped data) or **`FetchOutput`** (the raw loader output). The `Server*` /
-`Client*` variants and the `*FiniteData` / `*InfiniteData` split exist for
-points that have both a server and a client loader, or for distinguishing finite
-from infinite shaping — you rarely need them directly.
+`Client*` variants name the output of whichever loader the point uses — a point
+has exactly one, server or client, never both — and the `*FiniteData` /
+`*InfiniteData` split distinguishes finite from infinite shaping; you rarely
+need them directly.
 
 There is no `Location` key on `point.Infer` — location types belong to
 [Navigation](navigation) (`InferNavigation`), not to the point.

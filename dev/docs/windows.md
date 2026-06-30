@@ -19,12 +19,12 @@ frames garble.
 
 The fix is always the same shape: normalize at the boundary with
 [`toPosixPath`](../../packages/compiler/src/utils.ts), **not** scattered
-`if (process.platform === 'win32')` branches at call sites. It's defined once in
-the compiler; the engine imports it directly from `@point0/compiler` at each
-site (no re-export), so there's a single implementation. The helper itself is
-the one place that branches on the OS: off Windows it's the identity function
-(only Windows uses `\` as a separator, so there's nothing to convert — and a `\`
-is a legal filename char on macOS/Linux). Node's `fs`, `Bun.file` and
+`if (process.platform === 'win32')` branches at call sites. The path-identity
+boundaries below all import the compiler's one `toPosixPath` directly from
+`@point0/compiler` (no re-export), so they share a single helper. The helper
+itself is the one place that branches on the OS: off Windows it's the identity
+function (only Windows uses `\` as a separator, so there's nothing to convert —
+and a `\` is a legal filename char on macOS/Linux). Node's `fs`, `Bun.file` and
 `node:path` all accept `/` on Windows, so a normalized path stays usable
 everywhere.
 
@@ -83,8 +83,8 @@ implementations, not workarounds:
   `server.ts`, `client.ts`, and the test helpers in `tests/utils/process.ts`.)
 - **The bun dev server's cwd must be the app root.** Bun's HTMLBundle dev server
   only watches files under its cwd for HMR (oven-sh/bun#19479). Running it in
-  the generated temp dir left every app source unwatched, so edits never
-  rebundled — the bug long mis-blamed on "Bun HMR doesn't work on Windows".
+  the generated temp dir leaves every app source unwatched, so edits never
+  rebundle — this is a watch-root problem, not a Bun HMR defect.
   [client.ts](../../packages/engine/src/client.ts) pins `cwd` to the app root
   and passes `--config=<tempDir/bunfig.toml>` (the `=` form is required — a
   space makes bun's `run` parser swallow the script path and exit 0 silently).
@@ -105,7 +105,7 @@ implementations, not workarounds:
   (the test project factories do this).
 - **Timeouts are flat and generous, no platform branch.** Windows spawns/builds
   are slower, so the slow engine test files set a roomy `setDefaultTimeout`
-  (60–80s) and a couple of `waitOutput` calls pass an explicit timeout. Don't
+  (45–80s) and a couple of `waitOutput` calls pass an explicit timeout. Don't
   reintroduce a `win32 ? … : …` conditional or a multiplier helper — a generous
   flat value is enough and reads cleaner.
 - **Run pointwise, reap between runs.** Never run the whole suite (`bun test`) —
@@ -134,5 +134,4 @@ Headed Chromium under Bun on Windows is unavailable:
 `chromium.launch({ headless: false })` fails `uv_spawn EUNKNOWN` and headed
 `chrome.exe` hits a side-by-side ("SxS") configuration error; even headless
 `launch()` hangs. The CDP + chrome-headless-shell path is the workaround, and it
-works regardless. The headed/SxS failure may be partly box-specific — worth
-re-checking on a clean Windows box.
+works regardless.

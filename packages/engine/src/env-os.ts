@@ -8,9 +8,10 @@ import nodeFs from 'node:fs'
 // "subtract". This module reads it directly, so the CLI can ignore Bun's JS-level injection entirely
 // and load the cascade for the mode IT resolves — see env-files.ts.
 //
-// We only need this on platforms/launchers where Bun could not be told `--no-env-file` up front (the
-// Windows bin shim can't carry the flag through a `#!/usr/bin/env -S` shebang). When the flag did
-// take effect, Bun never loaded anything and `process.env` already equals the genuine environment.
+// We need this on every normal launch: the cli.ts shebang is deliberately flag-free, so Bun is never
+// told `--no-env-file` up front and always auto-loads its cascade into the JS `process.env` (a flagged
+// `#!/usr/bin/env -S` shebang would mis-parse on Bun's Windows shim — see cli.ts). Only if something
+// external passes `--no-env-file` does Bun load nothing, leaving `process.env` already genuine.
 
 /**
  * Windows: kernel32 GetEnvironmentStringsW returns the genuine process environment block (UTF-16, double-NUL

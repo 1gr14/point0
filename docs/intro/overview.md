@@ -2,8 +2,9 @@
 index: 100
 title: Overview
 description:
-  The Point0 framework, end to end — the announcement article, every feature
-  walked through by example.
+  A fullstack TypeScript framework on Bun — your whole app, pages to endpoints,
+  from one typed building block.
+video: https://www.youtube.com/watch?v=TODO
 ---
 
 I want to announce my framework, Point0. It is the first Bun FullStack framework
@@ -33,7 +34,7 @@ The article is long; it describes the main features of the Point0 framework, but
 only the most interesting parts and in the form of code examples. A deeper
 description lives on the documentation pages.
 
-Read everything up to and including the "Root" section — this is the most
+Read everything up to and including the "Root point" section — this is the most
 important part, and it takes 5 minutes to read. After that, if you get tired,
 skim through, glancing at the headings and the pieces of code that catch your
 attention. Read "Engine" and "CLI". Keep skimming down to "Deploy", and read

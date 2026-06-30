@@ -87,13 +87,14 @@ The server `.loader` is **server-only** — cut from the client bundle: its body
 and the imports it uses are removed, so it never ships to the browser. Stays in
 the server build (it runs on the server).
 
-A mutation can have a server loader, a client loader, or both:
+A mutation has exactly one loader — either a server loader or a client loader,
+never both (see [one loader per point](loader#one-loader-per-point)):
 
 ```tsx
-// server loader → cut from the client bundle (body + imports gone); the mutation is an HTTP endpoint
+// either: a server loader → cut from the client bundle (body + imports gone); the mutation is an HTTP endpoint
 .loader(async ({ input }) => ({ idea: await prisma.idea.create({ data: input }) }))
 
-// clientLoader only → cut from the server bundle (body + imports gone); no server request at all
+// or: a client loader → cut from the server bundle (body + imports gone); no server request at all
 .clientLoader(async ({ input }) => ({ ok: await callSomeBrowserApi(input) }))
 ```
 
@@ -404,6 +405,9 @@ removed); `.clientOn` is **client-only** — cut from the server bundle (body +
 imports removed); `.tag`, `.on`, and `.fetchOptions` are **server-and-client** —
 not cut from either bundle, kept in both (isomorphic).
 
-Defaults (`.mutationOptions`) live on the [root](root) / [base](base) /
-[plugin](plugin) above the mutation, not on the mutation itself — it's
+This mutation's own react-query options are the argument to the closing
+`.mutation({...})` (see [react-query options](#react-query-options)); chain-wide
+defaults come from `.mutationOptions(...)` on the [root](root) / [base](base) /
+[plugin](plugin) above — there is no `.mutationOptions` method on the mutation
+itself. Both the closing `.mutation({...})` and `.mutationOptions` are
 **server-and-client**: not cut from either bundle, kept in both (isomorphic).

@@ -4,10 +4,10 @@ import { log as defaultLog, type LogFn } from '@point0/core'
  * Shutdown coordinator for the `point0 dev` process tree (orchestrator + server child + client children).
  *
  * The lifecycle model is deliberately primitive — one invariant: **a process dies with its parent.** Every bun process
- * in the tree runs with `--no-orphans` (the CLI shebang; inherited by nested bun processes; bun >= 1.3.14), so killing
- * the orchestrator — even with SIGKILL — takes the whole tree down at the kernel level, and apps set `[run] noOrphans =
- * true` in their bunfig so the `bun run dev` wrapper itself dies with the terminal. There are no lockfiles, no PID
- * bookkeeping, no port sweeps: a process that cannot be orphaned never needs to be found later.
+ * in the tree runs with `--no-orphans` (passed explicitly on each spawn; inherited by nested bun processes; bun >=
+ * 1.3.14), so killing the orchestrator — even with SIGKILL — takes the whole tree down at the kernel level, and apps
+ * set `[run] noOrphans = true` in their bunfig so the `bun run dev` wrapper itself dies with the terminal. There are no
+ * lockfiles, no PID bookkeeping, no port sweeps: a process that cannot be orphaned never needs to be found later.
  *
  * What `--no-orphans` does NOT provide is _graceful_ teardown — it SIGKILLs. That is this coordinator's only job: on
  * Ctrl-C / SIGTERM / SIGHUP (or a core child dying unexpectedly) give every child a _catchable_ SIGTERM and a grace

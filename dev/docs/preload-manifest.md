@@ -36,7 +36,8 @@ standalone or fighting the bootstrap.)
 ## The manifest
 
 Each client writes `dist/client/_point0/preload.json`
-([`PRELOAD_MANIFEST_RELPATH`](../../packages/engine/src/preload-manifest.ts)):
+([`PRELOAD_MANIFEST_PATH_SEGMENTS`](../../packages/engine/src/preload-manifest.ts)
+= `['_point0', 'preload.json']`):
 
 ```jsonc
 {
@@ -117,13 +118,13 @@ chunk or inlines it into the page chunk, the layout's code lands in `byPoint`.
 
 **Always generated, best-effort, never fatal.** `engine.build` (and
 `buildWatch`) always run `generator.sync` first — there is no "build without
-generate" (the flag was removed: skipping it would ship a stale aggregator and
-leave no points to map). So the in-memory points are always populated for the
-mapping. On top of that it's still defensive: resolving the page sources is
-wrapped in try/catch in `engine.build` (a glitch logs a `warn` via `engine.log`
-and leaves `preloadPageSources` empty), and the manifest write is wrapped the
-same way in `EngineClient.writePreloadManifest` — either way the feature
-degrades to entry-closure-only and never fails the build.
+generate": skipping it would ship a stale aggregator and leave no points to map.
+So the in-memory points are always populated for the mapping. On top of that
+it's still defensive: resolving the page sources is wrapped in try/catch in
+`engine.build` (a glitch logs a `warn` via `engine.log` and leaves
+`preloadPageSources` empty), and the manifest write is wrapped the same way in
+`EngineClient.writePreloadManifest` — either way the feature degrades to
+entry-closure-only and never fails the build.
 
 ## Serve side — injection
 
@@ -143,11 +144,11 @@ returns true. Two reasons it might not:
 - **Dev (and the builder process).** `buildWas` is `_point0_env.build.was`, true
   _only_ in the built, prod-serve runtime — the same signal the dev servers gate
   on. In dev nothing is bundled (there are no `/chunk-*.js` to point at), so the
-  feature must be inert. Crucially this holds **even when a stale
+  feature must be inert. This holds **even when a stale
   `dist/client/_point0/preload.json` is present** (e.g. the user ran
   `point0 build` once, then `point0 dev`): without the gate that leftover
-  manifest would leak hashed prod chunk links into dev-served HTML — the exact
-  regression this gate prevents.
+  manifest would leak hashed prod chunk links into dev-served HTML, so the gate
+  keys on `buildWas`, never on "a manifest exists".
 - **The env kill switch.** `POINT0_MODULE_PRELOAD=false` (also `0` / `off`)
   disables the feature entirely, in prod too. It's checked in **both**
   directions: serve-time injection here, and manifest emission at build time
@@ -155,8 +156,8 @@ returns true. Two reasons it might not:
   even produced. Default is on (any other / unset value).
 
 The decision lives in two **pure** helpers (`shouldServeModulePreload`,
-`isModulePreloadDisabledByEnv`) so the policy — including the dev guard that the
-regression slipped through — is locked by unit tests, not just integration ones.
+`isModulePreloadDisabledByEnv`) so the policy — including the dev guard — is
+locked by unit tests, not just integration ones.
 
 ## Maintenance notes
 
@@ -167,9 +168,9 @@ regression slipped through — is locked by unit tests, not just integration one
 - **Prod-build-only, gated — not "dev has no manifest".** The feature is off in
   dev because of the `shouldServeModulePreload` gate above, **not** because the
   file is absent: a `dist` from an earlier `point0 build` does leave a manifest
-  behind, and dev would happily read it without the gate. Never relax the
-  `buildWas` check to "manifest exists" — that's the regression. See the Gating
-  section.
+  behind, and dev would read it without the gate. Never relax the `buildWas`
+  check to "manifest exists" — that would leak prod chunk links into dev HTML.
+  See the Gating section.
 - **Load-bearing bundler facts:** the bun metafile `imports[].kind` distinction
   (static vs dynamic) and rollup's `imports` vs `dynamicImports`. If a bun
   upgrade changes the metafile shape, `chunkGraphFromBunMetafile` is where to
@@ -180,11 +181,6 @@ regression slipped through — is locked by unit tests, not just integration one
   Layouts are intentionally NOT resolved — a page statically imports its
   layouts, so their chunks ride the page chunk's static closure (a unit test and
   the integration test's layout case pin this).
-- **The "duplicate entry script" that isn't.** The served HTML may _look_ like
-  it has two `<script type="module" src="…">` for the entry, but the second is
-  inside an HTML comment (the commented-out example line in
-  `src/index.client.html`, whose `src` the bun build-fix incidentally rewrites).
-  The DOM has exactly one active entry script — verified.
 
 ## Files & tests
 

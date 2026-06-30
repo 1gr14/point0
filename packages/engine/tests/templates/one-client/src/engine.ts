@@ -5,7 +5,6 @@ export const engine = Engine.create({
   ssr: true,
   server: {
     scope: 'root',
-    devWatchGlob: ['**/*.{ts,tsx,mdx}'],
     entry: { main: './index.server.ts' },
     points: async () => await import('./lib/points.server.js'),
     generate: { points: './lib/points.server.ts' },

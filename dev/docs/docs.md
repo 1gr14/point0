@@ -10,10 +10,9 @@ any prose.
 - **The slug is the filename, and it is GLOBALLY UNIQUE.** The category is only
   navigation decoration — it is **not** in the URL. The path on the site is
   built from the slug alone (`1gr14.dev/point0/latest/<slug>`). That's why the
-  example pages are `example-basic`, `example-vite`, … (the bare `basic`/`vite`
-  would have been fine too, but the `example-` prefix keeps them unmistakable
-  and reserves the short names). When you add a page, the slug must not collide
-  with any existing one.
+  example pages are `example-basic`, `example-vite`, … — the `example-` prefix
+  keeps them unmistakable and reserves the short names. When you add a page, the
+  slug must not collide with any existing one.
 - **`docs/categories.json`** lists the categories in nav order: `intro`,
   `points`, `methods`, `core`, `engine`, `extra`, `examples`. Register a new
   category here the first time it gets a page.
@@ -61,7 +60,7 @@ short version:
   voice, no hype without a number or example. Use the short `.lets` notation in
   examples.
 - **Source of truth, in priority order:** the overview article
-  (`~/cc/agents/files/point0-intro.md`) for voice + canonical snippets → the
+  (`~/cc/agents/posts/point0/long.md`) for voice + canonical snippets → the
   **code** (`packages/*/src`) → **tests** (`packages/*/tests`) → **examples/** →
   **start0** (`~/cc/projects/start0/src`). **Code wins over prose.** What you
   can't confirm in code/tests, you do NOT invent — leave a TODO (below).
@@ -120,20 +119,21 @@ and prunes the now-dead imports, so the dependency never lands in that bundle.
 
 - **server-only** — cut from the **client** bundle. `.ctx`, the server
   `.loader`, `.input`, `.body`, `.headers`, `.cookies`, `.middleware`,
-  `.serverOn`, `.response`, `.openapi`, `.models`, `.description`, the `.action`
-  server fn. `.params`/`.search` are server-only **only on an action**
-  (isomorphic on a non-action mountable).
+  `.serverOn`, `.serverOnPrefetchPage`, `.response`, `.openapi`, `.models`,
+  `.description`, the `.action` server fn. `.params`/`.search` are server-only
+  **only on an action** (isomorphic on a non-action mountable).
 - **client-only** — cut from the **server** bundle, regardless of SSR.
-  `.clientLoader`, `.clientInput`, `.clientOn`, `.scrollRestore`,
-  `.scrollPosition`, `.prefetchPageOnNavigate`, `.prefetchPageOnLinkHover`,
-  `.prefetchPagePolicy`.
+  `.clientLoader`, `.clientInput`, `.clientOn`, `.clientOnPrefetchPage`,
+  `.scrollRestore`, `.scrollPosition`, `.prefetchPageOnNavigate`,
+  `.prefetchPageOnLinkHover`, `.prefetchPagePolicy`.
 - **server-and-client** — not cut from either bundle (isomorphic). Closers
   `.root`/`.base`/`.plugin`/`.query`/`.infiniteQuery`/`.mutation`;
   `.queryOptions` + the `*QueryOptions` family + `.mutationOptions` +
   `.fetchOptions`; `.transformer`/`.errorClass`/`.serverUrl`/`.clientUrl`/
   `.schemaHelper`/`.tag`/`.on`/`.use`; `.relatedQuery`; `.onPrefetchPage` (the
   one prefetch method that runs on both the client and server prefetch); and
-  `.input`/`.params`/`.search` on a non-action mountable.
+  `.params`/`.search` on a non-action mountable (`.input` is always
+  server-only).
 - **server-ssr-and-client** — cut from the **server** bundle when `ssr:false`
   (or after a `.clientOnly()` earlier in the chain — it makes the rest behave as
   `ssr:false`); kept in the server build only under SSR, in the client build
@@ -146,11 +146,12 @@ and prunes the now-dead imports, so the dependency never lands in that bundle.
 
 **Carry these notes where the method is documented:**
 
-- **`.onPrefetchPage`** — **server-and-client**: the one prefetch method that is
-  NOT client-only. It runs in the browser on client-side prefetch AND during
-  server-side prefetch (the engine warms a page through `point._prefetchPage`,
-  which iterates `_onPrefetchMountableFns`), so the compiler keeps it in both
-  bundles. The other prefetch triggers
+- **`.onPrefetchPage`** — **server-and-client**: the one prefetch method kept in
+  BOTH bundles (`.serverOnPrefetchPage` is server-only, `.clientOnPrefetchPage`
+  and the rest are client-only). It runs in the browser on client-side prefetch
+  AND during server-side prefetch (the engine warms a page through
+  `point._prefetchPage`, which iterates `_onPrefetchMountableFns`), so the
+  compiler keeps it in both bundles. The other prefetch triggers
   (`.prefetchPageOnNavigate`/`.prefetchPageOnLinkHover`) stay client-only.
 - **`.relatedQuery`** — DOES add its query to the `queries` array (same as a
   `.with(query)` result). The difference is **prefetch**: a related query is
@@ -183,11 +184,11 @@ long version; JSDoc is the short one). Conventions:
 ## Adjacent artifacts
 
 - **`docs/intro/overview.md`** is a faithful English translation of the
-  announcement article `~/cc/agents/files/point0-intro.md` (intro + body +
+  announcement article `~/cc/agents/posts/point0/long.md` (intro + body +
   Production + Plans; Справка/P.S. dropped; doc links relativized to bare
   slugs). Edit the **article** first, then re-sync the translation.
-- **`~/cc/agents/files/point0-intro.en.md`** is the dev.to English version of
-  the same article (one-to-one, absolute links, VK Video + Telegram removed,
+- **`~/cc/agents/posts/point0/long.en.md`** is the dev.to English version of the
+  same article (one-to-one, absolute links, VK Video + Telegram removed,
   everyone funneled to Discord). It reuses the overview translation.
 - **Root `README.md`** = the overview text (links made absolute) wrapped in the
   canonical 1gr14 header (card image + tagline + badges) and footer.
@@ -240,8 +241,8 @@ perl -0777 -ne 'while(/<!--\s*TODO\((high|med|low)\):\s*(.*?)\s*-->/gs){my($p,$t
 ## Pointers
 
 - Announcement article (source of voice + overview):
-  `~/cc/agents/files/point0-intro.md` (RU), `…/point0-intro.en.md` (EN dev.to).
+  `~/cc/agents/posts/point0/long.md` (RU), `…/long.en.md` (EN dev.to).
 - Compiler strip map: `packages/compiler/src/point.ts:1014-1170`.
-- The 11k-line builder: `packages/core/src/point0.ts` — grep, never read whole.
+- The 13k-line builder: `packages/core/src/point0.ts` — grep, never read whole.
 - Writing guides: **1gr14-docs** (structure) + **1gr14-voice** (tone) in the
   agents repo.

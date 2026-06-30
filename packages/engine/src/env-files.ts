@@ -9,9 +9,10 @@ import { readOsEnviron } from './env-os.js'
 // command resolves its OWN target mode from flags and we load that mode's cascade ourselves, into
 // process.env, before the user's engine file is imported (it reads process.env at module scope).
 //
-// Keeping Bun from auto-loading needs the `--no-env-file` flag on the process up front. The cli.ts
-// shebang sets it on POSIX, but a Windows bin shim can't carry the flag — so there Bun DOES
-// auto-load. Crucially, Bun mutates only the JS `process.env`; the process's native OS environment
+// Keeping Bun from auto-loading would need the `--no-env-file` flag on the process up front, but the
+// cli.ts shebang is deliberately flag-free on every platform (a Windows bin shim can't carry shebang
+// flags — see cli.ts), so Bun auto-loads its cascade on every launch. Crucially, Bun mutates only the
+// JS `process.env`; the process's native OS environment
 // block stays pristine (no .env values). So on that path we simply restore process.env to the
 // genuine block via readOsEnviron() — no diffing, no "unloading", nothing to subtract — and then
 // proceed identically to the hermetic path. See env-os.ts.
@@ -86,11 +87,12 @@ const probeBunEnvFiles = ({ cwd, env }: { cwd: string; env: Record<string, strin
 }
 
 /**
- * Restore process.env to the genuine shell environment when Bun auto-loaded a .env cascade at startup (the non-hermetic
- * path — a Windows bin shim can't pass `--no-env-file`). Bun's auto-load only ever ADDS to the JS process.env, leaving
- * the native OS block untouched, so the genuine environment is exactly readOsEnviron(): clear process.env and reinstate
- * it. No diffing, no mode-guessing, no risk of dropping a real shell export. Returns false when the platform's native
- * block can't be read, so the caller can fall back to Bun's process.env as-is (best effort).
+ * Restore process.env to the genuine shell environment when Bun auto-loaded a .env cascade at startup (the normal path
+ * — the flag-free cli.ts shebang never passes `--no-env-file`, so Bun auto-loads on every platform). Bun's auto-load
+ * only ever ADDS to the JS process.env, leaving the native OS block untouched, so the genuine environment is exactly
+ * readOsEnviron(): clear process.env and reinstate it. No diffing, no mode-guessing, no risk of dropping a real shell
+ * export. Returns false when the platform's native block can't be read, so the caller can fall back to Bun's
+ * process.env as-is (best effort).
  */
 const restoreGenuineEnv = (): boolean => {
   const genuine = readOsEnviron()
@@ -122,9 +124,9 @@ export type ApplyEnvModeResult = {
   /** Env files now in effect, in load order. */
   files: string[]
   /**
-   * True when Bun was hermetic at startup (`--no-env-file` took effect, e.g. the POSIX shebang) so process.env was
-   * already the genuine shell environment. False when Bun had auto-loaded a cascade and process.env was restored from
-   * the native OS block first.
+   * True when Bun was hermetic at startup (`--no-env-file` was on `process.execArgv`) so process.env was already the
+   * genuine shell environment — rare, since the cli.ts shebang is flag-free. Normally false: Bun auto-loaded a cascade
+   * and process.env was restored from the native OS block first.
    */
   cleanStart: boolean
 }

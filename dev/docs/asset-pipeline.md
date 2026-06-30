@@ -1,11 +1,9 @@
 # Asset pipeline — technical reference
 
-> Maintainer-facing reference for point0's static-asset pipeline — the single
-> doc for this feature (how it works, why, config, code map, tests, what
-> remains). Branch: `assets-pipeline`. Status: **complete & verified on both
-> bundlers — Bun and Vite, dev + build, all modes
-> (`?url`/`?file`/`?text`/`?raw`/`?react`). Assets are part of the compiler
-> plugin (Model A). Only user-facing docs remain (deferred).**
+> Maintainer-facing reference for point0's static-asset pipeline — how it works,
+> why, config, code map, tests. Works on both bundlers (Bun and Vite), dev +
+> build, all modes (`?url`/`?file`/`?text`/`?raw`/`?react`). Assets are part of
+> the compiler plugin.
 
 ## What it is
 
@@ -39,9 +37,9 @@ import Logo from './logo.svg?react' // a React component (SVGR), svg only
   404s on nested routes (the browser resolves `./x` against the current path).
   `publicPath: '/'` on the server build is **not** an option — Bun also prefixes
   **chunk** imports, so the server can't load its own chunks.
-- **Decision:** point0 owns asset URLs via one plugin that computes the URL by
-  its own content hash, identical on both sides. This generalizes the original
-  dev-only fix into a real cross-bundler pipeline.
+- **Why ours:** point0 owns asset URLs via one plugin that computes the URL by
+  its own content hash, identical on both sides — the only way both bundles
+  agree by construction rather than coincidence.
 
 ## How it works under the hood
 
@@ -87,20 +85,20 @@ dist/server/**.js                       ← references the same string; no file 
 
 ### Modes
 
-| Import           | Mode  | Result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ---------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| bare / `?url`    | url   | served URL string. url-mode bytes written to `urlDir` (client build / dev cache).                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `?file`          | file  | **Server-side use** (the value is a real fs path read at runtime; the browser has no fs — don't render it into a hydrated page). bytes copied into the plugin's own `fileDir`; value is `new URL('./<hash>.ext', import.meta.url).pathname` — resolves next to the emitted **server** chunk at runtime, cwd-independent. In dev (no `fileDir`) it returns the original source path. The runtime-path trick is verified on the server build; client-side `?file` is unsupported (a browser can't read it). |
-| `?text` / `?raw` | text  | the file's utf-8 contents inlined as a `string`. No bytes written.                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `?react`         | react | an SVGR-generated React component (`loader: 'jsx'`). **svg only** — throws for other extensions. `@svgr/core` is lazy-imported.                                                                                                                                                                                                                                                                                                                                                                           |
+| Import           | Mode  | Result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| bare / `?url`    | url   | served URL string. url-mode bytes written to `urlDir` (client build / dev cache).                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `?file`          | file  | **Server-side use** (the value is a real fs path read at runtime; the browser has no fs — don't render it into a hydrated page). bytes copied into the plugin's own `fileDir`; value is `fileURLToPath(new URL('./<hash>.ext', import.meta.url))` — resolves next to the emitted **server** chunk at runtime, cwd-independent (`fileURLToPath`, not `URL.pathname`, so the path is usable on Windows). In dev (no `fileDir`) it returns the original source path. Client-side `?file` is unsupported (a browser can't read it). |
+| `?text` / `?raw` | text  | the file's utf-8 contents inlined as a `string`. No bytes written.                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `?react`         | react | an SVGR-generated React component (`loader: 'jsx'`). **svg only** — throws for other extensions. `@svgr/core` is lazy-imported.                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 ## Configuration — `compiler.assets`
 
 The pipeline **rides along with the compiler**: it is only active for a side
 whose compiler is enabled. A `compiler: false` side (pure backend, client-only,
 etc.) keeps the **bundler's native asset behavior** — point0 does not touch its
-imports. This is a deliberate behavior choice (it replaces the earlier "always
-on" gating).
+imports. This gating is deliberate: a side that doesn't own its build can't
+produce a consistent client==server URL, so point0 stays out of its way.
 
 ```ts
 compiler: {
@@ -108,7 +106,7 @@ compiler: {
   assets: true | false | {
     enabled?: boolean       // default true; false disables the pipeline for an otherwise-enabled compiler
     extensions?: string[]   // managed extensions; defaults to DEFAULT_ASSET_EXTENSIONS
-    defaultMode?: 'url' | 'file' | 'text' | 'react'  // how a bare import resolves; default 'url'
+    defaultMode?: 'url' | 'file' | 'text' | 'react' | false  // how a bare import resolves; default 'url'. false → bare goes native, explicit queries stay managed
     svgr?: import('@svgr/core').Config               // SVGR options for ?react
   }
 }
@@ -175,13 +173,14 @@ only on the extension list, not on points), so it is emitted via a dedicated
 
 ## Key code locations
 
-- **All asset logic:** `packages/compiler/src/assets.ts` —
-  `applyAssetsBunPlugin` (registers the onResolve/onLoad hooks on a build; the
-  compiler plugin calls this so assets ride inside it), `makeAssetsBunPlugin` (a
-  thin standalone wrapper, kept for unit tests / bring-your-own-bundler), the
-  modes, `DEFAULT_ASSET_EXTENSIONS`, the constants (`ASSET_URL_PREFIX`,
-  `resolveAssetsCacheDir`, `assetNameRegex`), and the d.ts helper
-  `generateAssetsDts`. Re-exported through the `@point0/compiler` barrel.
+- **All asset logic:** `packages/compiler/src/assets.ts` — `makeAssetsBunPlugin`
+  (the standalone `BunPlugin` factory that builds the onResolve/onLoad hooks,
+  kept for unit tests / bring-your-own-bundler), `applyAssetsBunPlugin` (the
+  thin wrapper `makeAssetsBunPlugin(o).setup(build)` the compiler plugin calls
+  so assets ride inside it), the modes, `DEFAULT_ASSET_EXTENSIONS`, the
+  constants (`ASSET_URL_PREFIX`, `resolveAssetsCacheDir`, `assetNameRegex`), and
+  the d.ts helper `generateAssetsDts`. Re-exported through the
+  `@point0/compiler` barrel.
 - **Assets are a first-class `Compiler` field:** `compiler.ts` carries `assets`
   on the `Compiler` instance next to `filter`/`markdown`/`babel` (the ctor +
   `create` store it; `CompilerOptions.assets` feeds it). `plugin/bun.ts`
@@ -240,12 +239,12 @@ full dev/build apps + Playwright.
 
 ```sh
 cd packages/engine
-bun test tests/assets.test.tsx -t "unit"          # 17 fast unit tests (no app spawn)
+bun test tests/assets.test.tsx -t "unit"          # 23 fast unit tests (no app spawn)
 bun test tests/assets.test.tsx -t "integration"   # 4 integration tests: {bun,vite} × {dev,build}
 ```
 
 Without a `FOCUS_BUN`/`FOCUS_VITE` focus, integration runs for **both** bundlers
-(→ 21 pass). The Vite tests need `esbuild`, which is a root **devDependency**
+(→ 27 pass). The Vite tests need `esbuild`, which is a root **devDependency**
 (see Environment notes) — it ships with the repo install, so the suite runs
 as-is; it is _not_ a published/peer dependency.
 
@@ -275,7 +274,7 @@ its length must match the source).
 
 ```sh
 cd examples/basic && bun run setup && bun run build       # setup = prisma generate + sqlite (needed once); png+svg in home.tsx
-SERVER_PORT=4490 CLIENT_PORT=4491 SERVER_URL=http://localhost:4490 NODE_ENV=production bun run ./dist/server/app.server.js &
+SERVER_PORT=4490 CLIENT_PORT=4491 SERVER_URL=http://localhost:4490 NODE_ENV=production bun run ./dist/server/index.server.js &
 curl -s --retry 60 --retry-connrefused http://localhost:4490/ | grep -o '<img[^>]*>'   # src must be /_point0/assets/<hash>.* (absolute)
 curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://localhost:4490/_point0/assets/<hash>.png   # 200 image/png
 # and: no relative './' leak in dist/server; the only bytes copy is in dist/client/_point0/assets
@@ -308,16 +307,15 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://localhost:4490/_
   `waitStarted`. Close heavy apps first (an earlier run was wrecked by a game at
   load avg 36).
 
-## Remaining work
-
-### Step 5 — Vite parity (DONE & verified)
+## Vite path
 
 Same `?url`/`?file`/`?text`/`?raw`/`?react` API under Vite as on Bun, dev +
-build. Locked decision: **lean on Vite's natives** where they exist; point0 only
-takes over what Vite lacks. All of it lives in `compilerVitePlugin`
-(`enforce: 'pre'`, so it wins over Vite's asset plugin for the queries it
-claims; `isBuild` captured from `configResolved`). No second Vite plugin and no
-extra wiring — it already receives `compilerOptions.assets`.
+build. Design: **lean on Vite's natives** where they exist; point0 only takes
+over what Vite lacks. All of it lives in `compilerVitePlugin` (`enforce: 'pre'`,
+so it wins over Vite's asset plugin for the queries it claims; the dev-vs-build
+signal comes from `compiler.built`, set per-build by the engine — not from
+Vite's `config.command`). No second Vite plugin and no extra wiring — it already
+receives `compilerOptions.assets`.
 
 - **`?url` / `?raw` / bare → Vite native.** `viteAssetMode` returns `null` for
   these, so `load` falls through to Vite's own asset handling: dev → its dev URL
@@ -335,30 +333,16 @@ extra wiring — it already receives `compilerOptions.assets`.
 - **`?file` → server-readable path.** Dev (or no `fileDir`): the source path on
   disk. Build: copy the bytes to the build `fileDir` (threaded at the
   client/server `getViteConfigForBuild` sites) and return
-  `new URL('./<hash>.<ext>', import.meta.url).pathname` — the same shape as Bun,
-  resolving next to the emitted server chunk.
+  `fileURLToPath(new URL('./<hash>.<ext>', import.meta.url))` — the same shape
+  as Bun, resolving next to the emitted server chunk.
 
-Verified end-to-end on both bundlers, dev + build: `?text`/`?react` rendered in
-the page (SSR **and** client, no hydration mismatch), `?file` read by a server
-action. The test template's `vite.config.ts` dropped `vite-plugin-svgr` (point0
-now owns `?react`); `@vitejs/plugin-react` stays for the app's own JSX.
+The test template's `vite.config.ts` carries no `vite-plugin-svgr` (point0 owns
+`?react`); `@vitejs/plugin-react` stays for the app's own JSX.
 
-### Step 6 — User-facing docs (later — out of scope here)
+### Why assets live inside the compiler plugin
 
-How users reference the generated `assetsTypes` d.ts and the query API. To be
-written with the rest of the public docs; **not** part of this work — the only
-deliberately-deferred item.
-
-### Step 7 — Finalize (DONE)
-
-All modes green on both bundlers, dev + build (`FOCUS_BUN`/`FOCUS_VITE`, 19 +
-19; 21 unique). Types clean (`engine`; `compiler` has only pre-existing
-`@babel/*` `@types` noise on untouched files). Nothing committed.
-
-### Resolved — assets are part of the compiler plugin (Model A)
-
-**Decision:** assets are handled _inside_ the compiler plugin, not as a second
-plugin. Rationale (essence, not convenience):
+Assets are handled _inside_ the compiler plugin, not as a second plugin — so a
+future maintainer doesn't split them back out. Rationale:
 
 - Deciding what `import x from './x.png'` _means_ is the compiler's job — the
   same category of work as the `.md`/`.mdx` and env-const transforms the
@@ -374,12 +358,9 @@ plugin. Rationale (essence, not convenience):
   stays in `assets.ts`; the compiler plugin merely _invokes_ it
   (`applyAssetsBunPlugin`). One plugin ≠ one blob.
 
-What this removed vs. the old hybrid: the standalone `plugin/assets.ts` bunfig
-entry, the `@point0/compiler/plugin/assets` subpath, and the
-`POINT0_ASSETS_OPTIONS` env — assets now ride inside the compiler options
-already threaded everywhere (incl. `POINT0_STATIC_COMPILER_OPTIONS` to the dev
-child). The Vite query forms (Step 5) likewise live in `compilerVitePlugin`
-rather than a second Vite plugin.
+Assets ride inside the compiler options already threaded everywhere (incl.
+`POINT0_STATIC_COMPILER_OPTIONS` to the dev child); the Vite query forms live in
+`compilerVitePlugin`, not a second Vite plugin.
 
 ## Decisions locked
 
@@ -393,15 +374,11 @@ rather than a second Vite plugin.
 - The pipeline is **compiler-gated**: `compiler: false` keeps native bundler
   behavior on that side.
 - **Assets are part of the compiler plugin, not a second plugin** — config lives
-  in `compiler.assets`, the pipeline rides inside `compilerBunPlugin` (and will
-  inside `compilerVitePlugin`). See "Resolved" above for the reasoning.
-- Rename was hard (no back-compat shims): `dev-ssr-fix-assets` → `assets`,
-  constants `DEV_SSR_FIX_ASSETS_*` → `ASSET_*` / `assetNameRegex` /
-  `resolveAssetsCacheDir`. The old `POINT0_DEV_SSR_FIX_ASSETS` env kill-switch
-  was dropped entirely — the pipeline is governed by config alone
-  (`compiler: false` / `assets: false` / `enabled: false`), consistent with
-  every other compiler feature. point0 is pre-release (`dev` stage), so no
-  aliases were kept.
+  in `compiler.assets`, the pipeline rides inside `compilerBunPlugin` and
+  `compilerVitePlugin`. See "Why assets live inside the compiler plugin" above.
+- The pipeline is governed by config alone (`compiler: false` / `assets: false`
+  / `enabled: false`), consistent with every other compiler feature — there is
+  no env kill-switch.
 - Vite uses its **native** asset URLs (lean-on-natives); point0 does not re-own
   asset URLs in Vite. Vite _dev_ → Vite's dev URL (e.g. `/logo.svg`); Vite
   _build_ → `/assets/…` (inline `data:` under 4 KB). Both `/`-absolute, SSR ==

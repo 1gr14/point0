@@ -330,8 +330,9 @@ export const makeAssetsBunPlugin = (options: CompilerAssetsOptions = {}): BunPlu
 
 /**
  * Apply the asset pipeline's Bun hooks to an existing build, so assets ride _inside_ the single `point0-compiler`
- * plugin (they're gated on the compiler being enabled — see `compiler.assets`). The standalone
- * {@link makeAssetsBunPlugin} (kept for unit tests and bring-your-own-bundler use) just wraps this.
+ * plugin (they're gated on the compiler being enabled — see `compiler.assets`). A thin wrapper over the standalone
+ * {@link makeAssetsBunPlugin} factory (`makeAssetsBunPlugin(options).setup(build)`), which is kept for unit tests and
+ * bring-your-own-bundler use.
  */
 export const applyAssetsBunPlugin = (
   build: Parameters<NonNullable<BunPlugin['setup']>>[0],

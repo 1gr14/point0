@@ -475,7 +475,7 @@ export class Engine<
     normalizeAndValidateNodeEnv('development')
 
     // Dev process-tree lifecycle: the tree (this orchestrator + server child + client children) lives and dies as one
-    // unit. `--no-orphans` (CLI shebang, inherited by every bun child) ties the tree to its parent at the kernel level
+    // unit. `--no-orphans` (passed explicitly on each dev/build spawn, inherited by every bun child) ties the tree to its parent at the kernel level
     // — no PID bookkeeping needed; `installDevShutdown` owns the orchestrator's signal handling so a teardown (Ctrl-C,
     // SIGTERM, an unexpected child death) gives every child a graceful SIGTERM + grace window — a developer's own
     // shutdown handlers run — before SIGKILL. See dev/docs/dev-lifecycle.md.

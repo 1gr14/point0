@@ -16,14 +16,15 @@ byte-for-byte what npm will serve at launch. See
 **1. In the point0 checkout — start the registry (keep it running):**
 
 ```sh
-bun run local-registry          # build + publish all 8 packages, then serve on :4873
+bun run local-registry          # build + publish all 9 packages, then serve on :4873
 bun run local-registry --skip-build   # reuse the current dist/ (faster)
 ```
 
 It boots Verdaccio on `http://localhost:4873` with a wiped temp storage and
-publishes `@point0/core, compiler, engine, react-dom, cors, openapi, basic-auth`
-and `create-point0-app` at their current version. Leave the process up; Ctrl-C
-stops it and wipes the storage.
+publishes
+`@point0/core, compiler, engine, react-dom, cors, openapi, basic-auth, docs` and
+`create-point0-app` at their current version, under the `next` dist-tag. Leave
+the process up; Ctrl-C stops it and wipes the storage.
 
 **2. In the consumer project — point `@point0` at it and install.**
 
@@ -34,20 +35,29 @@ Add an `.npmrc` (keep it out of git — it must never deploy):
 //localhost:4873/:_authToken=local
 ```
 
-and depend on the packages with normal ranges (not `file:`):
+and depend on the packages with normal ranges (not `file:`). Packages are
+published under the `next` dist-tag, so `"next"` is the simplest range — it
+always resolves to whatever the registry currently serves:
 
 ```jsonc
-"@point0/core": "^0.1.0",
-"@point0/engine": "^0.1.0"
+"@point0/core": "next",
+"@point0/engine": "next"
 ```
 
-then `bun install`. Only `@point0/*` is routed to localhost; every other dep
-still comes from the real npm registry.
+A plain semver range (`"^0.1.0"`) also resolves, since the published version
+still lives in the registry's version list regardless of the dist-tag. Then
+`bun install`. Only `@point0/*` is routed to localhost; every other dep still
+comes from the real npm registry.
 
-> In **igrich** and **start0** this is automated by `bun install-point0.js` — it
-> writes the gitignored `.npmrc`, force-reinstalls `@point0/*`, and restores the
-> gitignored worktree bits (`.env*`, Prisma client). Run
-> `bun run local-registry` in point0 first.
+> In **igrich** and **start0** this is automated by
+> `bun install-point0.js local` — it rewrites the **committed** `.npmrc` to the
+> Verdaccio line and marks it (plus `bun.lock`) `git skip-worktree` so the
+> override never commits, force-reinstalls `@point0/*`
+> (`rm -rf node_modules/@point0` + `bun install --force`), then symlinks the
+> gitignored `.env*` (in a worktree) and regenerates the Prisma client.
+> `bun install-point0.js npm` switches back to the committed npm default; bare
+> (no arg) just prints the current mode. Run `bun run local-registry` in point0
+> first.
 
 ## Refresh after changing point0
 
@@ -56,15 +66,17 @@ bun caches by version — so a plain `bun install` won't notice. To pick up
 changes:
 
 1. In point0: restart `bun run local-registry` (rebuilds + republishes).
-2. In the consumer: `bun install-point0.js` (does `rm -rf node_modules/@point0`
-   - `bun install --force`), or manually
-     `rm -rf node_modules/@point0 && bun install --force`.
+2. In the consumer: `bun install-point0.js local` (does
+   `rm -rf node_modules/@point0` + `bun install --force`), or manually
+   `rm -rf node_modules/@point0 && bun install --force`.
 
 ## Disable / go back to npm
 
 Remove the `.npmrc` (or its `@point0:registry` line) and `bun install` —
-`@point0/*` then resolves from the real registry again. At launch the ranges
-stay as-is (`^0.1.0` etc.); only the `.npmrc` line goes away.
+`@point0/*` then resolves from the real registry again. A `"next"` range keeps
+tracking the npm `next` dist-tag; swap it for a pinned semver range to lock onto
+a published version. Either way, only the `.npmrc` line is
+local-registry-specific.
 
 ## Troubleshooting
 

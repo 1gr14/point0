@@ -209,12 +209,12 @@ export const settingsQuery = root.lets
   .query()
 ```
 
-The client loader's argument has `data`, `serverData` (the server loader's
-output, if any), `response` (the server `Response`, if any), and the parsed
-client inputs (`input` from `.clientInput`, plus `params` and `search`). Its
-return shapes match the server loader, **minus** the `[status, data]` tuple —
-status is a server concern. A `RedirectTask` redirects, an `Error` (thrown or
-returned) shows the error state, `undefined` is empty data `{}`.
+The client loader's argument has `data`, `response` (the server `Response`, if
+any), and the parsed client inputs (`input` from `.clientInput`, plus `params`
+and `search`). Its return shapes match the server loader, **minus** the
+`[status, data]` tuple — status is a server concern. A `RedirectTask` redirects,
+an `Error` (thrown or returned) shows the error state, `undefined` is empty data
+`{}`.
 
 A query whose only loader is a `.clientLoader` runs entirely in the browser and
 has **no HTTP endpoint** (and no [OpenAPI](openapi) entry). A `.loader` makes
@@ -312,5 +312,5 @@ your own error class — anything with the shape of the default `ErrorPoint0`. S
 
 The client loader (`.clientLoader`) takes the same return values **except** the
 `[status, data]` tuple, and a `Response` only on a mutation. Its argument is
-`{ data, serverData, response }` plus the parsed client inputs (`input`,
-`params`, `search`) — no `ctx`, `request`, `set`, or `points`.
+`{ data, response }` plus the parsed client inputs (`input`, `params`, `search`)
+— no `ctx`, `request`, `set`, or `points`.

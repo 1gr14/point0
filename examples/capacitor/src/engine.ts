@@ -7,7 +7,6 @@ export const engine = Engine.create({
   generate: { assetsTypes: './lib/assets.d.ts' },
   server: {
     scope: 'site',
-    devWatchGlob: ['**/*.{ts,tsx}'],
     port: 3000,
     entry: { main: './index.server.ts' },
     generate: { points: './lib/points.server.ts' },

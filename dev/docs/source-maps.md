@@ -2,9 +2,9 @@
 
 **Status: LANDED & verified.** In dev, `point0` compiles user source to a
 different shape/location than the original (the content-addressed hot store, and
-onLoad-transformed sources), so a thrown error's `Error.stack` used to point at
-the compiled file with compiled line numbers. This doc explains why, what
-does/doesn't work under Bun, and the solution we shipped.
+onLoad-transformed sources), so without remapping a thrown error's `Error.stack`
+points at the compiled file with compiled line numbers. This doc explains why,
+what does/doesn't work under Bun, and the solution we shipped.
 
 ## The problem
 
@@ -25,16 +25,7 @@ does/doesn't work under Bun, and the solution we shipped.
    and uses its own map → store path. `.js`: Bun ignores our inline map.)
    esbuild plugins, `Bun.build` sourcemaps, `NODE_OPTIONS=--enable-source-maps`,
    `BUN_*` env — none make Bun read our maps at runtime.
-2. **~~`POINT0_BUN_COMPILER_EXPERIMENTAL_FIX` (babel
-   `retainLines`/preserveFormat)~~ — REMOVED (2026-06-06).** It kept compiled
-   lines == original lines so a store frame showed the correct LINE (but still
-   the store PATH) without runtime maps. `source-map-support` now does that job
-   better (PATH **and** line, default-on, no syntax risk), so the flag — opt-in,
-   off-by-default, and risky (preserveFormat reuses source spans → can emit
-   broken syntax) — was deleted from the compiler. Its one residual edge (fixing
-   the LINE for the Bun-native-reporter path in item 3) wasn't worth the
-   complexity; that path is an accepted limit.
-3. **Bun's `console.error(errorObject)`, `console.trace()`, and uncaught errors
+2. **Bun's `console.error(errorObject)`, `console.trace()`, and uncaught errors
    bypass the JS `.stack` getter entirely** — Bun's native error reporter
    formats them itself. Proven: set `e.stack = 'SENTINEL'`, then
    `console.error(e)` still prints the compiled path, ignoring the mutation.
@@ -75,9 +66,9 @@ don't need Bun to honor anything — we remap.
   (`AAAA;AACA;…`) with `sources: [originalAbs]` for those files. (onLoad doesn't
   need this — an unmodified file's onLoad frame already shows the original
   path:line.)
-- **Enabler:** the compiler cache bug fix. `getSettingsHash` did not include
-  `map`/`hmrFix`, so a `map:false` result was served for a `map:true` request (→
-  no map). Now the cache partitions on `map` + `hmrFix`.
+- **Cache partitioning.** `getSettingsHash` includes `map` + `hmrFix` in the key
+  — they change the emitted output, so without them a `map:false` result would
+  be served for a `map:true` request (→ no map). Don't drop them from the key.
 
 ## Coverage
 
@@ -148,8 +139,8 @@ map does NOT reach your real line. Investigated live (`examples/basic`, bun dev,
     `EngineClient.buildByBun` rewrites every `dist/client/*.js.map` — for each
     source that carries our embedded inline map, hand it to `remapping` so the
     chain collapses to `bundle → original`, then relativize sources back to the
-    map dir (drop `file://` / build-machine abs paths). Gated on
-    `NODE_ENV==='production'` (external maps) + our compiler running. Verified
+    map dir (drop `file://` / build-machine abs paths). Gated solely on our
+    compiler running (`compilerPlugin.length > 0`), any `NODE_ENV`. Verified
     end-to-end on `examples/basic`: build logs
     `re-chained 12/18 client chunk maps`, and `chunk-*.js.map`'s
     `sourcesContent` for home.tsx went from the 417-line intermediate (markers)
@@ -169,9 +160,8 @@ map does NOT reach your real line. Investigated live (`examples/basic`, bun dev,
       served map.
     - The only interception point is a **proxy in front** of the dev server
       (fetch Bun's map from an inner server, re-chain, return) — but that proxy
-      must pass through Bun's **HMR websocket**, and HMR here is the area the
-      code explicitly flags as fragile ("hmr will be always enabled… please do
-      not try this… Very hard to debug", client.ts `startDevServer`). High risk
+      must pass through Bun's **HMR websocket**, the fragile part of `client.ts`
+      `startDevServer` (HMR is enabled by default and hard to debug). High risk
       for a dev-only DX gain.
     - **Why deferring is fine:** our compiler already emits a CORRECT
       `intermediate → original` inline map in the dev bundle too (verified — the
@@ -186,11 +176,11 @@ map does NOT reach your real line. Investigated live (`examples/basic`, bun dev,
   (complex/modified page) and `src/pages/smin.tsx:4` (minimal/unmodified page
   via the identity map), 0 store-path mentions — for both `--hot` and non-hot
   dev.
-- Tests: `dev.test.ts` → `describe('dev source maps (bun-native)')` (hot +
-  non-hot guards), and **`'keeps error stack'` is now un-gated for bun** (was
-  `it.if(bundler !== 'bun')`, skipped per bun#6173). The proof is its **page2**
-  case — a loader (SERVER-side) throw: with SMS _disabled_ the bun SSR stack
-  reports the COMPILED line `page.tsx:18`, with SMS it remaps to the original
+- Tests: `dev-source-maps.test.ts` → `describe('dev source maps (bun-native)')`
+  (hot + non-hot guards), and `dev-bundler.test.ts` → **`'keeps error stack'`,
+  un-gated for bun** (runs for both bundlers). The proof is its **page2** case —
+  a loader (SERVER-side) throw: with SMS _disabled_ the bun SSR stack reports
+  the COMPILED line `page.tsx:18`, with SMS it remaps to the original
   `page.tsx:23`. That 18→23 delta (confirmed by a one-off `POINT0_DISABLE_SMS`
   probe) is the genuine, non-coincidental evidence the onLoad+registry pipeline
   works under bun.
@@ -220,7 +210,7 @@ map does NOT reach your real line. Investigated live (`examples/basic`, bun dev,
   wire-format helpers from `@point0/compiler`.
 - `packages/compiler/src/plugin/bun.ts` — onLoad map registration (imports from
   `sourcemap.ts`).
-- `packages/compiler/src/compiler.ts` — `getSettingsHash` (cache key now
-  includes `map`/`hmrFix`).
+- `packages/compiler/src/compiler.ts` — `getSettingsHash` (cache key includes
+  `map`/`hmrFix`).
 - Dep: `source-map-support` (+ `@types/source-map-support`) in the root
   catalog + engine.

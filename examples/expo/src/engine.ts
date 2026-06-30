@@ -13,7 +13,6 @@ export const engine = Engine.create({
     entry: { main: './index.server.ts' },
     generate: { points: './generated/point0/points.server.ts' },
     points: async () => await import('./generated/point0/points.server'),
-    devWatchGlob: ['**/*.{ts,tsx}', '!generated/point0/meta.ts'],
     outdir: '../dist/server',
   },
 })
