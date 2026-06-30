@@ -5,6 +5,14 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.4 — 2026-06-30
+
+- Dev hot-store now rewrites import specifiers via AST instead of a text regex,
+  so a specifier that appears quoted inside a string or template literal (e.g. an
+  `import …` shown as a code sample on a page) is no longer corrupted in the
+  dev-served / SSR'd output — only real import / export-from / dynamic-import /
+  require source positions are rewritten.
+
 ## 0.1.3 — 2026-06-29
 
 - `.with` now keeps the query of a callable (component) point passed to it: the

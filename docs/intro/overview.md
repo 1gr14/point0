@@ -4,7 +4,7 @@ title: Overview
 description:
   A fullstack TypeScript framework on Bun — your whole app, pages to endpoints,
   from one typed building block.
-video: https://www.youtube.com/watch?v=TODO
+video: https://www.youtube.com/watch?v=lhZ6eWMXMdg
 ---
 
 I want to announce my framework, Point0. It is the first Bun FullStack framework
