@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { cancel, confirm, intro, isCancel, outro, select, text } from '@clack/prompts'
+import { cancel, confirm, intro, isCancel, note, outro, select, text } from '@clack/prompts'
 import { spawnSync } from 'node:child_process'
 import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
@@ -78,7 +78,16 @@ program
         await installDependencies(appName)
         await setupProject(appName)
       }
-      outro(`Project "${appName}" created successfully with (${useVite ? 'vite' : 'bun'}) bundler.`)
+      // Lead with `cd <app>` (this ran in the user's shell, now back in the parent) unless created in place. The name is
+      // echoed verbatim — no `path` recompute — so it pastes back on POSIX and Windows. If install was skipped, spell
+      // out install + setup first.
+      const steps = [
+        ...(appName === '.' ? [] : [`cd ${appName.includes(' ') ? `"${appName}"` : appName}`]),
+        ...(shouldInstall ? [] : ['bun install', 'bun run setup']),
+        'bun dev',
+      ].join('\n')
+      note(steps, 'Next steps')
+      outro(`Project "${appName}" created successfully with the ${useVite ? 'vite' : 'bun'} bundler.`)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       cancel(message)

@@ -5,6 +5,11 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- `create-point0-app`: after scaffolding, it now prints a "Next steps" note —
+  `cd <app>` (unless created in place) then `bun dev`, and `bun install` +
+  `bun run setup` first when `--no-install` was used — instead of ending on a
+  bare "created successfully" line.
+
 ## 0.1.6 — 2026-07-01
 
 - `create-point0-app`: the template now ships a real `public/robots.txt`
