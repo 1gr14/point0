@@ -4,7 +4,9 @@ name: CI
 # publishes — publishing lives in release.yml and is reachable only via a `v*` tag.
 #
 # Triggers:
-#   pull_request → main   the real gate: every PR runs the full matrix (forks run WITHOUT secrets).
+#   pull_request → main   the real gate: runs the full matrix (forks run WITHOUT secrets), UNLESS the PR
+#                         is docs-only (EVERY changed file is *.md) — then decide returns an empty matrix
+#                         and the `gate` job is the only check that runs. The single required check is `gate`.
 #   push (not main)       a maintainer branch can opt in to a run via a commit-message flag
 #                         (--run-tests[=os]); without it, only the cheap `decide` job runs.
 # `main` is deliberately NOT gated on push: it only changes via an already-tested PR or a release
@@ -36,10 +38,27 @@ jobs:
       oses: ${{ steps.d.outputs.oses }}
       slow: ${{ steps.d.outputs.slow }}
     steps:
+      # fetch-depth: 0 so the docs-only diff below has both the PR base and head commits available.
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      # On a PR, the changed-file set decides whether the whole matrix can be skipped (docs-only diff).
+      # `A...B` is the PR delta from the merge-base; a diff failure yields an empty list → decide runs the
+      # full matrix (never skips blind).
+      - id: changed
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          {
+            echo 'files<<__EOF__'
+            git diff --name-only "$BASE_SHA...$HEAD_SHA" || true
+            echo '__EOF__'
+          } >> "$GITHUB_OUTPUT"
       - id: d
         # head_commit is empty on pull_request events; ci-decide falls back to `git log -1` then.
         env:
@@ -47,6 +66,7 @@ jobs:
           GITHUB_REF_TYPE: ${{ github.ref_type }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          CHANGED_FILES: ${{ steps.changed.outputs.files }}
         run: bun scripts/ci-decide.ts >> "$GITHUB_OUTPUT"
 
   # Build ONCE (ubuntu-only) → `dist` artifact. The test shards download it instead of each building per-OS,
@@ -63,3 +83,32 @@ jobs:
     with:
       oses: ${{ needs.decide.outputs.oses }}
       slow: ${{ needs.decide.outputs.slow }}
+
+  # The single required status check. Because build/test are reusable-workflow calls, skipping them (a
+  # docs-only PR) makes their nested contexts NEVER report — a bare required `build / build` would then hang
+  # the PR forever. This gate always runs, so exactly one context is always present: it passes when the
+  # stages succeeded OR were legitimately skipped, and fails if any actually failed/was cancelled.
+  # Make the ruleset require `gate` (+ `decide`) instead of `build / build` and the `test / fast …` shards.
+  gate:
+    name: gate
+    needs: [decide, build, test]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require decide green and no stage failure
+        env:
+          DECIDE: ${{ needs.decide.result }}
+          BUILD: ${{ needs.build.result }}
+          TEST: ${{ needs.test.result }}
+        run: |
+          echo "decide=$DECIDE build=$BUILD test=$TEST"
+          if [ "$DECIDE" != "success" ]; then
+            echo "::error::decide did not succeed ($DECIDE)"; exit 1
+          fi
+          for r in "$BUILD" "$TEST"; do
+            if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then
+              echo "::error::a required stage failed ($r)"; exit 1
+            fi
+          done
+          echo "gate ok — stages passed or were skipped (docs-only)"
