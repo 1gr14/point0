@@ -39,8 +39,8 @@ export const engine = Engine.create({
 `plugins` (point0's compiler plugin, already inside — spread it), plus `side`,
 `command`, `mode`, and `scope` to branch on. You only add what you want on top;
 the engine injects `root`, `define`, the SSR/dev middleware, sourcemaps, and
-merges your callback over them. `bun create point0-app --vite` scaffolds this
-wiring (`--no-vite` is the Bun default).
+merges your callback over them. `bun create point0-app@latest --vite` scaffolds
+this wiring (`--no-vite` is the Bun default).
 
 Beyond `engine.ts`, the Vite path differs in a few small ways: `preload.ts`
 passes `preventLoadBunPlugins: true`, `index.html` uses an absolute script src
@@ -67,4 +67,4 @@ key, where Bun names it by source basename; always read the example's own
 This example shows the Vite path in isolation. For a real product, start from
 **[start0](https://1gr14.dev/start0)** — the SaaS boilerplate with auth, admin,
 forms, CRUD, email, and deploy already wired together
-(`bun create start0 my-app`).
+(`bun create start0@latest my-app`).

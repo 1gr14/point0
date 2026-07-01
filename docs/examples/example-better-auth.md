@@ -80,7 +80,7 @@ credentials. See [getting-started](getting-started).
 This example shows auth in isolation. For a real product, start from
 **[start0](https://1gr14.dev/start0)** — it ships this auth setup with social
 providers and more, alongside admin, forms, CRUD, email, and deploy
-(`bun create start0 my-app`).
+(`bun create start0@latest my-app`).
 
 ## What this example adds over basic
 

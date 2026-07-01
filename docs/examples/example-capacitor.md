@@ -64,4 +64,4 @@ Android Studio. See [getting-started](getting-started).
 
 This example shows Point0's web-to-mobile build in isolation. For a real app,
 start from **[start0](https://1gr14.dev/start0)** — the SaaS boilerplate with
-the pieces already wired (`bun create start0 my-app`).
+the pieces already wired (`bun create start0@latest my-app`).

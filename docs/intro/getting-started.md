@@ -9,7 +9,7 @@ The fastest way into Point0 is the scaffolder. One command writes a complete app
 codegen, so you can go straight to the dev server.
 
 ```sh
-bun create point0-app
+bun create point0-app@latest
 # prompts for a name and a bundler (Bun or Vite), installs deps, runs setup
 cd my-app
 bun run dev # http://localhost:3001 (client) + http://localhost:3000 (server)
@@ -26,10 +26,10 @@ Run it with no arguments and it prompts interactively; pass a name and flags to
 skip the prompts:
 
 ```sh
-bun create point0-app my-app          # name as a positional argument
-bun create point0-app my-app --vite   # use Vite for the client bundle
-bun create point0-app my-app --no-install   # scaffold only, don't install
-bun create point0-app my-app -I       # non-interactive, take all defaults
+bun create point0-app@latest my-app          # name as a positional argument
+bun create point0-app@latest my-app --vite   # use Vite for the client bundle
+bun create point0-app@latest my-app --no-install   # scaffold only, don't install
+bun create point0-app@latest my-app -I       # non-interactive, take all defaults
 ```
 
 It scaffolds into `<cwd>/<name>`. If that directory already exists and is not

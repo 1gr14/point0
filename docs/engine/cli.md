@@ -244,8 +244,8 @@ Scaffold a new app. Run it once; it asks for a directory name and a bundler
 `setup`.
 
 ```sh
-bun create point0-app my-app          # interactive
-bun create point0-app my-app --vite --no-interactive
+bun create point0-app@latest my-app          # interactive
+bun create point0-app@latest my-app --vite --no-interactive
 ```
 
 `bun create point0-app` resolves to the `create-point0-app` bin. Flags: `--vite`

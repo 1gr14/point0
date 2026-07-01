@@ -101,7 +101,7 @@ then `bun run start`. See [getting-started](getting-started), [CLI](cli), and
 This example shows Point0 in isolation. For a real product, start from
 **[start0](https://1gr14.dev/start0)** — the SaaS boilerplate with auth, admin,
 forms, CRUD, email, and deploy already wired together
-(`bun create start0 my-app`).
+(`bun create start0@latest my-app`).
 
 ## The other examples
 

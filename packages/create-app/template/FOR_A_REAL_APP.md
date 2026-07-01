@@ -7,7 +7,7 @@ tests, Docker/Railway deploy. Pluggable modules are coming too — swap
 technologies, add whole features.
 
 ```sh
-bun create start0 my-app
+bun create start0@latest my-app
 ```
 
 start0 ships with the [support pack](https://1gr14.dev/support). The full story:

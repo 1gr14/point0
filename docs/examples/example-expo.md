@@ -76,4 +76,4 @@ and `bun run prisma:push`. The server boots through the usual Point0 wiring. See
 
 This example shows Point0 as a React Native data layer in isolation. For a real
 app, start from **[start0](https://1gr14.dev/start0)** — the SaaS boilerplate
-with the pieces already wired (`bun create start0 my-app`).
+with the pieces already wired (`bun create start0@latest my-app`).
