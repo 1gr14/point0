@@ -5,6 +5,15 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.5 — 2026-07-01
+
+- `create-point0-app`: a scaffolded app now gets its `.gitignore` (the template
+  ships it as `gitignore`, since npm strips real dotfiles, and the scaffolder
+  materializes it) and a `.env` copied from `env.example`; the published package
+  no longer ships `template/dev.db` or `template/src/generated`.
+- Template and examples `lib/error.ts` now use the published `@1gr14/error0`
+  redirect / stack plugins instead of the pre-publication local shim.
+
 ## 0.1.4 — 2026-06-30
 
 - Dev hot-store now rewrites import specifiers via AST instead of a text regex,
