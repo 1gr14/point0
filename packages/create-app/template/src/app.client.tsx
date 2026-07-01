@@ -1,14 +1,14 @@
 import { Router, RouterRoutes } from '@/lib/navigation'
 import { UnheadProvider } from '@point0/core/unhead'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+// import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { queryClient } from '@/lib/query-client'
 import { Head } from '@unhead/react'
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ReactQueryDevtools initialIsOpen={true} />
+      {/* <ReactQueryDevtools initialIsOpen={true} /> */}
       <UnheadProvider>
         <Head>
           <link rel="shortcut icon" href="/favicon.ico" />

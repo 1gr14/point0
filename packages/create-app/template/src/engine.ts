@@ -47,13 +47,7 @@ export const engine = Engine.create({
     bunPlugins: ['bun-plugin-tailwind'],
     env: { vars: clientEnvKeys },
     publicdir: {
-      source: [
-        '../public',
-        {
-          '.well-known/appspecific/com.chrome.devtools.json': () => '{}',
-          'robots.txt': () => 'User-agent: *\nDisallow: /',
-        },
-      ],
+      source: '../public',
       outdir: '../dist/client',
     },
     outdir: '../dist/client',

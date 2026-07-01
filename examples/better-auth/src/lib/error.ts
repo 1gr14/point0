@@ -8,7 +8,8 @@ import { responsePlugin } from '@1gr14/error0/plugins/response'
 import { stackPlugin } from '@1gr14/error0/plugins/stack'
 import { statusPlugin } from '@1gr14/error0/plugins/status'
 
-export const AppError = Error0.use(statusPlugin())
+export const AppError = Error0.mark('AppError')
+  .use(statusPlugin())
   .use(codePlugin({ transport: 'public', codes: ['UNAUTHORIZED', 'FORBIDDEN'] }))
   .use(metaPlugin())
   .use(causePlugin())

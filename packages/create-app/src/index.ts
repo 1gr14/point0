@@ -233,7 +233,10 @@ async function patchTemplate(appName: string, useVite: boolean) {
   const indexServerPath = resolve(appRoot, 'src/index.server.ts')
   const indexHtmlPath = resolve(appRoot, 'src/index.html')
   const viteConfigPath = resolve(appRoot, 'vite.config.ts')
+  const gitignoreSourcePath = resolve(appRoot, 'gitignore')
   const gitignorePath = resolve(appRoot, '.gitignore')
+  const envExamplePath = resolve(appRoot, 'env.example')
+  const envPath = resolve(appRoot, '.env')
 
   await patchPackageJson(packageJsonPath, useVite)
   await patchEngine(enginePath, useVite)
@@ -241,13 +244,24 @@ async function patchTemplate(appName: string, useVite: boolean) {
   await patchIndexServer(indexServerPath, useVite)
   await patchIndexHtml(indexHtmlPath, useVite)
   await patchViteConfig(viteConfigPath, useVite)
-  await patchGitignore(gitignorePath)
+  await materializeGitignore(gitignoreSourcePath, gitignorePath)
+  await createEnvFile(envExamplePath, envPath)
 }
 
-async function patchGitignore(gitignorePath: string) {
-  const current = await readFile(gitignorePath, 'utf8')
-  const next = current.replace(/^### /gm, '')
-  await writeFile(gitignorePath, next, 'utf8')
+// npm strips a real `.gitignore` from every published package (it's on npm's always-ignore list), so
+// the template ships it as plain `gitignore`. Rename it to the dotfile the scaffolded app expects and
+// drop the source. (The template's on-disk copy stays non-dot, so its rules never affect the monorepo
+// itself — no `### ` fencing needed.)
+async function materializeGitignore(sourcePath: string, gitignorePath: string) {
+  await cp(sourcePath, gitignorePath, { force: true })
+  await rm(sourcePath, { force: true })
+}
+
+// The template carries no `.env` — npm strips it (and the template's own `.env*` ignore rule would
+// have too), and we don't want to publish one regardless. The scaffolded app gets its `.env` copied
+// verbatim from the committed `env.example`.
+async function createEnvFile(envExamplePath: string, envPath: string) {
+  await cp(envExamplePath, envPath, { force: true })
 }
 
 async function patchPackageJson(packageJsonPath: string, useVite: boolean) {

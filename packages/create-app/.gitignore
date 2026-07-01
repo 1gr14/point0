@@ -1,0 +1,5 @@
+# The template's own ignore rules ship as `template/gitignore` (npm strips a real
+# `.gitignore` from published packages), so they no longer keep the monorepo clean.
+# Mirror the point0-specific ones here for the template's on-disk working copy.
+template/src/generated/
+template/dev.db

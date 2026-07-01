@@ -40,6 +40,8 @@
   "files": [
     "dist/**/*",
     "template/**/*",
+    "!template/dev.db",
+    "!template/src/generated/**",
     "README.md",
     "LICENSE"
   ],
