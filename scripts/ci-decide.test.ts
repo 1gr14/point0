@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { decide, FULL_OSES, type DecideInput } from './ci-decide.js'
+import { decide, FULL_OSES, isDocsOnly, type DecideInput } from './ci-decide.js'
 import { SLOW_TESTS } from './slow-tests.js'
 
 const FULL = [...FULL_OSES]
@@ -55,6 +55,40 @@ describe('ci-decide', () => {
       // explicit opt-in to the off-by-default OS is honored
       expect(decide(run({ message: '--run-tests=macos' })).oses).toEqual(['macos-latest'])
     })
+
+    describe('docs-only PR skips the matrix', () => {
+      const pr = (changedFiles: string[]) => run({ event: 'pull_request', ref: '9/merge', changedFiles })
+
+      it('every changed file is *.md → empty matrix', () => {
+        expect(decide(pr(['dev/backlog/web-components.md'])).oses).toEqual([])
+        expect(decide(pr(['docs/core/ssr.md', 'README.md', 'packages/core/README.md'])).oses).toEqual([])
+      })
+
+      it('any non-.md file in the diff → full matrix', () => {
+        expect(decide(pr(['dev/backlog/note.md', 'packages/core/src/point0.ts'])).oses).toEqual(FULL)
+        expect(decide(pr(['.github/workflows/ci.yml'])).oses).toEqual(FULL)
+        expect(decide(pr(['examples/basic/src/pages/home.mdx'])).oses).toEqual(FULL) // .mdx is a point, not docs
+        // non-.md even UNDER dev/ or docs/ must NOT skip — the whole point of the *.md-only rule.
+        expect(decide(pr(['dev/scripts/tool.ts'])).oses).toEqual(FULL)
+        expect(decide(pr(['docs/categories.json'])).oses).toEqual(FULL)
+      })
+
+      it('unknown/empty change set → full matrix (never skips blind)', () => {
+        expect(decide(run({ event: 'pull_request', ref: '9/merge' })).oses).toEqual(FULL) // no changedFiles
+        expect(decide(pr([])).oses).toEqual(FULL)
+      })
+    })
+  })
+
+  describe('isDocsOnly', () => {
+    it('true only when every file is *.md', () => {
+      expect(isDocsOnly(['dev/x.md', 'docs/y.md', 'anything.md'])).toBe(true)
+      expect(isDocsOnly(['docs/a.md', 'packages/core/src/a.ts'])).toBe(false)
+      expect(isDocsOnly(['dev/scripts/tool.ts'])).toBe(false) // under dev/ but executable → not docs
+      expect(isDocsOnly(['docs/categories.json'])).toBe(false) // under docs/ but not markdown → not docs
+      expect(isDocsOnly(['LICENSE'])).toBe(false)
+      expect(isDocsOnly([])).toBe(false)
+    })
   })
 
   describe('release (tags publish)', () => {
@@ -69,6 +103,8 @@ describe('ci-decide', () => {
       for (const message of ['--skip-tests', '--skip-tests=linux,windows', '--skip-ci']) {
         expect(decide(run({ refType: 'tag', ref: 'v2.0.0', message })).oses).toEqual(FULL)
       }
+      // …not even a docs-only file set (which skips on a PR) weakens a stable-tag release.
+      expect(decide(run({ refType: 'tag', ref: 'v2.0.0', changedFiles: ['docs/x.md'] })).oses).toEqual(FULL)
     })
 
     it('prerelease tag → full matrix + publish by default', () => {
