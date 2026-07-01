@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.6 — 2026-07-01
+
 - `create-point0-app`: the template now ships a real `public/robots.txt`
   (crawl-open by default) instead of the `some.txt` placeholder, so a scaffolded
   app has a sensible robots file from the first run; the e2e test now asserts the
