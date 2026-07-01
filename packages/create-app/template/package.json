@@ -1,6 +1,6 @@
 {
   "name": "my-app",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "type": "module",
   "engines": {
@@ -39,12 +39,12 @@
     "@unhead/react": "^3.1.1",
     "unhead": "^3.1.1",
     "openapi-types": "^12.0.0",
-    "@point0/basic-auth": "^0.1.6",
-    "@point0/compiler": "^0.1.6",
-    "@point0/core": "^0.1.6",
-    "@point0/engine": "^0.1.6",
-    "@point0/openapi": "^0.1.6",
-    "@point0/react-dom": "^0.1.6",
+    "@point0/basic-auth": "^0.1.7",
+    "@point0/compiler": "^0.1.7",
+    "@point0/core": "^0.1.7",
+    "@point0/engine": "^0.1.7",
+    "@point0/openapi": "^0.1.7",
+    "@point0/react-dom": "^0.1.7",
     "@prisma/adapter-libsql": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "dotenv": "^17.4.2",
@@ -55,7 +55,7 @@
     "@tailwindcss/vite": "^4.3.0"
   },
   "devDependencies": {
-    "@point0/docs": "^0.1.6",
+    "@point0/docs": "^0.1.7",
     "@svgr/core": "^8.1.0",
     "@svgr/plugin-jsx": "^8.1.0",
     "@tanstack/react-query-devtools": "^5.101.0",
