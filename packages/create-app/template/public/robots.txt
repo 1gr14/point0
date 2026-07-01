@@ -1,0 +1,3 @@
+# Crawl freely. Tighten this before launch if some routes shouldn't be indexed.
+User-agent: *
+Allow: /

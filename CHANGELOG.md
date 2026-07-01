@@ -5,6 +5,14 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- `create-point0-app`: the template now ships a real `public/robots.txt`
+  (crawl-open by default) instead of the `some.txt` placeholder, so a scaffolded
+  app has a sensible robots file from the first run; the e2e test now asserts the
+  client dev server serves it.
+- Docs: the scaffold commands now recommend `bun create point0-app@latest` /
+  `bun create start0@latest`, so `bun create` always fetches the newest
+  scaffolder instead of a cached one.
+
 ## 0.1.5 — 2026-07-01
 
 - `create-point0-app`: a scaffolded app now gets its `.gitignore` (the template

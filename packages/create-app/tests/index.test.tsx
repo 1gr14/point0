@@ -8,8 +8,8 @@ import type { Browser } from 'playwright'
  * End-to-end tests for `create-point0-app`.
  *
  * Each test scaffolds a real app from the template (one Bun-bundled, one Vite-bundled), generates its artifacts and
- * asserts `tsc` passes on it, then runs `point0 dev` and opens the home page in a real (headless) Chromium via
- * Playwright to assert it renders.
+ * asserts `tsc` passes on it, then runs `point0 dev`, checks the client serves the public dir (`robots.txt`), and opens
+ * the home page in a real (headless) Chromium via Playwright to assert it renders.
  *
  * No `bun install` on purpose — same approach as the engine's dev tests. The scaffolded app lives inside the workspace
  * (`tests/temp/...`), so its `workspace:*` / `catalog:` deps resolve up the monorepo's hoisted `node_modules`. Skipping
@@ -291,6 +291,13 @@ describe('create-app e2e', () => {
         // 4. SSR check: the server URL 302-redirects to the client dev server, which renders the page.
         const html = await fetch(serverUrl, { redirect: 'follow' }).then((response) => response.text())
         expect(html).toContain('Welcome to My App')
+
+        // 4b. Public dir check: the client dev server serves `public/robots.txt` (client-scoped publicdir) verbatim.
+        const robots = await fetch(`http://localhost:${mode.clientPort}/robots.txt`)
+        expect(robots.status).toBe(200)
+        const robotsText = await robots.text()
+        expect(robotsText).toContain('User-agent: *')
+        expect(robotsText).toContain('Allow: /')
 
         // 5. Open it in a real browser and assert the rendered page (CDP on Windows — see launchBrowser).
         const { browser, shell } = await launchBrowser()
