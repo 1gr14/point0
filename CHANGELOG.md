@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.11 — 2026-07-03
+
 - `point0 dev` now forwards origin `Content-Encoding` transparently. A server
   compression middleware (gzip/brotli) used to serve a 200 + blank page in dev
   (`ERR_CONTENT_DECODING_FAILED`): the client dev-server proxy's `fetch()`
