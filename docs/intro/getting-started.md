@@ -1,12 +1,13 @@
 ---
 index: 200
 title: Getting Started
-description: Scaffold a Point0 app with one command, then run it.
+description:
+  One command scaffolds a complete Point0 app and runs it. Manual wiring is a
+  handful of files — also covered here.
 ---
 
-The fastest way into Point0 is the scaffolder. One command writes a complete app
-— SSR, Prisma + SQLite, Tailwind, type-safe routing — installs it, and runs
-codegen, so you can go straight to the dev server.
+One command is the whole setup. It scaffolds a complete app — SSR, Prisma +
+SQLite, Tailwind, type-safe routing — installs dependencies, and runs codegen:
 
 ```sh
 bun create point0-app@latest
@@ -15,15 +16,21 @@ cd my-app
 bun run dev # http://localhost:3001 (client) + http://localhost:3000 (server)
 ```
 
-You need Bun — `bun create point0-app` resolves to the `create-point0-app`
-package by Bun's `create-<x>` convention. The rest of this page covers the
-scaffolder's flags, the first-run commands, and — if you'd rather wire an app by
-hand — exactly which files and scripts to create.
+That's it — the app is running. You need Bun; the scaffolder offers to install
+it if it's missing.
 
-## `bun create point0-app`
+The rest of the page is optional depth: [the scaffolder](#the-scaffolder),
+[the commands you'll run every day](#everyday-commands), and
+[manual setup](#manual-setup) — every file the scaffolder writes, for when you'd
+rather wire the app by hand.
 
-Run it with no arguments and it prompts interactively; pass a name and flags to
-skip the prompts:
+## The scaffolder
+
+`bun create point0-app` resolves to the `create-point0-app` package by Bun's
+`create-<x>` convention. With no arguments it prompts interactively: project
+name, bundler (`Bun` or `Vite`, default `Bun`), install now (default yes), and
+override (asked only when the target directory is non-empty). Pass a name and
+flags to skip the prompts:
 
 ```sh
 bun create point0-app@latest my-app          # name as a positional argument
@@ -35,8 +42,6 @@ bun create point0-app@latest my-app -I       # non-interactive, take all default
 It scaffolds into `<cwd>/<name>`. If that directory already exists and is not
 empty, the run stops unless you pass `--override` (or confirm the prompt).
 
-### Flags
-
 | Flag                         | Default           | What it does                                          |
 | ---------------------------- | ----------------- | ----------------------------------------------------- |
 | `[name]`                     | `my-app`          | Directory name for the new app                        |
@@ -44,10 +49,6 @@ empty, the run stops unless you pass `--override` (or confirm the prompt).
 | `--install` / `--no-install` | `--install`       | Run `bun install` + `bun run setup` after scaffolding |
 | `-O, --override`             | off               | Allow writing into a non-empty target directory       |
 | `-I, --no-interactive`       | off               | Skip every prompt and use the defaults above          |
-
-Interactively, the same four choices come as prompts: project name, bundler
-(`Bun` or `Vite`, default `Bun`), install now (default yes), and override (only
-asked if the target directory is non-empty, default no).
 
 ### Bun is required
 
@@ -75,52 +76,65 @@ You can't have both — `engine.ts` carries `viteConfig` _or_ `bunPlugins`, neve
 both. The trade-offs are in [bun-vs-vite](bun-vs-vite); the Vite walkthrough is
 [vite](example-vite).
 
-## First run
+## Everyday commands
 
-With `--install` (the default), the scaffolder already ran `bun install` and
-`bun run setup` for you, so you can jump straight to the dev server:
+Four scripts you'll live in:
 
 ```sh
-cd my-app
-bun run dev # point0 dev --hot
+bun run dev      # point0 dev --hot — dev server + client, server hot reload
+bun run setup    # migrate the SQLite DB, generate Prisma + point0 code, seed
+bun run build    # point0 build → dist/
+bun run start    # NODE_ENV=production bun run ./dist/server/index.server.js
 ```
 
-If you scaffolded with `--no-install`, or cloned a fresh checkout, or reset the
-database, run the setup chain first:
+With `--install` (the default) the scaffolder already ran `bun install` and
+`bun run setup`, so `bun run dev` works right away. Run the chain yourself after
+`--no-install`, a fresh clone, or a database reset:
 
 ```sh
 bun install
-bun run setup   # migrate the SQLite DB, generate Prisma + point0 code, seed data
-bun run dev     # dev server + client, with server hot reload
+bun run setup
+bun run dev
 ```
 
 `bun run setup` is the important one. `src/generated/` (the Prisma client and
 point0's points / routes / assets) is **gitignored** — `setup` produces it.
-Without it, typecheck fails and the app won't run:
-
-```jsonc
-// the setup chain, from package.json
-"setup": "bun run prisma:migrate:deploy && bun run prisma:generate && point0 generate && bun run seed"
-```
+Without it, typecheck fails and the app won't run.
 
 > **Why `setup`, not `prepare`?** A `prepare` script runs on every `bun install`
 > — which breaks installs where no database exists yet (CI, a monorepo). So the
 > codegen + DB step is named `setup` and run explicitly, not on install.
 
-For production you build and start:
-
-```sh
-bun run build   # point0 build → dist/
-bun run start   # cross-env NODE_ENV=production bun run ./dist/server/index.server.js
-```
-
 There is no `point0 start` command — production runs the built server entry
-directly. See [deploy](deploy).
+directly; see [deploy](deploy). `point0 dev` and `point0 build` are thin
+wrappers over `engine.dev()` / `engine.build()` — full flag lists in [cli](cli),
+[dev](dev), and [build](build). `--hot` hot-swaps edited points without
+restarting the server; it's marked **experimental** in the CLI help.
 
-## The package.json scripts
+### No leaked dev servers
 
-If you wire an app by hand, these are the scripts to add. The four core ones map
-directly to the `point0` CLI:
+Every process in the dev tree dies with whatever launched it: the `point0` CLI
+spawns each dev child with Bun's `--no-orphans` flag (inherited by nested bun
+processes), and the scaffolded `bunfig.toml` sets `[run] noOrphans = true` so
+the `bun run dev` wrapper itself dies with the terminal. Close the terminal and
+the dev server (and all its children) exits with it — no orphaned servers
+holding ports.
+
+`--no-orphans` landed in **Bun 1.3.14**, so that's the floor — the generated
+`package.json` declares it as `"engines": { "bun": ">=1.3.14" }`. On an older
+Bun the dev server still runs, but it can leak orphaned processes that keep
+holding ports; upgrade with `bun upgrade`.
+
+## Manual setup
+
+Everything below is what the scaffolder writes for you — **skip this section if
+you used `bun create point0-app`.** Point0 is just a set of packages, so you can
+assemble an app from a handful of files. Each one is cited from the template so
+you can copy it.
+
+### The package.json scripts
+
+The four core scripts map directly to the `point0` CLI:
 
 ```jsonc
 {
@@ -132,11 +146,6 @@ directly to the `point0` CLI:
   },
 }
 ```
-
-`point0 dev` and `point0 build` are thin wrappers over `engine.dev()` /
-`engine.build()` — full flag lists are in [cli](cli), [dev](dev), and
-[build](build). `--hot` turns on server-side hot reload (hot-swap edited points
-without restarting the server); it's marked **experimental** in the CLI help.
 
 The supporting scripts complete the setup chain — Prisma helpers, a seed, and
 typecheck:
@@ -156,12 +165,6 @@ typecheck:
 Note `seed` runs with `--preload ./src/preload.ts` — any direct `bun src/<file>`
 that imports app code needs the preload first, so the point0 compiler plugins
 are registered before that code loads (more on this below).
-
-## Wiring an app by hand
-
-The scaffolder is the easy path, but Point0 is just a set of packages — you can
-assemble an app from a handful of files. These are the entry files
-`create-point0-app` writes, each cited from the template so you can copy them.
 
 ### `src/engine.ts` — the engine config
 
@@ -206,10 +209,7 @@ export const engine = Engine.create({
     bunPlugins: ['bun-plugin-tailwind'], // Vite mode replaces this with `viteConfig`
     env: { vars: clientEnvKeys }, // which env keys are bundled into the client
     publicdir: {
-      source: [
-        '../public',
-        { 'robots.txt': () => 'User-agent: *\nDisallow: /' },
-      ],
+      source: '../public',
       outdir: '../dist/client',
     },
     outdir: '../dist/client',
@@ -262,11 +262,16 @@ import { Router, RouterRoutes } from '@/lib/navigation'
 import { UnheadProvider } from '@point0/core/unhead'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/query-client'
+import { Head } from '@unhead/react'
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <UnheadProvider>
+        <Head>
+          {/* global head tags; per-page ones come from `.head(...)` on each point */}
+          <link rel="shortcut icon" href="/favicon.ico" />
+        </Head>
         <Router>
           <RouterRoutes />
         </Router>
@@ -320,7 +325,7 @@ working example built on top of them:
 - **`src/lib/query-client.ts`**, **`src/lib/prisma.ts`**, **`src/lib/error.ts`**
   (a custom `AppError` class wired in via `.errorClass(...)` — the template
   builds it with [error0](error-handling), but any compatible class works, and
-  the default is `ErrorPoint0`), and the four-file **`src/lib/env/*`** system
+  the default is `ErrorPoint0`), and the five-file **`src/lib/env/*`** system
   (shared / client / server [env](env) shapes and validators).
 - **Example points**: `src/layouts/general.tsx` (a [layout](layout)),
   `src/pages/home.tsx` (a [page](page)), `src/pages/about.mdx` (an [mdx](mdx)
@@ -338,29 +343,7 @@ Plus project-level files: `package.json`, `tsconfig.json` (with the `@/*` →
 > from the scaffolded app until you rewrite it — see [deploy](deploy) for the
 > real deploy path.
 
-## No leaked dev servers
-
-The `point0` CLI shebang is
-`#!/usr/bin/env -S bun --no-orphans --no-env-file --config=/dev/null`, and the
-scaffolded `bunfig.toml` sets `[run] noOrphans = true`. Together they tie the
-whole process tree to its launcher: close the terminal and the dev server (and
-all its children) exits with it — no orphaned servers holding ports.
-
-`--no-orphans` landed in **Bun 1.3.14**, so that's the floor — the generated
-`package.json` declares it as `"engines": { "bun": ">=1.3.14" }`. On an older
-Bun the dev server still runs, but it can leak orphaned processes that keep
-holding ports; upgrade with `bun upgrade`.
-
 ## Reference
-
-### Scaffolder defaults (`-I` non-interactive)
-
-| Choice   | Default  |
-| -------- | -------- |
-| name     | `my-app` |
-| bundler  | Bun      |
-| install  | yes      |
-| override | no       |
 
 ### Scripts the CLI backs
 
@@ -381,4 +364,3 @@ holding ports; upgrade with `bun upgrade`.
 | `src/index.server.ts`  | server entry; preload, then `app.server` (`engine.serve`)  |
 | `src/app.client.tsx`   | React app shell (providers + router), default export       |
 | `src/index.client.tsx` | browser entry; `mount(<App/>, points)`                     |
-| `src/index.html`       | HTML template with `#root` + the client `<script>`         |

@@ -1,5 +1,6 @@
 # Every bun process started in this app dies with its parent (bun >= 1.3.14) — no lost dev
-# servers when a terminal goes away. point0's own tree already behaves this way via the CLI
-# shebang's --no-orphans; this line extends the invariant to the `bun run ...` wrapper itself.
+# servers when a terminal goes away. point0's own tree already behaves this way (the CLI spawns
+# each dev child with --no-orphans); this line extends the invariant to the `bun run ...`
+# wrapper itself.
 [run]
 noOrphans = true

@@ -1,5 +1,5 @@
 ---
-index: 400
+index: 500
 title: Points
 description:
   Everything you build in Point0 is a point — one class, one builder, eleven

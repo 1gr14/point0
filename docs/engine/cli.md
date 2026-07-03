@@ -63,8 +63,8 @@ point0 dev -- --inspect   # pass --inspect to the server runtime
 it. See [Dev](dev) for the full restart / hot-reload model.
 
 > There is no `point0 stop` and no lock file — a running dev tree always sits in
-> a terminal, and the `--no-orphans` shebang (below) tears the whole process
-> tree down when that terminal dies. See [Dev](dev).
+> a terminal, and `--no-orphans` (below) tears the whole process tree down when
+> that terminal dies. See [Dev](dev).
 
 ## point0 build
 
@@ -283,21 +283,24 @@ Use --engine <path> to specify the engine file location
 
 The module must export `engine` (named) or `default`, an `Engine` instance.
 
-**3. The hermetic shebang.** The bin starts with:
+**3. The flag-free shebang.** The bin starts with a plain interpreter line:
 
 ```sh
-#!/usr/bin/env -S bun --no-orphans --no-env-file --config=/dev/null
+#!/usr/bin/env bun
 ```
 
-`--no-env-file` stops Bun from auto-loading any `.env` cascade before any CLI
-code runs (with `NODE_ENV` unset it would assume development and load `.env` +
-`.env.development`); the CLI loads the right-mode cascade itself;
-`--config=/dev/null` keeps your app's `bunfig` out of the CLI process;
-`--no-orphans` (bun ≥ 1.3.14, no-op on Windows) ties the whole process tree to
-its parent — the CLI dies when its launcher dies, even by SIGKILL, and SIGKILLs
-every descendant on exit. This is why `@point0/engine` carries an `engines`
-field, and why each app's `bunfig.toml` sets `[run] noOrphans = true` to extend
-it to your `bun run dev` wrapper.
+Deliberately flag-free: flags in a shebang need `env -S`, which Bun's Windows
+bin shim mis-parses — a flagged shebang could never launch on Windows. What
+flags used to do here is handled in code instead. Bun may auto-load a `.env`
+cascade for the startup-derived `NODE_ENV` before any CLI code runs;
+`applyEnvMode` (step 1 above) restores `process.env` from the native OS
+environment and loads exactly the resolved mode's cascade before your engine
+file is imported. And `--no-orphans` (bun ≥ 1.3.14, no-op on Windows) is passed
+explicitly on every dev/build child spawn and inherited by nested bun processes
+— a child dies when its parent dies, even by SIGKILL, and SIGKILLs every
+descendant on exit. This is why `@point0/engine` carries an `engines` field, and
+why each app's `bunfig.toml` sets `[run] noOrphans = true` to extend the
+invariant to your `bun run dev` wrapper.
 
 > **AGENT GOTCHA:** because of `--no-orphans`, a backgrounded `bun run dev &`
 > dies the moment the shell that spawned it returns — run it in a real

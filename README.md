@@ -17,7 +17,7 @@ the client bundle. Works with and without SSR. Types aren't generated — it all
 rides on the builder's generics.
 
 ```sh
-bun create point0-app
+bun create point0-app@latest
 ```
 
 - GitHub: https://github.com/1gr14/point0
@@ -26,8 +26,9 @@ bun create point0-app
   [llmstxt.org](https://llmstxt.org) format) — feed it to an agent and it
   answers any question about the framework
 
-Below are five examples. That's enough to feel how Point0 works. Everything else
-is in the docs — table of contents at the end.
+Below is the root — the shared setup every point inherits — and five examples
+built on it. That's enough to feel how Point0 works. Everything else is in the
+docs — table of contents at the end.
 
 ## Root
 
@@ -241,10 +242,14 @@ That's enough for a first look. The full docs go deeper.
 
 Full reference at [1gr14.dev/point0](https://1gr14.dev/point0).
 
-**Getting started**
+**Introduction**
 
 - [Overview](https://1gr14.dev/point0/latest/overview)
-- [Getting started](https://1gr14.dev/point0/latest/getting-started)
+- [Getting Started](https://1gr14.dev/point0/latest/getting-started)
+- [Full Overview](https://1gr14.dev/point0/latest/full-overview) — the whole
+  framework in one long read
+- [Benchmarks](https://1gr14.dev/point0/latest/benchmarks) — measured against
+  Next.js and TanStack Start
 - [Points](https://1gr14.dev/point0/latest/points)
 
 **Points**

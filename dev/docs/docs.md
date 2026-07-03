@@ -5,7 +5,7 @@ any prose.
 
 ## What & where
 
-- **`docs/`** holds the user-facing documentation — **61 markdown pages** across
+- **`docs/`** holds the user-facing documentation — **63 markdown pages** across
   7 categories. Each page is `docs/<category>/<slug>.md`.
 - **The slug is the filename, and it is GLOBALLY UNIQUE.** The category is only
   navigation decoration — it is **not** in the URL. The path on the site is
@@ -27,8 +27,9 @@ any prose.
 
 ### The pages (slug — category)
 
-- **intro:** `overview` (the announcement article, translated),
-  `getting-started`, `points`.
+- **intro:** `overview` (the short face of the framework — the README pitch +
+  examples), `getting-started`, `full-overview` (the announcement article,
+  translated — the long read), `benchmarks`, `points`.
 - **points:** `page`, `layout`, `component`, `provider`, `mountable`, `query`,
   `infinite-query`, `mutation`, `action`, `root`, `base`, `plugin`.
 - **methods:** `validation`, `loader`, `ctx`, `middleware`, `loading-error`,
@@ -183,15 +184,17 @@ long version; JSDoc is the short one). Conventions:
 
 ## Adjacent artifacts
 
-- **`docs/intro/overview.md`** is a faithful English translation of the
+- **`docs/intro/full-overview.md`** is a faithful English translation of the
   announcement article `~/cc/agents/posts/point0/long.md` (intro + body +
   Production + Plans; Справка/P.S. dropped; doc links relativized to bare
   slugs). Edit the **article** first, then re-sync the translation.
 - **`~/cc/agents/posts/point0/long.en.md`** is the dev.to English version of the
   same article (one-to-one, absolute links, VK Video + Telegram removed,
   everyone funneled to Discord). It reuses the overview translation.
-- **Root `README.md`** = the overview text (links made absolute) wrapped in the
-  canonical 1gr14 header (card image + tagline + badges) and footer.
+- **Root `README.md`** and **`docs/intro/overview.md`** carry the same short
+  pitch + examples (the README with absolute links, wrapped in the canonical
+  1gr14 header and footer; the doc page with bare-slug links and a "Where next"
+  block). Change one → mirror the other.
 - **Package `README.md`s** are super-minimal (title + one-liner + link to
   `1gr14.dev/point0` + sign-off). **They are the npm page** for each `@point0/*`
   package, so keep them clean.

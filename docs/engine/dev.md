@@ -319,19 +319,16 @@ A dev tree cleans up after itself. The invariant:
 
 > **No point0 process can outlive whatever launched it.**
 
-This is enforced at the kernel level, not by bookkeeping. The CLI shebang
-carries `--no-orphans` (Bun >= 1.3.14):
-
-```sh
-#!/usr/bin/env -S bun --no-orphans --no-env-file --config=/dev/null
-```
+This is enforced at the kernel level, not by bookkeeping. The CLI passes
+`--no-orphans` (Bun >= 1.3.14) explicitly on every dev child it spawns — the
+server child and the client dev servers (the `point0` shebang itself stays
+flag-free so the bin launches through Bun's Windows shim).
 
 A flagged process exits when its parent dies — even on SIGKILL — and on its own
 exit SIGKILLs every descendant (Bun re-verifies parentage first, so recycled
-PIDs are safe). The flag is inherited by nested bun processes, so the server
-child and the client dev servers are covered automatically. Each app's
-`bunfig.toml` extends the invariant one level up, to the `bun run dev` wrapper
-itself:
+PIDs are safe). The flag is inherited by nested bun processes, so each child's
+own spawns are covered automatically. Each app's `bunfig.toml` extends the
+invariant one level up, to the `bun run dev` wrapper itself:
 
 ```toml
 # bunfig.toml
