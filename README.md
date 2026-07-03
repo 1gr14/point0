@@ -7,14 +7,15 @@
 
 <!-- docs:start -->
 
-The first fullstack framework on Bun, on par with Next.js and TanStack Start —
-but with a different DX. Everything that affects a page lives in the page's
-builder methods: no hidden config in other files, no folder structure forced on
-you. The loader is plain react-query under the hood, so pages, layouts, and
-components become cacheable queries themselves. Server and client code live in
-the same builder; the compiler strips the loader body and all its imports out of
-the client bundle. Works with and without SSR. Types aren't generated — it all
-rides on the builder's generics.
+The first fullstack framework on Bun — the scope of Next.js and TanStack Start,
+the simplicity of tRPC. One typed builder describes every point: pages, layouts,
+components, providers, queries, mutations, actions. Everything that affects a
+page lives in the page's builder methods: no hidden config in other files, no
+folder structure forced on you. The loader is plain react-query under the hood,
+so pages, layouts, and components become cacheable queries themselves. Server
+and client code live in the same builder; the compiler strips the loader body
+and all its imports out of the client bundle. Works with and without SSR. Types
+aren't generated — it all rides on the builder's generics.
 
 ```sh
 bun create point0-app@latest
@@ -27,10 +28,13 @@ bun create point0-app@latest
   answers any question about the framework
 
 Below is the root — the shared setup every point inherits — and five examples
-built on it. That's enough to feel how Point0 works. Everything else is in the
-docs — table of contents at the end.
+built on it. It's a deliberately thin slice: enough to feel how Point0 works
+without drowning you in features. The framework behind it is much bigger — what
+it covers is summed up at the end of this page, walked end to end in
+[Full Overview](https://1gr14.dev/point0/latest/full-overview), and covered in
+depth on each feature's own page — table of contents at the end.
 
-## Root
+## Root point
 
 Every point grows from a root — `root`. You set the shared things once here: the
 loading view, the error view, the transformer, the schema helper, and more.
@@ -229,14 +233,37 @@ export const ideaEditPage = root.lets
   })
 ```
 
-That's enough for a first look. The full docs go deeper.
-
 ## Client bundle size
 
 - `@point0/core`: raw 143.4 KB, gzip 40.9 KB, brotli 36.2 KB
 - `@1gr14/route0` (peer): raw 15.0 KB, gzip 4.7 KB, brotli 4.2 KB
 - `@1gr14/error0` (optional peer): raw 3.6 KB, gzip 1.4 KB, brotli 1.3 KB
 - `@tanstack/react-query` (peer): raw 38.2 KB, gzip 15.9 KB, brotli 14.2 KB
+
+## The rest of the framework
+
+Five examples and one builder — that's how Point0 feels, not how big it is. The
+same builder carries a complete framework. Points cover pages, layouts,
+components, providers, queries, infinite queries, mutations, and actions. Their
+methods cover validation with any schema library, middleware, context, loading
+and error states, redirects, and the `<head>`. Around the points: typed
+navigation, SSR or a pure client app, file uploads, OpenAPI generation, typed
+env, assets, MDX, events. And Point0 ships its own engine — a compiler, a dev
+server, a production build, a CLI, testing helpers, and two MCP servers: one
+that knows your project, one that knows the docs.
+
+All of that, and the daily loop stays fast — every number below comes from an
+open benchmark repo ([Benchmarks](https://1gr14.dev/point0/latest/benchmarks)).
+HMR lands an edit in the DOM in ~15 ms — 3× faster than Next.js, 11× faster than
+TanStack Start. At 500 pages the production build finishes over 2× faster than
+both, and the per-edit type-check stays flat where Next.js slows down 2.5×.
+
+That's Point0: the scope of Next.js and TanStack Start, the simplicity of tRPC,
+a DX no other framework has. Scaffold an app and feel it:
+
+```sh
+bun create point0-app@latest
+```
 
 ## Documentation
 
