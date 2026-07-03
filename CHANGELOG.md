@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.12 — 2026-07-03
+
 - Internal: cleared dead imports and an unused store-dir helper from the engine
   `dev-hot-reload` / `dev-source-maps` tests, so `bun run lint` is green across
   the whole repo. No runtime or API change.
