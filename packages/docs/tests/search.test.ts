@@ -83,13 +83,14 @@ describe('@point0/docs', () => {
   })
 
   it('includes nested subsections when reading a parent section', () => {
-    const headings = getDocOutlineOrUndefined('overview')!.headings
+    // full-overview is the deep-structured page (## sections with ### subsections); the short overview is flat
+    const headings = getDocOutlineOrUndefined('full-overview')!.headings
     // a real parent → child pair: a heading immediately followed in the outline by a deeper one
     const parentIndex = headings.findIndex((h, i) => headings[i + 1] && headings[i + 1].level > h.level)
     expect(parentIndex).toBeGreaterThanOrEqual(0)
     const parent = headings[parentIndex]
     const child = headings[parentIndex + 1]
-    const section = getDocSectionOrUndefined('overview', parent.headingId)!
+    const section = getDocSectionOrUndefined('full-overview', parent.headingId)!
     const childLine = `${'#'.repeat(child.level)} ${child.heading}`
     // the parent read spans down to its subheadings (until the next same-or-higher heading)
     expect(section.content).toContain(childLine)

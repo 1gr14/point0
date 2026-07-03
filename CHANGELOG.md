@@ -5,8 +5,6 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
-## 0.1.8 — 2026-07-03
-
 - Docs only: the intro is reshaped — `overview.md` is now the short pitch, the
   long announcement-article walkthrough moves to `full-overview.md`, and a new
   `benchmarks.md` sizes Point0 up against Next.js and TanStack Start. The
@@ -14,6 +12,11 @@ release` promotes that section to the new version.
   prose-tightening pass: same facts, denser (~600 fewer lines across 61 pages).
   No package code changed — this cut just moves the stable tag so the docs site
   serves the reworked content.
+- Repaired the `@point0/docs` outline test that had pinned the `overview` page
+  as an example of nested subsections; the reshape made `overview` a flat short
+  pitch, so the test now reads `full-overview` (the deep-structured page). This
+  is why v0.1.8 was tagged but never published — its release run went red on the
+  stale assertion; 0.1.9 supersedes it.
 
 ## 0.1.7 — 2026-07-01
 
