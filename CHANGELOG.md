@@ -5,6 +5,16 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.8 — 2026-07-03
+
+- Docs only: the intro is reshaped — `overview.md` is now the short pitch, the
+  long announcement-article walkthrough moves to `full-overview.md`, and a new
+  `benchmarks.md` sizes Point0 up against Next.js and TanStack Start. The
+  reference pages (points, methods, core, engine, extra, examples) get a
+  prose-tightening pass: same facts, denser (~600 fewer lines across 61 pages).
+  No package code changed — this cut just moves the stable tag so the docs site
+  serves the reworked content.
+
 ## 0.1.7 — 2026-07-01
 
 - `create-point0-app`: after scaffolding, it now prints a "Next steps" note —
