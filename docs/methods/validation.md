@@ -34,11 +34,6 @@ ideaQuery.useQuery({ id: 123 }) // { id: 123 } is checked against the schema
 ideaQuery.useQuery({ id: 'x' }) // type error — id must be a number
 ```
 
-The method you reach for depends on the point type — a query takes `.input`, a
-page takes `.params` / `.search`, an action takes `.params` / `.search` /
-`.body`. The rest of this page shows which goes where, and the rules that hold
-across all of them.
-
 ## Which method for which point
 
 Each method is only available — on the type and at runtime — on the point types
@@ -68,10 +63,9 @@ root.lets.query().search(/* ... */).query() // type error at .query(): .search i
 root.lets.page('/x').input(/* ... */).page() // type error at .page(): .input is for query/mutation/…
 ```
 
-`.headers` and `.cookies` are the exception — they apply to **every** point type
-(root, base, plugin, page, layout, component, provider, query, infiniteQuery,
-mutation, action), because any server-handled point can read request headers and
-cookies. The full matrix is in the [reference](#reference) below.
+`.headers` and `.cookies` are the exception — they apply to **every** point
+type, because any server-handled point can read request headers and cookies. The
+full matrix is in the [reference](#reference) below.
 
 ## Any Standard Schema library
 
@@ -142,13 +136,11 @@ You can register more than one
 (`.schemaHelper(zodSchemaHelper()).schemaHelper(valibotSchemaHelper())`) — they
 accumulate, and the first one that recognizes a given schema wins.
 
-`.schemaHelper` is **server-and-client** — not cut from either bundle, kept in
-both (isomorphic), because introspection (search keys, OpenAPI) runs on both
-sides.
+`.schemaHelper` is **server-and-client** — not cut from either bundle, because
+introspection (search keys, OpenAPI) runs on both sides.
 
-Without a helper, `.search` can't tell which keys are real search params, so it
-treats **every** query-string key as a search param — see
-[`.search`](#search--the-query-string) below.
+Without a helper, `.search` treats **every** query-string key as a search param
+— see [`.search`](#search--the-query-string) below.
 
 ## `.input` — queries, mutations, components
 
@@ -181,12 +173,10 @@ Use `.clientInput` / `.sharedInput` when a client-loader query (or a component)
 must validate its input in the browser. Plain `.input` is the right default for
 a server query.
 
-`.input` is **server-only** — cut from the client bundle: its schema body and
-the imports it pulls in are removed, so it never ships to the browser (it
-validates on the server). `.clientInput` is the mirror: **client-only** — cut
-from the server bundle, body and its imports removed (it validates in the
-browser). `.sharedInput` is **server-and-client** — not cut from either bundle,
-kept in both (isomorphic), validating in both places.
+`.input` is **server-only** — cut from the client bundle: its schema and the
+imports it pulls in never ship to the browser. `.clientInput` is the mirror:
+**client-only** — cut from the server bundle. `.sharedInput` is
+**server-and-client** — not cut from either bundle, validating in both places.
 
 ## `.params` and `.search` — pages and layouts
 
@@ -211,10 +201,9 @@ A validate function passed to `.params` receives `Record<string, string>` —
 every value is a string, because that's what the router extracts from the path.
 
 On a page or layout, `.params` is **server-and-client** — not cut from either
-bundle, kept in both (isomorphic), because the page's route parses the URL on
-either side. (On an [action](action) the same method is **server-only**: cut
-from the client bundle — its schema body and the imports it uses are removed, so
-it never reaches the browser, since an action has no client side.)
+bundle, because the route parses the URL on either side. (On an [action](action)
+the same method is **server-only** — cut from the client bundle, since an action
+has no client side.)
 
 `.params` can only _refine_ the keys already in the route — it can't introduce a
 key that isn't a route segment. Adding an unknown key is a type error
@@ -245,13 +234,11 @@ To extract those keys, `.search` needs a
 [schema helper](#schema-helpers--register-your-library-on-the-root) registered
 on the root. **Without one**, Point0 can't read the schema's keys and falls back
 to treating _every_ query-string key as a search param — register the helper for
-your library and this works as expected.
+your library.
 
 Like `.params`, `.search` is **server-and-client** on a page or layout — not cut
-from either bundle, kept in both (isomorphic) so the query string parses on
-either side — and **server-only** on an [action](action), where it's cut from
-the client bundle: body and its imports removed, so it never ships to the
-browser.
+from either bundle, so the query string parses on either side — and
+**server-only** on an [action](action), where it's cut from the client bundle.
 
 `setSearch` and the rest of the search/routing surface live on
 [Navigation](navigation).
@@ -284,11 +271,10 @@ can read auth headers or cookies on its server request the same way. They
 validate on the server.
 
 `.body`, `.headers`, and `.cookies` are all **server-only** — cut from the
-client bundle: each one's schema body and the imports it pulls in are removed,
-so they never ship to the browser (each reads from the incoming HTTP request on
-the server). (`.params` / `.search` on the action above are also **server-only**
-here, likewise cut from the client bundle, since an action has no client side;
-on a page or layout those two are server-and-client — see above.)
+client bundle: each reads from the incoming HTTP request on the server, so its
+schema never ships to the browser. (`.params` / `.search` on the action above
+are also **server-only**, since an action has no client side; on a page or
+layout those two are server-and-client — see above.)
 
 ## Schemas merge down the chain
 
@@ -312,9 +298,7 @@ export const ideaQuery = tenantBase.lets
   .query()
 ```
 
-`.sharedInput` merges into both the server and client input slots — fittingly,
-it's **server-and-client**: not cut from either bundle, kept in both
-(isomorphic) so it validates in both places.
+`.sharedInput` merges into both the server and client input slots.
 
 ## Narrowing is allowed, widening is a type error
 

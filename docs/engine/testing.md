@@ -6,23 +6,20 @@ description:
   levels, no manual server boot.
 ---
 
-A Point0 app is a normal fullstack app, so you test it however you already test
-fullstack apps — there is no Point0-specific test framework to learn. Two facts
-matter, and the rest of this page is just **one** way to organize around them:
+A Point0 app is a normal fullstack app — there is no Point0-specific test
+framework to learn. Two facts matter; the rest of this page is **one** way to
+organize around them:
 
 1. **It runs in a real browser.** The built (or dev) app serves real HTML over
    HTTP, so you can drive it end-to-end with
-   [Playwright](https://playwright.dev/) (or any browser driver) exactly like
-   any other web app.
+   [Playwright](https://playwright.dev/) (or any browser driver).
 2. **You can also call a point's server loader directly, in-process, with full
    types.** `point.fetchServer(input)` runs the point's server loader and hands
-   back its typed output — no socket, no HTTP framing.
-   `point.fetchServerDetailed` does the same but returns a discriminated
-   `{ output } | { error } | { redirect }` so you can assert on failures. Both
-   run inside `engine.withFetch(...)`, against the `engine` you already export.
+   back its typed output — no socket, no HTTP framing — inside
+   `engine.withFetch(...)`, against the `engine` you already export.
 
-That second point is the one worth remembering — it lets you unit-test backend
-logic against your real engine without booting a server:
+The second lets you unit-test backend logic against your real engine without
+booting a server:
 
 ```ts
 // run a query's server loader in-process, no server, typed output
@@ -42,16 +39,13 @@ That is the whole framework surface for testing: `engine.withFetch`,
 `engine.fetch`, `point.fetchServer` / `fetchServerDetailed`. The runner above is
 **Bun's** `bun:test` — not Jest or Vitest — but nothing here is tied to it.
 
-The layout below is a pattern to copy, not generated output.
-
 ## This page is one example, not the way
 
 Everything below — the four-kind `unit` / `dom` / `int` / `e2e` taxonomy, the
 file suffixes, the `src/test/setup/*` preloads, the fixtures and `cleanDb`
-helpers — is how [start0](https://1gr14.dev/start0), our boilerplate, happens to
-lay its tests out. None of it is Point0 API. **Copy what fits, ignore the rest,
-or structure your tests completely differently.** Point0 only gives you the
-runtime hooks; you wire the test harness yourself.
+helpers — is how [Start0](https://1gr14.dev/start0), our boilerplate, lays its
+tests out. None of it is Point0 API. **Copy what fits, ignore the rest.** Point0
+only gives you the runtime hooks; you wire the test harness yourself.
 
 ## The four kinds
 
@@ -65,7 +59,7 @@ Pick the **lightest** kind that can catch the bug.
 | **e2e**  | `*.e2e.test.ts`  | **real server + real browser** (Playwright) | full user flows                   |
 
 Each kind loads its own setup via Bun's `--preload`, and the file suffix is how
-Bun's filter picks the suite. start0 runs them all under `NODE_ENV=test` against
+Bun's filter picks the suite. Start0 runs them all under `NODE_ENV=test` against
 a separate test database:
 
 ```sh
@@ -76,9 +70,6 @@ bun run test:int
 bun run test:e2e:dev # see e2e section for the three server modes
 ```
 
-Each script is a Bun test run filtered by suffix, with the matching setup
-preloaded:
-
 ```jsonc
 // package.json — start0
 "test:int":  "cross-env NODE_ENV=test bun test --pass-with-no-tests --preload ./src/test/setup/int.ts .int.test.",
@@ -87,7 +78,7 @@ preloaded:
 ```
 
 The trailing `.int.test.` is Bun's filename filter; `--preload` runs the setup
-before any test file. start0 also wires a `bunfig.toml` `[test] preload`
+before any test file. Start0 also wires a `bunfig.toml` `[test] preload`
 dispatcher that reads the test file's name and loads the matching setup, so a
 bare `bun test path/to/x.dom.test.tsx` gets its setup without going through a
 script.
@@ -129,17 +120,15 @@ await getMeQuery.fetchServer(undefined, { headers: {} }) // anonymous
 await getMeQuery.fetchServer(undefined, { headers: user.headers }) // signed-in
 ```
 
-`user.headers` here comes from a test fixture that creates a real user — that
-fixture is a start0 helper, shown in [fixtures](#fixtures-seed-and-authenticate)
-further down, not a Point0 API.
+`user.headers` comes from a Start0 fixture that creates a real user — shown in
+[fixtures](#fixtures-seed-and-authenticate) below, not a Point0 API.
 
 ### Assert on errors: `fetchServerDetailed`
 
-`fetchServer` throws on error, which is what you want when you just need the
-value. When you want to **assert on the error** instead, use
-`fetchServerDetailed` — same execution, but it returns a discriminated result
-(`{ output }` on success, `{ error }` on failure, `{ redirect }` on redirect)
-rather than throwing:
+`fetchServer` throws on error — right when you just need the value. To **assert
+on the error**, use `fetchServerDetailed` — same execution, but it returns a
+discriminated result (`{ output }` on success, `{ error }` on failure,
+`{ redirect }` on redirect) instead of throwing:
 
 ```ts
 test('rejects anonymous users', async () => {
@@ -186,7 +175,7 @@ test('forbids non-authors', async () => {
 
 ### The int setup: `engine.prepare()`
 
-Before any in-process fetch, the engine must be prepared once. start0 does it in
+Before any in-process fetch, the engine must be prepared once. Start0 does it in
 the int preload:
 
 ```ts
@@ -204,12 +193,11 @@ export {}
 ```
 
 `engine.prepare()` makes the engine read its registered points and ready its
-server side — the same step `engine.serve()` does for you automatically; here
-you call it by hand because there is no `serve()`. **Skip it and `fetchServer` /
+server side — the same step `engine.serve()` does automatically; here you call
+it by hand because there is no `serve()`. **Skip it and `fetchServer` /
 `engine.fetch` throw**
-`Engine server is not prepared. Please call await engine.prepare() first.` It
-does not open a port or touch the DB. (Compare [engine-runtime](engine-runtime)
-for `serve` / `prepare` / `preload`.)
+`Engine server is not prepared. Please call await engine.prepare() first.`
+(Compare [engine-runtime](engine-runtime) for `serve` / `prepare` / `preload`.)
 
 ## int — drive a raw request (`engine.fetch`)
 
@@ -253,8 +241,8 @@ headers, the raw error — `engine.fetchDetailed(...)` returns the full result a
 
 When the engine is created with a required ctx, `engine.fetch`'s overload makes
 `requiredCtx` a mandatory option
-(`engine.fetch(url, { requiredCtx, ...init })`). Most apps (start0 included)
-require none, so you pass just the URL and an optional `RequestInit`.
+(`engine.fetch(url, { requiredCtx, ...init })`). Most apps (Start0 included)
+require none.
 
 ### The `transform` flag
 
@@ -267,7 +255,7 @@ instead. Leave it on unless a test asserts specifically on the raw wire shape.
 
 ## fixtures: seed and authenticate
 
-int tests need real rows and real sessions. These are start0 helpers — patterns
+int tests need real rows and real sessions. These are Start0 helpers — patterns
 to replicate, not framework API:
 
 ```ts
@@ -320,7 +308,7 @@ afterEach(() => rtl.cleanup())
 ```
 
 With that setup preloaded, a dom test renders React and asserts on the DOM with
-Testing Library — no point manager, no engine, no browser:
+Testing Library — no point manager, no engine:
 
 ```tsx
 // stepper.dom.test.tsx

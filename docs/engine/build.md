@@ -84,20 +84,17 @@ The two sides differ in target and intent:
 | Entry            | your `entry` files + the engine file | the `indexHtml`                              |
 
 The server is never sent over the wire, so it's always minified. The client
-bundle ships to the browser — it hydrates the server-rendered first load and
-then handles client-side navigation. Because it is public, treat it as code
-anyone can read: server-only code is stripped by the [compiler](compiler) at
-build time, not guarded at runtime.
+bundle is public — treat it as code anyone can read: server-only code is
+stripped by the [compiler](compiler) at build time, not guarded at runtime.
 
 ## Bun or Vite, per side
 
-By default each side builds with **Bun** (`Bun.build`). You don't have to
-configure anything for this — `examples/basic` is the canonical Bun app and sets
-no build config at all. When you do want to reach into the Bun build, pass
-`bunBuildConfig` on that side. It's a plain `Partial<Bun.BuildConfig>` (or
-`({ mode, side }) => …`) spread **over** Point0's defaults, so you can override
-**any** default — `target`, `minify`, `define`, `external`, `naming`, plugins,
-anything `Bun.build` accepts:
+By default each side builds with **Bun** (`Bun.build`), with no config needed —
+`examples/basic`, the canonical Bun app, sets no build config at all. To reach
+into the Bun build, pass `bunBuildConfig` on that side: a plain
+`Partial<Bun.BuildConfig>` (or `({ mode, side }) => …`) spread **over** Point0's
+defaults, so you can override **any** default — `target`, `minify`, `define`,
+`external`, `naming`, plugins, anything `Bun.build` accepts:
 
 ```ts
 export const engine = Engine.create({
@@ -115,11 +112,10 @@ export const engine = Engine.create({
 })
 ```
 
-To switch a side to **Vite/Rolldown** instead, give that side a `viteConfig`.
-The choice is made per side, by the presence of `viteConfig` — and it's per
-side, so you can build the **client** with Vite while the **server** stays on
-Bun (or vice versa) by setting the option on the side you want, not at the top
-of the config:
+To switch a side to **Vite/Rolldown**, give that side a `viteConfig`. The choice
+is per side: build the **client** with Vite while the **server** stays on Bun
+(or vice versa) by setting the option on the side you want, not at the top of
+the config:
 
 ```ts
 export const engine = Engine.create({
@@ -145,13 +141,11 @@ export const engine = Engine.create({
 ```
 
 Like `bunBuildConfig`, `viteConfig` is a plain Vite `UserConfig` (object or
-`({ plugins, side, mode }) => …`) — nothing is locked down, you can override
-every default. The function form receives `plugins` (Point0's compiler plugin is
-already included) and `side` (`'server'` or `'client'`). `examples/vite` puts
-one `viteConfig` at the top level so both sides build on Vite; pushing it down
-onto a single side is how you mix Bun and Vite. When to pick which is on
-[Bun or Vite](bun-vs-vite); the asset-pipeline differences are on
-[Assets](assets).
+`({ plugins, side, mode }) => …`). The function form receives `plugins`
+(Point0's compiler plugin is already included) and `side` (`'server'` or
+`'client'`). `examples/vite` puts one `viteConfig` at the top level so both
+sides build on Vite. When to pick which is on [Bun or Vite](bun-vs-vite); the
+asset-pipeline differences are on [Assets](assets).
 
 For the Bun path, `vite` and `esbuild` are kept `external` in the server bundle
 — a Bun-only app builds and runs without either installed.
@@ -172,8 +166,7 @@ Mode resolution (`--mode` > `--env NODE_ENV=…` > shell `NODE_ENV` > the comman
 default) decides which `.env` files load and which env consts get inlined into
 the bundle. Full mode/env rules are on [Engine config](engine-config).
 
-Two kinds of env behave differently at build time — the distinction is the same
-one from [Engine config](engine-config):
+Two kinds of env behave differently at build time:
 
 - **`env.consts` are inlined.** At compile time the bundler replaces each
   `process.env.X` with the literal value (`"prod"`), so the const is frozen into
@@ -185,12 +178,11 @@ one from [Engine config](engine-config):
   into the served HTML by the running server, not baked into the JS); on the
   server they're plain `process.env` values from the machine you run on.
 
-So the choice of `consts` vs `vars` is the choice between "frozen at build" and
-"read when the server runs". One internal const matters at runtime regardless:
-`POINT0_BUILT='true'` is defined into the server bundle and flips the engine
-into **built mode** — in built mode `engine.preload` skips the dev-only work (no
-plugin loading, no dev server, no `NODE_ENV` fallback) but still applies your
-server `env.vars` to `process.env`, and module preload links inject. See
+One internal const matters at runtime regardless: `POINT0_BUILT='true'` is
+defined into the server bundle and flips the engine into **built mode** — in
+built mode `engine.preload` skips the dev-only work (no plugin loading, no dev
+server, no `NODE_ENV` fallback) but still applies your server `env.vars` to
+`process.env`, and module preload links inject. See
 [Engine runtime](engine-runtime).
 
 ## Running the build

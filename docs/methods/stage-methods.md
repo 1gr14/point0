@@ -18,11 +18,11 @@ surface (`.useQuery`, `.route`, `.id`, …) covered on each point's own page.
 This page is the reference for stage-methods (and the **closing** methods that
 finalize the chain — `.page`/`.layout`/`.component`/`.provider`/`.query`/
 `.infiniteQuery`/`.mutation`/`.action`/`.root`/`.base`/`.plugin`). Most have
-their own page with the full treatment — this one links there and gives the
-one-line gist. A few small setters live only here and are described in full.
-Each entry says **which point types accept it** and **what the compiler does
-with it** — which of the four strip categories below it falls in, and how `ssr`
-and `.clientOnly()` change that.
+their own page — this one links there and gives the one-line gist. A few small
+setters live only here and are described in full. Each entry says **which point
+types accept it** and **what the compiler does with it** — which of the four
+strip categories below it falls in, and how `ssr` and `.clientOnly()` change
+that.
 
 ```tsx
 export const ideaPage = root.lets
@@ -71,22 +71,20 @@ behaves the same way from the start.
 ## Setup methods (before the loader)
 
 These shape the point's data and request. They must come **before** the single
-`.loader()`; once the loader runs, the setup is locked.
+`.loader()`; once the loader is declared, the setup is locked.
 
 ### .ctx
 
 Per-request server values, merged and handed to every `.loader()` and later
-`.ctx()` that follows. **Server-only** — cut from the client bundle: its body
-and the imports it uses are removed, so it never ships to the browser. (It only
-runs when the point actually has a loader — otherwise there's no request.)
-Available on **every point type**. Full page: [ctx](ctx).
+`.ctx()` that follows. **Server-only** — cut from the client bundle. It only
+runs when the point actually has a loader — otherwise there's no request. On
+**every point type**. Full page: [ctx](ctx).
 
 ### .loader / .clientLoader
 
 The one callback that produces the point's data. `.loader` is **server-only** —
-cut from the client bundle, body and imports removed, so it never ships to the
-browser (it runs on the server); `.clientLoader` is **client-only** — cut from
-the server bundle, body and its imports removed (it runs in the browser). A
+cut from the client bundle (it runs on the server); `.clientLoader` is
+**client-only** — cut from the server bundle (it runs in the browser). A
 mountable (page/layout/component/provider) that declares a loader **also becomes
 a query** — it gains `.useQuery`, `.fetchQuery`, and the rest. Available on
 **every point type** except the structural ones. Full page: [loader](loader).
@@ -94,30 +92,27 @@ a query** — it gains `.useQuery`, `.fetchQuery`, and the rest. Available on
 ### .input / .clientInput / .sharedInput
 
 The validation schema for a point's input. `.input` is **server-only** — cut
-from the client bundle, body and imports removed (it validates on the server);
-`.clientInput` is **client-only** — cut from the server bundle, body and imports
-removed (it validates in the browser); `.sharedInput` is **server-and-client** —
-not cut from either bundle, kept in both (it runs on both). On **query,
-infinite-query, mutation, component, provider** (and the chain heads — root,
-base, plugin). Full page: [validation](validation).
+from the client bundle (it validates on the server); `.clientInput` is
+**client-only** — cut from the server bundle (it validates in the browser);
+`.sharedInput` is **server-and-client** — not cut from either bundle (it runs on
+both). On **query, infinite-query, mutation, component, provider** (and the
+chain heads — root, base, plugin). Full page: [validation](validation).
 
 ### .params / .search / .body
 
 Route-shaped input schemas. `.params` and `.search` validate the URL params and
 search string of a routed point; `.body` is the request body of an
 [action](action). On a non-action routed point `.params`/`.search` are
-**server-and-client** — not cut from either bundle, kept in both, because the
-client needs them to build hrefs. Inside an **action** they are **server-only**
-— cut from the client bundle, body and imports removed (the action runs on the
-server) — as is `.body` everywhere: **server-only**, cut from the client bundle.
-On **page, layout, action** (`.params`/`.search`) and **action** (`.body`), plus
+**server-and-client** — not cut from either bundle, because the client needs
+them to build hrefs. Inside an **action** they are **server-only** — cut from
+the client bundle (the action runs on the server) — as is `.body` everywhere. On
+**page, layout, action** (`.params`/`.search`) and **action** (`.body`), plus
 the chain heads. Full page: [validation](validation).
 
 ### .headers / .cookies
 
 Schemas for request headers and cookies. **Server-only** — cut from the client
-bundle, body and imports removed, so they never ship to the browser. On **every
-point type**. Full page: [validation](validation).
+bundle. On **every point type**. Full page: [validation](validation).
 
 ## Render methods (mountables)
 
@@ -158,31 +153,23 @@ export const IdeaPage = root.lets
 The components shown while a mountable's data is loading or after it errors. The
 last one found in the chain wins. `.componentLoading` / `.componentError`,
 `.pageLoading` / `.pageError`, `.layoutLoading` / `.layoutError` target one
-mountable kind from a shared parent. **Server-SSR-and-client** — cut from the
-server bundle (body and imports removed) when `ssr: false` or after a
-`.clientOnly()`; kept in the client build always, and in the server build only
-when SSR is on. On **mountables** and the chain heads (the per-type variants
-live on root/base/plugin and, for the page/layout pair, on layout). Full page:
-[loading-error](loading-error).
+mountable kind from a shared parent. On **mountables** and the chain heads (the
+per-type variants live on root/base/plugin and, for the page/layout pair, on
+layout). Full page: [loading-error](loading-error).
 
 ### .head
 
 Set the document head from the point's data (a string title or an [unhead](head)
 object). The `'global'` form, per-status heads, and SEO keys all live on the
 [head](head) page. On **page, layout** (and root, base, plugin).
-**Server-SSR-and-client** — cut from the server bundle (body and imports
-removed) when `ssr: false` or after a `.clientOnly()`, like the other render
-methods; kept in the client build always, and in the server build only when SSR
-is on.
 
 ### .clientOnly
 
 Opt a mountable out of SSR: its render runs in the browser only, and the server
 bundle drops the render chain. Takes an optional fallback component shown on the
 server while the client mounts. On **page, layout, component, provider** (and
-root, plugin). It is itself **server-and-client** — not cut from either bundle,
-kept in both: the server needs to know to skip the render, so the switch ships
-to both bundles.
+root, plugin). It is itself **server-and-client** — not cut from either bundle:
+the server needs to know to skip the render.
 
 ```tsx
 export const ChartPage = root.lets
@@ -208,8 +195,7 @@ prefetch self-fetches it **without rendering**, under the cheap policies
 (`serverQuery` / `clientQuery` / `serverAndClientQuery`); a `.with(query)` is
 only discovered by rendering, so it's prefetched only under the expensive
 `pageDehydratedState*` policies (a full SSR render). On **mountables** and
-**plugins**. **Server-and-client** — not cut from either bundle, kept in both
-(isomorphic config).
+**plugins**. **Server-and-client** — not cut from either bundle.
 
 ## Routing & networking
 
@@ -232,14 +218,14 @@ The origin is chosen by **route kind, not runtime side**: page/layout routes
 resolve against `clientUrl` (falling back to `serverUrl`); action and endpoint
 routes always use `serverUrl`. A side-dependent origin would mismatch
 SSR-rendered hrefs during hydration. **Server-and-client** — not cut from either
-bundle, kept in both (isomorphic config values).
+bundle.
 
 ### .basePath
 
 A type-level route prefix that every point built off this base inherits. Pair it
 with a gating [plugin](plugin) for a whole section behind one prefix and one
 check. **Root and base** (and plugin). **Server-and-client** — not cut from
-either bundle, kept in both.
+either bundle.
 
 ```tsx
 export const adminBase = root.lets
@@ -253,16 +239,15 @@ export const adminBase = root.lets
 Mount raw request middleware on the server — third-party handlers (better-auth),
 OpenAPI's scalar/swagger UIs, anything that wants the bare `Request`. On **every
 point type**, but it only does anything on the server entry. **Server-only** —
-cut from the client bundle, body and imports removed, so it never ships to the
-browser. Full page: [middleware](middleware).
+cut from the client bundle. Full page: [middleware](middleware).
 
 ### .fetchOptions
 
 Customize the `fetch` Point0 makes for server queries and mutations — an object
 (merged) or a function (re-evaluated per request, for a fresh token each time).
 Calls **stack**: headers merge, later non-header keys override. On **every point
-type**. **Server-and-client** — not cut from either bundle, kept in both (the
-browser is the one making most of these calls).
+type**. **Server-and-client** — not cut from either bundle (the browser makes
+most of these calls).
 
 ```tsx
 .fetchOptions({ credentials: 'include' })
@@ -273,17 +258,17 @@ browser is the one making most of these calls).
 
 Serialize query input and loader output across the wire — pass any tRPC-style
 transformer (e.g. `superjson`). **Root only** (and plugin).
-**Server-and-client** — not cut from either bundle, kept in both (both ends must
-agree on the format). Full page: [transformer](transformer).
+**Server-and-client** — not cut from either bundle (both ends must agree on the
+format). Full page: [transformer](transformer).
 
 ### .schemaHelper
 
 Teach the root how to read one validation library's schemas (detect, extract
 keys, spot file uploads, emit JSON for OpenAPI). Helpers **accumulate** — call
 once per library; the first whose `isSuitable` matches wins. **Root only**.
-**Server-and-client** — not cut from either bundle, kept in both. Built-ins ship
-for zod, valibot, arktype, yup, superstruct, typebox
-(`@point0/core/schema/<lib>`). Full surface: [validation](validation).
+**Server-and-client** — not cut from either bundle. Built-ins ship for zod,
+valibot, arktype, yup, superstruct, typebox (`@point0/core/schema/<lib>`). Full
+surface: [validation](validation).
 
 ```tsx
 import { zodSchemaHelper } from '@point0/core/schema/zod'
@@ -295,10 +280,10 @@ export const root = Point0.lets.root().schemaHelper(zodSchemaHelper()).root()
 
 Set the app's error class. **Root only.** The default is `ErrorPoint0`; you may
 replace it with any class of the same-or-wider structure — your own `AppError`,
-or one built with [error0](error-handling) — and it threads through the chain as
+or one built with [Error0](error-handling) — and it threads through the chain as
 the point's error type (a query result's `.error`, the `.on('error', …)`
 argument, the error a `.with` may return). **Server-and-client** — not cut from
-either bundle, kept in both. Full treatment: [error handling](error-handling).
+either bundle. Full treatment: [error handling](error-handling).
 
 ```tsx
 import { AppError } from '@/lib/error' // your own error class
@@ -312,7 +297,7 @@ Set default TanStack Query / Mutation options once, high in the chain. Each
 setter takes **one** options object and **merges** it into the matching default
 (it does not replace). `.queryOptions` is the broad one; the rest target one
 query kind. These default the React-Query behavior, so they are
-**server-and-client** — not cut from either bundle, kept in both.
+**server-and-client** — not cut from either bundle.
 
 ```tsx
 export const root = Point0.lets
@@ -350,11 +335,10 @@ options is on the [query](query) page.
 ### .on / .serverOn / .clientOn
 
 Subscribe to the framework's lifecycle events. `.on` is **server-and-client** —
-not cut from either bundle, kept in both (it runs on both sides); `.serverOn` is
-**server-only** — cut from the client bundle, body and imports removed (it runs
-server-side); `.clientOn` is **client-only** — cut from the server bundle,
-callback and its imports removed (it runs client-side), each typing the event
-accordingly. On **every point type**.
+not cut from either bundle (it runs on both sides); `.serverOn` is
+**server-only** — cut from the client bundle; `.clientOn` is **client-only** —
+cut from the server bundle. Each types the event for its side. On **every point
+type**.
 
 ```tsx
 export const root = Point0.lets
@@ -374,12 +358,11 @@ log-friendly projection of `data` (points become [ids](events), requests become
 
 The trigger setters — `.prefetchPageOnNavigate` / `.prefetchPageOnLinkHover` and
 the `.prefetchPagePolicy` convenience that fans out into both — are
-**client-only**: their bodies and the imports those bodies use are cut from the
-server bundle, regardless of SSR, so the prefetch triggers never bloat the
-server build (they run in the browser as you move between pages). The exceptions
-are the `.onPrefetchPage` family — `.onPrefetchPage` is **server-and-client**,
-and `.serverOnPrefetchPage` / `.clientOnPrefetchPage` pin the same hook to one
-side (see below). On **root, base, page, layout** (with the exceptions noted).
+**client-only**: cut from the server bundle, regardless of SSR (they run in the
+browser as you move between pages). The exceptions are the `.onPrefetchPage`
+family — `.onPrefetchPage` is **server-and-client**, and `.serverOnPrefetchPage`
+/ `.clientOnPrefetchPage` pin the same hook to one side (see below). On **root,
+base, page, layout** (with the exceptions noted).
 
 ### .prefetchPageOnNavigate / .prefetchPageOnLinkHover / .prefetchPagePolicy
 
@@ -395,9 +378,9 @@ the convenience that sets both navigate and hover at once.
 `.prefetchPageOnLinkHover`'s delay defaults to **30ms**. A per-`<Link>` or
 per-`navigate` prefetch overrides the point default; `false` / `'none'` disables
 it. `.prefetchPagePolicy` is not on plugins. Policy values and what each
-fetches: [navigation](navigation). As a cost note, `serverAndClientQuery` is the
-cheap policy; `pageDehydratedState` runs a full SSR render and is the expensive
-one (and the `pageDehydratedState*` policies require SSR or they throw).
+fetches: [navigation](navigation). `serverAndClientQuery` is the cheap policy;
+`pageDehydratedState` runs a full SSR render and is the expensive one (and the
+`pageDehydratedState*` policies require SSR or they throw).
 
 ### .onPrefetchPage / .serverOnPrefetchPage / .clientOnPrefetchPage
 
@@ -410,41 +393,37 @@ Register a callback that runs during prefetch (accumulates across calls). On
 
 `.onPrefetchPage` is **server-and-client** — kept in both bundles: it runs in
 the browser on client-side prefetch and on the server once before the first
-render. This is the one prefetch method that is not client-only.
-`.serverOnPrefetchPage` (**server-only** — body and its imports cut from the
-client bundle) and `.clientOnPrefetchPage` (**client-only** — cut from the
-server bundle) are the same hook pinned to one side, for warm-up code whose
-imports should not cross the bundle boundary.
+render. `.serverOnPrefetchPage` (**server-only** — cut from the client bundle)
+and `.clientOnPrefetchPage` (**client-only** — cut from the server bundle) are
+the same hook pinned to one side, for warm-up code whose imports should not
+cross the bundle boundary.
 
 ## Navigation: scroll
 
 ### .scrollRestore / .scrollPosition
 
-Scroll-restoration controls now live on the [navigation](navigation) page, with
-the full treatment of their values and defaults.
+Scroll-restoration controls live on the [navigation](navigation) page, with
+their values and defaults.
 
 ## API description (actions only)
 
 ### .response
 
 Declare the response schema of an [action](action) — what its handler returns
-over the wire. **Action only.** **Server-only** — cut from the client bundle,
-body and imports removed, so it never ships to the browser. Full page:
-[response](response).
+over the wire. **Action only.** **Server-only** — cut from the client bundle.
+Full page: [response](response).
 
 ### .openapi
 
 Attach OpenAPI operation metadata to an action's endpoint. On **action** (and
-base, plugin). **Server-only** — cut from the client bundle, body and imports
-removed: it shapes the generated spec, which the browser never needs. Full page:
-[openapi](openapi).
+base, plugin). **Server-only** — cut from the client bundle: it shapes the
+generated spec, which the browser never needs. Full page: [openapi](openapi).
 
 ### .models
 
-Register named input schemas the OpenAPI generator reuses as reusable
-components. **Root and base.** **Server-only** — cut from the client bundle
-(body and imports removed), since it feeds spec generation the browser never
-needs.
+Register named input schemas the OpenAPI generator emits as reusable components.
+**Root and base.** **Server-only** — cut from the client bundle: it feeds spec
+generation the browser never needs.
 
 ## Metadata
 
@@ -454,9 +433,9 @@ Attach metadata to any point. `.tag` takes one or more strings, de-dupes, and
 accumulates; tags ride along in the query key so you can invalidate a group by
 tag. `.description` **appends** (joined with `\n\n`) rather than replacing. On
 **every point type**. `.tag` is **server-and-client** — not cut from either
-bundle, kept in both (it's part of the query key); `.description` is
-**server-only** — cut from the client bundle, body and imports removed. On
-`.use`, a child's tags union with the parent's and descriptions concatenate.
+bundle (it's part of the query key); `.description` is **server-only** — cut
+from the client bundle. On `.use`, a child's tags union with the parent's and
+descriptions concatenate.
 
 ```tsx
 .tag('ideas', 'public')              // variadic, de-duped, accumulates
@@ -477,23 +456,21 @@ The call that finalizes the chain and turns the `StagePoint` into a
 its strip category.
 
 - **`.page` / `.layout` / `.component` / `.provider`** — the mountable closers.
-  **Server-SSR-and-client**: cut from the server bundle (render closure and its
-  imports removed) under `.clientOnly()` or `ssr: false`; kept in the client
-  build always, and in the server build only while SSR is on. Pages:
-  [page](page), [layout](layout), [component](component), [provider](provider).
+  **Server-SSR-and-client**: cut from the server bundle under `.clientOnly()` or
+  `ssr: false`; kept in the client build always. Pages: [page](page),
+  [layout](layout), [component](component), [provider](provider).
 - **`.query` / `.infiniteQuery` / `.mutation`** — the data closers.
-  **Server-and-client**: the closer itself is not cut from either bundle, kept
-  in both (isomorphic config); the loader it wraps is the part that's cut from
-  the client. Pages: [query](query), [mutation](mutation). Any mountable with a
-  `.loader` can close with `.infiniteQuery({...})` to make its self-query
-  infinite instead of the default finite.
+  **Server-and-client**: the closer itself is not cut from either bundle; the
+  loader it wraps is the part that's cut from the client. Pages: [query](query),
+  [mutation](mutation). Any mountable with a `.loader` can close with
+  `.infiniteQuery({...})` to make its self-query infinite instead of the default
+  finite.
 - **`.action`** — the endpoint closer. The action's server handler is
-  **server-only** — cut from the client bundle (handler body and its imports
-  removed); only the route metadata the client needs to call it stays. Page:
-  [action](action).
+  **server-only** — cut from the client bundle; only the route metadata the
+  client needs to call it stays. Page: [action](action).
 - **`.root` / `.base` / `.plugin`** — the structural closers (no render, no
-  handler). **Server-and-client** — not cut from either bundle, kept in both
-  (pure isomorphic config). Pages: [root and base](root), [plugin](plugin).
+  handler). **Server-and-client** — not cut from either bundle (pure isomorphic
+  config). Pages: [root and base](root), [plugin](plugin).
 
 ## Reference: where each method lives
 

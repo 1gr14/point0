@@ -94,8 +94,7 @@ const title = $title.use((next) => console.log('title is now', next))
 > equal_ object or array still triggers a client re-render. (Server
 > stabilization uses deterministic serialization instead — see below.)
 
-**`.set(value)`** — write it. This is where server and client differ, and the
-difference is the whole point of `SsrStore`.
+**`.set(value)`** — write it. This is where server and client differ.
 
 ## `.set` on the server: staged, not immediate
 
@@ -113,10 +112,9 @@ $title.get() // => 'Default title'  ← still the old value this pass
 $title.get() // => 'overridden'     ← next pass sees it
 ```
 
-This staging is what lets a layout pick up a page's override. The layout renders
-first with the default; the page sets a new value; the loop commits it and
-re-renders the whole tree, so the layout now reads the override. You always
-write from inside a render or effect — use
+This staging is what lets a layout pick up a page's override: the loop commits
+the page's `set` and re-renders the whole tree, so the layout now reads it.
+Always write from inside a render or effect — use
 [`useEffectSsr`](#useeffectssr-the-companion-hook), not module top-level.
 
 A `set` in a render that is never followed by another render is simply dropped —
@@ -133,7 +131,7 @@ $title.set('overridden')
 $title.get() // => 'overridden'  ← immediate on the client
 ```
 
-No staging, no loop. Client and server share one API; only the timing differs.
+No staging, no loop.
 
 ## How it transfers (dehydrate → hydrate)
 
@@ -153,20 +151,17 @@ SsrStore.define('desc', () => 'default')
 // → only `desc` is in the dehydrated payload; the client-only value is not
 ```
 
-Serialization is deterministic JSON by default, so a `Date` survives only if you
-configure a richer transformer (e.g. superjson) on the underlying store. The
-`init` default and the transferred value are both plain by default.
-
-There's no per-value serialization. Every value rides the one store transformer
-shared by the whole app, which you set on the root with
-[`.transformer`](transformer) (`.transformer(superjson)`).
+Serialization is deterministic JSON by default, so a `Date` survives only with a
+richer transformer (e.g. superjson). There's no per-value serialization — every
+value rides the one store transformer shared by the whole app, set on the root
+with [`.transformer`](transformer) (`.transformer(superjson)`).
 
 ## The re-render loop and its caps
 
 The headline behavior — a layout seeing a page's override — comes from the SSR
 prefetch loop. It commits staged values at the start of each pass and re-renders
-while anything is still pending, until the values stabilize. Two engine options
-bound it (under `ssr` in [engine config](engine-config)):
+until the values stabilize. Two engine options bound it (under `ssr` in
+[engine config](engine-config)):
 
 ```ts
 Engine.create({
@@ -202,9 +197,9 @@ query can feed an `SsrStore` whose value becomes the input of another query, and
 both end up prefetched.
 
 > To collapse this loop, warm the data up front in
-> [`.onPrefetchPage`](../core/ssr#onprefetchpage) (runs server-side before the
-> first render), or flip on `prefetchLoadersBeforePageRender` to prefetch the
-> declared loaders automatically. Not specific to `SsrStore`; see [ssr](ssr).
+> [`.onPrefetchPage`](ssr#onprefetchpage) (runs server-side before the first
+> render), or flip on `prefetchLoadersBeforePageRender` to prefetch the declared
+> loaders automatically. Not specific to `SsrStore`; see [ssr](ssr).
 
 ## `useEffectSsr`: the companion hook
 
@@ -219,7 +214,7 @@ useEffectSsr(() => {
 }, [idea.title])
 ```
 
-The production breadcrumb pattern in start0 shows the full shape — declare once,
+The production breadcrumb pattern in Start0 shows the full shape — declare once,
 write from a hook with a cleanup, read in a component:
 
 ```tsx
@@ -254,8 +249,6 @@ Use `SsrStore` when a value computed _during render_ — usually deep in the tre
 often after a query resolves — must appear in an **ancestor's** SSR output and
 on the client before any JS recompute. Breadcrumbs, page title, page
 description.
-
-It is **optional**: if you don't need it, you don't import it.
 
 Reach for [CookieStore](cookie-store) instead when the value must travel **both
 ways** (client → server too). The two APIs are deliberately parallel (`define` /

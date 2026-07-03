@@ -67,9 +67,9 @@ root.lets.mutation().input(/* ... */).mutation()
 //             or .clientLoader() before calling .mutation()
 ```
 
-The closing `.mutation(options?)` closer is **server-and-client** — it's not cut
-from either bundle, kept in both (isomorphic), because the options carry
-react-query defaults the browser needs.
+The closing `.mutation(options?)` is **server-and-client** — not cut from either
+bundle, kept in both (isomorphic): the options carry react-query defaults the
+browser needs.
 
 ## The loader is the mutation body
 
@@ -84,8 +84,7 @@ return value becomes the mutation's `data`:
 ```
 
 The server `.loader` is **server-only** — cut from the client bundle: its body
-and the imports it uses are removed, so it never ships to the browser. Stays in
-the server build (it runs on the server).
+and the imports it uses are removed, so it never ships to the browser.
 
 A mutation has exactly one loader — either a server loader or a client loader,
 never both (see [one loader per point](loader#one-loader-per-point)):
@@ -99,8 +98,7 @@ never both (see [one loader per point](loader#one-loader-per-point)):
 ```
 
 `.clientLoader` is **client-only** — cut from the server bundle: body and its
-imports removed (regardless of SSR), so it never lands in the server build. Kept
-in the client build (it runs in the browser).
+imports removed (regardless of SSR), so it runs only in the browser.
 
 With a server loader, calling the mutation sends one request to the server; with
 a client-only loader, nothing leaves the browser. See [Loader](loader) for the
@@ -127,8 +125,8 @@ bundle, kept in both (isomorphic), because the same schema validates on the
 server and in the browser.
 
 A mutation uses `.input` (plus `.clientInput` / `.sharedInput`) — **not**
-`.params`, `.search`, or `.body`; those are for [pages](page) and
-[actions](action) and are a type error on a mutation:
+`.params` and `.search` (those belong to [pages](page) and [actions](action))
+and not `.body` (actions only); all three are a type error on a mutation:
 
 ```tsx
 root.lets.mutation().params(/* ... */)
@@ -207,10 +205,9 @@ in order.
 Set mutation defaults once on the [root](root), a [base](base), or a
 [plugin](plugin) with `.mutationOptions(...)`, and they apply to every mutation
 beneath. There is no `.mutationOptions()` on the mutation itself — per-mutation
-options go through the closing `.mutation({...})`. Both `.mutationOptions` and
-the closing `.mutation({...})` are **server-and-client** — not cut from either
-bundle, kept in both (isomorphic), because they hold react-query defaults the
-browser needs. Resolution is lowest-to-highest:
+options go through the closing `.mutation({...})`. `.mutationOptions` is
+**server-and-client** like the closer — not cut from either bundle, kept in both
+(isomorphic). Resolution is lowest-to-highest:
 
 1. root/base/plugin `.mutationOptions(...)`
 2. the mutation's own closing `.mutation({...})`
@@ -222,10 +219,9 @@ run in order rather than overwriting each other.
 ## Authorization
 
 `.ctx` is **server-only** — cut from the client bundle: its body and the imports
-it uses are removed, so it never ships to the browser. It runs **only when the
-mutation runs its loader** — which a mutation always does, so a `.use(plugin)`
-that resolves the current user into `ctx` lets the loader gate the write
-server-side:
+it uses are removed, so it never ships to the browser. It runs **when the
+mutation runs its server loader**, so a `.use(plugin)` that resolves the current
+user into `ctx` lets the loader gate the write server-side:
 
 ```tsx
 export const ideaUpdateMutation = root.lets
@@ -256,8 +252,9 @@ export const ideaUpdateMutation = root.lets
 you set via `.errorClass(...)` — see [error handling](error-handling)); throwing
 it from the loader rejects the mutation, and `mutation.error` is typed as that
 class. Unlike a [page](page) — where a loader-less point never runs `.ctx`, so
-auth must be gated in [`.with`](with) — a mutation has no loader-less case, so a
-ctx gate inside the loader always fires.
+auth must be gated in [`.with`](with) — a mutation with a server loader always
+runs it, so a ctx gate inside that loader always fires. (A `.clientLoader`-only
+mutation never reaches the server, so there is nothing to gate there.)
 
 ## A real endpoint
 
@@ -408,6 +405,5 @@ not cut from either bundle, kept in both (isomorphic).
 This mutation's own react-query options are the argument to the closing
 `.mutation({...})` (see [react-query options](#react-query-options)); chain-wide
 defaults come from `.mutationOptions(...)` on the [root](root) / [base](base) /
-[plugin](plugin) above — there is no `.mutationOptions` method on the mutation
-itself. Both the closing `.mutation({...})` and `.mutationOptions` are
-**server-and-client**: not cut from either bundle, kept in both (isomorphic).
+[plugin](plugin) above. Both are **server-and-client**: not cut from either
+bundle, kept in both (isomorphic).

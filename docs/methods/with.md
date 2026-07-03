@@ -6,11 +6,11 @@ description:
   the render — the builder's swiss-army knife.
 ---
 
-`.with` is the point builder's real swiss-army knife. With it you inject a
-query, drive the loading and error states by hand, pass computed props down the
-chain, or wrap the render. It's available on every [mountable](mountable) point
-— [root](root), [base](base), [plugin](plugin), [page](page), [layout](layout),
-[component](component), and [provider](provider) — but **not** on a
+`.with` is the point builder's swiss-army knife: inject a query, drive the
+loading and error states by hand, pass computed props down the chain, or wrap
+the render. It's available on every [mountable](mountable) — [page](page),
+[layout](layout), [component](component), [provider](provider) — and on
+[root](root), [base](base), and [plugin](plugin), but **not** on a
 [mutation](mutation) or a standalone [query](query).
 
 You've already seen the simple shape: inject a query, map the route into its
@@ -25,10 +25,10 @@ export const ideaPage = root.lets
 
 The page renders only after the injected query loads — the component gets
 `data`, never a loading branch. You can stick more than one query into a single
-point; they run in parallel by default, and you see the loading state until all
-of them have loaded. As for the error, you see the first one that comes up. When
-more than one query is used and you want to bring the data into a normal shape
-before the render, reach for [`.mapper`](mapper).
+point; they run in parallel by default, you see the loading state until all of
+them have loaded, and on error you see the first one that comes up. To bring
+several queries' data into one shape before the render, reach for
+[`.mapper`](mapper).
 
 **Strip category: server-ssr-and-client.** Cut from the **server** bundle when
 `ssr: false` (or after a [`.clientOnly()`](ssr) earlier in the chain) — its body
@@ -38,21 +38,14 @@ render: in the browser always, on the server only under SSR.) The full mechanics
 are in [When the `.with` body is stripped](#when-the-with-body-is-stripped)
 below.
 
-But there's much more to `.with`, and that's what this page is about.
-
-- What do we do if we need to use data from one query as the input to another
-  query?
-- Or if we need to get the data for a query's input from some external hook
-  altogether?
-- Or we want to react to the status of each individual query up until the moment
-  they load successfully?
-
-This is exactly where the rest of `.with` comes in handy.
+The rest of this page covers the other shapes: feeding one query's data into
+another's input, deriving a query's input from an external hook, and reacting to
+each query's status before it loads.
 
 ## `.with` as a query injector
 
-Let's look at injecting a single query into a page. We've already seen this, and
-it's convenient to do it exactly this way:
+Injecting a single query into a page — the same shape as above, now also reading
+`queries`:
 
 ```tsx
 export const ideaPage = root.lets
@@ -84,9 +77,8 @@ export const ideaPage = root.lets
   .page(({ data: { fans } }) => <h1>{fans} fans</h1>)
 ```
 
-But the same thing can be written by passing a function — each `.with` mimics a
-component wrapper around the component below it, so you can freely call hooks
-inside:
+The same thing can be written by passing a function — each `.with` acts as a
+component wrapper around the component below it, so you can call hooks inside:
 
 ```tsx
 export const ideaPage = root.lets
@@ -119,7 +111,7 @@ export const ideaPage = root.lets
   ))
 ```
 
-Now the first way of using the data of one query as the input to another:
+The first way to use one query's data as another's input:
 
 ```tsx
 export const ideaPage = root.lets
@@ -154,14 +146,14 @@ export const ideaPage = root.lets
   ))
 ```
 
-These tricks with `enabled` are kind of clunky, so there's another way I like
-more — covered in the `resolve` sections below.
+The `enabled` trick is clunky; the `resolve` sections below cover a way I like
+more.
 
 ## `.with` as a state manager
 
 Inside a `.with` function you can short-circuit the chain. Returning a React
 element renders it; returning `'loading'` or an `Error` renders the loading or
-error component you set up the chain:
+error component declared up the chain:
 
 ```tsx
 export const strangePage = root.lets
@@ -218,18 +210,18 @@ export const strangePage = root.lets
   ))
 ```
 
-An error returned this way can even carry an HTTP status, which is honored
-during the SSR render — `return new ErrorPoint0('Failed', { status: 500 })`.
-Returning any string other than `'loading'`, or an array from a plain function,
-is a type error: those shapes are reserved.
+An error returned this way can carry an HTTP status, honored during the SSR
+render — `return new ErrorPoint0('Failed', { status: 500 })`. Returning any
+string other than `'loading'` is a type error, and so is an array of anything
+other than query results — a frequent mistake is returning a query's data array
+instead of the query itself.
 
 ## `.with` as a props injector
 
-Suppose in one `.with` hook we got some computation result and want to use it in
-another `.with` hook, or on the page itself. Return a plain object and it
-becomes props, merged into `props` for every later method. The merge is a
-shallow spread (`{ ...prev, ...next }`), so a later `.with` can overwrite an
-earlier key — even change its type:
+To pass a computed value from one `.with` hook to another — or to the page
+itself — return a plain object: it becomes props, merged into `props` for every
+later method. The merge is a shallow spread (`{ ...prev, ...next }`), so a later
+`.with` can overwrite an earlier key — even change its type:
 
 ```tsx
 export const strangePage = root.lets
@@ -276,10 +268,8 @@ chain; return a standalone element to stop it.
 
 ## `.with` as an idea
 
-Now let's combine everything to see how else `.with` lets us use the data of one
-query in the input of another. This is what I arrived at while building a real
-project on the framework, and it becomes convenient once you're writing not your
-first page:
+Combining these shapes gives another way to feed one query's data into another's
+input — the pattern I settled on while building a real project on the framework:
 
 ```tsx
 export const ideaPage = root.lets
@@ -352,9 +342,8 @@ export const ideaPage = root.lets
 ```
 
 `resolve` also helps when you want to call a query but **don't** want it to land
-in the `queries` array or in `data`. That's handy for the current user,
-requested in a previous point — you want it in `props`, while `data` stays free
-for the page's own data:
+in the `queries` array or in `data`. That's handy for the current user — you
+want it in `props`, while `data` stays free for the page's own data:
 
 ```tsx
 export const ideaPage = root.lets
@@ -389,24 +378,23 @@ The function form receives one object. Here's everything on it:
 | `LoadingComponent` / `ErrorComponent`   | the components you set with [`.loading`](loading-error) / [`.error`](loading-error) |
 
 There is **no `ctx`** here — `ctx` is server-only and lives in `.ctx` and
-loaders. If you need a ctx value at render, merge it into props in a
-[plugin](plugin) first. (`.ctx` is server-only — cut from the client bundle: its
-body and the imports it uses are removed, so it never ships to the browser;
-that's the opposite category from `.with`.)
+loaders (`.ctx` is cut from the client bundle, body and imports removed — the
+opposite strip category from `.with`). If you need a ctx value at render, merge
+it into props in a [plugin](plugin) first.
 
 ### What you can return
 
-| Return                                                | Effect                                             |
-| ----------------------------------------------------- | -------------------------------------------------- |
-| a query result, or an array of them                   | appended to `queries` (`data` = the first)         |
-| `'loading'`                                           | render the loading component                       |
-| an `Error`                                            | render the error component (status honored in SSR) |
-| a `RedirectTask`, or an `Error` with `.redirect`      | redirect                                           |
-| a React element (with `children`)                     | wrap the rest of the chain                         |
-| a React element (standalone)                          | render it and **stop** the chain                   |
-| a plain object                                        | shallow-merge into `props`                         |
-| `undefined` / nothing                                 | proceed to the next method                         |
-| a non-`'loading'` string, or an array from a plain fn | **type error** — those shapes are reserved         |
+| Return                                           | Effect                                             |
+| ------------------------------------------------ | -------------------------------------------------- |
+| a query result, or an array of them              | appended to `queries` (`data` = the first)         |
+| `'loading'`                                      | render the loading component                       |
+| an `Error`                                       | render the error component (status honored in SSR) |
+| a `RedirectTask`, or an `Error` with `.redirect` | redirect                                           |
+| a React element (with `children`)                | wrap the rest of the chain                         |
+| a React element (standalone)                     | render it and **stop** the chain                   |
+| a plain object                                   | shallow-merge into `props`                         |
+| `undefined` / nothing                            | proceed to the next method                         |
+| a non-`'loading'` string, or a non-query array   | **type error** — those shapes are reserved         |
 
 ### `resolve` forms
 
@@ -429,9 +417,8 @@ other render methods (`.page`, `.layout`, `.component`, `.provider`, `.loading`,
 
 - From the **server** build, the `.with` body — and the imports it pulls in —
   are **cut** when `ssr: false`, or after a [`.clientOnly()`](ssr) earlier in
-  the chain (which makes the rest of the point client-only). Nothing from that
-  argument lands in the server bundle then. It's kept in the server build only
-  when SSR is on, so the point can render server-side.
+  the chain (which makes the rest of the point client-only). It stays in the
+  server build only when SSR is on, so the point can render server-side.
 - From the **client** build, nothing is cut — `.with` always ships and runs at
   render in the browser. (Server-only methods around it, `.ctx`, server
   `.loader`, …, are the ones cut from the client bundle; `.with` itself is not.)

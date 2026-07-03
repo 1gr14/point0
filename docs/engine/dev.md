@@ -24,10 +24,6 @@ bun run dev
 # and watches src — edit a page and it hot-swaps without restarting the server.
 ```
 
-The rest of this page shows what happens on a file change: when the server
-restarts, when it hot-swaps (`--hot`), why the client never reloads underneath
-you, and how the process tree cleans up after itself.
-
 ## What a dev run is
 
 A dev run is a small process **tree**:
@@ -63,8 +59,8 @@ In production the server and the client are served from **one origin** on a
 single port: the same server that renders pages also answers [queries](query)
 and [mutations](mutation). In development point0 splits them across **two
 ports** on purpose — a dedicated client dev server (one per client scope) and
-the server — so the client dev server can stay alive forever and never lose its
-HMR / Fast Refresh state when the server restarts.
+the server — so the client dev server can stay alive and never lose its HMR /
+Fast Refresh state when the server restarts.
 
 That split would normally mean cross-origin requests, but point0 keeps
 everything same-origin for the browser:
@@ -73,24 +69,18 @@ everything same-origin for the browser:
   the page and its assets, and it **forwards every other request through to the
   server** — including the query/mutation POSTs your code fires. Each forwarded
   request is tagged `X-Point0-Forwarded-From-Dev-Client` so the server answers
-  it instead of bouncing it back. The browser only ever sees the client dev
-  server's origin, so there are **no CORS preflights and no
-  [`@point0/cors`](cors) needed** in dev — just as in prod, where it's all one
-  port.
-- **Hit the server port directly and dev redirects you to the client.** Opening
-  a page URL on the server's port during dev `302`s you to the matching client
-  dev server port (same path), so the browser lands on the origin that owns HMR
-  and your Fast Refresh connection never breaks. (Production does no such
-  redirect.)
+  it instead of bouncing it back. So there are **no CORS preflights and no
+  [`@point0/cors`](cors) needed** in dev.
+- **Hit the server port directly and dev redirects you to the client.** A page
+  URL opened on the server's port `302`s to the matching client dev server port
+  (same path), so the browser lands on the origin that owns HMR. (Production
+  does no such redirect.)
 
 If you turn the client side off (`point0 dev --side server`), there's no client
-dev server to forward through — the browser would hit the server cross-origin,
-so in that setup you'd add the [`@point0/cors`](cors) middleware yourself,
-exactly as you would for any external client.
+dev server to forward through — the browser hits the server cross-origin, so add
+the [`@point0/cors`](cors) middleware yourself, as for any external client.
 
 ## Server restarts vs client restarts
-
-There are two reload axes, and they behave differently.
 
 **The client never restarts on an edit.** The client dev server owns HMR (Bun's
 HTMLBundle bundler, or Vite when configured). It stays alive for the whole
@@ -100,10 +90,9 @@ full server restart is invisible in the browser — point0 retries
 connection-refused quietly across the brief moment the server re-binds its port,
 so the client proxy doesn't 502.
 
-**The server, by default, restarts on every change.** point0's server dev does
-not truly hot-reload without `--hot`: on any watched change it kills the server
-child and respawns it. That's slow and drops all in-memory state — DB pools,
-caches, the open socket:
+**The server, by default, restarts on every change.** Without `--hot` there is
+no true hot reload: any watched change kills the server child and respawns it.
+That's slow and drops all in-memory state — DB pools, caches, the open socket:
 
 ```sh
 point0 dev
@@ -151,11 +140,11 @@ POINT0_DEV_SERVER_HOT=true point0 dev     # env-var fallback
 
 The explicit option wins; otherwise it falls back to the env var. Off by
 default. **Bun-native only** — under [Vite](bun-vs-vite) the dev path is
-unchanged. It's marked **experimental**.
+unchanged. **Experimental**.
 
 ### Why not `bun --hot`
 
-There are two reasons, and the second is the decisive one.
+There are two reasons; the second is decisive.
 
 First, `bun --hot` does a _partial_ module-graph reload, which tears React's
 cross-module dispatcher singleton (`Invalid hook call` /
@@ -163,16 +152,14 @@ cross-module dispatcher singleton (`Invalid hook call` /
 framework `dist` and doesn't reload with your edited component. Reproduced on
 the real app, and not fixable with accept-boundaries.
 
-Second — and this is why `bun --hot` is a non-starter here, not just awkward —
-the files point0 rewrites on the fly (the content-hashed modules it feeds the
-server, see below) never land in Bun's own hot store, so native Bun hot reload
-simply doesn't fire for them. It's an open Bun limitation
+Second, the files point0 rewrites on the fly (the content-hashed modules it
+feeds the server, see below) never land in Bun's own hot store, so native Bun
+hot reload simply doesn't fire for them. It's an open Bun limitation
 ([oven-sh/bun#5844](https://github.com/oven-sh/bun/issues/5844) — filed against
 `--watch`, but `--hot` is affected the same way).
 
-point0's hot mode sidesteps both by never reloading the framework and by
-managing its own module store — it only re-imports your edited points, with a
-fresh identity, against the unchanged framework singletons.
+point0's hot mode sidesteps both: it never reloads the framework and manages its
+own module store.
 
 ### How it works: the content-addressed store
 
@@ -185,13 +172,12 @@ alone, so they resolve to the same cached singletons the renderer already uses.
 node_modules/.cache/server-hot/<scope>-<port>/
 ```
 
-The store lives there, keyed by `<scope>-<port>` so two `--hot` processes on the
-same folder but different ports get isolated stores and can't clobber each
-other. On a change, only the changed file **and its importer chain** get new
-hashes; everything else keeps its hash. The server child re-imports the current
-points aggregator per request, gated by a manifest hash: unchanged → cached
-module (singletons live); changed → fresh module identity.
-([`point0 prune`](cli) deletes this cache.)
+The store lives there, keyed by `<scope>-<port>`, so two `--hot` processes on
+the same folder but different ports can't clobber each other. On a change, only
+the changed file **and its importer chain** get new hashes; everything else
+keeps its hash. The server child re-imports the current points aggregator per
+request, gated by a manifest hash: unchanged → cached module (singletons live);
+changed → fresh module identity. ([`point0 prune`](cli) deletes this cache.)
 
 ### Hot vs cold
 
@@ -224,8 +210,8 @@ because its content hash is unchanged. **Prisma forces a minimal cold boundary
 even on day one** — its generated client (a directory + wasm + `import.meta`)
 can't be flattened, so it's externalized to its real path and runs cold.
 
-The decision per change is simply: changed file is cold → full restart;
-otherwise → hot-swap.
+The decision per change: changed file is cold → full restart; otherwise →
+hot-swap.
 
 ### What hot-swaps and what doesn't
 
@@ -242,9 +228,9 @@ Editing an **existing** file behaves as you'd expect:
 
 Two MVP cuts to know:
 
-- **Adding a brand-new file restarts** (it doesn't hot-swap). The new point is
-  picked up automatically — the generator regenerates the aggregators — but it
-  comes in via a child restart, not a hot-swap.
+- **Adding a brand-new file restarts.** The new point is picked up automatically
+  — the generator regenerates the aggregators — but it comes in via a child
+  restart, not a hot-swap.
 - **The client app shell (`app.client`) is not in the store** — editing it
   restarts.
 
@@ -288,12 +274,11 @@ That statically-declared, capitalized `function X` is all the bundler's static
 pass needs to wire up Fast Refresh. At runtime `_tail` returns the real thing —
 a mountable point's actual mount component, or the decoy decorated with the
 point's methods for everything else. The inline render function of a
-page/layout/ component is also hoisted to a top-level declaration so Fast
-Refresh tracks edits to the render body.
+page/layout/component is also hoisted to a top-level declaration so Fast Refresh
+tracks edits to the render body.
 
 The payoff: **a single file can export a page, a query, a mutation, a provider,
-and plain values all at once, and HMR keeps working.** Put points anywhere, mix
-freely, several per file.
+and plain values all at once, and HMR keeps working.**
 
 ```tsx
 // one file, mixed exports — HMR survives all of them
@@ -376,7 +361,7 @@ dev run binds once.
 
 `point0 dev` and `--hot` survive fast edit bursts — the way an AI agent saves,
 30–150 ms apart, written atomically (`<file>.tmp.<pid>.<hex>` + rename). The
-invariants that hold:
+invariants:
 
 - **One watcher pipeline, strictly serial.** Events are deduped by path (latest
   wins) and drained one at a time; the watcher never runs concurrently with

@@ -7,9 +7,8 @@ description:
 ---
 
 The compiler (`@point0/compiler`) is the source transform that runs on every
-file as the [engine](engine-config) builds or serves your app. It started life
-just stripping server code out of the client and client code out of the server,
-but it grew. Today, on a single file, it:
+file as the [engine](engine-config) builds or serves your app. On a single file,
+it:
 
 - **strips point method bodies per side** — your loader and your component live
   in **one file**, and each side only ships the parts it needs (the headline
@@ -27,16 +26,14 @@ but it grew. Today, on a single file, it:
 - **caches** every result on disk, so after the first run it only recompiles
   files that actually changed.
 
-It's the same compiler in every form: a Bun plugin, a Vite plugin, and a Babel
-plugin all wrap one class — so it drops into any toolchain (web, Expo, Electron,
-…); see [One compiler, any bundler](#one-compiler-any-bundler). You rarely touch
-it directly — the [`point0` CLI](cli) and those plugins drive it, and it's on by
-default for every side. The rest of this page shows what it does to your code,
-and how to inspect or tune it.
+It's the same compiler in every form — a Bun plugin, a Vite plugin, and a Babel
+plugin wrap one class; see
+[One compiler, any bundler](#one-compiler-any-bundler). You rarely touch it
+directly — the [`point0` CLI](cli) and those plugins drive it, and it's on by
+default for every side.
 
 ## See it work: `point0 compile`
 
-The fastest way to understand the compiler is to watch it transform one file.
 The [`point0 compile`](cli) command prints the compiled output for a single
 file:
 
@@ -133,18 +130,16 @@ export const engine = Engine.create({
 The render methods (`.page`, `.layout`, `.component`, `.provider`, `.with`,
 `.wrapper`, `.mapper`, `.head`, and the `.loading` / `.error` family) are cut
 from the **server** bundle when `ssr: false` — bodies and the imports they use
-removed from the server build. They stay in the server build only when SSR is
-on, and in the client build always.
+removed from the server build. The client build always keeps them.
 
 - **`ssr: true`** — nothing is cut: the server renders the first page load, so
   it **keeps** those render-method bodies, and the client ships them too for
   client-side navigation after that first render.
 - **`ssr: false`** — those render bodies (and their now-unused imports) are
   **removed from the server bundle**; the server keeps only the loader (to
-  answer data requests) and the rest of the server-only chain. The client keeps
-  the render bodies. This is exactly the compile output of the page above when
-  `ssr` is off — `.page()` empties on the server, `.loader()` empties on the
-  client.
+  answer data requests) and the rest of the server-only chain. This is exactly
+  the compile output of the page above when `ssr` is off — `.page()` empties on
+  the server, `.loader()` empties on the client.
 
 Client-only methods are cut from the **server** bundle: `.clientLoader`,
 `.clientInput`, `.clientOn`, `.clientOnPrefetchPage`, and the
@@ -229,7 +224,7 @@ on the [env](env) page.
 `env.runtime.is.<X>` covers `browser`, `reactNative`, `nodejs`, `bun`, `deno`,
 and `worker`; `env.os.is.<X>` covers `ios`, `android`, `linux`, `mac`, and
 `windows`. The compiler shakes these only when you set the matching `runtime` /
-`os` option (below). See [env](env) for the full semantics.
+`os` option (below).
 
 The compiler also handles [`<ClientOnly>`](env): on the server, its children are
 replaced with `null`, so client-only UI never renders server-side.
@@ -279,9 +274,7 @@ page.
 
 Bun's native bundler and Vite only enable React Fast Refresh for modules that
 _look like_ they export a React component. A point file exports points, not
-components — from React's point of view a mutation, a query, and a provider
-aren't components at all — so without help every edit would trigger a full page
-reload.
+components, so without help every edit would trigger a full page reload.
 
 The compiler fixes this by appending a `_tail` decoy to the **last point in each
 chain** in the file. Put a mutation and the page that uses it side by side:
@@ -316,8 +309,8 @@ for the module — even though one is really a mutation. You never access
 the real runtime export is decided by `Point0._tail` in `@point0/core` (a
 mountable returns its mount component, everything else returns the decoy).
 That's why a file can export any mix of pages, queries, and mutations and still
-hot reload — see [Dev](dev) for the dev/HMR story. The decoy is on by default
-for the client and off for the server; `point0 compile --no-hmr` turns it off.
+hot reload — see [Dev](dev). The decoy is on by default for the client and off
+for the server; `point0 compile --no-hmr` turns it off.
 
 ## User babel plugins
 
@@ -345,8 +338,8 @@ export const engine = Engine.create({
 The compiler has special handling for **React Compiler**. React Compiler only
 memoizes things that look like top-level components, but point logic lives in
 chain callbacks (`.page`, `.layout`, `.component`, `.provider`, `.wrapper`,
-`.with`). So the compiler injects a `"use memo"` directive into those callbacks
-so React Compiler memoizes them too. The behavior keys off React Compiler's own
+`.with`) — so the compiler injects a `"use memo"` directive into those callbacks
+to get them memoized too. The behavior keys off React Compiler's own
 `compilationMode` option, which you pass to the plugin the usual way:
 
 ```ts
@@ -374,10 +367,10 @@ for modes and config.
 ## Caching
 
 The compiler caches every result on disk, keyed on the file's contents (via its
-mtime) and the compiler's own settings. The first run of a project costs a
-little extra; after that it's fast, and a file is only recompiled when it
-actually changes — or when the compiler settings that produced its cache entry
-change. Cache is on by default (`compiler.cache`); clear it with:
+mtime) and the compiler's own settings. The first run pays full price; after
+that a file recompiles only when it changes — or when the settings that produced
+its cache entry change. Cache is on by default (`compiler.cache`); clear it
+with:
 
 ```sh
 point0 prune
@@ -385,12 +378,12 @@ point0 prune
 
 ## One compiler, any bundler
 
-The compiler is just one class, and every integration is a thin wrapper around
-it: a **Bun plugin**, a **Vite plugin**, and a **Babel plugin** all run the
-exact same transform. That's what lets a Point0 codebase target whatever you
-point it at — a web client on Bun or Vite, an Expo app, an Electron build,
-anything with a bundler — without a different compiler per target. You almost
-never construct it yourself; the engine wires the right plugin in for you:
+Every integration is a thin wrapper around one class: a **Bun plugin**, a **Vite
+plugin**, and a **Babel plugin** all run the exact same transform. That lets a
+Point0 codebase target anything with a bundler — a web client on Bun or Vite, an
+Expo app, an Electron build — without a different compiler per target. You
+almost never construct it yourself; the engine wires the right plugin in for
+you:
 
 | Bundler / context         | Plugin                                                |
 | ------------------------- | ----------------------------------------------------- |
@@ -414,10 +407,9 @@ one — the same compiler runs on either path. See [Bun or Vite](bun-vs-vite).
 
 ## The `.lets` sugar transform
 
-A smaller convenience, last because it's the least essential: the compiler
-powers the short [`.lets`](points) notation by rewriting it into the explicit
-form. The short form only works with the compiler on; the explicit form works
-anywhere and is identically typed.
+The compiler powers the short [`.lets`](points) notation by rewriting it into
+the explicit form. The short form only works with the compiler on; the explicit
+form works anywhere and is identically typed.
 
 ```tsx
 // what you write (short form):

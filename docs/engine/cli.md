@@ -80,8 +80,8 @@ Build **always generates first** — there is no "build without generate". It al
 forces `LOG_MODE=pretty` and defaults `NODE_ENV` to `production`; building with
 any other mode warns and ships unminified, inline-sourcemapped client bundles.
 
-`--watch` rebuilds on change. With no glob it watches the **import graph** of
-your build entries — no glob needed; a glob value is added on top of that:
+`--watch` rebuilds on change. With no value it watches the **import graph** of
+your build entries; a glob value adds to that:
 
 ```sh
 point0 build --watch                 # watch the entries' import graph

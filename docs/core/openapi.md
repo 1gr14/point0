@@ -33,7 +33,6 @@ export const root = Point0.lets
 ```
 
 `GET /openapi.json` now returns the spec, `/scalar` and `/swagger` render it.
-The rest of this page shows where each operation comes from and how to shape it.
 
 ## Installing
 
@@ -111,7 +110,7 @@ Two gotchas, both from how the point is named:
 
 - **Actions get no auto-summary.** A query/mutation/page gets `summary`
   defaulted to its point id; an action shows a summary only if you set one with
-  [`.openapi()`](#openapi-operation-metadata).
+  [`.openapi()`](#openapi--operation-metadata).
 - **An action's `operationId` is its name** — but only when the action was given
   an explicit name. An action whose name is still the auto-generated
   `"METHOD /route"` gets no `operationId`. Name it (or set `operationId` via
@@ -245,10 +244,9 @@ Call `.openapi()` more than once and the objects merge — last call wins per ke
 
 Point0 maps `tags` and `description` to the operation **only when you set them
 via `.openapi()`** — there is no derivation from the point's name, scope, or its
-`.tag()` / `.description()` metadata. If you want grouped, described operations,
-pass `tags` and `description` to `.openapi()` explicitly. (`summary`,
-`operationId`, `deprecated` from `.openapi()` are mapped the same way — set, and
-they land on the operation.)
+`.tag()` / `.description()` metadata. (`summary`, `operationId`, `deprecated`
+from `.openapi()` are mapped the same way — set, and they land on the
+operation.)
 
 ## Models and `$ref`
 
@@ -284,10 +282,9 @@ openapi({
 ```
 
 Each UI defaults its spec `url` to the `route` you set for the JSON spec, so you
-don't repeat it. Omit `scalar` or `swagger` and that UI route simply isn't
-served. Scalar options are `@scalar/api-reference` config (e.g. `theme`,
-`onLoaded`); Swagger options are `swagger-ui` config. Both UIs load their
-bundles from a CDN.
+don't repeat it. Omit `scalar` or `swagger` and that UI route isn't served.
+Scalar options are `@scalar/api-reference` config (e.g. `theme`, `onLoaded`);
+Swagger options are `swagger-ui` config. Both UIs load their bundles from a CDN.
 
 ## Protecting the docs
 
@@ -308,8 +305,7 @@ openapi({
 ```
 
 Without credentials the doc routes return `401` with a `WWW-Authenticate`
-header; with valid credentials they serve normally. `before` accepts a single
-middleware or an array.
+header. `before` accepts a single middleware or an array.
 
 ## Caching
 
@@ -323,9 +319,8 @@ openapi({ route: '/openapi.json', cache: 'specs' }) // cache under a custom key
 openapi({ route: '/openapi.json', cache: true }) // explicit: cache under the json route
 ```
 
-Because caching is on by default, schema changes you make at runtime won't show
-up until the process restarts — pass `cache: false` if you need a fresh spec on
-every request (e.g. while iterating).
+Schema changes made at runtime won't show up until the process restarts — pass
+`cache: false` for a fresh spec on every request (e.g. while iterating).
 
 ## Document-level fields
 

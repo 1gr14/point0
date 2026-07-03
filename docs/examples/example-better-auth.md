@@ -61,7 +61,7 @@ point is then one `.use(authorizedOnlyPlugin)`; a protected mutation reads
 `ctx.me` and enforces ownership server-side, while the matching page re-checks
 on the client for UX.
 
-The error class adds a `code` field (here via [error0](error-handling)'s code
+The error class adds a `code` field (here via [Error0](error-handling)'s code
 plugin, marked public so it survives serialization), and the error component
 branches on it — `UNAUTHORIZED` renders a sign-in link, `FORBIDDEN` shows the
 message. See [`.middleware`](middleware), [`.with`](with), [Plugin](plugin),
@@ -78,7 +78,7 @@ credentials. See [getting-started](getting-started).
 ## For a real app
 
 This example shows auth in isolation. For a real product, start from
-**[start0](https://1gr14.dev/start0)** — it ships this auth setup with social
+**[Start0](https://1gr14.dev/start0)** — it ships this auth setup with social
 providers and more, alongside admin, forms, CRUD, email, and deploy
 (`bun create start0@latest my-app`).
 

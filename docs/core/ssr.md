@@ -25,9 +25,7 @@ export const engine = Engine.create({
 })
 ```
 
-That single line is the whole setup. The rest of this page explains the loop,
-the tuning options, and the prefetch policies that decide how much work each
-navigation does.
+That single line is the whole setup.
 
 ## How a render becomes HTML
 
@@ -58,13 +56,10 @@ where one query's result feeds the next (via an [SsrStore](ssr-store)) can take
 five. You don't manage any of this; it's the price of not having to declare your
 data dependencies up front.
 
-And if you don't want to pay it, you don't have to. The re-renders are a
-convenience, not a tax: tell Point0 up front what a page needs — warm its cache
-in [`.onPrefetchPage`](#onprefetchpage) (below), which runs once before the
-first render — and that render already has the data, so the loop settles in a
-single pass. So there are two comfortable modes: **convenient but with
-re-renders** (write nothing, let the loop discover), or **a little extra work
-and zero re-renders** (declare the data once). Pick per page.
+And you don't have to pay it: warm a page's cache in
+[`.onPrefetchPage`](#onprefetchpage), which runs once before the first render,
+and the loop settles in a single pass. Pick per page — write nothing and let the
+loop discover, or declare the data once and skip the re-renders.
 
 Two things the loop deliberately does **not** do:
 
@@ -99,11 +94,10 @@ part client-only with `.clientOnly()` / `<ClientOnly>`
 mounts after hydration. React Server Components aren't supported either — not a
 current goal. Point0's render-to-discover SSR already fetches on the server and
 strips server-only code from the client bundle; we don't see much additional
-value in RSC on top of that. If you do have a concrete picture of what RSC would
-unlock here — why you need it and who it would help — we're open to the likely
-first step: letting a `.loader()` return React elements directly. Spell out that
-motivation in a [GitHub issue](https://github.com/1gr14/point0) — who it helps
-and why the current model isn't enough.
+value in RSC on top of that. If RSC would unlock something concrete for you, the
+likely first step is letting a `.loader()` return React elements directly — make
+the case in a [GitHub issue](https://github.com/1gr14/point0): who it helps and
+why the current model isn't enough.
 
 When the server render throws (anything that isn't a [redirect](navigation)),
 the engine falls back to serving the bare `index.html` with the error attached —
@@ -130,10 +124,9 @@ With `ssr: false` the **server-ssr-and-client** render methods (`.page` /
 `.layout` / `.component` / `.provider`, the `.loading` and `.error` families,
 `.wrapper`, `.with`, `.mapper`, `.head`) are cut from the server bundle — their
 bodies and the imports they use are removed from the server build, since there's
-no server render to keep them around for; they stay in the client build. (Of the
-four strip categories, only this one tracks the SSR flag: server-only and
-client-only code is cut the same way with SSR on or off, and server-and-client
-code is never stripped.)
+no server render to keep them around for; they stay in the client build. Of the
+four strip categories, only this one tracks the SSR flag — the other three are
+covered below.
 
 You can also opt **one point** out while SSR is globally on, with
 [`.clientOnly`](mountable) — it forces that point to client-only render and
@@ -157,26 +150,19 @@ export const ChartPage = root.lets
 ```
 
 `.clientOnly()` makes the rest of the point's chain client-only — exactly as if
-`ssr: false` applied to this one point. It targets one of the four strip
-categories: the **server-ssr-and-client** render methods. After `.clientOnly()`
-(or globally, with `ssr: false`) those are **cut from the server bundle** —
-their bodies and the imports they use are removed from the server build, kept in
-the client build always and in the server build only when SSR is on. So a
-browser-only library you reach for in them never lands in the server build, and
-never executes during SSR. The full set: `.page` / `.layout` / `.component` /
-`.provider`; `.loading` (and `.pageLoading` / `.layoutLoading` /
-`.componentLoading`); `.error` (and `.pageError` / `.layoutError` /
-`.componentError`); `.wrapper`; `.with`; `.mapper`; `.head`.
+`ssr: false` applied to this one point. It targets the same strip category: the
+**server-ssr-and-client** render methods above are cut from the server bundle
+for this point — bodies and imports removed — so a browser-only library you
+reach for in them never lands in the server build and never executes during SSR.
 
 The other three categories are unaffected by `.clientOnly()` / `ssr: false`.
 **server-only** methods before it (`.ctx`, a server `.loader`, `.input`, …) stay
 cut from the client bundle either way — their bodies and imports never ship to
-the browser (they run on the server as usual); **client-only** methods
-(`.clientLoader`, `.onPrefetchPage`, …) stay cut from the server bundle — body
-and imports removed regardless of SSR; and **server-and-client** methods
-(closers like `.query`, the `*QueryOptions` setters, `.relatedQuery`, …) are cut
-from neither bundle — kept in both (isomorphic). `.clientOnly()` only
-client-restricts what _renders_, not what loads.
+the browser; **client-only** methods (`.clientLoader`, `.onPrefetchPage`, …)
+stay cut from the server bundle regardless of SSR; and **server-and-client**
+methods (closers like `.query`, the `*QueryOptions` setters, `.relatedQuery`, …)
+are cut from neither bundle. `.clientOnly()` only client-restricts what
+_renders_, not what loads.
 
 ## Tuning the loop
 
@@ -203,35 +189,23 @@ Now the very first render finds `getMeQuery` already in cache, resolves it
 synchronously, and the loop settles in **one pass** — no discover-then-fetch
 round-trip.
 
-Two things make this hook pull its weight:
+Two things to know:
 
-- **It runs on both sides, automatically.** The same `.onPrefetchPage` runs on
-  the server (once before the first render — no opt-in) and on the client (when
-  you navigate to the page). You write the prefetch once and it covers the first
-  load and every client-side navigation. Need one side only? Reach for
-  [`.serverOnPrefetchPage` / `.clientOnPrefetchPage`](#onprefetchpage) — the
-  same hook, but the body (and the imports it pulls in) is stripped from the
-  other bundle.
-- **On the client it doesn't cost an HTTP round-trip just to "be on the
-  client".** A `prefetchQuery`/`fetchQuery` on a point's loader goes over the
-  network on the client only because the loader is server code; that's expected.
-  But there's no duplicate hop on the server — during SSR the same call resolves
-  **in-process through `engine.fetch()`**, not by Point0 making an HTTP request
-  back to itself. The point's `fetch` is wired straight into the engine.
+- **It runs on both sides.** The same `.onPrefetchPage` runs on the server (once
+  before the first render — no opt-in) and on the client (when you navigate to
+  the page), so one prefetch covers the first load and every client-side
+  navigation. Need one side only?
+  [`.serverOnPrefetchPage` / `.clientOnPrefetchPage`](#onprefetchpage) restrict
+  it to one bundle.
+- **No duplicate hop on the server.** On the client a
+  `prefetchQuery`/`fetchQuery` on a point's loader goes over the network — the
+  loader is server code. During SSR the same call resolves **in-process through
+  `engine.fetch()`**, not by Point0 making an HTTP request back to itself.
 
-Warming the queries this way removes the data-discovery passes — and by default
-you only pay for what you warm. The hook runs before the first render; on its
-own it does **not** auto-prefetch your page/layout loaders. If a page's loaders
-are predictable, flip on
+The hook does **not** auto-prefetch your page/layout loaders. If a page's
+loaders are predictable, flip on
 [`prefetchLoadersBeforePageRender`](#prefetchloadersbeforepagerender) to
-prefetch the declared `.loader()` queries up front as well — no hook needed:
-
-```tsx
-// a page with a layout loader + a page loader:
-//   nothing warmed                          → 3 renders (initial, layout, page)
-//   both queries warmed in .onPrefetchPage  → 1 render
-//   prefetchLoadersBeforePageRender: true   → 1 render (loaders warmed automatically)
-```
+prefetch the declared `.loader()` queries up front as well — no hook needed.
 
 A separate source of re-renders is store/cookie stabilization, which you cap
 independently with `allowedRerendersCount` (below) — set it to `0` to also stop
@@ -307,25 +281,22 @@ If both caps are set, the hard cap is checked first.
 >
 > For anything beyond eyeballing, read the count in code:
 > [`request.renders`](request) holds the pass count for the current request, in
-> dev **and** production. From a [middleware](middleware) you can log it, alert
-> on pages that re-render too much, or feed it into metrics — it's a real number
-> on every request, not just a debug header.
+> dev **and** production — log it from a [middleware](middleware), alert on
+> pages that re-render too much, or feed it into metrics.
 
 ## Prefetch policies
 
 The loop above is the _first_ load. Once the SPA is running, **navigations** no
 longer ask the server for HTML — instead Point0 prefetches the next page's data
 before it swaps the view, so the page appears already filled in. The **policy**
-decides what "prefetch its data" means, and the policies differ in one key way:
-**whether the prefetch renders the page on the server or not.**
-
-That distinction is where the old framing goes wrong, so be precise about it:
+decides what gets prefetched, and the policies differ in one key way: **whether
+the prefetch renders the page on the server or not.**
 
 - With **`pageDehydratedStateAndClientQuery`** (and `pageDehydratedState`) the
   server _does_ render the page — in memory, to discover and resolve its
-  queries. It just doesn't send back HTML; it sends back the **dehydrated query
-  cache**, which the client drops into its own cache. A real server render
-  happens, it's the most thorough policy, and it's the most expensive one.
+  queries. It doesn't send back HTML; it sends back the **dehydrated query
+  cache**, which the client drops into its own cache. The most thorough policy,
+  and the most expensive one.
 - With **`serverAndClientQuery`** there is **no server render at all**. The
   client looks at the queries declared on the target page and its layouts and
   calls them directly. Cheaper, but it only sees queries that are visible
@@ -400,8 +371,8 @@ export const root = Point0.lets
 
 **3. `none` — no prefetch, loading states do the work.** Don't prefetch
 anything. On navigation the page mounts, its queries start, and your
-`.loading()` components show until the data arrives. The simplest model, and
-perfectly fine when a brief loading state is acceptable.
+`.loading()` components show until the data arrives. The simplest model — fine
+when a brief loading state is acceptable.
 
 ```tsx
 export const root = Point0.lets
@@ -419,21 +390,21 @@ The two ends of the trade-off, spelled out:
 .prefetchPageOnLinkHover('serverAndClientQuery')
 ```
 
-`serverAndClientQuery` renders nothing, so it can only see queries declared on
-the points themselves (`.loader`, `.with` on the page/layout). A query declared
-_inside_ a component isn't discovered — it shows its loading state after
-navigation. Cheap to run, looser coverage; close the gap with `.onPrefetchPage`.
+`serverAndClientQuery` renders nothing, so it only sees queries declared
+statically on the points themselves (`.loader`, `.relatedQuery` on the
+page/layout). A `.with` query, or a query declared _inside_ a component, is
+found only by rendering — it isn't discovered and shows its loading state after
+navigation. Close the gap with `.onPrefetchPage`.
 
 ```tsx
 // EXPENSIVE: full in-memory SSR render of the target page, just to collect its cache.
 .prefetchPageOnNavigate('pageDehydratedStateAndClientQuery')
 ```
 
-`pageDehydratedState*` asks the server to **render the page in memory** and
-return only its dehydrated query cache (the page's HTML is thrown away). It runs
-the same render-to-discover loop, so it finds _every_ query, including the ones
-inside components — best coverage, no per-page work, but you pay a full server
-render per prefetch.
+`pageDehydratedState*` **renders the page in memory** on the server and returns
+only its dehydrated query cache (the HTML is thrown away). It runs the same
+render-to-discover loop, so it finds _every_ query, including the ones inside
+components — but you pay a full server render per prefetch.
 
 These two **require SSR**. With `ssr: false` they throw:
 
@@ -466,8 +437,7 @@ export const profilePage = root.lets
 
 It receives `{ location, props }` and runs on **both sides**: on the server once
 before the first render (always — no opt-in), and on the client during prefetch
-when you navigate to the page — so the same warm-up code covers the first load
-and every navigation. On the client it never fires in the normal
+when you navigate to the page. On the client it never fires in the normal
 render-to-discover loop, never for the `'none'` policy, and never for the
 server-only `'pageDehydratedState'` policy (which returns right after the
 in-memory render, before the hooks fire; `pageDehydratedStateAndClientQuery`
@@ -507,8 +477,8 @@ worth knowing:
   It matters most when you prefetch on **link hover**: a hover fires every time
   the cursor crosses a link, and without a stale window each pass would re-fetch
   the whole dehydrated state. A longer `staleTime` lets one hover's result
-  satisfy the navigation that follows (and repeat hovers), instead of asking the
-  server to re-render the page again and again.
+  satisfy the navigation that follows (and repeat hovers) instead of
+  re-rendering the page on the server each time.
 
 ## SsrStore: state that survives the loop
 
@@ -565,11 +535,9 @@ ssr: {
 ```
 
 SSR is **off** unless you turn it on — omitting `ssr` resolves the same as
-`ssr: false`. Turn it on with `ssr: true` or an object (the `enabled: true`
-default applies only to the object form: `ssr: {}` is on). A boolean turns SSR
-on or off with every loop default; an object overrides only the keys you set,
-keeping the default for anything left out. Per-point, [`.clientOnly`](mountable)
-forces that one point off.
+`ssr: false`. A boolean sets every loop default; an object overrides only the
+keys you set (`enabled` defaults to `true` in the object form, so `ssr: {}` is
+on). Per-point, [`.clientOnly`](mountable) forces that one point off.
 
 ### Prefetch policy values
 

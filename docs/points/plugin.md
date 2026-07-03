@@ -6,8 +6,8 @@ description:
   chain with .use().
 ---
 
-A plugin is a point that does nothing on its own. Instead it bundles up methods
-— `.ctx`, `.with`, `.middleware`, input schemas, related queries — and injects
+A plugin is a point that does nothing on its own. Instead it bundles methods —
+`.ctx`, `.with`, `.middleware`, input schemas, related queries — and injects
 them into another point's chain when you call `.use(plugin)`. It's the tool for
 sharing setup across points in _your_ app, not a third-party extension system.
 
@@ -45,8 +45,7 @@ export const generalLayout = root.lets
 
 ## Declaring a plugin
 
-Open with `.plugin()`, add methods, close with `.plugin()` — the same name
-appears twice (open the chain, close it):
+Open with `.plugin()`, add methods, close with `.plugin()`:
 
 ```tsx
 export const tagsPlugin = Point0.lets
@@ -64,17 +63,16 @@ export const mePlugin = Point0.lets('plugin', 'me') // explicit form
   .plugin()
 ```
 
-Both forms type-identically. Unlike every other point, a plugin always grows
-from `Point0` directly, not from a `root` / `base` / `layout` — it isn't tied to
-any client or route. See [points](points) for the notation.
+Unlike every other point, a plugin always grows from `Point0` directly, not from
+a `root` / `base` / `layout` — it isn't tied to any client or route. See
+[points](points) for the notation.
 
-The `.plugin()` closer itself is not cut from either bundle — kept in both
-(isomorphic), nothing pruned (server-and-client). The methods it bundles keep
-_their own_ strip categories: a plugin's `.ctx` is still cut from the client
-bundle (server-only), its `.with` is still cut from the server bundle when
-`ssr:false` (server-ssr-and-client), and so on. `.use()` just merges those
-bodies into the consumer at the call site; it doesn't change what gets cut from
-which bundle.
+The `.plugin()` closer itself is **server-and-client** — not cut from either
+bundle. The methods it bundles keep _their own_ strip categories: a plugin's
+`.ctx` is still cut from the client bundle (server-only), its `.with` still cut
+from the server bundle when `ssr:false` (server-ssr-and-client), and so on.
+`.use()` merges those bodies into the consumer at the call site; it doesn't
+change what gets cut from which bundle.
 
 A plugin is never an endpoint and never has a route of its own. It carries no
 `.loader`, `.clientLoader`, `.mapper`, `.head`, `.params`, or `.query` — writing
@@ -138,8 +136,7 @@ const accountPage = root.lets
 
 A plugin sees only its own accumulated `ctx`/`props`, never the consumer's
 surrounding state — so a plugin can't accidentally depend on whatever point used
-it. The flow is one-way: the consumer gains the plugin's output, the plugin
-stays sealed.
+it.
 
 ```tsx
 const plugin = Point0.lets
@@ -181,30 +178,26 @@ const ideaPage = root.lets
   .page(/* ... */)
 ```
 
-A plugin can come from a function like this, but most read better as a plain
-exported const (`mePlugin`, `authorizedOnlyPlugin`). Reach for a factory only
-when you need to parametrize.
+Most plugins read better as a plain exported const (`mePlugin`,
+`authorizedOnlyPlugin`); reach for a factory only when you need to parametrize.
 
 ## Auth plugins: `.ctx` + `.with` together
 
 The headline use of a plugin is an authorization gate. It needs **both** `.ctx`
-and `.with` — and these are two genuinely different mechanisms, not two copies
-of one check:
+and `.with` — two different mechanisms, not two copies of one check:
 
-- `.ctx` builds **server context**. Cut from the client bundle — its body and
-  the imports it uses are removed, so it never ships to the browser
-  (server-only). This is where you resolve a value from the request — the
-  session, the current user — for the server data path; it runs on the server,
-  and only when the point has a loader.
+- `.ctx` builds **server context**. Cut from the client bundle, so it never
+  ships to the browser (server-only). This is where you resolve a value from the
+  request — the session, the current user — for the server data path; it runs
+  only when the point has a loader.
 - `.with` is a **render wrapper**. Each `.with` wraps the rendered remainder of
   the chain, exactly like nesting one React component inside another; it just
   reads as a builder method. It runs at render — on the client, and on the
   server under SSR — can call hooks, and decides what renders next by what it
   returns (props, a query, an `Error`, a `redirect`, an element). It never sees
   `ctx`. Cut from the SERVER bundle when `ssr:false` (or after a `.clientOnly()`
-  earlier in the chain) — body and imports removed from the server build; kept
-  in the client build always, and in the server build only when SSR is on
-  (server-ssr-and-client).
+  earlier in the chain); kept in the client build always, in the server build
+  only when SSR is on (server-ssr-and-client).
 
 So a gate written in `.ctx` alone protects only the server loader path: a
 loader-less page is rendered straight on the client, where `.ctx` never runs,
@@ -233,12 +226,10 @@ export const mePlugin = Point0.lets
   .plugin()
 ```
 
-Three different strip categories sit in this one chain: `.onPrefetchPage` stays
-in both bundles (**server-and-client** — it runs on the client during prefetch
-_and_ on the server before the first render; `.serverOnPrefetchPage` /
-`.clientOnPrefetchPage` pin it to one side); `.ctx` is cut from the client
-bundle — body and imports removed (server-only); `.with` is cut from the server
-bundle when `ssr:false` (server-ssr-and-client).
+`.onPrefetchPage` is **server-and-client** — not cut from either bundle: it runs
+on the client during prefetch _and_ on the server before the first render
+(`.serverOnPrefetchPage` / `.clientOnPrefetchPage` pin it to one side). `.ctx`
+and `.with` keep their categories from above.
 
 Then the gate — `.use(mePlugin)` to get `me`, throw on the server, return the
 error on the client:
@@ -298,8 +289,8 @@ export const redirectUnauthorizedPlugin = Point0.lets
   .plugin()
 ```
 
-A nice pattern: apply the gate once on a [base](base) or [layout](layout) and
-every point beneath it inherits the check — e.g. an `adminBase` that
+Apply the gate once on a [base](base) or [layout](layout) and every point
+beneath it inherits the check — e.g. an `adminBase` that
 `.use(adminOnlyPlugin)`, so admin pages get the gate for free.
 
 ## Related queries in a plugin
@@ -316,13 +307,13 @@ export const sidebarPlugin = Point0.lets
   .plugin()
 ```
 
-`.relatedQuery` is not cut from either bundle — kept in both (isomorphic),
-server-and-client. It adds its query to the consumer's `queries` array, exactly
-like a `.with(query)` result; the difference is prefetch. A related query is
-statically discoverable, so prefetch self-fetches it _without_ rendering under
-the cheap policies (`serverQuery`/`clientQuery`/`serverAndClientQuery`), whereas
-a `.with(query)` is only found by rendering and so is prefetched only under the
-expensive, SSR-only `pageDehydratedState*`. See [query](query).
+`.relatedQuery` is **server-and-client** — not cut from either bundle. It adds
+its query to the consumer's `queries` array, exactly like a `.with(query)`
+result; the difference is prefetch. A related query is statically discoverable,
+so prefetch self-fetches it _without_ rendering under the cheap policies
+(`serverQuery`/`clientQuery`/`serverAndClientQuery`), whereas a `.with(query)`
+is only found by rendering and so is prefetched only under the expensive,
+SSR-only `pageDehydratedState*`. See [query](query).
 
 ## Reference
 
@@ -352,11 +343,11 @@ Defaults & UI: `.queryOptions` / `.pageQueryOptions` / `.componentQueryOptions`
 / `.layoutQueryOptions` / `.mutationOptions` / `.infiniteQueryOptions`,
 `.fetchOptions` — all server-and-client. `.openapi` is server-only. `.loading` /
 `.error` (and per-state variants) are server-ssr-and-client. `.scrollPosition` /
-`.scrollRestore` are cut from the server bundle — body and imports removed
-(client-only; see [navigation](navigation)). `.onPrefetchPage` is
-**server-and-client** — it runs on the client during prefetch and on the server
-before the first render; `.serverOnPrefetchPage` (server-only) /
-`.clientOnPrefetchPage` (client-only) pin it to one side.
+`.scrollRestore` are client-only — cut from the server bundle (see
+[navigation](navigation)). `.onPrefetchPage` is **server-and-client** — it runs
+on the client during prefetch and on the server before the first render;
+`.serverOnPrefetchPage` (server-only) / `.clientOnPrefetchPage` (client-only)
+pin it to one side.
 
 Events & meta: `.on` / `.use` config (server-and-client), `.serverOn`
 (server-only), `.clientOn` (client-only), `.clientOnly` (the switch — flips the
@@ -372,9 +363,8 @@ contributes methods; it never _is_ a mountable or routable point.
 
 `.use(plugin)` is on every point with a setup stage: `root`, `base`, `page`,
 `layout`, `component`, `provider`, `query`, `infiniteQuery`, `mutation`,
-`action`, and `plugin`. It must come before the point is finalized — it's a
-setup-stage method, so it's a type error after `.loader()` or once the point is
-closed.
+`action`, and `plugin`. It's a setup-stage method — a type error after
+`.loader()` or once the point is closed.
 
 When two plugins (or a plugin and its consumer) declare the same input key, the
 schemas merge by key: a plugin can only narrow a key, never widen it, and the

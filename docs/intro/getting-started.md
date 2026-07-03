@@ -63,7 +63,7 @@ Bun, so they'd dead-end the moment you tried to use the result.
 
 ### Bun or Vite — pick at scaffold time
 
-The `--vite` choice changes which files you get. The two are mutually exclusive:
+The `--vite` choice changes which files you get:
 
 - **Bun** (default) — Bun bundles the client; Tailwind comes from
   `bun-plugin-tailwind`, declared as `bunPlugins` in `engine.ts`. No
@@ -162,9 +162,9 @@ typecheck:
 }
 ```
 
-Note `seed` runs with `--preload ./src/preload.ts` — any direct `bun src/<file>`
-that imports app code needs the preload first, so the point0 compiler plugins
-are registered before that code loads (more on this below).
+`seed` runs with `--preload ./src/preload.ts` — any direct `bun src/<file>` that
+imports app code needs the preload first, so the point0 compiler plugins are
+registered before that code loads (more on this below).
 
 ### `src/engine.ts` — the engine config
 
@@ -324,7 +324,7 @@ working example built on top of them:
   [navigation](navigation).
 - **`src/lib/query-client.ts`**, **`src/lib/prisma.ts`**, **`src/lib/error.ts`**
   (a custom `AppError` class wired in via `.errorClass(...)` — the template
-  builds it with [error0](error-handling), but any compatible class works, and
+  builds it with [Error0](error-handling), but any compatible class works, and
   the default is `ErrorPoint0`), and the five-file **`src/lib/env/*`** system
   (shared / client / server [env](env) shapes and validators).
 - **Example points**: `src/layouts/general.tsx` (a [layout](layout)),

@@ -28,8 +28,7 @@ export const apiHealthAction = root.lets.action('GET', '/api/health').action(
 ```
 
 `apiHealthAction.route` is the route you declared, callable like any other:
-`fetch(apiHealthAction.route.abs())`. The rest of this page shows when to use an
-action and how each piece works.
+`fetch(apiHealthAction.route.abs())`.
 
 ## When to use an action
 
@@ -39,13 +38,11 @@ a TanStack cache for free, on a stable framework URL
 **action** when you need something they can't give:
 
 - **A specific method and path** — `GET /api/health`, `PUT /api/ideas/:id`. A
-  query and a mutation always live at a framework-assigned `POST` URL; only an
-  action lets you pick the verb and the route.
+  query and a mutation always live at a framework-assigned `POST` URL.
 - **A raw `Response`** — plain text, bytes, a custom `Content-Type`, a redirect
   of your own. A [mutation](mutation) loader can also return a `Response`, so
-  this alone isn't the reason to reach for an action — but combined with the
-  custom method and path, the action is the point built for raw HTTP. (A query
-  loader is type-blocked from returning a `Response`.)
+  this alone doesn't force an action — but a query loader is type-blocked from
+  returning one.
 - **A webhook** — a third party posts to a URL you publish and often needs the
   unparsed request body (e.g. signature verification).
 - **A REST-ish endpoint** other tools call by URL.
@@ -83,11 +80,10 @@ method needs the explicit long form:
 root.lets('action', 'report', 'REPORT', '/api/report').action(/* ... */)
 ```
 
-`OPTIONS` and `HEAD` are among the seven popular verbs, so they take the short
-form too. point0 itself only auto-handles an `OPTIONS` request when no action
-matches its route — an unmatched `OPTIONS` gets a blank `204`. If you need real
-CORS preflight handling, declare it (an `OPTIONS` action, or the [CORS](cors)
-helper) — the framework doesn't add CORS headers for you.
+point0 auto-handles an `OPTIONS` request only when no action matches its route —
+an unmatched `OPTIONS` gets a blank `204`. For real CORS preflight handling,
+declare it yourself (an `OPTIONS` action, or the [CORS](cors) helper) — the
+framework doesn't add CORS headers for you.
 
 When the name is inferred, the action is named after its method and route:
 
@@ -137,10 +133,10 @@ route's param keys are auto-merged into the `params` schema. Writing `.input`
 `For "action" not allowed "input" schema. Only "params", "search" and "body" are allowed.`
 
 Cut from the client bundle — their bodies and the imports they use are removed,
-so they never ship to the browser. On an action `.params`, `.search`, `.body`,
-`.headers`, and `.cookies` parse the incoming HTTP request (it runs on the
-server). (On a non-action mountable, `.params`/`.search` are isomorphic instead
-— but an action has no client render, so here they're server-only.)
+so they never ship to the browser. On an action, `.params`, `.search`, `.body`,
+`.headers`, and `.cookies` parse the incoming HTTP request on the server. (On a
+non-action mountable, `.params`/`.search` are isomorphic; an action has no
+client render, so here they're server-only.)
 
 `.cookies(schema)` is also accepted, alongside `.headers`. It validates
 `request.cookies` — the `Cookie` header parsed into a flat `{ [name]: value }`
@@ -189,9 +185,9 @@ callback object is
 `{ request, params, search, body, headers, cookies, set, ctx, data, points }`
 (each schema-derived field present only when its schema is set).
 
-Cut from the client bundle — its body and the imports it uses are removed, so it
-never ships to the browser. The `.loader` (and the `.action` server fn below) is
-the endpoint body, so DB calls and secrets stay on the server (it runs there).
+Cut from the client bundle — its body and the imports it uses never ship to the
+browser. The `.loader` (and the `.action` server fn below) is the endpoint body,
+so DB calls and secrets stay on the server.
 
 You can pass the loader **inline** to `.action(fn)` instead of a separate
 `.loader`:
@@ -213,10 +209,9 @@ root
   .action()
 ```
 
-A bare `.action()` with no prior loader is an error — an action needs a
-`.loader` (inline or separate) to have anything to run.
+A bare `.action()` with no prior loader is an error.
 
-**What the loader may return** — this is the action's defining freedom:
+**What the loader may return**:
 
 ```ts
 .action(({ body }) => {
@@ -234,7 +229,7 @@ A bare `.action()` with no prior loader is an error — an action needs a
 Returning a plain object serializes it to JSON (with your
 [`.transformer`](transformer), so `Date` / `bigint` round-trip when point0's own
 client fetches it). Returning a `Response` ships it untouched — when there's a
-response there's no `data`, by design. A returned `Error` is thrown; a returned
+response there's no `data`. A returned `Error` is thrown; a returned
 `RedirectTask` redirects.
 
 Whether the transformer runs is decided by one request header,
@@ -273,9 +268,9 @@ and on the [Response](response) page; the full shape lives there.
 
 ## Consuming an action as a query, mutation, or infinite query
 
-An action is special: besides closing with `.action()`, it can be **finalized**
-as a query, a mutation, or an infinite query. You keep the custom route and the
-split `{ params, search, body }` input, and gain the matching TanStack surface.
+Besides closing with `.action()`, an action can be **finalized** as a query, a
+mutation, or an infinite query. You keep the custom route and the split
+`{ params, search, body }` input, and gain the matching TanStack surface.
 
 ```ts
 // finalize as a query — gives useQuery / fetchQuery
@@ -332,9 +327,8 @@ a `{ [status]: schema }` map. `.openapi` sets operation metadata (`summary`,
 `description`, `operationId`, `tags`, `deprecated`). Without `.response`, the
 spec lists only `200: Successful response`. Full details on [OpenAPI](openapi).
 
-Cut from the client bundle — their bodies and the imports they use are removed,
-so they never ship to the browser. `.response`, `.openapi`, and `.description`
-only feed the server-generated spec (it runs on the server).
+Cut from the client bundle — `.response`, `.openapi`, and `.description` only
+feed the server-generated spec and never ship to the browser.
 
 ## Gating an action
 
@@ -348,12 +342,10 @@ Gate it from [`.ctx`](ctx) (or a server-side [`.middleware`](middleware) /
 executor and always fires when the action is fetched, so it's the right place
 for the check.
 
-Cut from the client bundle — their bodies and the imports they use are removed,
-so they never ship to the browser. `.ctx`, `.middleware`, and the server work of
-a [`.use`](plugin) plugin are gone from the client build; the check can't be
-bypassed from the browser because it isn't there (it runs on the server).
-(`.use` itself stays on both bundles, but its server hooks are cut from the
-client.)
+Cut from the client bundle — `.ctx`, `.middleware`, and the server work of a
+[`.use`](plugin) plugin never ship to the browser, so the check can't be
+bypassed from there: it isn't in the client build. (`.use` itself stays in both
+bundles; only its server hooks are cut from the client.)
 
 ```ts
 import { authPlugin } from '@/lib/auth' // puts the user into props.me
@@ -395,38 +387,30 @@ action.
 
 Input: [`.params`](validation), [`.search`](validation), [`.body`](validation),
 `.headers`, `.cookies` (**not** `.input` / `.clientInput` / `.sharedInput`). All
-**server-only** on an action — cut from the client bundle: their bodies and the
-imports they use are removed, so they never ship to the browser (they parse the
+**server-only** on an action — cut from the client bundle (they parse the
 request on the server).
 
 Data: [`.loader`](loader), [`.ctx`](ctx). Both **server-only** — cut from the
-client bundle: their bodies and the imports they use are removed at compile time
-and never reach the browser (they run on the server). An action has no
-client-side render pass, so there's nothing to cut on the server side — the
-loader is the endpoint. An action has **no `.clientLoader`** — it's a server
-endpoint with no client render, so the chain never offers one.
+client bundle. An action has **no `.clientLoader`** — it's a server endpoint
+with no client render, so the chain never offers one.
 
 OpenAPI: `.response`, `.openapi` (see [OpenAPI](openapi)). Both **server-only**
-— cut from the client bundle: their bodies and the imports they use are removed,
-so they never ship to the browser (they only feed the server-generated spec).
+— cut from the client bundle (they only feed the server-generated spec).
 
 Shared: [`.use`](plugin), [`.middleware`](middleware), `.on` / `.serverOn` /
 `.clientOn` (events), [`.transformer`](transformer), `.fetchOptions`, `.tag`,
 `.description`. Strip categories differ per method: `.middleware`, `.serverOn`,
-and `.description` are **server-only** — cut from the client bundle (body and
-imports removed, never shipped to the browser); `.clientOn` is **client-only** —
-cut from the server bundle (body and its imports removed), though an action has
-no client render so it's inert here; `.use` itself, `.on`, `.transformer`,
-`.fetchOptions`, and `.tag` are **server-and-client** — not cut from either
-bundle, kept in both (isomorphic), even where their server-side hooks run
-server-only.
+and `.description` are **server-only** — cut from the client bundle; `.clientOn`
+is **client-only** — cut from the server bundle (inert here — an action has no
+client render); `.use` itself, `.on`, `.transformer`, `.fetchOptions`, and
+`.tag` are **server-and-client** — not cut from either bundle, even where their
+server-side hooks run server-only.
 
 Closers: `.action(loaderFn?)`, or finalize as [`.query`](query) /
 [`.mutation`](mutation) / [`.infiniteQuery`](infinite-query). The `.action`
-server fn is **server-only** — cut from the client bundle: its body and the
-imports it uses are removed, so it never ships to the browser; the closer calls
-themselves are **server-and-client** — not cut from either bundle, kept in both,
-the chained call stays so types resolve while only the server fn's body is cut.
+server fn is **server-only** — cut from the client bundle; the closer calls
+themselves are **server-and-client** — not cut from either bundle, so the chain
+stays intact and types resolve while only the server fn's body is cut.
 
 ### The action ready point
 
@@ -441,7 +425,7 @@ surface depends on how you closed it:
 | `.query()`                  | `useQuery`, `fetchQuery`, `getQueryKey`, … (full [query](query) surface)                |
 | `.infiniteQuery(...)`       | the `*InfiniteQuery*` surface ([infinite-query](infinite-query))                        |
 
-`action.route` is a callable [route0](navigation) route, so you can build the
+`action.route` is a callable [Route0](navigation) route, so you can build the
 URL to fetch it directly. `.abs()` gives the absolute URL — an action's route
 resolves against the server URL, which point0 fills in as the route's origin:
 

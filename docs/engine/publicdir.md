@@ -45,7 +45,7 @@ publicdir: {
 ```
 
 A bare string mounts that directory at `/`. Relative paths resolve against the
-engine's `cwd`. That's the whole setup for serving a `public/` folder.
+engine's `cwd`.
 
 ## Where it goes in the config
 
@@ -70,17 +70,11 @@ The examples ship `publicdir` on the **client** side, since that's where the web
 assets live. The server side accepts the same shape, so use it when the server
 origin needs to serve its own static files.
 
-A `publicdir` on a `clients[]` entry works the same way — each entry carries its
-own, exactly like the single `client`.
-
 ## `source` — what to serve
 
-`source` accepts a string, an object map, an array, or any mix. Each entry maps
-a **route path** to either a directory or a content function.
-
-A **string** is a directory mounted at `/`. An **object** maps route paths to
-directories or functions. An **array** combines both, plus `[routePath, value]`
-tuples:
+`source` accepts a string, an object map, an array, or any mix. A **string** is
+a directory mounted at `/`. An **object** maps route paths to directories or
+functions. An **array** combines both, plus `[routePath, value]` tuples:
 
 ```ts
 source: [
@@ -111,14 +105,12 @@ Route paths are normalized: a leading slash is added, a trailing slash stripped,
 repeated slashes collapsed. So `'robots.txt'` and `'/robots.txt'` resolve to the
 same `/robots.txt`.
 
-> **Note — when a function file is re-invoked.** While the function still lives
-> in `source` (in `dev`, where files are read live), it's re-invoked per request
-> and never cached — only real files (directory entries) hit the in-memory
-> cache, so keep dev-time function bodies cheap. After a **build**, this stops
-> being a concern: each function entry is invoked **once** at build time and its
-> output is written as a real file into `outdir` (see the `outdir` section
-> below). In production that real file is what gets indexed and served — fully
-> cached, the function never runs per request.
+> **Note — when a function file is re-invoked.** In `dev`, where files are read
+> live, a function entry is re-invoked per request and never cached — only real
+> files (directory entries) hit the in-memory cache — so keep dev-time function
+> bodies cheap. A **build** invokes each function once and writes its output as
+> a real file into `outdir` (see below); in production that file is indexed,
+> served, and cached like any other, and the function never runs per request.
 
 > **Gotcha — a typo'd source path fails silently.** A missing or
 > permission-denied source directory yields zero files with no warning — the
@@ -139,8 +131,8 @@ land next to the JS bundle.
 
 > **Gotcha — no `outdir`, no publicdir.** If you omit `outdir`, the whole
 > `publicdir` resolves to `null` and **nothing is served**, even with a valid
-> `source`. There is no default. This is silent — if your static files 404,
-> check that `outdir` is set.
+> `source` — silently, with no default. If your static files 404, check that
+> `outdir` is set.
 
 At build time, directory entries are copied file-by-file into `outdir`, and
 function entries are invoked and their output written as real files — so
@@ -167,8 +159,8 @@ publicdir: {
 | `false` / `0`    | caching disabled — read from disk every request  |
 | a number         | that many bytes (floored, never negative)        |
 
-Auto is the default. A single file larger than the whole limit is never cached.
-The cache clears whenever the file index is rebuilt.
+A single file larger than the whole limit is never cached. The cache clears
+whenever the file index is rebuilt.
 
 > **Gotcha — auto can hold up to 512 MB.** On a host with lots of RAM and a big
 > static dir, the auto limit (5% of RAM) climbs toward its 512 MB cap. Set an
@@ -177,10 +169,9 @@ The cache clears whenever the file index is rebuilt.
 Note: the publicdir cache is an **in-memory server cache only**. The responses
 themselves carry no HTTP cache headers (`Cache-Control` / `ETag` / `max-age`).
 
-If you want browser/CDN caching, add them yourself with a root
-[middleware](middleware): inspect the result of `next()`, and when it served a
-static file (`result.variant.type === 'publicdir'`) attach whatever headers you
-like before returning it.
+For browser/CDN caching, add headers in a root [middleware](middleware): inspect
+the result of `next()`, and when it served a static file
+(`result.variant.type === 'publicdir'`) attach the headers before returning it.
 
 ```ts
 // inside Engine.create({ server: { ... } }) — a root middleware
@@ -195,8 +186,7 @@ like before returning it.
 
 ## How it differs from imported assets
 
-There are two ways static files reach the browser. They look similar but go
-through different paths:
+Static files reach the browser two ways:
 
 ```tsx
 // 1. Imported asset — compiler-managed, content-hashed
@@ -215,9 +205,9 @@ name — no hashing, no compiler.
 **In production they converge.** The compiler writes hashed asset bytes into
 `dist/client/_point0/assets/…`, and after a build the canonical
 `publicdir: { source: '../public', outdir: '../dist/client' }` serves all of
-`dist/client` at `/`. So that one config does double duty — it serves your
-`public/` files **and** the compiler-emitted hashed assets, because both
-physically live in `dist/client`. See [assets](assets) for the asset pipeline.
+`dist/client` at `/`. That one config serves your `public/` files **and** the
+compiler-emitted hashed assets — both live in `dist/client`. See
+[assets](assets) for the asset pipeline.
 
 Practically: put files you reference by a fixed, predictable URL (favicon,
 `robots.txt`, manifest, `.well-known/…`) in `publicdir`. Let `import` handle
@@ -247,9 +237,8 @@ request, not at startup, so a publicdir never blocks the server from coming up.
 The engine also warms the index in the background, and you can force it eagerly
 with `engine.preparePublicdirs()`.
 
-When two publicdirs (e.g. server + client) claim the same route, the first match
-in order wins: the server publicdir is checked first, then client publicdirs in
-`clients[]` order. There is no cross-publicdir conflict validation — a conflict
+When two publicdirs (e.g. server + client) claim the same route, the first in
+that order wins. There is no cross-publicdir conflict validation — the collision
 is silent, and the first match simply serves.
 
 ### Content type
@@ -272,8 +261,7 @@ client: {
 
 `serving` is `true` (always) / `false` (never) / a host string (serve only when
 `request.location.host` matches exactly) / a function (decide per request). In a
-multi-client app, each client's publicdir is gated by its own `serving`, so the
-right host serves the right files.
+multi-client app, each client's publicdir is gated by its own `serving`.
 
 ## Production serving
 
@@ -292,12 +280,12 @@ rewritten to serve the built `outdir` itself — effectively
 bundle all sit in `dist/client` and are served from there. This auto-rewrite is
 on by default and controlled by the engine's `autoFixBuiltPaths` option.
 
-point0 is deploy-agnostic about what sits in front of this. The built server can
-serve `dist/client` directly, or you can put a CDN or reverse proxy ahead of it
-— point0 prescribes no host-specific config either way. The publicdir responses
-carry no HTTP cache headers, so if you front them with a CDN, set caching there
-or attach headers in a [middleware](middleware) (see the `cacheLimit` section).
-See [Deploy](deploy) for the production run-and-serve story.
+The built server can serve `dist/client` directly, or sit behind a CDN or
+reverse proxy — point0 prescribes no host-specific config either way. The
+publicdir responses carry no HTTP cache headers, so if you front them with a
+CDN, set caching there or attach headers in a [middleware](middleware) (see the
+`cacheLimit` section). See [Deploy](deploy) for the production run-and-serve
+story.
 
 ## The `--no-publicdir` build flag
 

@@ -54,8 +54,7 @@ export type AppNavLinkProps = typeof InferNavigation.NavLinkProps
 await navigate('ideaView', { id: idea.id }) // same target, imperatively
 ```
 
-You export these once and import them across the app. The rest of this page
-walks each one, then the redirect mechanics, then the prefetch policy matrix.
+You export these once and import them across the app.
 
 ## Setup: `createNavigation`
 
@@ -72,9 +71,9 @@ createNavigation({ navigate: browserNavigate, hook })
 back from `navigate()` and lets `<Redirect>` carry your errors. It defaults to
 the built-in `ErrorPoint0`; pass your own class (any class of the same or wider
 shape) to override it. See [error handling](error-handling). Pass `hook` and
-Point0 derives the imperative adapter-navigate and the search hook from it
-automatically; passing `navigate: browserNavigate` as well (as the examples do)
-is harmless but redundant when `hook` is `useBrowserLocation`.
+Point0 derives the imperative adapter-navigate and the search hook from it;
+passing `navigate: browserNavigate` as well (as the examples do) is harmless but
+redundant when `hook` is `useBrowserLocation`.
 
 Other options you reach for less often: `Page404` / `layout404` (rendered on no
 match), `addHashToLocation`, `openExternal` (see [below](#leaving-the-spa)),
@@ -94,14 +93,12 @@ mutually exclusive forms:
 <Link href="https://example.com">External</Link>              // leaves the app (plain <a>)
 ```
 
-- `route` + `input` is the form you want almost always: `input` is typed to the
-  route's params, and **required exactly when the route has required params** —
-  omit it on `route="about"` (no params), but `route="ideaView"` forces
-  `input={{ id }}`.
+- `route` + `input` is the usual form: `input` is typed to the route's params,
+  and **required exactly when the route has required params** — omit it on
+  `route="about"` (no params), but `route="ideaView"` forces `input={{ id }}`.
 - `to` is a raw internal path — useful when you already have a URL string, or
   when you build one from the [`routes`](#the-points-route-pointroute) map
-  (`to={routes.ideaView({ id })}`), which some people find handier than the
-  point-name form.
+  (`to={routes.ideaView({ id })}`).
 - `href` leaves the app entirely. It renders a plain `<a href>` with no router
   interception and **no prefetch** — for cross-origin or non-app URLs.
 
@@ -115,9 +112,9 @@ A `<Link>` accepts all native `<a>` attributes (`className`, `target`, `rel`,
 ```
 
 It also takes `asChild` — the wouter slot pattern. With `asChild`, `<Link>`
-renders no `<a>` of its own: it clones its single child element and injects the
-resolved `href` and `onClick` onto it, so your own element becomes the link. The
-child must be a single valid element.
+renders no `<a>` of its own: it clones its single child (which must be a valid
+element) and injects the resolved `href` and `onClick` onto it, so your own
+element becomes the link.
 
 ```tsx
 <Link route="ideaView" input={{ id }} asChild>
@@ -177,9 +174,9 @@ navigate.back() // window.history.back()  (no-op on server)
 navigate.forward() // window.history.forward()
 ```
 
-`navigate(...)` resolves to `{ location, error }` rather than throwing on a
-failed navigation — the transition still completes and the error (logged under
-the `navigation` category) is surfaced for you to inspect.
+`navigate(...)` doesn't throw on a failed navigation — the transition still
+completes, and the error (logged under the `navigation` category) comes back in
+the resolved `{ location, error }`.
 
 ### Adapter options: replace, state
 
@@ -213,8 +210,7 @@ navigate('docs', undefined, { newTab: true })               // open in a new tab
 | `scrollToHash`       |       ✓       |      ✓      | Override the global scroll-to-hash policy                     |
 
 On a `<Link>`, `prefetchOnHover ?? prefetch` controls hover and
-`prefetchOnNavigate ?? prefetch` controls the click. Set `prefetch="none"` (or
-`false`) to turn a single link's prefetch off. `before` / `after` are
+`prefetchOnNavigate ?? prefetch` controls the click. `before` / `after` are
 fire-and-forget — they aren't awaited.
 
 ## Active links: `NavLink` and `useNavLink`
@@ -243,8 +239,7 @@ href. The five states:
 | `descendant` | this route is a child of the current URL                                                                                                                            |
 | `unmatched`  | no relation                                                                                                                                                         |
 
-`className` also accepts a function or an object map, so you can express all
-states in one place:
+`className` also accepts a function or an object map:
 
 ```tsx
 <NavLink route="ideaList" className={(state) => (state.exact ? 'active' : 'idle')} />
@@ -316,9 +311,7 @@ produced:
 - **From a mutation or query** (a point fetched by the point0 client) — there is
   no HTTP redirect. The redirect comes back to the client as a serialized
   instruction (tagged with an `X-Point0-Redirect` header), and the client
-  recognizes it and performs the navigation itself — client-side, SPA-style, no
-  full page reload. This is why returning a `redirect(...)` from a mutation's
-  loader transparently moves the user without a round-trip-and-reload.
+  performs the navigation itself — client-side, SPA-style, no full page reload.
 
 `<Redirect>` also takes a `task` prop directly:
 
@@ -327,9 +320,9 @@ produced:
 ```
 
 Valid `status` values are `301`, `302`, `303`, `307`, `308`; anything else (or
-none) falls back to `302`. Note that `redirect(...)` carries `replace`/`state`
-through to the adapter, so `redirect.to('/x', { replace: true })` replaces the
-history entry instead of pushing.
+none) falls back to `302`. `redirect(...)` carries `replace`/`state` through to
+the adapter, so `redirect.to('/x', { replace: true })` replaces the history
+entry instead of pushing.
 
 ## Reading the location
 
@@ -376,9 +369,8 @@ setSearch((prev) => ({ ...prev, tab })) // updater form patches; undefined drops
 
 `setSearch` is a soft URL update — it updates the address bar without running
 the navigation pipeline (no prefetch, no loading flash) and replaces the history
-entry by default. It's a no-op on the server. The object form replaces the
-entire query; the updater form lets you patch it. The query object here is
-**raw** — it isn't coerced by a `.search` schema.
+entry by default. It's a no-op on the server. The query object here is **raw** —
+it isn't coerced by a `.search` schema.
 
 ## Reacting to navigation: `useOnNavigate`
 
@@ -437,13 +429,12 @@ export const ideaPage = root.lets
   a remembered offset is restored on history navigation (Back/Forward) or the
   page starts fresh.
 
-Cut from the server bundle — body and its imports removed (there's no scroll
-position to restore on the server anyway, so it only runs in the browser) (R3:
-client-only).
+Both are **client-only** — cut from the server bundle, body and imports removed
+(there's no scroll position to restore on the server).
 
 ## The point's route: `point.route`
 
-Every routable point carries a callable [route0](https://1gr14.dev/route0)
+Every routable point carries a callable [Route0](https://1gr14.dev/route0)
 route. You usually navigate by name, but the route is there when you need a URL
 string:
 
@@ -518,8 +509,8 @@ export const root = Point0.lets
 
 Strip note: `.prefetchPagePolicy` and the two trigger setters it wraps
 (`.prefetchPageOnNavigate` / `.prefetchPageOnLinkHover`) are all **client-only**
-— cut from the server bundle, their bodies and the imports they use removed, so
-that code never ships to the server (prefetch is driven by the browser anyway).
+— cut from the server bundle, their bodies and the imports they use removed
+(prefetch is driven by the browser).
 
 A policy decides **what** gets prefetched for the target page (its related
 queries and `.onPrefetchPage` callbacks). The split that matters: the `*Query`
@@ -539,16 +530,8 @@ expensive, and SSR-only.
 | `pageDehydratedStateAndClientQuery` | The server render's dehydrated state **plus** client-loader queries. **Requires SSR.** The most thorough, and the most expensive.                |
 | `onPrefetchOnly`                    | Only the `.onPrefetchPage` callbacks — no related queries at all.                                                                                |
 
-The `.onPrefetchPage` callbacks of the page and its layouts run for every policy
-except `none` and `pageDehydratedState`-only.
-
-**Cost.** The `*Query` policies are cheap: `serverAndClientQuery` (and the
-single-sided `serverQuery` / `clientQuery`) self-fetch the page's related
-queries and cache them — **no server-side render of the page**.
-`pageDehydratedState*` runs a full server-side render of the page to capture its
-dehydrated state and is the expensive one; reserve it for pages where the first
-paint must be instant. The `pageDehydratedState*` policies **throw** if SSR is
-disabled:
+**Cost.** Reserve the expensive `pageDehydratedState*` policies for pages where
+the first paint must be instant. They **throw** if SSR is disabled:
 
 ```tsx
 // with .prefetchPagePolicy('pageDehydratedState') and SSR off:

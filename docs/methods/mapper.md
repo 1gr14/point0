@@ -117,9 +117,9 @@ while `queries` still hold the raw per-query results:
 // data is the mapper's shape; queries[0]/queries[1] still hold the raw results
 ```
 
-This is exactly why the mapper exists for **multiple `.with` queries**: each
-query lands at its own index, but a render usually wants one merged object, not
-an array of results to thread through by hand.
+This is why the mapper exists for **multiple `.with` queries**: each query lands
+at its own index, but a render usually wants one merged object, not an array of
+results to thread through by hand.
 
 With no loader and no queries, `data` is the empty object `{}` — the mapper
 still runs and its return becomes `data`.
@@ -199,10 +199,8 @@ export const meProvider = Point0.lets
   .provider(({ data: { me }, props: { x } }) => ({ me, x })) // === a trailing .mapper
 ```
 
-The trailing `.provider(mapperFn)` is also server-ssr-and-client — same as a
-`.mapper`: cut from the SERVER bundle when `ssr:false` (or after an earlier
-`.clientOnly()`), with its body and imports removed from the server build; kept
-in the client build always, and in the server build only when SSR is on.
+The trailing `.provider(mapperFn)` is also server-ssr-and-client, stripped the
+same way as a `.mapper` (see the strip note at the top).
 
 ## Edge cases and gotchas
 
@@ -225,11 +223,7 @@ in the client build always, and in the server build only when SSR is on.
 
 ## Security
 
-The mapper is cut from the SERVER bundle when `ssr:false` (or after an earlier
-`.clientOnly()` in the chain) — its body and the imports it uses are removed
-from the server build, where the framework substitutes an identity passthrough.
-It's kept in the client build always, and in the server build only when SSR is
-on (server-ssr-and-client): it runs on the client always, and on the server only
-when SSR is on. Don't put a server-only secret or gate in a mapper: it isn't
-guaranteed to run on the server, and on the client it ships to the browser. Gate
-access in a [`.with`](with) wrapper instead.
+The mapper is server-ssr-and-client (see the strip note at the top): it isn't
+guaranteed to run on the server, and it always ships to the browser. Don't put a
+server-only secret or gate in a mapper — gate access in a [`.with`](with)
+wrapper instead.

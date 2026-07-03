@@ -14,7 +14,7 @@ involved. Add a `viteConfig` to the engine and it switches to **Vite** for both
 The snippets below are from `examples/basic` and `examples/vite`, which use a
 single `client` key and `index.html`. (The production boilerplate uses a
 `clients: []` array and `index.client.html` instead — same mechanics, different
-key/filename names.)
+names.)
 
 ```ts
 // examples/basic — pure Bun: no viteConfig anywhere
@@ -43,10 +43,8 @@ export const engine = Engine.create({
 })
 ```
 
-The presence of `viteConfig` _is_ the switch. There is no `useVite` or
-`mode: 'bun' | 'vite'` flag — a `viteConfig` that resolves means Vite, its
-absence means Bun. The rest of this page shows what each path gives you, how
-they differ, and how to move between them.
+The presence of `viteConfig` _is_ the switch — there is no `useVite` or
+`mode: 'bun' | 'vite'` flag.
 
 ## Bun is the default
 
@@ -63,10 +61,9 @@ neither installed.
 
 ## Babel runs under Bun too
 
-This is the headline reason a Bun-only Point0 app is not "just `Bun.build`": the
-Point0 **compiler** runs Babel inside its own transform, the same way under both
-bundlers. Bun's native bundler has no Babel stage on its own — Point0 supplies
-one.
+A Bun-only Point0 app is not "just `Bun.build`": the Point0 **compiler** runs
+Babel inside its own transform, the same way under both bundlers. Bun's native
+bundler has no Babel stage of its own — Point0 supplies one.
 
 ```ts
 // works identically on Bun and on Vite — the compiler runs babel internally
@@ -78,17 +75,16 @@ export const engine = Engine.create({
 })
 ```
 
-The compiler is offered in three plugin formats — a Bun plugin, a Vite plugin,
-and a Babel plugin — over one shared codebase, so they behave the same. Your
-`compiler.babel` plugins are threaded into that shared transform regardless of
-the bundler. `babel-plugin-react-compiler` is the common case and both example
-apps enable it. See [compiler](compiler) for the full transform and
-`point0 compile` for inspecting the output.
+The compiler ships in three plugin formats — Bun, Vite, and Babel — over one
+shared codebase, so your `compiler.babel` plugins are threaded into the same
+transform under either bundler. `babel-plugin-react-compiler` is the common
+case; both example apps enable it. See [compiler](compiler) for the full
+transform and `point0 compile` for inspecting the output.
 
 ## What differs between the two paths
 
-Most of the engine config is identical across the Bun and Vite examples. Only a
-handful of keys are bundler-specific.
+Most of the engine config is identical across the two paths; only a handful of
+keys are bundler-specific.
 
 | Concern              | Bun path                                         | Vite path                                        |
 | -------------------- | ------------------------------------------------ | ------------------------------------------------ |
@@ -100,13 +96,12 @@ handful of keys are bundler-specific.
 | Server reload in dev | import-graph restart; `--hot` for point hot-swap | Vite HMR (re-runs the entry); `--hot` is a no-op |
 
 `bunBuildConfig` has no effect under Vite, and `viteConfig` has no effect under
-Bun — each path reads only its own knob.
+Bun.
 
 ### bunPlugins ↔ viteConfig.plugins
 
-Bundler plugins live in different places. Under Bun, they are **Bun plugins**
-passed as string names (the native dev server resolves them by name in a
-generated `bunfig.toml`):
+Under Bun, bundler plugins are **Bun plugins** passed as string names (the
+native dev server resolves them by name in a generated `bunfig.toml`):
 
 ```ts
 client: {
@@ -157,9 +152,8 @@ mode for the server). Either way the output layout is the same — `dist/client`
 plus `dist/server` — but the server entry filename differs: Bun emits
 `dist/server/index.server.js` (named by source basename), while Vite emits
 `dist/server/main.js` (rollup names by the entry key). Use each example's
-`start` script rather than hardcoding one path: `examples/basic` runs
-`bun run ./dist/server/index.server.js`, `examples/vite` runs
-`bun run ./dist/server/main.js`. See [build](build) and [deploy](deploy).
+`start` script rather than hardcoding one path. See [build](build) and
+[deploy](deploy).
 
 ## How to switch from Bun to Vite
 
@@ -218,18 +212,15 @@ link:
 ```
 
 The runtime files — `index.server.ts`, `index.client.tsx`, `app.client.tsx` —
-stay byte-for-byte identical. That is the portability promise: swap the bundler
-by editing a couple of wiring files; the app's behavior does not change.
+stay byte-for-byte identical: the bundler swap touches only wiring files.
 
 ## Gotchas
 
 - **Vite already hot-reloads the server; `--hot` is a Bun-only extra.** Under
   Vite the server runs in-process and Vite's HMR re-runs the entry on every save
-  — server reload just works, with no flag. What `--hot` adds is a Bun-native
-  _point_ hot-swap (swap an edited point's module without restarting the
-  process); that mechanism is Bun-only, so on the Vite path the flag is a no-op
-  (Vite's own HMR is doing the reloading instead). Both examples ship
-  `point0 dev --hot`. See [dev](dev).
+  — no flag needed. `--hot` adds a Bun-native _point_ hot-swap (swap an edited
+  point's module without restarting the process), so on the Vite path the flag
+  is a no-op. Both examples ship `point0 dev --hot`. See [dev](dev).
 - **Bun dev plugins must be string entries.** The native dev server resolves
   them by name in a generated `bunfig.toml`; function or object plugins error
   there. Use `viteConfig.plugins` for non-string plugins.
@@ -244,13 +235,12 @@ by editing a couple of wiring files; the app's behavior does not change.
   `engine.getViteConfig(env)`. `engine.dev()` / `engine.build()` read
   `viteConfig` from the engine directly and never load that file.
 - **`devWatchGlob` is almost never needed.** In dev the server watcher already
-  walks the entry's deep-import graph on its own and restarts on any change in
-  it — you don't list your files. `server.devWatchGlob` only _adds_ extra globs
-  on top of that auto-detected set (for files the import walk can't see), so
-  most apps leave it unset. The `examples/vite` app sets
-  `['**/*.{ts,tsx,mdx}', '!generated/point0/meta.ts']` mainly to exclude a
-  generated file from the watch and avoid a regen→restart loop; treat it as a
-  niche tweak, not a switching step.
+  walks the entry's deep-import graph and restarts on any change in it — you
+  don't list your files. `server.devWatchGlob` only _adds_ globs for files the
+  import walk can't see, so most apps leave it unset. The `examples/vite` app
+  sets `['**/*.{ts,tsx,mdx}', '!generated/point0/meta.ts']` mainly to exclude a
+  generated file from the watch and avoid a regen→restart loop — a niche tweak,
+  not a switching step.
 - **Dev server source maps are handled per path; both remap to your source.**
   Bun does not apply source maps to runtime stack traces itself, so on the Bun
   path Point0 installs `source-map-support` in dev to remap error stacks back to

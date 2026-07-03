@@ -38,8 +38,7 @@ export const BestIdea = root.lets
 ```
 
 The component loads `bestIdea` on the server, shows the nearest loading
-component while it loads, and renders once the data is ready. The rest of this
-page shows where each piece comes from.
+component while it loads, and renders once the data is ready.
 
 Stripping in brief: `.loader` and `.input` are **cut from the client bundle** —
 their bodies and the imports they use are removed, so they never ship to the
@@ -80,10 +79,9 @@ export const Stats = root.lets
 The component's name (`Stats`) is read from the variable — see [points](points)
 for the notation.
 
-The closing `.component(render)` is **server-ssr-and-client**: it's **cut from
-the server bundle when `ssr:false`** (or after a `.clientOnly()` earlier in the
-chain) — its body and the imports it uses are removed from the server build.
-Kept in the client build always, and in the server build only when SSR is on.
+The closing `.component(render)` is **server-ssr-and-client** — cut from the
+server bundle when `ssr:false` (or after a `.clientOnly()` earlier in the
+chain).
 
 A component can be opened off a [root](root) or a [base](base), and also off a
 [page](page) or [layout](layout) — anywhere in the chain.
@@ -124,9 +122,8 @@ Like a page, a component renders only once its data is ready. Two ways to attach
 data.
 
 **Own loader.** Put a [`.loader`](loader) on the component. `.loader` (and the
-`.input` server schema beside it) is **server-only** — **cut from the client
-bundle**: its body and the imports it uses are removed, so your database code
-(and its dependencies) never ships to the browser. It stays in the server build.
+`.input` server schema beside it) is **server-only** — cut from the client
+bundle, so your database code and its dependencies never ship to the browser.
 
 ```tsx
 export const IdeaScreen = root.lets
@@ -157,9 +154,8 @@ export const SimilarIdeas = root.lets
 This is the idiomatic reason to reach for a component: instead of one fat page
 loader fetching everything, let each component load the data it needs.
 
-`.with` is a closer that's **not cut from either bundle** — kept in both
-(isomorphic, server-and-client). The injected query and its mapping ship to both
-the server and the client, nothing pruned.
+`.with` is **server-ssr-and-client** — cut from the server bundle when
+`ssr:false` (or after a `.clientOnly()`); it always ships to the browser.
 
 You can also skip `.with` and call `ideaListQuery.useQuery({ ids })` inside the
 render, handling `isLoading` yourself — the component doesn't force either
@@ -182,9 +178,9 @@ export const SocialAccountsLinking = root.lets
   })
 ```
 
-`.use` (plugins) and `.with` are both **not cut from either bundle** — kept in
-both (isomorphic, server-and-client); the plugin's own `.ctx`/`.loader` parts
-are still cut from the client bundle per their kind (server-only).
+`.use` (plugins) is **server-and-client** — not cut from either bundle
+(isomorphic); the plugin's own `.ctx`/`.loader` parts are still cut from the
+client bundle per their kind (server-only).
 
 ## Loading and error states
 
@@ -208,10 +204,8 @@ export const Stats = root.lets
 The `.loading` must appear before the data method that can suspend. Full rules
 are in [Loading & error](loading-error).
 
-Both `.loading` and `.error` are **server-ssr-and-client**: they're **cut from
-the server bundle when `ssr:false`** (or after a `.clientOnly()`) — body and
-imports removed from the server build. Kept in the client build always, and in
-the server build only when SSR is on.
+Both `.loading` and `.error` are **server-ssr-and-client** — cut from the server
+bundle when `ssr:false` (or after a `.clientOnly()`).
 
 ### The wrapper covers loading too
 
@@ -223,10 +217,8 @@ and error states, not just the success render:
 // the spinner renders inside .card while loading; so does the final content
 ```
 
-`.wrapper` is **server-ssr-and-client** — it's **cut from the server bundle when
-`ssr:false`** (or after a `.clientOnly()`): body and imports removed from the
-server build. Kept in the client build always, and in the server build only when
-SSR is on.
+`.wrapper` is **server-ssr-and-client** — cut from the server bundle when
+`ssr:false` (or after a `.clientOnly()`).
 
 ## Mounting a component
 
@@ -238,10 +230,10 @@ the `.X`:
 <Stats.X />   // explicit — identical
 ```
 
-Both forms render the same thing. The short `<Stats />` only works because the
-variable is PascalCase — JSX treats a lowercase tag as a DOM element, so a
-component declared as `const stats = …` could only be mounted as `<stats.X />`.
-Always name a component with a capital first letter.
+The short `<Stats />` only works because the variable is PascalCase — JSX treats
+a lowercase tag as a DOM element, so a component declared as `const stats = …`
+could only be mounted as `<stats.X />`. Always name a component with a capital
+first letter.
 
 Pass `input` (when the component has any input schema — `.input`,
 `.clientInput`, or `.sharedInput`) and your declared props at the mount site:
@@ -312,13 +304,12 @@ is an empty tags segment; `finite` becomes `infinite` when you close with
 
 ## Gating a component
 
-A component's `.ctx` runs **only when the component has a loader** — that loader
-is what makes the server request `.ctx` hooks into. A loader-less component
-makes no server request, so its `.ctx` never executes and can't protect
-anything, and whatever it renders ships to the client (server-rendered into the
-HTML under SSR, then again in the browser). So don't rely on a component's own
-`.ctx` to keep something private: gate access with a [`.with`](with) wrapper, or
-a [plugin](plugin) that combines `.ctx` and `.with`:
+A component's `.ctx` runs **only when the component has a loader** — a
+loader-less component makes no server request, so its `.ctx` never executes and
+can't protect anything, and whatever it renders ships to the client
+(server-rendered into the HTML under SSR, then again in the browser). Don't rely
+on a component's own `.ctx` to keep something private: gate access with a
+[`.with`](with) wrapper, or a [plugin](plugin) that combines `.ctx` and `.with`:
 
 ```tsx
 import { authPlugin } from '@/lib/auth' // a plugin that resolves the user into props.me
@@ -335,11 +326,11 @@ export const AdminStats = root.lets
   .component(/* ... */)
 ```
 
-`.ctx` is **server-only** — **cut from the client bundle**: its body and the
-imports it uses are removed, so it never ships to the browser (it runs only on
-the server). `.with` is **not cut from either bundle** (server-and-client) — so
-the gate above relies on `.with` returning an error to short-circuit, not on
-`.ctx` to hide markup.
+`.ctx` is **server-only** — cut from the client bundle: its body and the imports
+it uses are removed, so it never ships to the browser. `.with` is
+**server-ssr-and-client** — always kept in the client build — so the gate above
+relies on `.with` returning an error to short-circuit, not on `.ctx` to hide
+markup.
 
 `me` has to come from somewhere — here a [plugin](plugin) puts it in `props`
 first. Returning an error from `.with` short-circuits to the error component.
@@ -385,9 +376,9 @@ not re-validated on the client, so it does not appear in the render props. With
 A component accepts `input` when it has any input schema (`.input`,
 `.clientInput`, or `.sharedInput`) plus the props you declared with
 `.component<...>()`. (In the render props, `input` appears only with
-`.clientInput` / `.sharedInput` — see the inner-props table above; the mount
-site requires it for a plain server `.input` too.) It has no framework
-`children` prop — declare `children` yourself if you want a wrapper component.
+`.clientInput` / `.sharedInput`; the mount site requires it for a plain server
+`.input` too.) It has no framework `children` prop — declare `children` yourself
+if you want a wrapper component.
 
 ### Methods that apply to a component
 
@@ -399,26 +390,20 @@ server bundle · **server-and-client** = cut from neither (isomorphic) ·
 
 Data & context:
 
-- [`.loader`](loader) — server-only (cut from the client bundle).
-- `.clientLoader` — client-only (cut from the server bundle).
-- [`.ctx`](ctx) — server-only (cut from the client bundle).
-- [`.with`](with) — server-and-client (cut from neither).
-- [`.mapper`](mapper) — server-ssr-and-client (cut from the server bundle when
-  `ssr:false`).
-- [`.input`](validation) — server-only (cut from the client bundle).
-- [`.clientInput`](validation) — client-only (cut from the server bundle).
-- [`.sharedInput`](validation) — server-and-client (cut from neither,
-  isomorphic).
-- `.headers`, `.cookies` — server-only (cut from the client bundle).
+- [`.loader`](loader) — server-only.
+- `.clientLoader` — client-only.
+- [`.ctx`](ctx) — server-only.
+- [`.with`](with) — server-ssr-and-client.
+- [`.mapper`](mapper) — server-ssr-and-client.
+- [`.input`](validation) — server-only.
+- [`.clientInput`](validation) — client-only.
+- [`.sharedInput`](validation) — server-and-client.
+- `.headers`, `.cookies` — server-only.
 
 UI:
 
-- [`.loading`](loading-error) — server-ssr-and-client (cut from the server
-  bundle when `ssr:false`).
-- [`.error`](loading-error) — server-ssr-and-client (cut from the server bundle
-  when `ssr:false`).
-- [`.wrapper`](mountable) — server-ssr-and-client (cut from the server bundle
-  when `ssr:false`).
+- [`.loading`](loading-error), [`.error`](loading-error),
+  [`.wrapper`](mountable) — server-ssr-and-client.
 
 (`.componentLoading` / `.componentError` also exist as type-specific aliases —
 same server-ssr-and-client category — but on a component plain `.loading` /
@@ -426,14 +411,13 @@ same server-ssr-and-client category — but on a component plain `.loading` /
 
 Shared:
 
-- [`.use`](plugin) (plugins) — server-and-client (cut from neither).
-- [`.middleware`](middleware) — server-only (cut from the client bundle).
-- `.on` — server-and-client (cut from neither); `.serverOn` — server-only (cut
-  from the client bundle); `.clientOn` — client-only (cut from the server
-  bundle).
-- `.tag` — server-and-client (cut from neither).
-- `.description` — server-only (cut from the client bundle).
-- `.fetchOptions` — server-and-client (cut from neither).
+- [`.use`](plugin) (plugins) — server-and-client.
+- [`.middleware`](middleware) — server-only.
+- `.on` — server-and-client; `.serverOn` — server-only; `.clientOn` —
+  client-only.
+- `.tag` — server-and-client.
+- `.description` — server-only.
+- `.fetchOptions` — server-and-client.
 - `.clientOnly` — the switch that makes everything after it behave as
   `ssr:false` (so the server-ssr-and-client methods after it are cut from the
   server build).

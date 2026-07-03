@@ -31,7 +31,7 @@ My App is the best!
 
 `/about` now renders that Markdown. The chain is an ordinary [page](page); the
 only new thing is `<MDXContent {...props} />` — the bridge from the chain to the
-body. The rest of this page shows where each piece comes from.
+body.
 
 ## The shape of an `.mdx` point
 
@@ -137,23 +137,20 @@ every Point0 source transform applies to it (see
 One pipeline, two intended uses:
 
 - **`.mdx`** — a **page**. You write a point chain plus a Markdown body and
-  render it through `<MDXContent {...props} />`, exactly as above. This is the
-  case the rest of this page describes.
+  render it through `<MDXContent {...props} />`, exactly as above.
 - **`.md` / `.mdc`** — plain Markdown you `import` for its content. Since the
   compiled module's default export is the `MDXContent` component and a YAML
   block becomes `export const frontmatter`, a plain
   `import Article, { frontmatter } from './post.md'` hands you both the rendered
-  body and its metadata, to use however you like — no point chain required.
+  body and its metadata — no point chain required.
 
-The extensions are not enforced apart in code: all three run through the same
-`compileSync` call and produce the same module shape (`default` = `MDXContent`,
-plus any `page` / `frontmatter` you export). The split above is convention, not
-a compiler check — nothing stops a `.md` from carrying a `page` chain or an
-`.mdx` from being imported for its body.
+All three run through the same `compileSync` call and produce the same module
+shape (`default` = `MDXContent`, plus any `page` / `frontmatter` you export).
+The split above is convention, not a compiler check — nothing stops a `.md` from
+carrying a `page` chain or an `.mdx` from being imported for its body.
 
 `.md` parses as MDX too (JSX-aware) unless you set `format: 'md'` in config
-(plain CommonMark — see [Config](#config)). The page is called "MDX" but
-`.md`/`.mdc` route through the same code.
+(plain CommonMark — see [Config](#config)).
 
 ## Frontmatter
 
@@ -190,10 +187,10 @@ export const engine = Engine.create({
 })
 ```
 
-This is the one easy-to-miss setup step. `create-point0-app` already ships
-`'**/*.{ts,tsx,mdx}'`; if you copy a leaner glob, widen it. Editing an `.mdx`
-body in dev hot-swaps without a server restart — the dev watcher follows the
-real import graph, not the glob, so a reachable `.mdx` page updates in place.
+`create-point0-app` already ships `'**/*.{ts,tsx,mdx}'`; if you copy a leaner
+glob, widen it. Editing an `.mdx` body in dev hot-swaps without a server restart
+— the dev watcher follows the real import graph, not the glob, so a reachable
+`.mdx` page updates in place.
 
 ## Point0 transforms run on the body
 
@@ -213,26 +210,25 @@ inert text:
 ```
 
 So [`env`](env) shaking and server-side [`<ClientOnly>`](env) stripping work in
-the body exactly as in a `.tsx` file. The same rule as in `.tsx` holds: the
-browser bundle is public, so don't put secret content in Markdown expecting it
-to stay private — server-only code is stripped at compile time, but anything
-that survives into the render output ships to the client. Gate access in
-[`.with`](with), not on render output.
+the body exactly as in a `.tsx` file. The browser bundle is public, so don't put
+secret content in Markdown expecting it to stay private — server-only code is
+stripped at compile time, but anything that survives into the render output
+ships to the client. Gate access in [`.with`](with), not on render output.
 
 ## Dev vs build runtime
 
-You don't configure this, but it's worth knowing: the compiler forces the MDX
-`development` flag from the build state — `react/jsx-dev-runtime` while
-developing, `react/jsx-runtime` in a production build. A user `markdown` config
-can override most fields, but **not** `development`; build state always wins.
-React must be the runtime either way (the compiler emits `jsx-runtime` calls,
-not raw JSX).
+You don't configure this: the compiler forces the MDX `development` flag from
+the build state — `react/jsx-dev-runtime` while developing, `react/jsx-runtime`
+in a production build. A user `markdown` config can override most fields, but
+**not** `development`. React must be the runtime either way (the compiler emits
+`jsx-runtime` calls, not raw JSX).
 
 ## Config
 
 App authors tune MDX through the engine's `compiler.markdown` option. It's the
-full `@mdx-js/mdx` `CompileOptions`, except the three plugin arrays also accept
-string paths and `[path, options]` tuples (not just live function refs):
+full `@mdx-js/mdx` `CompileOptions`, except the three plugin arrays
+(`remarkPlugins`, `rehypePlugins`, `recmaPlugins`) also accept string paths and
+`[path, options]` tuples (not just live function refs):
 
 ```tsx
 export const engine = Engine.create({
@@ -262,9 +258,6 @@ Merge rules, from highest precedence to lowest:
 
 `markdown` exists at the general, server, and client compiler levels, so you can
 run a different plugin set per side.
-
-All three plugin arrays — `remarkPlugins`, `rehypePlugins`, `recmaPlugins` — are
-merged and concatenated the same way, and accept the string-path / tuple forms.
 
 ## Reference
 

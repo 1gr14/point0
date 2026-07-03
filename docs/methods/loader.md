@@ -7,15 +7,11 @@ description:
 ---
 
 A loader is the callback that produces a point's data. Each point has **one**
-loader. The server `.loader` is **cut from the client bundle** — its body and
-the imports it uses are removed, so it never ships to the browser, and your
-database code never reaches it. `.clientLoader` is the inverse.
-
-The two loaders are strict opposites in stripping. The server `.loader` is
-**server-only**: cut from the client bundle — its body and the imports it uses
-are removed, so it never ships to the browser (it runs on the server). The
-`.clientLoader` is **client-only**: cut from the server bundle — body and its
-imports removed, regardless of SSR (it runs in the browser).
+loader. The server `.loader` is **server-only** — cut from the client bundle:
+its body and the imports it uses are removed, so it never ships to the browser,
+and your database code never reaches it. `.clientLoader` is the inverse —
+**client-only**: cut from the server bundle, regardless of SSR (it runs in the
+browser).
 
 ```tsx
 export const ideaViewQuery = root.lets
@@ -35,9 +31,7 @@ Whatever the loader returns becomes the point's `data`. On a
 ready for `.with`, `.head`, `.mapper`, and the component itself. And the moment
 you put a `.loader` on a mountable, that point **is also a query**: it exposes
 the full query surface (`useQuery`, `fetchQuery`, prefetch, `getQueryKey`, …) so
-you can load and cache its data like any other [query](query). The rest of this
-page shows the argument the loader receives, what it can return, and which
-bundle each loader is cut from.
+you can load and cache its data like any other [query](query).
 
 ## Which points have loaders
 
@@ -71,9 +65,6 @@ A [page](page) or [component](component) without any loader is a pure
 useful query.
 
 ## What the loader receives
-
-Cut from the client bundle — the server `.loader`'s body and the imports it uses
-are removed, so it never ships to the browser (it runs on the server).
 
 The server loader gets one object. Every key below is always present except the
 parsed inputs, which appear only when you declared their schema:
@@ -190,17 +181,11 @@ returning a `Response` is a type error:
 // ✗ on a page or query — "Output can not be type of \"Response\" for point of type \"page\""
 ```
 
-A [query](query) loader specifically must return plain object data, never a
-`Response`.
-
 ## Client loaders
 
 `.clientLoader` runs in the browser instead of the server. Use it for data that
 lives client-side — there's no `ctx`, `request`, `set`, or `points`, because
 those are server-only:
-
-Cut from the server bundle — `.clientLoader`'s body and its imports are removed
-(it runs in the browser).
 
 ```tsx
 export const settingsQuery = root.lets
@@ -247,21 +232,19 @@ can not call .loader() … its setup stage is \"loadedStage\"".
 
 ## What runs where, and what stays secret
 
-The server `.loader` is **server-only**: cut from the client bundle — at compile
-time the compiler empties the `.loader` callback for the client build and drops
-the imports only it used (your Prisma client, secrets, server SDKs all vanish),
-so none of it ever ships to the browser. The `.clientLoader` is the inverse —
-**client-only**: cut from the server bundle, body and its imports removed; kept
-on the client. (This is purely about which bundle the code is removed from —
-when SSR is enabled, the first page load is still server-rendered; it's only
-navigation between pages afterward that runs client-side, SPA-style.)
+The compiler empties the server `.loader` callback for the client build and
+drops the imports only it used — your Prisma client, secrets, and server SDKs
+all vanish. Stripping is about which bundle the code is removed from, not where
+rendering happens: when SSR is enabled, the first page load is still
+server-rendered; only navigation between pages afterward runs client-side,
+SPA-style.
 
-This means a server `.loader` is a safe place for secrets and database access —
-none of it ever reaches the browser. But it does **not** make the point itself a
-security gate. A page's `.ctx` and `.loader` run only when the page actually has
-a loader and is requested — a loader-less page makes no server call, so its
-`ctx` never runs. Gate authorization in [`.with`](with) (or a [plugin](plugin)
-that combines `.ctx` and `.with`), not in the loader alone:
+A server `.loader` is a safe place for secrets and database access, but it does
+**not** make the point itself a security gate. A page's `.ctx` and `.loader` run
+only when the page actually has a loader and is requested — a loader-less page
+makes no server call, so its `ctx` never runs. Gate authorization in
+[`.with`](with) (or a [plugin](plugin) that combines `.ctx` and `.with`), not in
+the loader alone:
 
 ```tsx
 export const authorizedOnlyPlugin = Point0.lets
@@ -277,7 +260,7 @@ export const authorizedOnlyPlugin = Point0.lets
 `me` comes from an upstream plugin that resolves the current user. `AppError` is
 your own error class — anything with the shape of the default `ErrorPoint0`. See
 [error handling](error-handling) for how to build one (with
-[error0](error-handling) or otherwise).
+[Error0](error-handling) or otherwise).
 
 ## Reference
 

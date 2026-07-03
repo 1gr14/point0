@@ -45,9 +45,8 @@ a type error. One root, one transformer, shared by every point in that root's
 bun add superjson
 ```
 
-It just needs to be a `{ serialize, deserialize }` pair, which is exactly the
-shape `.transformer` takes (see [Reference](#reference)). `superjson` satisfies
-that out of the box.
+`.transformer` takes any `{ serialize, deserialize }` pair (see
+[Reference](#reference)); `superjson` satisfies that out of the box.
 
 ## Why you'd set it
 
@@ -64,12 +63,11 @@ export const ideaPage = root.lets
     // runtime (no transformer): data.createdAt === '2026-01-01T00:00:00.000Z' — a string
     return <time>{String(data.createdAt)}</time>
   })
-  .page()
 ```
 
-This is the single most common surprise. `JSON.stringify` turns a `Date` into an
-ISO string, drops a `Map`/`Set` to `{}`, and throws on a `BigInt`. The data
-degrades on the way out and never reconstructs on the way in.
+This is the most common surprise. `JSON.stringify` turns a `Date` into an ISO
+string, drops a `Map`/`Set` to `{}`, and throws on a `BigInt`. The data degrades
+on the way out and never reconstructs on the way in.
 
 Set `.transformer(superjson)` on the root and the same loader gives the page a
 real `Date`:
@@ -103,8 +101,7 @@ Point0 hands serialization to your transformer, so any type `superjson` supports
 When you never call `.transformer`, Point0 uses a blank transformer:
 `serialize`/`deserialize` are identity (pass-through), and the wire format is
 plain JSON with **stable key order** (it stringifies via
-`safe-stable-stringify`, a Point0 runtime dependency). So the default is "plain
-stable JSON":
+`safe-stable-stringify`, a Point0 runtime dependency):
 
 ```tsx
 // default transformer, serializing { date, string }:
@@ -151,11 +148,10 @@ shape; for what counts as `routedInput` (page/layout search filtering, action
 sections), see [Validation](validation).
 
 Because the transformer is in the key, **changing it changes cache keys
-app-wide**. If you add or swap `.transformer` in an existing app, persisted or
-in-flight keys built with the old transformer won't match the new ones. Point0
-does nothing to reconcile them — there's no built-in cache-bust on a transformer
-change. In-flight keys sort themselves out on the next fetch; persisted keys are
-your concern. If you persist the query cache through TanStack's
+app-wide**. If you add or swap `.transformer` in an existing app, keys built
+with the old transformer won't match the new ones, and Point0 does nothing to
+reconcile them. In-flight keys sort themselves out on the next fetch; persisted
+keys are your concern — if you persist the query cache through TanStack's
 `persistQueryClient`, change its `buster` string when you change the transformer
 so the stale cache is discarded.
 
@@ -214,5 +210,3 @@ derive a stable `stringify`/`parse` pair for query keys and the wire
 - **Calling `.transformer` twice is last-wins.** Each call overwrites the root's
   transformer with the new one — they don't compose — so the last `.transformer`
   in the chain is the one that runs.
-
-The configured transformer always handles your query, mutation, and action data.

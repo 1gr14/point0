@@ -56,14 +56,13 @@ export const engine = Engine.create({
 ```
 
 That's the canonical Bun setup from `examples/basic`. The config object is
-**flat general options** (`file`, `ssr`, `generate`, …) plus three nested
-blocks: `server`, `client` (or `clients` for several), each with its own
-options. The rest of this page walks through them by need; the full per-option
-tables are at the bottom.
+**flat general options** (`file`, `ssr`, `generate`, …) plus nested blocks:
+`server` and `client` (or `clients` for several), each with its own options. The
+rest of this page walks through them by need; the full per-option tables are at
+the bottom.
 
-The CLI looks for a module that exports `engine` (named) or a default export —
-either must be an `Engine` instance. The canonical form is
-`export const engine = Engine.create({ ... })`.
+The CLI accepts a named `engine` export or a default export — either must be an
+`Engine` instance.
 
 ## `file` — the one required option
 
@@ -71,9 +70,9 @@ either must be an `Engine` instance. The canonical form is
 Engine.create({ file: import.meta.url /* ... */ })
 ```
 
-`file` is **required** and is almost always `import.meta.url`. The engine uses
-it to locate itself on disk — that drives `cwd`, build-output paths, and
-auto-discovery. Omit it and `Engine.create` throws:
+`file` is almost always `import.meta.url`. The engine uses it to locate itself
+on disk — that drives `cwd`, build-output paths, and auto-discovery. Omit it and
+`Engine.create` throws:
 
 ```
 You should provide engine file path via file: import.meta.url, it is critical
@@ -115,14 +114,13 @@ Engine.create({
 ```
 
 `client` and `clients` are concatenated, so you can use both. If you omit the
-server entirely, it defaults to `{ scope: 'root', ssr: false }`. A client with
-no explicit `port` gets `serverPort + index + 1`.
+server entirely, it defaults to `{ scope: 'root', ssr: false }`.
 
 Both blocks share many options (`scope`, `points`, `generate`, `port`,
 `importer`, `env`, `compiler`, `assets`, `viteConfig`, …) but each side also has
 its own. The server runs your API and SSR; a client builds and serves the
-browser bundle. The two big client-only options you almost always set are
-`indexHtml` (the HTML shell) and `app` (the client app component):
+browser bundle. The client-only options you almost always set are `indexHtml`
+(the HTML shell) and `app` (the client app component):
 
 ```ts
 client: {
@@ -182,8 +180,8 @@ ssr: {
   first render, so it finds the data in cache. The `.onPrefetchPage` hooks run
   before the first render regardless; this adds the declared loaders on top.
   Queries injected with `.with()` are still discovered by rendering. See
-  [ssr](../core/ssr#prefetchloadersbeforepagerender) and
-  [navigation](navigation) for the prefetch model.
+  [ssr](ssr#prefetchloadersbeforepagerender) and [navigation](navigation) for
+  the prefetch model.
 
 Resolution: an explicit `server.ssr` / `client.ssr` wins, else the engine-level
 `ssr`, else `false`.
@@ -279,8 +277,8 @@ server: { port: process.env.SERVER_PORT || process.env.PORT }, // default 3000
 client: { port: process.env.CLIENT_PORT },                     // default serverPort + index + 1
 ```
 
-- **Server `port`** defaults to `3000`.
-- **Client `port`** defaults to `serverPort + clientIndex + 1`.
+- **Server `port`** defaults to `3000`; **client `port`** to
+  `serverPort + clientIndex + 1`.
 - **`hmrPort`** (server and client) defaults to `port + 100`. Pass `false` to
   disable it, a number to pin it, or `true`/omit for the default.
 
@@ -289,12 +287,11 @@ See [dev](dev) for the dev lifecycle.
 
 ## Bun build config (`bunBuildConfig`)
 
-When a side bundles with Bun (the default — see below), `bunBuildConfig` lets
-you reach the underlying build. It's a plain
-[Bun build config](https://bun.sh/docs/bundler) — the same options object you'd
-pass to [`Bun.build`](https://bun.sh/docs/bundler#api) — and Point0 spreads it
-into the build call after its own defaults. Set it at the top level for both
-sides, or per side:
+When a side bundles with Bun (the default — see below), `bunBuildConfig` passes
+options to the underlying build. It's the same options object you'd pass to
+[`Bun.build`](https://bun.sh/docs/bundler#api), and Point0 spreads it into the
+build call after its own defaults. Set it at the top level for both sides, or
+per side:
 
 ```ts
 Engine.create({
@@ -317,8 +314,7 @@ bunBuildConfig: ({ mode, side, scope }) => ({
 
 Lists that Point0 manages itself (`plugins`, `external`, `entrypoints`,
 `naming`, `define`, `banner`) are merged with Point0's own values rather than
-replaced, so your additions stack on top instead of clobbering the build.
-Everything else is a straight passthrough to Bun.
+replaced. Everything else passes straight through to Bun.
 
 ## Bun or Vite
 
@@ -356,7 +352,7 @@ viteConfig: './vite.config.ts' // path to your own config
 
 The function receives
 `{ command: 'serve' | 'build', side: 'client' | 'server', mode, scope, plugins }`.
-To toggle a project between bundlers, just comment the `viteConfig` out. Full
+To switch a project between bundlers, comment the `viteConfig` out. Full
 comparison and trade-offs on [bun-vs-vite](bun-vs-vite).
 
 ## Static files (`publicdir`)
@@ -395,12 +391,12 @@ publicdir: {
 - **`cacheLimit`** — `false`/`0` disables caching, `true`/omit caches all, a
   number caps it. Default `true`.
 
-Production static serving of built assets rides on this wiring too. See
+Production static serving of built assets uses this wiring too. See
 [publicdir](publicdir).
 
 ## Env: `vars` vs `consts`
 
-Both sides take `env: { vars?, consts? }`. The split is load-bearing:
+Both sides take `env: { vars?, consts? }`. The split matters:
 
 ```ts
 client: {
@@ -496,9 +492,9 @@ assets: {
 
 `defaultMode` defaults to `'url'`; `extensions` defaults to a broad image/font/
 media set; `svgr` is on by default. **One caveat:** `extensions`, `defaultMode`,
-and `svgr` must agree between the client and the SSR side, or the two emit
-different asset URLs and hydration mismatches. Per-side overrides are allowed
-but a footgun. Full pipeline on [assets](assets).
+and `svgr` must agree between the client and the SSR side, or the two sides emit
+different asset URLs and you get hydration mismatches. Per-side overrides are
+allowed but a footgun. Full pipeline on [assets](assets).
 
 ## Logger
 
@@ -557,11 +553,10 @@ an `Array<BunPlugin | string>` or a function returning one. Both are
 passthroughs to Bun — there are no Point0-specific fields. See
 [Bun build config](#bun-build-config-bunbuildconfig).
 
-The remaining general options are internal — you don't set them by hand:
+The remaining general options rarely appear in app code:
 
 - **`buildWatchGlob`** — extra globs on top of `build --watch`'s import-graph
-  watch, for files outside the import graph (e.g. non-imported assets). The
-  import-graph watch already covers normal source.
+  watch, for files outside the import graph (e.g. non-imported assets).
 - **`itWasBuilt` / `cwdBeforeBuild` / `cwdAfterBuild`** — auto-derived from
   `file` and the server `outdir` (overridable via `POINT0_ENGINE_*` env vars).
   They tell a built bundle where its source tree was so relative config paths
@@ -579,7 +574,7 @@ The remaining general options are internal — you don't set them by hand:
 | `hmrPort`        | `number \| string \| boolean`     | `port + 100`               | `false` disables.                                                                                                              |
 | `outdir`         | `string`                          | `'dist'`                   | Auto-set; drives the after-build cwd.                                                                                          |
 | `publicdir`      | `{ source, outdir, cacheLimit? }` | `null`                     | See [publicdir](#static-files-publicdir).                                                                                      |
-| `importer`       | importer options                  | `{ cwd }`                  | `vars` here is **strict**. See [importer](#guarding-imports-importer).                                                         |
+| `importer`       | importer options                  | `{ cwd }`                  | See [importer](#guarding-imports-importer).                                                                                    |
 | `env`            | `{ vars?, consts? }`              | `{}`                       | Server `vars` is **strict** (no glob form).                                                                                    |
 | `routes`         | routes loader                     | `null`                     | `() => import('./lib/routes')` or a routes object.                                                                             |
 | `compiler`       | `object \| boolean`               | inherits general           |                                                                                                                                |

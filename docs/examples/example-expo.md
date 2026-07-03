@@ -10,7 +10,7 @@ example: examples/expo
 
 > **Experimental.** This example is a work in progress. It shows how a React
 > Native client uses Point0's queries, mutations, and components, but it isn't a
-> polished path. For a real app, start from [start0](#for-a-real-app).
+> polished path. For a real app, start from [Start0](#for-a-real-app).
 
 `examples/expo` is a React Native client built with [Expo](https://expo.dev)
 that talks to a Point0 server. It is the opposite trade from
@@ -75,5 +75,5 @@ and `bun run prisma:push`. The server boots through the usual Point0 wiring. See
 ## For a real app
 
 This example shows Point0 as a React Native data layer in isolation. For a real
-app, start from **[start0](https://1gr14.dev/start0)** — the SaaS boilerplate
+app, start from **[Start0](https://1gr14.dev/start0)** — the SaaS boilerplate
 with the pieces already wired (`bun create start0@latest my-app`).

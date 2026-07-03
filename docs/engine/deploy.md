@@ -15,10 +15,8 @@ point0 build                            # → dist/ (server + client), productio
 NODE_ENV=production bun run ./dist/server/index.server.js
 ```
 
-`point0 build` writes the whole app to `dist/`; the server entry it produces
-hosts both the API/SSR and the client files, so a minimal deploy is a Bun image,
-`dist/`, and `NODE_ENV=production`. The rest of this page fills in the build
-output, the Docker setup, env, and the production error behavior.
+A minimal deploy is a Bun image, `dist/`, and `NODE_ENV=production`. The rest of
+this page covers the build output, Docker, env, and production error behavior.
 
 ## Build
 
@@ -32,8 +30,8 @@ point0 build --side client   # build only one side (see the deploy gotcha below)
 ```
 
 Build is **production by default** — it loads the production `.env` cascade and
-sets the mode to `production` before importing your engine, so you no longer
-need `cross-env NODE_ENV=production` in front of it (a shell-exported `NODE_ENV`
+sets the mode to `production` before importing your engine, so you don't need
+`cross-env NODE_ENV=production` in front of it (a shell-exported `NODE_ENV`
 still wins). If `NODE_ENV` ends up something other than `production`, the build
 warns:
 
@@ -42,10 +40,9 @@ Building with NODE_ENV=development, not "production": the client gets inline
 sourcemaps and unminified bundles. Intentional? If not, set NODE_ENV=production
 ```
 
-Build always generates first — there is no "build without generate". A fresh
-deploy therefore does **not** need a separate `point0 generate` before
-`point0 build`; build does it. (Examples still run `point0 generate` in their
-`setup` for typecheck and dev.)
+A fresh deploy needs no separate `point0 generate` before `point0 build` — build
+always generates first. (Examples still run `point0 generate` in their `setup`
+for typecheck and dev.)
 
 See [Build](build) for the full flag list and the build internals; the table at
 the bottom of this page lists the deploy-relevant flags.
@@ -73,7 +70,7 @@ dist/
 
 The server entry filename comes from your engine `entry` map. The basic example
 uses `entry: { main: './index.server.ts' }`, which builds to
-`dist/server/index.server.js` — that is the file you run.
+`dist/server/index.server.js`.
 
 > **Deploy gotcha — build both sides.** URL-mode asset bytes are written by the
 > **client** build. `point0 build --side server` alone does not populate
@@ -146,25 +143,23 @@ environment, do not hardcode it. In a Docker compose setup you set it yourself
 
 ### Bind address
 
-point0 sets no explicit bind hostname — the serve config carries only the port.
-The bind address therefore falls through to `Bun.serve`'s default, which is
-`0.0.0.0` (all interfaces) — the right default behind a proxy or in a container.
-To pin it (e.g. `127.0.0.1` to listen locally only), pass `hostname` through the
-`bunServeConfig` engine option or as a `serve()` argument; both forward straight
-to `Bun.serve`.
+point0 sets no bind hostname — the serve config carries only the port — so the
+address falls through to `Bun.serve`'s default, `0.0.0.0` (all interfaces): the
+right default behind a proxy or in a container. To pin it (e.g. `127.0.0.1` for
+local-only), pass `hostname` through the `bunServeConfig` engine option or as a
+`serve()` argument; both forward straight to `Bun.serve`.
 
 ### Graceful shutdown
 
 The running server installs a process-exit handler that catches `SIGINT`,
-`SIGTERM`, and `SIGHUP` and stops the Bun server, so a normal container stop
-drains the HTTP listener — no extra wiring needed for the common case. What the
-built entry does **not** do is call `engine.dispose()` on a signal:
-`engine.dispose()` exists and tears down clients too, but the per-signal handler
-only stops the server, and the richer shutdown coordinator is dev-orchestrator
-only. In production a client has nothing server-side to dispose, so this is
-rarely a gap. If you hold resources that need an explicit close on shutdown (a
-DB pool, a worker), add your own `SIGTERM`/`SIGINT` handler in `app.server` that
-runs your teardown (and `engine.dispose()` if you want it).
+`SIGTERM`, and `SIGHUP` and stops the Bun server — a normal container stop
+drains the HTTP listener with no extra wiring. The handler does **not** call
+`engine.dispose()`: dispose exists and tears down clients too, but the richer
+shutdown coordinator is dev-orchestrator only. In production a client has
+nothing server-side to dispose, so this is rarely a gap. If you hold resources
+that need an explicit close on shutdown (a DB pool, a worker), add your own
+`SIGTERM`/`SIGINT` handler in `app.server` that runs your teardown (and
+`engine.dispose()` if you want it).
 
 ## Docker
 
@@ -211,11 +206,10 @@ CMD ["sh", "-c", "bunx prisma migrate deploy && bun run start"]
 
 The `prisma generate` call at build time uses a throwaway database URL, so the
 image builds anywhere without a real `DATABASE_URL`. A pure point0 app with no
-Prisma and no native addons can ship `dist/` and Bun alone — the multi-stage
-`node_modules` only earns its keep once you have those.
+Prisma and no native addons can ship `dist/` and Bun alone.
 
 For local Docker, the examples ship a `docker-compose.yml` and `docker:build` /
-`docker:up` / `docker:down` scripts. A production-grade compose (see start0)
+`docker:up` / `docker:down` scripts. A production-grade compose (see Start0)
 adds a `db` service, an `env_file` cascade, a healthcheck, and `depends_on`
 ordering.
 
@@ -224,13 +218,9 @@ ordering.
 All config — server and client — is read from the environment **at runtime**:
 the server injects the client-safe keys into the page on each request, so
 nothing is baked into the bundle. The same image deploys to any environment; you
-set the variables on the platform.
-
-The assumption is simply that the variables are already present in the
-environment of the process that runs the server — typically set on whatever host
-you deploy to (a platform's env config, a compose `env_file`, the shell that
-starts the process). point0 reads them from there; it does not fetch or manage
-secrets itself.
+set the variables on whatever runs the server (a platform's env config, a
+compose `env_file`, the shell that starts the process). point0 reads them from
+there; it does not fetch or manage secrets itself.
 
 Two rules that bite in production:
 
@@ -286,9 +276,8 @@ and `.errorClass(...)` are covered on [Error handling](error-handling).
 
 ## Scaling and migrations
 
-point0 has no opinion on how many instances of the server you run — that is
-entirely up to where and how you deploy it. The only thing to watch is database
-migrations.
+point0 has no opinion on how many instances of the server you run — that is up
+to where and how you deploy it. The only thing to watch is database migrations.
 
 Running `prisma migrate deploy && bun run start` in the start command is fine
 when a single instance starts. **If you run more than one instance, move
@@ -297,11 +286,11 @@ pre-deploy hook, a separate job), so the instances don't race on migrations.
 
 ### Healthchecks
 
-point0 has no built-in healthcheck endpoint — there is no default path to point
-a load balancer or compose `healthcheck` at. If your host wants one, add it as
-an app point: a small action point that returns `200`, e.g.
+point0 has no built-in healthcheck endpoint. If your load balancer or compose
+`healthcheck` wants one, add it as an app point: a small action point that
+returns `200`, e.g.
 `root.lets.action('GET', '/api/health').action(() => new Response('OK'))`. The
-path is yours to choose (start0 ships one at `/api/health` as an example).
+path is yours to choose (Start0 ships one at `/api/health` as an example).
 
 ## Reference
 
@@ -313,8 +302,6 @@ path is yours to choose (start0 ships one at `/api/health` as an example).
 | `point0 generate`                       | Regenerate points/routes/meta. Not needed before build (build does it).  |
 | `point0 prune`                          | Clear temporary/cache directories before a clean build.                  |
 | `bun run ./dist/server/index.server.js` | Run the built server in production (set `NODE_ENV=production`).          |
-
-There is **no** `point0 start` — production is the built entry run with Bun.
 
 ### Build flags relevant to deploy
 

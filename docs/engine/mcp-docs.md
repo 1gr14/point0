@@ -8,10 +8,10 @@ description:
 
 `point0-docs-mcp` is an MCP server that gives an agent the Point0 documentation:
 it exposes five read-only tools — list, search, get, outline, get-section — over
-a prebuilt docs corpus with local hybrid search (keyword + semantic). The point
-is that the agent answers framework questions from the real, current docs, not
-from what it made up — and reads only the section it needs instead of pulling a
-whole page. It ships in the `@point0/docs` package and runs over stdio.
+a prebuilt docs corpus with local hybrid search (keyword + semantic). The agent
+answers framework questions from the real, current docs — and reads only the
+section it needs instead of pulling a whole page. It ships in the `@point0/docs`
+package and runs over stdio.
 
 ```json
 // .mcp.json (Claude Code) — also .cursor/mcp.json (Cursor), identical content
@@ -29,39 +29,20 @@ whole page. It ships in the `@point0/docs` package and runs over stdio.
 }
 ```
 
-That's the whole setup. `create-point0-app` writes both files for you, so a
-fresh app already has the docs MCP wired. The rest of this page is what the five
-tools do and how the corpus is built.
+That's the whole setup. `create-point0-app` writes both files, so a fresh app
+already has the docs MCP wired.
 
 ## What `create-point0-app` ships
 
 The scaffold wires the docs MCP for both Claude Code and Cursor, alongside the
-[project MCP](mcp-project):
-
-```json
-// .mcp.json AND .cursor/mcp.json — same file, two locations
-{
-  "mcpServers": {
-    "point0-project": { "command": "bun", "args": ["run", "mcp:project"] },
-    "point0-docs": { "command": "bun", "args": ["run", "mcp:docs"] }
-  }
-}
-```
-
-```jsonc
-// package.json scripts
-"mcp:project": "point0-project-mcp --meta ./src/generated/point0/meta.ts",
-"mcp:docs": "point0-docs-mcp"
-```
-
-The config calls the npm **script** (`bun run mcp:docs`), not the bin directly,
-so the bin name lives in one place. `@point0/docs` is a **devDependency** — it
-pulls in a local embedding stack (`@huggingface/transformers`) and a prebuilt
-vector index, runtime-only tooling you don't want in production deps.
+[project MCP](mcp-project). The config calls the npm **script**
+(`bun run mcp:docs`), not the bin directly, so the bin name lives in one place.
+`@point0/docs` is a **devDependency** — it pulls in a local embedding stack
+(`@huggingface/transformers`) and a prebuilt vector index, runtime-only tooling
+you don't want in production deps.
 
 The docs MCP takes **no arguments**. (The `--meta` flag belongs to the
-[project MCP](mcp-project), which reads your app's generated meta — a different
-server. Don't pass it here.)
+[project MCP](mcp-project), a different server — don't pass it here.)
 
 ## The five tools
 
@@ -98,7 +79,7 @@ page); `ref` is the ready-to-use `slug#headingId`; `chars` is the section body's
 size, a cheap signal of how much `get_section` would return. The `snippet` is
 the section's first ~280 characters, whitespace-collapsed, with an ellipsis when
 truncated. After a search, call `get_section(slug, headingId)` for just that
-section — or `get_doc(slug)` if you really want the whole page.
+section — or `get_doc(slug)` for the whole page.
 
 ### `get_doc` — read a full page
 
@@ -114,8 +95,7 @@ category is cosmetic and not part of the slug. `content` is the full markdown
 with frontmatter stripped.
 
 This returns the **entire page**, which can be large (the overview alone is
-thousands of lines). For a big page prefer `get_outline` to see its sections,
-then `get_section` to read only the part you need.
+thousands of lines) — for a big page prefer `get_outline` + `get_section`.
 
 The JSON object shown above is the tool's `structuredContent`; `get_doc`'s
 plain-text channel (`content[0].text`) is just the raw markdown body, not the
@@ -146,10 +126,9 @@ get_outline({ slug: "overview" })
 
 Every section heading on the page with its anchor (`headingId`), `level` (2–6),
 and body size (`chars`). It carries **no body**, so it's a cheap map of a large
-page: read the outline, pick a heading, then pull just that section with
-`get_section`. The preamble before the first heading is omitted (it has no
-anchor — use `get_doc` for the page top). An unknown slug is the same clean
-error result as `get_doc`.
+page. The preamble before the first heading is omitted (it has no anchor — use
+`get_doc` for the page top). An unknown slug is the same clean error result as
+`get_doc`.
 
 ### `get_section` — read one section
 
@@ -217,8 +196,7 @@ a release can never ship an empty index.
 
 The embedding model is **`Xenova/all-MiniLM-L6-v2`** (384-dim, ~23MB, via
 `@huggingface/transformers`). At query time the server only embeds _your search
-query_ — the document vectors are already computed — so it loads no model for
-`list_docs` or `get_doc`.
+query_ — the document vectors are already computed.
 
 ```text
 # the model downloads once into the shared Hugging Face cache, reused across projects
@@ -233,10 +211,10 @@ so they're instant even on a cold start.
 ## A note on freshness
 
 The corpus is a **snapshot** taken when `@point0/docs` was built. Search
-reflects the docs as of that package version — it is **not** live against your
-local edits or a newer docs site. To pick up newer docs, update the
-`@point0/docs` dependency. (Contrast the [project MCP](mcp-project), which
-re-reads your app's meta on every call.)
+reflects the docs as of that package version — **not** your local edits or a
+newer docs site. To pick up newer docs, update the `@point0/docs` dependency.
+(The [project MCP](mcp-project), by contrast, re-reads your app's meta on every
+call.)
 
 ## llms.txt — the zero-setup alternative
 
@@ -248,12 +226,11 @@ https://1gr14.dev/llms.txt       # an index: one link per doc, agent fetches wha
 https://1gr14.dev/llms-full.txt  # the entire docs corpus in one file, for a single fetch
 ```
 
-Feed either URL to an agent and it can answer framework questions with no
-install step. The two paths are complementary: `point0-docs-mcp` is the local,
-searchable path (five tools, offline after the model downloads); `llms.txt` is
-the fetch-based path (zero setup, no local model). `@point0/docs` builds its
-corpus from `docs/` at package-build time; the `llms.txt` files are built and
-served by the Point0 site. Both draw on the same `docs/` source.
+Feed either URL to an agent and it answers framework questions with no install
+step. `point0-docs-mcp` is the local, searchable path (five tools, offline after
+the model downloads); `llms.txt` is the fetch-based path (zero setup, no local
+model). Both draw on the same `docs/` source — the corpus at package-build time,
+the `llms.txt` files built and served by the Point0 site.
 
 ## Reference
 
@@ -269,10 +246,8 @@ served by the Point0 site. Both draw on the same `docs/` source.
 
 ### A search hit
 
-```ts
-{
-  ;(slug, title, category, heading, headingId, ref, snippet, chars, score)
-}
+```text
+{ slug, title, category, heading, headingId, ref, snippet, chars, score }
 ```
 
 `slug` is the parent page; `heading` is the matched section and `headingId` its
@@ -291,9 +266,8 @@ higher is a better match; rank by it, don't read a fixed range into it.
 - **Categories:** `intro`, `points`, `methods`, `core`, `engine`, `extra`,
   `examples` (from `docs/categories.json`) — grouping only, never part of a
   slug.
-- **Slugs are bare file names, not deduped across categories.** The category is
-  not folded into the slug, so file names must be unique across the whole docs
-  tree.
+- **Slugs are bare file names.** The category is not folded into the slug, so
+  file names must be unique across the whole docs tree.
 - **A missing or corrupt corpus is a hard error.** `content/docs.json` is read
   and `JSON.parse`d with no fallback, so a build that skipped `build:content`
   (or a truncated file) makes the first tool call throw.

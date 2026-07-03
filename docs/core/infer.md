@@ -6,11 +6,10 @@ description:
   hand.
 ---
 
-Every point carries an `Infer` property whose only job is type extraction. You
-never read it at runtime — you write `typeof somePoint.Infer.<Key>` and get the
-input type, the data type, the route string, the component type, and more,
-derived from the point itself. Change the point's schema or loader and these
-types follow automatically.
+Every point carries an `Infer` property whose only job is type extraction: you
+write `typeof somePoint.Infer.<Key>` and get the input type, the data type, the
+route string, the component type, and more, derived from the point itself.
+Change the point's schema or loader and these types follow automatically.
 
 ```tsx
 import { ideaViewQuery } from '@/queries/idea'
@@ -32,8 +31,6 @@ it exists only in the type system.
 > read it only in type position. Always wrap it in `typeof`.
 
 ## The two you reach for most
-
-Almost every real use is one of these.
 
 **`InputRaw`** — the input a point accepts, pre-validation, with every input
 source merged (the `.input`, plus `.params` / `.search` / `.body` where they
@@ -58,8 +55,7 @@ Unions are preserved, and a later `.input` distributes across each member:
 
 **`QueriedData`** — the data a [query](query) / [infinite-query](infinite-query)
 produces, after react-query shapes it (an infinite query wraps it in
-`InfiniteData<…>`). This is how you derive a row type from a list query in
-production:
+`InfiniteData<…>`). This is how you derive a row type from a list query:
 
 ```tsx
 export const listAccountsQuery = root.lets
@@ -143,8 +139,7 @@ export type AppNavLinkProps = typeof InferNavigation.NavLinkProps // + active-st
 export type AppRouteProps = typeof InferNavigation.RouteProps //    just { route, input }
 ```
 
-Same runtime rule: type position only, never read its members as values. Full
-details on [Navigation](navigation).
+Same runtime rule: type position only. Full details on [Navigation](navigation).
 
 ## Reference
 

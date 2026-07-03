@@ -28,10 +28,9 @@ strings.
 
 > Stripping: `.head` is **server-ssr-and-client** — cut from the SERVER bundle
 > when `ssr: false` (or after a [`.clientOnly()`](page) earlier in the chain):
-> its body and the imports it uses are removed from the server build, so they
-> never ship there. Kept in the client build always, and in the server build
-> only when SSR is on. See [SSR and what runs where](#ssr-and-what-runs-where)
-> below.
+> its body and the imports it uses are removed from the server build. Kept in
+> the client build always, and in the server build only when SSR is on. See
+> [SSR and what runs where](#ssr-and-what-runs-where).
 
 ## Required setup
 
@@ -68,7 +67,7 @@ A **string** is shorthand for the title:
 ```
 
 A **function** receives the point's per-state context and returns a string or an
-object — that's how you build the head from loaded data, params, or search:
+object — the head built from loaded data, params, or search:
 
 ```tsx
 .head(({ data: { total, idea } }) => `${total} news for idea "${idea.title}"`)
@@ -210,8 +209,7 @@ error, plus `params`, `search`, `input`, `props`, `queries`, `location`.
 
 ### `universal` vs `global` — which state they see
 
-Both run on every state, but they read **different** state, and this is the part
-that trips people up.
+Both run on every state, but they read **different** state.
 
 **`universal`** sees the **current point's own chain state** — and that depends
 on _where in the chain_ you put it. Placed after a `.loader` it sees the
@@ -240,7 +238,7 @@ a global head before the loader _still_ shows loading:
 ```
 
 The global callback gets a navigation state — `status`, `loading`, `error`,
-`success`, `initial` — plus the current `location`. Note `initial` (the
+`success`, `initial` — plus the current `location`. `initial` (the
 pre-navigation state) is a state **only the global head sees**; a `success` /
 `error` split alone has no head in the initial state, so the document falls back
 to its default `<title>`. Use a `global` head for anything that must always have
@@ -252,8 +250,8 @@ a title:
 )
 ```
 
-> Note: the `'global'` form takes a function or an object — not a bare string —
-> in the types. The other statuses accept a string too.
+> The `'global'` form takes a function or an object — not a bare string — in the
+> types. The other statuses accept a string too.
 
 ## Precedence: nearest wins, later overrides
 
@@ -294,11 +292,9 @@ root's global head:
 }))
 ```
 
-The "page wins" rule follows from declaration order: heads replay in mount
-order, the layout applies before the page, and unhead's later call overrides the
-earlier one per key — flat SEO keys included. A `canonical` set on more than one
-point up the chain follows the same rule: unhead treats canonical as a singleton
-link, so the later, nearer-to-leaf one wins.
+Flat SEO keys follow the same rule, and so does `canonical`: unhead treats it as
+a singleton link, so when more than one point up the chain sets it, the
+nearer-to-leaf one wins.
 
 ## SSR and what runs where
 
@@ -311,23 +307,18 @@ client-side (SPA-style), and the head updates there too.
 `.head` is a render-side method, so it strips like the others — it's
 **server-ssr-and-client**. When the point is **not under SSR** (`ssr: false`, or
 after a [`.clientOnly()`](page) call), the `.head` body and the imports it uses
-are **cut from the server bundle** — removed from the server build just like
-`.with`, `.mapper`, `.loading`, and `.error`, so they never ship there (the
-server never renders it). It's kept in the client build always, and in the
-server build only when SSR is on — under SSR both renders need to produce the
-same `<head>`, so the body stays in both bundles and runs on each side. Either
-way, whatever you return from a `.head` that _does_ run is part of the public
-document. Keep secrets out of head values; gate access to a page with a
-[`.with`](with) wrapper, not by hiding it in a head string.
+are **cut from the server bundle**, like `.with`, `.mapper`, `.loading`, and
+`.error` — the server never renders it. It's kept in the client build always,
+and in the server build only when SSR is on: both renders must produce the same
+`<head>`, so the body stays in both bundles and runs on each side. Whatever you
+return from a `.head` that runs is part of the public document — keep secrets
+out of head values; gate access to a page with a [`.with`](with) wrapper, not by
+hiding it in a head string.
 
 Each head action records an `ssr` flag at declaration time, but nothing reads it
 back: the render loop calls `useHead` / `useSeoMeta` unconditionally, so a head
 that reaches a render always runs. What keeps a non-SSR head off the server is
 the compiler stripping its body from the server bundle, not this runtime flag.
-
-> A loader body, DB calls, and other server-only code are stripped from the
-> client bundle by the compiler — but a value you _return into_ `.head` is
-> rendered into the document on both sides, so treat it as public.
 
 ## Reference
 
@@ -372,11 +363,9 @@ Every value may be a resolvable (a function), per unhead. A flat SEO key beats a
 `meta` array entry for the same tag; `canonical` is appended after existing
 `link` entries.
 
-`title`, `titleTemplate`, `templateParams`, `base`, `link`, `meta`, `style`,
-`script`, `noscript`, `htmlAttrs`, and `bodyAttrs` are the keys Point0 routes to
-`useHead` (the `headOwnKeys` set in `head.ts`); every other key goes to
-`useSeoMeta`. Point0 only sorts these into the two buckets — it does not
-interpret them, so what each one renders is unhead's job.
+Point0 only sorts keys into the two buckets (the head keys are the `headOwnKeys`
+set in `head.ts`; every other key goes to `useSeoMeta`) — it does not interpret
+them, so what each one renders is unhead's job.
 
 ### `.head` signatures
 
@@ -390,8 +379,5 @@ interpret them, so what each one renders is unhead's job.
 ```
 
 The function form returns `HeadObject | string`. The types require at least one
-argument: calling `.head()` with none produces an empty head, which is
-meaningless, so the typings don't offer it even though the runtime would accept
-it. (You only ever see an arg-less stage-method where the empty call _does_ mean
-something — e.g. `.clientOnly()` on a [page](page), which tells the compiler to
-strip the rest of the chain from the server. `.head` isn't one of those.)
+argument: an arg-less `.head()` would produce an empty, meaningless head, so the
+typings don't offer it (the runtime would accept it).

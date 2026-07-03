@@ -7,9 +7,8 @@ description:
 ---
 
 Point0 runs every query and mutation through TanStack Query's `QueryClient`. You
-create it once in a tiny module, hand it to React Query's provider, and never
-think about it again — Point0 holds it, gives each SSR request its own instance,
-and ships its cache to the browser for you.
+create it once and hand it to React Query's provider — Point0 holds it, gives
+each SSR request its own instance, and ships its cache to the browser.
 
 ```tsx
 // src/lib/query-client.ts
@@ -36,8 +35,7 @@ export default function App() {
 }
 ```
 
-That's the whole setup. The rest of this page explains what `queryClient` really
-is, how to reach it, and how it crosses the SSR boundary.
+That's the whole setup.
 
 ## `createQueryClient` returns a proxy, not a client
 
@@ -50,11 +48,11 @@ export const queryClient = createQueryClient(() => new QueryClient())
 // call time, to the active client for the current context.
 ```
 
-This is the load-bearing design fact. On the server, each request runs in its
-own context with its own `QueryClient`; the same
-`queryClient.invalidateQueries(...)` line resolves to the right per-request
-instance, so one user's data never leaks into another's render. In the browser
-there's a single client for the tab, so the proxy always lands on it.
+On the server, each request runs in its own context with its own `QueryClient`;
+the same `queryClient.invalidateQueries(...)` line resolves to the right
+per-request instance, so one user's data never leaks into another's render. In
+the browser there's a single client for the tab, so the proxy always lands on
+it.
 
 The `init` argument — `() => new QueryClient()` — is the factory Point0 calls to
 build each real client. It's **optional**; omit it and Point0 uses a bare
@@ -67,8 +65,7 @@ export const queryClient = createQueryClient() // bare new QueryClient() per con
 Point0 sets no `defaultOptions` of its own — the defaults are TanStack's. To
 tune the client app's defaults (`staleTime`, `retry`, `refetchOnWindowFocus`,
 …), pass them to your `new QueryClient({ defaultOptions: { … } })`, or set
-per-query defaults higher in the chain with [`.queryOptions`](query) — see
-[Query](query).
+per-query defaults higher in the chain with [`.queryOptions`](query).
 
 ## The QueryClientProvider is yours to wire
 
@@ -129,7 +126,21 @@ point's own helper is shorter: `ideaListQuery.invalidateQuery(true)`. The same
 for a raw `invalidateQueries` + `getQueryPredicate` when you need to match
 across points or by tag.
 
-`getQueryPredicate` is covered in full below.
+**`getQueryClient()`** returns the **real** current client (not the proxy) for
+the active context:
+
+```tsx
+import { getQueryClient } from '@point0/core'
+
+const client = getQueryClient() // the live QueryClient for this request / tab
+```
+
+It takes no arguments and always resolves the ambient client.
+
+**Don't call `queryClient` at module top level on the server.** The proxy
+resolves against the active request context, which only exists inside a server
+run. Use it inside loaders, components, hooks, and handlers — never at import
+time.
 
 ## Matching cache entries: `getQueryPredicate`
 
@@ -185,24 +196,6 @@ For matching mutations rather than queries, there's a parallel
 `getMutationPredicate` with the same `id` / `scope` / `type` / `name` / `tags`
 options, returning a `(mutation) => boolean` predicate for the mutation cache.
 
-**`getQueryClient()`** returns the **real** current client (not the proxy) for
-the active context:
-
-```tsx
-import { getQueryClient } from '@point0/core'
-
-const client = getQueryClient() // the live QueryClient for this request / tab
-```
-
-It takes no arguments and always resolves the ambient client. It's part of the
-public `@point0/core` surface — the `queryClient` proxy covers most app code,
-but `getQueryClient()` is the way to get the real client when you need one.
-
-**Don't call `queryClient` at module top level on the server.** The proxy
-resolves against the active request context, which only exists inside a server
-run. Use it inside loaders, components, hooks, and handlers — never at import
-time.
-
 ## Targeting a specific client: `{ queryClient }`
 
 Every imperative cache and fetch helper on a query or mutation takes a trailing
@@ -232,23 +225,19 @@ through.
 
 ## One client per request, one per tab
 
-The isolation that makes the proxy safe comes from _where_ the real client
-lives.
-
 **Server: one `QueryClient` per request.** Each incoming request gets a fresh
 client from your `init` factory, so caches never mix across users. A nested or
 recursive server fetch _reuses_ the parent request's client, so the inner run
 shares the same cache instead of starting cold.
 
-**Client: one shared `QueryClient` per tab.** There's a single client for the
-whole browser session, so the proxy resolves to the same instance everywhere —
-which is exactly what `QueryClientProvider client={queryClient}` needs.
+**Client: one shared `QueryClient` per tab.** The proxy resolves to the same
+instance everywhere — which is what `QueryClientProvider client={queryClient}`
+needs.
 
 **Multiple apps share one proxy.** Even with several mounted apps (different
 scopes, e.g. an admin app and a public app on one server), you keep a single
 `createQueryClient()` module. The proxy resolves the right underlying client per
-context; you don't create a distinct `QueryClient` per scope. Isolation is by
-context, not by separate proxy modules.
+context; you don't create a distinct `QueryClient` per scope.
 
 ## SSR: dehydrate on the server, hydrate on the client
 
@@ -286,10 +275,10 @@ policies live under [navigation](navigation) (and [SSR](ssr)).
 When SSR is enabled Point0 server-renders the first page load; only _after_ that
 first render does navigation between pages go client-side (SPA-style). Either
 way, whatever the server puts in the cache and dehydrates is serialized into the
-page and visible in the browser. Don't cache secret data on the server expecting
-it to stay there — it ships to the client. Gate access in a [`.with`](with)
-wrapper (and resolve server-side identity in [`.ctx`](ctx) for loaders), and let
-the error projection above keep private error detail off the wire.
+page and visible in the browser — don't cache secret data expecting it to stay
+on the server. Gate access in a [`.with`](with) wrapper (and resolve server-side
+identity in [`.ctx`](ctx) for loaders), and let the error projection above keep
+private error detail off the wire.
 
 ## Reference
 
@@ -336,12 +325,11 @@ Accepted on the imperative cache/fetch helpers of every [query](query) and
 [mutation](mutation) — `fetchQuery`, `prefetchQuery`, `ensureQueryData`,
 `getQueryData`, `setQueryData`, `refetchQuery`, `invalidateQuery`,
 `cancelQuery`, `removeQuery`, `resetQuery`, `getQueryState`, `getQueryCache`,
-`getQueriesCache`, `getQueryKey`'s siblings, their infinite-query mirrors, and
-the mutation cache accessors (`getMutationCache`, `getMutationsCache`,
-`fetchMutation`). Always optional; defaults to the ambient client. The position
-varies by method — it's a member of the **trailing options object**, not a
-positional argument (see the method tables on [Query](query) and
-[Mutation](mutation)).
+`getQueriesCache`, their infinite-query mirrors, and the mutation cache
+accessors (`getMutationCache`, `getMutationsCache`, `fetchMutation`). Always
+optional; defaults to the ambient client. The position varies by method — it's a
+member of the **trailing options object**, not a positional argument (see the
+method tables on [Query](query) and [Mutation](mutation)).
 
 ### The global item
 

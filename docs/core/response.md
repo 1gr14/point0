@@ -9,8 +9,8 @@ description:
 Every loader, [`.ctx`](ctx), and [middleware](middleware) gets a `set` helper —
 the one surface for shaping the HTTP response from inside your code. With it you
 set headers, the status code, and cookies; the framework collects them and
-applies them to the final response. The simplest path doesn't even need `set`:
-return `[statusCode, data]` from a loader and the status is yours.
+applies them to the final response. The simplest path doesn't even need `set`: a
+loader can return `[statusCode, data]`.
 
 ```tsx
 export const loginMutation = root.lets
@@ -30,10 +30,8 @@ export const loginMutation = root.lets
   .mutation()
 ```
 
-`set` is available wherever a request runs server-side — loaders, `.ctx`, and
-middlewares all receive it. It does nothing useful on the client (the response
-is already sent); these writes only matter on the server, under SSR or for an
-endpoint call.
+On the client `set` does nothing useful — the response is already sent. These
+writes matter only on the server, under SSR or for an endpoint call.
 
 ## set.status — the HTTP status
 
@@ -44,9 +42,8 @@ endpoint call.
 })
 ```
 
-The status you write wins over the response's default `200`. There's no shortcut
-for the common case, though — when the status tracks the data, return a tuple
-instead.
+The status you write wins over the response's default `200`. When the status
+tracks the data, return a tuple instead.
 
 ### Return [statusCode, data]
 
@@ -114,7 +111,7 @@ set.cookies('session', token, {
 set.cookies({ name: 'theme', value: 'dark', sameSite: 'strict' })
 ```
 
-Two defaults are filled in for you on every write:
+Two defaults are filled in on every write:
 
 ```tsx
 set.cookies('session', 'abc123')
@@ -175,9 +172,9 @@ what an earlier one wrote:
 One effects collector lives per request. Every middleware, `.ctx`, and loader in
 the chain writes into it, so effects **accumulate** across the whole point
 execution — last write wins per key (headers by lowercased name, cookies by
-name, status is a single slot). At the very end, the framework applies the
-collected effects to the response. Because that apply runs after the whole chain
-has finished, a middleware that writes an effect _after_ `await next()` returns
+name, status is a single slot). At the end, the framework applies the collected
+effects to the response. Because that apply runs after the whole chain has
+finished, a middleware that writes an effect _after_ `await next()` returns
 still lands in the final response — and, being the last write for its key, it
 wins.
 
@@ -248,8 +245,8 @@ effects collector, so the page responds with the right code.
 
 `AppError` here is either the built-in `ErrorPoint0` or your own error class —
 any class of the same-or-wider structure, wired in with `.errorClass(...)`. A
-`status` on the error becomes the response status. ([error0](error-handling) is
-one optional way to build such a class, but nothing forces it.)
+`status` on the error becomes the response status. ([Error0](error-handling) is
+one optional way to build such a class.)
 
 **An error rendered by the error component** sets the status during the render
 pass. Call `setStatus` from anywhere in a component — it's exported from
@@ -261,9 +258,8 @@ import { setStatus, useSetStatus } from '@point0/core'
 setStatus(404) // safe to call anywhere — sets the status under SSR, no-op on the client
 ```
 
-`setStatus` is **safe to call on the client** — it doesn't throw and it doesn't
-break anything. It only _takes effect_ under SSR; on the client the status was
-already sent, so the call is a no-op. That's why you can call it straight from a
+`setStatus` takes effect only under SSR; on the client the status is already
+sent and the call is a safe no-op. So you can call it straight from a
 component's render without guarding the side:
 
 ```tsx
@@ -273,11 +269,10 @@ function NotFound() {
 }
 ```
 
-`useSetStatus` is the **same function** under a `use*` name. Calling `setStatus`
-at the top of a component looks like a side effect during render, which trips
-React's rules-of-hooks lint; the `use*` alias quiets that lint so you can call
-it inline without warnings. It is not a real hook — same function, no extra
-behavior.
+`useSetStatus` is the **same function** under a `use*` name — not a real hook,
+no extra behavior. Calling `setStatus` at the top of a component looks like a
+side effect during render, which trips React's rules-of-hooks lint; the `use*`
+alias quiets that lint.
 
 The framework also writes SSR status directly in a few spots: `404` when no page
 matches the URL, `422` on input-validation failure, and a redirect honors only
@@ -299,9 +294,8 @@ import { getEffects, getEffectsOrUndefined } from '@point0/core'
 const effects = getEffects() // the same collector every loader/ctx/middleware shares
 ```
 
-Both are exported from `@point0/core`. `getEffects` throws when there's no
-request in scope; `getEffectsOrUndefined` returns `undefined` — that's exactly
-how `setStatus` stays a safe no-op off-request:
+`getEffects` throws when there's no request in scope; `getEffectsOrUndefined`
+returns `undefined` — that's how `setStatus` stays a safe no-op off-request:
 
 ```tsx
 getEffects().set.status(204) // throws if called outside a request
@@ -318,10 +312,6 @@ An `Effects` instance exposes more than just `set`:
 | `effects.status`   | the accumulated status, or `undefined` if none was set                                                                          |
 | `effects.values`   | a fresh, deep-copied `{ headers, cookies, status }` snapshot — same shape as `set.inspect`                                      |
 | `effects.apply(r)` | return a new `Response` with the accumulated effects merged in (the framework calls this at the end of each request)            |
-
-So `set` is the curated way to _write_; `effects.headers` / `effects.cookies` /
-`effects.status` are the raw fields you can _read_ directly, and
-`effects.values` (or `set.inspect`) is the safe immutable snapshot.
 
 ## Reference
 

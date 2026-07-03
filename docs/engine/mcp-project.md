@@ -38,21 +38,9 @@ matters: the script runs with the working directory set to the project root, so
 a relative `--meta` path resolves correctly and the workspace
 `point0-project-mcp` bin is found.
 
-```jsonc
-// .mcp.json — Claude Code reads this from the project root
-{
-  "mcpServers": {
-    "point0-project": { "command": "bun", "args": ["run", "mcp:project"] },
-  },
-}
-```
-
-The same JSON goes in `.cursor/mcp.json` for Cursor — the two files are
-identical; only the location differs.
-
-`create-point0-app` writes only these two files — the Claude Code and Cursor
-configs. Other MCP clients (VS Code, Windsurf, Zed, …) aren't scaffolded, but
-the server is plain stdio: give any stdio-MCP client the same `command`/`args`
+`create-point0-app` writes only the Claude Code and Cursor configs. Other MCP
+clients (VS Code, Windsurf, Zed, …) aren't scaffolded, but the server is plain
+stdio: give any stdio-MCP client the same `command`/`args`
 (`bun run mcp:project`) in its own config location.
 
 > **NAME GOTCHA.** Three names look alike, don't mix them up: the **bin** is
@@ -116,8 +104,7 @@ checkout must run `generate` before the MCP can answer.
 
 You **do not restart the MCP** after regenerating. The server is long-lived; it
 re-checks each meta's modification time on every tool call and re-imports it
-when it changed. After `point0 generate` rewrites the meta, the next tool call
-sees the new points.
+when it changed, so the next call sees the new points.
 
 ## Four tools
 
@@ -150,9 +137,8 @@ that ignores `structuredContent` still reads it.
 ### `get_point` — first match
 
 Returns the first point matching the filters — same filter shape as
-`list_points`, minus `limit`/`offset`. This is the tool an agent reaches for
-when you hand it a concrete coordinate and ask "what point is this?": _here's my
-URL, find me the page_, or _find me the layout named `dashboard`_.
+`list_points`, minus `limit`/`offset`. Use it to resolve a concrete coordinate:
+_here's my URL, find me the page_, or _find me the layout named `dashboard`_.
 
 Ask for one field and you get just that — the cheapest way to resolve a URL to a
 point id:
@@ -168,7 +154,7 @@ point id:
 ```
 
 Drop `fields` and the full point comes back — the same snapshot `list_points`
-returns, so an agent can read everything it knows about that point in one call:
+returns:
 
 ```jsonc
 // arguments — "find me the layout named dashboard, with all its details"
@@ -197,13 +183,12 @@ returns, so an agent can read everything it knows about that point in one call:
 }
 ```
 
-That record is what makes the MCP useful: from a single URL or name the agent
-learns the point's `id`, its source `pos` (file + line, so it can jump straight
-to the definition), whether it server-renders (`ssr`), its `endpoint` (HTTP
-method + route) if it has one, and the `parents`/`layouts` it sits inside. A
-query or mutation comes back with its `endpoint`
-(`{ "method": "POST", "route": "/_point0/root/mutation/sign-in" }`) instead of a
-page `route`.
+From a single URL or name the agent gets the point's `id`, its source `pos`
+(file + line, to jump straight to the definition), whether it server-renders
+(`ssr`), its `endpoint` (HTTP method + route) if it has one, and the
+`parents`/`layouts` it sits inside. A query or mutation comes back with its
+`endpoint` (`{ "method": "POST", "route": "/_point0/root/mutation/sign-in" }`)
+instead of a page `route`.
 
 No match is **not an error**: the text comes back as `"null"` and
 `structuredContent` is absent.
@@ -292,7 +277,7 @@ lazy: errors surface on the first tool call, not at connect.
 | `type`           | `string`             | exact type — `page` / `layout` / `query` / `mutation` / `action` / … |
 | `name`           | `string`             | exact name                                                           |
 | `route`          | `string`             | exact route definition                                               |
-| `url`            | `string`             | full URL or path, matched against `point.route` via route0           |
+| `url`            | `string`             | full URL or path, matched against `point.route` via Route0           |
 | `endpointMethod` | `string`             | exact endpoint HTTP method                                           |
 | `endpointRoute`  | `string`             | exact endpoint route definition                                      |
 | `endpointUrl`    | `string`             | full URL or path, matched against the endpoint route                 |

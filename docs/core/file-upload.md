@@ -65,9 +65,8 @@ Type.String({ format: 'binary' }) // typebox
 type({ file: 'File' }) // arktype
 ```
 
-The schema only validates the value and feeds [OpenAPI](openapi) (see below). It
-does **not** decide whether the request is multipart — that switch is made at
-runtime, on the actual value.
+The schema only validates the value and feeds [OpenAPI](openapi) (see below); it
+does **not** decide whether the request is multipart.
 
 ## How the request is encoded
 
@@ -80,7 +79,7 @@ mutation.mutate({ title: 'x', image: someFile }) // → multipart/form-data
 mutation.mutate({ title: 'x' }) // → application/json (no file present)
 ```
 
-A few consequences worth knowing:
+Consequences:
 
 - **Detection is recursive.** A file nested deep in the input
   (`{ profile: { avatar: File } }`, `{ files: [File, File] }`) still triggers
@@ -89,17 +88,14 @@ A few consequences worth knowing:
   `Content-Type` header, so the runtime fills in
   `multipart/form-data; boundary=…` automatically. Setting it by hand breaks the
   boundary.
-- **You never think about flattening — the framework does it.** Declare your
-  input with any nesting you like; on the multipart branch Point0 flattens it to
-  bracket-notation keys (`profile[avatar]`, `files[0]`) with
-  [`@1gr14/flat`](https://1gr14.dev/flat) before sending, and the server
-  unflattens it back into the original shape for the loader. The `File`/`Blob`
-  parts are appended raw; every other field is `JSON.stringify`'d into its form
-  part. Nothing about this is your concern — it folds and unfolds under the
-  hood.
+- **Flattening is automatic.** Declare your input with any nesting you like; on
+  the multipart branch Point0 flattens it to bracket-notation keys
+  (`profile[avatar]`, `files[0]`) with [`@1gr14/flat`](https://1gr14.dev/flat)
+  before sending, and the server unflattens it back into the original shape for
+  the loader. The `File`/`Blob` parts are appended raw; every other field is
+  `JSON.stringify`'d into its form part.
 - **The loader gets a genuine `File`.** Its `name`, `type`, `size`, and
-  `arrayBuffer()` all survive the round-trip — proven by
-  `packages/engine/tests/mutation.test.tsx` ("with file loader").
+  `arrayBuffer()` all survive the round-trip.
 
 ## Where the file lands on the server
 
@@ -116,14 +112,13 @@ which depends on the point type:
 
 Send files with a [mutation](mutation) (or an [action](action)), not a
 [query](query). A query's input has to be serializable into a cache key, and a
-`File` has no sensible serialization there — sending bytes to read data isn't
-what a query is for. Uploading is a write, so it belongs on a mutation.
-[Pages](page) and [layouts](layout) are `GET` and carry no body, so they never
-take a file upload either.
+`File` has no sensible serialization there. Uploading is a write, so it belongs
+on a mutation. [Pages](page) and [layouts](layout) are `GET` and carry no body,
+so they never take a file upload either.
 
 ## Mutations
 
-The hero example above is a mutation — the common case. The file is part of
+The example at the top is a mutation — the common case. The file is part of
 `.input`, you fill it on the client, the server loader consumes it. See
 [Mutation](mutation) for the rest of the mutation surface.
 
@@ -215,30 +210,28 @@ new FormData()       // '[FormData]'
 
 ## Security: the file is read on the server
 
-The loader body is cut from the client bundle — its body and the imports it uses
-are removed, so file handling, validation, and storage (and everything they pull
-in) never ship to the browser. As with any endpoint, gate access with
-[`.with`](with) (for a render gate) or in the loader via `.ctx`/`.use` (for a
-write gate) — see [Mutation](mutation) authorization. Don't trust the
-client-declared file: validate `type` / `size` in the loader.
+The loader body and the imports it uses are cut from the client bundle, so file
+handling, validation, and storage (and everything they pull in) never ship to
+the browser. As with any endpoint, gate access with [`.with`](with) (for a
+render gate) or in the loader via `.ctx`/`.use` (for a write gate) — see
+[Mutation](mutation) authorization. Don't trust the client-declared file:
+validate `type` / `size` in the loader.
 
 ## Reference
 
 ### The two detection helpers
 
-There is **no** symbol named `isFile`. Two distinct mechanisms exist, at two
-different levels:
+There is **no** symbol named `isFile` — two distinct mechanisms exist:
 
 | Helper                               | Level         | Used by                 | What it does                                                                                        |
 | ------------------------------------ | ------------- | ----------------------- | --------------------------------------------------------------------------------------------------- |
 | `isContainsBinary(value)`            | runtime value | the request encoder     | returns `true` if a `File`/`Blob` sits anywhere in the value (recursive); decides multipart vs JSON |
 | `SchemaHelper.hasFileOrBlob(schema)` | schema        | [OpenAPI](openapi) only | per-library walk of the schema to detect a file field                                               |
 
-Both are exported from `@point0/core` for reference, but you rarely call either
-directly — they run inside the framework.
+Both are exported from `@point0/core`, but you rarely call either directly —
+they run inside the framework.
 
-Per-library `hasFileOrBlob` detection (all confirmed in
-`packages/core/tests/schema.test.ts`):
+Per-library `hasFileOrBlob` detection:
 
 | Library     | Detected as a file                                                                                                           |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -268,18 +261,14 @@ fields stay as strings. `File`/`Blob` parts are unaffected either way.
   falls back to `{}` and your schema validation produces the user-facing error.
 - **Optional file left out.** An `undefined` file simply isn't sent; with no
   other binary present the request is plain JSON.
-- **Nested and array files round-trip.** A file deep in the input
-  (`{ profile: { avatar: File } }`, `{ files: [File, File] }`) is detected and
-  encoded: the recursive detector (`isContainsBinary`) walks objects and arrays,
-  and the same bracket-notation flatten/unflatten that carries every other field
-  carries these too. The deep shape is reassembled for the loader by the
-  unflatten step.
+- **Nested and array files round-trip.** The recursive detector
+  (`isContainsBinary`) walks objects and arrays, and the bracket-notation
+  flatten/unflatten reassembles the deep shape for the loader.
 
 ## Size, type, and count limits
 
-Point0 enforces no file size, MIME type, or file count limit of its own. The
-framework just moves the bytes; what you accept is up to you. Limits come from
-three places, all of them yours to set:
+Point0 enforces no file size, MIME type, or file count limit of its own. Limits
+come from three places:
 
 - **Your schema** — refine the file field to reject what you don't want
   (`z.file().max(5_000_000)`, a `.refine(f => f.type === 'image/png')`, an array
@@ -290,6 +279,3 @@ three places, all of them yours to set:
 - **The runtime** — the body is parsed by the runtime's `formData()` (Bun's, or
   the platform's), so whatever request-body ceiling that runtime imposes applies
   before your loader ever sees the file.
-
-Always validate on the server; never trust a client-declared `name`, `type`, or
-`size`.

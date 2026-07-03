@@ -33,26 +33,21 @@ export const root = Point0.lets
   .root()
 ```
 
-Mounted on the root, a middleware runs on **every** server request. The rest of
-this page shows the smaller forms, how to scope by route or method, and what a
-middleware function gets to work with.
+Mounted on the root, a middleware runs on **every** server request.
 
 ## Where it runs, and where it doesn't
 
-`.middleware` is **server-only** — cut from the client bundle: its body and the
-imports it uses are removed, so it never ships to the browser. The
-[compiler](compiler) empties its arguments in the client bundle, so a middleware
-body and anything it pulls in (your `authServer`, `prisma`, secrets) is pruned
-from what reaches the browser; on the client it's a no-op. It stays in the
-server build, where it runs — and you can call server-only code inside it
-freely.
+`.middleware` is **server-only** — cut from the client bundle: the
+[compiler](compiler) empties its arguments, so the body and anything it pulls in
+(your `authServer`, `prisma`, secrets) never ships to the browser; on the client
+it's a no-op. It stays in the server build, where it runs — call server-only
+code inside it freely.
 
 This is also why middleware is the wrong tool for an authorization gate. After
 the initial SSR render, navigation is client-side (SPA-style), and a point that
 isn't server-rendered still renders in the browser — whether or not a server
 middleware ran. Gate access in a [`.with`](with) wrapper, which runs at render
-on both server and client. Use middleware for integration plumbing, not for
-protecting a point.
+on both server and client.
 
 ## Which points have it
 
@@ -76,14 +71,13 @@ const page = root.lets
   .page(/* ... */)
 ```
 
-A point's middleware runs when that point's request is handled by the server. A
-query, infinite-query, mutation, and action each have their own server endpoint,
-so their middleware fires on a request to that endpoint. A component or provider
-has an endpoint only when it carries a [loader](loader); without one it's never
-hit on the server, so its middleware never runs. A plugin is not a server point
-at all — its middleware folds into whatever point applies the plugin, and runs
-there. Whichever point a request resolves to, that point's full middleware list
-— inherited (from the root down) then its own — runs around it.
+A query, infinite-query, mutation, and action each have their own server
+endpoint, so their middleware fires on a request to that endpoint. A component
+or provider has an endpoint only when it carries a [loader](loader); without one
+it's never hit on the server, so its middleware never runs. A plugin is not a
+server point at all — its middleware folds into whatever point applies the
+plugin, and runs there. Whichever point a request resolves to, that point's full
+middleware list — inherited (from the root down) then its own — runs around it.
 
 ## The middleware function
 
@@ -137,7 +131,7 @@ to send:
 
 ## Scope by route
 
-Pass a route string (or a [route0](navigation) route object) as the first
+Pass a route string (or a [Route0](navigation) route object) as the first
 argument, then the function(s). The middleware runs only on an **exact** path
 match; on any other path it transparently forwards via `next()`:
 
@@ -157,10 +151,9 @@ A trailing `*` is a wildcard segment that captures the remainder of the path, so
 })
 ```
 
-This is only an illustration of route params and a returned `Response` — don't
-build your own JSON endpoints this way. If you want an endpoint, author an
-[action](action) point instead; middleware is for plumbing that sits _outside_
-the point model, not for serving your own routes.
+This only illustrates route params and a returned `Response` — don't build your
+own JSON endpoints this way. For an endpoint, author an [action](action) point
+instead.
 
 The wildcard's captured remainder arrives in `params` under the key `*`. For
 `/api/auth/*` matching `/api/auth/sign-in/email`, `params` is
@@ -209,9 +202,7 @@ applied even when a later middleware returns its own `Response` or throws:
 ```
 
 `set` in a middleware is the same helper a loader gets, so `set.cookies(...)`
-and `set.status(n)` work alongside `set.headers(...)` — all three are collected
-on the request's effects and applied to whatever response the chain finally
-returns:
+and `set.status(n)` work alongside `set.headers(...)`:
 
 ```tsx
 .middleware(async ({ set, next }) => {
@@ -251,11 +242,10 @@ const page = root.lets
 
 Under [SSR](ssr) a page request can run the middleware chain more than once:
 point0 uses a render-to-discover loop, so a page may re-render a few times (or
-just once, if it has no pending data) before the HTML settles. There's no fixed
-number — keep middleware side-effect-light and idempotent so it's safe whether
-the request triggers one render pass or several. See [SSR](ssr) for how the loop
-works and `request.renders` on the [Request0](request) page for the live
-render-pass count.
+just once, if it has no pending data) before the HTML settles. Keep middleware
+side-effect-light and idempotent. See [SSR](ssr) for how the loop works and
+`request.renders` on the [Request0](request) page for the live render-pass
+count.
 
 ## Errors thrown inside
 
@@ -328,7 +318,7 @@ its imports removed), so it never ships to the browser and is a no-op there.
 ```
 
 - `route` is a route string (extended off the point's own route) or a
-  [route0](navigation) route object.
+  [Route0](navigation) route object.
 - `method` is one of point0's request methods (`'GET'`, `'POST'`, …) or an array
   of them — any string is accepted.
 - At least **one** function is required. Each returns

@@ -11,7 +11,7 @@ example: examples/capacitor
 > **Experimental.** This example is a work in progress — it ships a
 > `WIP_EXAMPLE_NOT_READY.md` marker and still carries scaffold leftovers. It
 > shows the _shape_ of a web-to-mobile build, not a polished template. For a
-> real mobile app, start from [start0](#for-a-real-app).
+> real mobile app, start from [Start0](#for-a-real-app).
 
 `examples/capacitor` is the same ideas app as [basic](example-basic), stripped
 down (no auth, no layouts, no OpenAPI, no Tailwind), wrapped in a
@@ -63,5 +63,5 @@ Android Studio. See [getting-started](getting-started).
 ## For a real app
 
 This example shows Point0's web-to-mobile build in isolation. For a real app,
-start from **[start0](https://1gr14.dev/start0)** — the SaaS boilerplate with
+start from **[Start0](https://1gr14.dev/start0)** — the SaaS boilerplate with
 the pieces already wired (`bun create start0@latest my-app`).

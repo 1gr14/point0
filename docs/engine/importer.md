@@ -22,7 +22,7 @@ import '@point0/core/server-only' // this file can never reach the client bundle
 ```
 
 If any client-reachable file imports this module, the client build fails — the
-server code physically cannot land in the browser bundle.
+server code cannot land in the browser bundle.
 
 ## Two ways to declare a rule
 
@@ -123,18 +123,17 @@ import { StyleSheet } from 'react-native' // mocked on the server
 const styles = StyleSheet.create({}) // => a mock; no error, no real work
 ```
 
-The same module is the **real** value on its own side. Mocking is per-side: on
-the side whose `importer` config lists the module, the import resolves to a
-`createMock()` proxy; on the other side, whose config doesn't mock it, the
-import keeps its real value. A `mock` never denies — even with
-`onDeny: 'throw'`, a mocked import emits no error.
+Mocking is per-side: the import resolves to the proxy only on the side whose
+`importer` config lists the module; on the other side it keeps its real value. A
+`mock` never denies — even with `onDeny: 'throw'`, a mocked import emits no
+error.
 
 ## `cold` — dev-hot-reload only
 
-`cold` is a different beast from `deny`/`mock`. It has **no effect on builds,
-prod, or non-hot dev** — it is read only when building the server hot-reload
-store under `point0 dev --hot`. It also matches the file's **own path**, not an
-import target.
+`cold` is unlike `deny`/`mock`: it has **no effect on builds, prod, or non-hot
+dev** — it is read only when building the server hot-reload store under
+`point0 dev --hot`. It also matches the file's **own path**, not an import
+target.
 
 ```ts
 import '@point0/core/cold' // this file + its static-import subtree run cold
@@ -149,8 +148,7 @@ importer is a silent no-op. Full behavior is on [dev](dev).
 
 ## `onDeny` — log in dev vs throw in build
 
-This is the headline rule. When a `deny` or marker fires, what happens depends
-on `onDeny`:
+When a `deny` or marker fires, what happens depends on `onDeny`:
 
 - `'log'` — `console.error` the message and keep going. The throwing virtual
   module is still emitted, so the code errors only if it actually runs.
@@ -165,9 +163,8 @@ build  → onDeny forced to 'throw'   → denial is fatal, the build fails
 ```
 
 So a wrong-side import slips through in `point0 dev` (logged, the module errors
-at runtime if evaluated) but becomes a hard failure in `point0 build`. The build
-is where import protection is enforced. There is no flag to make `dev` fail fast
-on a denial — `dev` always logs, `build` always throws.
+at runtime if evaluated) but fails `point0 build`. The build is where import
+protection is enforced; there is no flag to make `dev` fail fast on a denial.
 
 ## How the guard works
 
@@ -186,16 +183,15 @@ Vite). For each file with a known side:
 
 All three import forms are rewritten — static `import`, dynamic `import()`, and
 `require()`. Import protection runs only when the [compiler](compiler) is
-enabled for that side: the importer is part of the compiler plugin, so setting
-`compiler: false` for a side turns its import protection off entirely — no
-plugin, no rewrites, no denial. A built engine also has the compiler off (it
-never compiles sources at runtime), so import protection lives in the build
-itself, not in the running app.
+enabled for that side: setting `compiler: false` for a side turns its import
+protection off entirely — no plugin, no rewrites, no denial. A built engine also
+has the compiler off (it never compiles sources at runtime), so import
+protection lives in the build itself, not in the running app.
 
 ## Pattern syntax
 
 `deny` / `mock` / `cold` each take an array of strings or `RegExp`. Strings are
-normalized so the common cases just work:
+normalized:
 
 ```ts
 deny: [
@@ -253,15 +249,10 @@ Lives on `server.importer` and `client.importer` (also reachable via
 | `import '@point0/core/client-only'` | The importing file is denied on the **server** side.         |
 | `import '@point0/core/cold'`        | The file (+ its static subtree) runs cold under `dev --hot`. |
 
-Each is a no-runtime-value marker; the compiler recognizes the specifier and
-rewrites the import on the wrong side. On the correct side it stays a harmless
-empty module.
-
-The compiler spots a marker by the import string it finds in the file it's
-compiling. So a marker only guards a file that carries it: to guard a
-third-party package this way, the package's own source must import
+A marker only guards the file that carries it: to guard a third-party package
+this way, the package's own source would have to import
 `@point0/core/server-only` (or `client-only`). For a dependency you can't edit,
-reach for a `deny` config rule on the import target instead.
+use a `deny` config rule on the import target instead.
 
 ### Rule precedence
 

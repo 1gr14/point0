@@ -48,7 +48,7 @@ const request = getRequestOrUndefined() // undefined instead of throwing
 ```
 
 Use `getRequestOrUndefined()` in helpers that may run off-request — an analytics
-call, an error reporter — so they don't throw when there's no request:
+call, an error reporter:
 
 ```tsx
 const request = getRequestOrUndefined()
@@ -61,9 +61,8 @@ differently on the client:
 
 - `getRequest()` is strict: on the client it throws
   `Cannot access serverOnlyStorage item "..." from client`.
-- `getRequestOrUndefined()` is exactly what you reach for off the server — on
-  the client it returns `undefined` instead of throwing, so isomorphic helpers
-  stay safe to call from a component or hook.
+- `getRequestOrUndefined()` returns `undefined` on the client instead of
+  throwing, so isomorphic helpers stay safe to call from a component or hook.
 
 ## Reading headers
 
@@ -87,11 +86,10 @@ const me = await authServer.api.getSession({
 ```
 
 `request.headers` is built by iterating the native `Headers` with
-`Headers.forEach`, which already collapses a duplicated header into a single
-value per key (comma-joined, except `set-cookie`, which the runtime keeps
-separate). So a key maps to one combined string, never an array. When you need
-the per-value list — multiple `set-cookie`, say — reach for
-`request.original.headers` and its `Headers` API instead.
+`Headers.forEach`, which collapses a duplicated header into a single
+comma-joined value per key (except `set-cookie`, which the runtime keeps
+separate). When you need the per-value list — multiple `set-cookie`, say — use
+`request.original.headers` and its `Headers` API.
 
 ## Reading cookies
 
@@ -143,11 +141,10 @@ request.location.href // => full absolute href (absolute inputs only)
 request.original.url // => the raw URL string
 ```
 
-`request.location` is a [route0](navigation) location. Its `pathname` is the raw
-URL pathname — trailing slash preserved as-is (a request to `/ideas/` reads back
-`'/ideas/'`, not `'/ideas'`); route _matching_ normalizes internally, but the
-value you read off `request.location.pathname` is not normalized. `search` is
-the parsed query object.
+`request.location` is a [Route0](navigation) location. Its `pathname` is the raw
+URL pathname, trailing slash preserved as-is (a request to `/ideas/` reads back
+`'/ideas/'`, not `'/ideas'`); route _matching_ normalizes internally. `search`
+is the parsed query object.
 
 Route params are **not** on `request`. They arrive as a separate, typed and
 validated `params` option prop when you declare a
@@ -163,8 +160,7 @@ validated `params` option prop when you declare a
 There is no raw, untyped route-params view on `request`. `request.location` is
 an unrouted location, so its `params` is `undefined`. The matched params do live
 on the engine's classified variant — `request.variant.location.params` for an
-`endpoint` — but that is internal plumbing, not stable read-side API. Read
-params through the validated `params` option prop instead.
+`endpoint` — but that is internal plumbing, not stable read-side API.
 
 So `headers`/`cookies` exist twice with different meanings: **on `request`**
 they are the raw, full set (`string | undefined`); **as an option prop** they
@@ -311,9 +307,6 @@ declare module '@point0/core/request0' {
 }
 ```
 
-For SSR prefetch chains, reach for `cache` (chain-shared), not `state`
-(per-instance).
-
 ## The native request: `request.original`
 
 `request.original` is the underlying Fetch API `Request`. It's the escape hatch
@@ -331,9 +324,8 @@ and exposes it **parsed** as the loader's `body` option (when a
 [`.body`](validation) schema is declared) — you rarely consume
 `request.original` directly for the body.
 
-`request.rawBody` exists alongside it, but it's the engine's internal raw/parsed
-body cache — advanced/internal, not stable read-side API. Consume the parsed
-`body` option, not `rawBody`.
+`request.rawBody` is the engine's internal raw/parsed body cache — not stable
+read-side API. Consume the parsed `body` option instead.
 
 ## Server-to-server chains
 
@@ -352,8 +344,8 @@ request.first // => the first Request0 in the chain | undefined
 request.from.server // => true inside such a chained request
 ```
 
-This is why `request.cache` (chain-shared) beats `request.state` (per-instance)
-for cross-hop work: each hop gets a fresh `state` but the **same** `cache`.
+For cross-hop work use `request.cache`, not `request.state`: each hop gets a
+fresh `state` but the **same** `cache`.
 
 ## Reference
 
@@ -377,14 +369,14 @@ for cross-hop work: each hop gets a fresh `state` but the **same** `cache`.
 
 ### `request.from`
 
-| Member      | Type                  | Notes                                                     |
-| ----------- | --------------------- | --------------------------------------------------------- |
-| `ip`        | `string \| null`      | `ips[0]` or `null`; spoofable unless from Bun `requestIP` |
-| `ips`       | `string[]`            | all IP candidates, de-duped, trusted-first                |
-| `userAgent` | `string \| null`      | the `user-agent` header                                   |
-| `location`  | `AnyLocation \| null` | referrer parsed into a location                           |
-| `scope`     | `string \| null`      | scope of the client that sent it (usually `root`)         |
-| `server`    | `boolean`             | `true` for an internal server-to-server request           |
+| Member      | Type                  | Notes                                             |
+| ----------- | --------------------- | ------------------------------------------------- |
+| `ip`        | `string \| null`      | Bun `requestIP` or `null` — never a header value  |
+| `ips`       | `string[]`            | all IP candidates, de-duped, trusted-first        |
+| `userAgent` | `string \| null`      | the `user-agent` header                           |
+| `location`  | `AnyLocation \| null` | referrer parsed into a location                   |
+| `scope`     | `string \| null`      | scope of the client that sent it (usually `root`) |
+| `server`    | `boolean`             | `true` for an internal server-to-server request   |
 
 ### `request.variant`
 
@@ -408,10 +400,10 @@ emits the final total as a dev-only `X-Point0-Renders-Count` response header.
 
 ### `request.id`
 
-A per-hop request id, generated when the request is created. Treat it as opaque:
-it identifies a single hop, not the whole chain. Each server-to-server hop gets
-its own fresh `id`, so to correlate across a `prev`/`first` chain follow those
-links (or read `request.first.id`), not `id` alone.
+An opaque id, generated when the request is created. It identifies a single hop,
+not the whole chain — each server-to-server hop gets its own fresh `id`. To
+correlate across a chain, follow `prev`/`first` (or read `request.first.id`),
+not `id` alone.
 
 ### Reading vs writing
 

@@ -26,10 +26,8 @@ export const root = Point0.lets
 
 That bare `cors()` is the most permissive default: it **reflects** whatever
 `Origin` the request carried, allows credentials, mirrors the request method,
-and echoes the requested headers back. It's exactly what the shipped `expo`
-example uses, because the Expo app and the API server live on different origins.
-The rest of this page covers locking that down with `origin`, and the other
-options.
+and echoes the requested headers back. The shipped `expo` example uses it
+because the Expo app and the API server live on different origins.
 
 `cors()` is **cut from the client bundle — its body and the imports it uses are
 removed, so it never ships to the browser.** Middleware is server-only; the
@@ -133,9 +131,8 @@ cors({
 
 - **`credentials`** defaults to `true`, which sends
   `Access-Control-Allow-Credentials: true`. Set it to `false` to drop the
-  header. Note that with credentials on, an allowed origin is always echoed back
-  literally — the spec forbids `*` together with credentials, and `cors()`
-  honors that.
+  header. With credentials on, an allowed origin is always echoed back literally
+  — the spec forbids `*` together with credentials, and `cors()` honors that.
 - **`maxAge`** is the preflight cache lifetime in seconds, written to
   `Access-Control-Max-Age`. It defaults to `5`. A `maxAge` of `0` omits the
   header entirely.

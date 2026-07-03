@@ -50,8 +50,7 @@ export const AppProvider = root.lets
   .provider() // value = data = { flags }
 ```
 
-This `mapper` is the same thing as [`.mapper`](mapper), just expressed in the
-closing call — handy because `.provider()` is where the point finalizes anyway.
+This `mapper` is the same as [`.mapper`](mapper), expressed in the closing call.
 With no loader, no query, and no mapper, the value is the empty data object.
 
 The mountable closer `.provider()` (and `.mapper`) is **server-ssr-and-client**
@@ -65,8 +64,7 @@ SSR is on (so it can render during SSR).
 A provider fills its value the same way a [page](page) does. Three sources, and
 you can combine them.
 
-**A loader.** Put a [`.loader`](loader) on the provider. It runs on the server,
-so its body never ships to the browser:
+**A loader.** Put a [`.loader`](loader) on the provider:
 
 ```tsx
 export const MeProvider = root.lets
@@ -75,11 +73,11 @@ export const MeProvider = root.lets
   .provider()
 ```
 
-The `.loader` body is **server-only** — cut from the client bundle: its body and
-the imports it uses are removed, so it never ships to the browser (it runs on
-the server alone). A provider's self-query (a loader-backed provider is also a
-query) is **finite by default**; close with `.infiniteQuery({...})` after the
-loader to make it infinite instead.
+`.loader` is **server-only** — cut from the client bundle: its body and the
+imports it uses are removed, so it never ships to the browser (it runs only on
+the server). A provider's self-query (a loader-backed provider is also a query)
+is **finite by default**; close with `.infiniteQuery({...})` after the loader to
+make it infinite instead.
 
 **Injected queries.** Hand a reusable [query](query) to the provider with
 [`.with`](with):
@@ -106,11 +104,9 @@ export const MeProvider = root.lets
   .provider(({ data: { me }, props: { theme } }) => ({ me, theme }))
 ```
 
-`.with` is **server-ssr-and-client** — like the closer, it is cut from the
-SERVER bundle when `ssr:false` (or after a `.clientOnly()`): body and imports
-removed from the server build. Kept in the client build always, and in the
-server build only when SSR is on. Its function form runs at render, so it can
-call React hooks; a query handed to it is injected the same way on both sides.
+`.with` is **server-ssr-and-client** — like the closer, cut from the SERVER
+bundle when `ssr:false` (or after a `.clientOnly()`). A query handed to it is
+injected the same way on both sides.
 
 The mapper callback receives `data`, `props`, `queries`, and — when the matching
 schema exists — `input`. Its return value is exactly what children read.
@@ -135,9 +131,9 @@ export const DataProvider = root.lets
 ```
 
 `.input` on a provider is a non-action mountable schema, so it is
-**server-and-client** — not cut from either bundle, kept in both (isomorphic),
-nothing pruned (unlike `.input` on an [action](action), which is cut from the
-client bundle — server-only).
+**server-and-client** — not cut from either bundle, kept in both (unlike
+`.input` on an [action](action), which is cut from the client bundle —
+server-only).
 
 Declare outer props with a generic on `.lets`, then pass them on the element:
 
@@ -217,9 +213,8 @@ Provider value not found. You should call getValue only after Provider component
 is mounted and loaded. On point <provider>
 ```
 
-When the provider might not be mounted, use `.getValueOrUndefined()` instead —
-it returns `undefined` rather than throwing (the `...OrUndefined` suffix is the
-repo's convention for get-or-undefined accessors):
+When the provider might not be mounted, use `.getValueOrUndefined()` — it
+returns `undefined` instead of throwing:
 
 ```tsx
 const value = AppProvider.getValueOrUndefined() // => value | undefined
@@ -240,10 +235,10 @@ instances. To read a specific input-keyed value outside the subtree, use
 
 ## A layout is a provider too
 
-A [layout](layout) carries the exact same value machinery: it exposes
-`.useValue()`, `.getValue()`, and `.getValueOrUndefined()`, so a page below it
-reads the layout's data like a provider's. This is the common production shape —
-load once in the layout, read it in each child page:
+A [layout](layout) carries the same value machinery: it exposes `.useValue()`,
+`.getValue()`, and `.getValueOrUndefined()`, so a page below it reads the
+layout's data like a provider's. This is the common production shape — load once
+in the layout, read it in each child page:
 
 ```tsx
 // the layout loads the idea once
@@ -264,19 +259,17 @@ export const ideaNewsPage = ideaLayout.lets.page('/news').page(() => {
 })
 ```
 
-A [component](component), by contrast, is **not** a provider — it has no
-`.useValue()` / `.getValue()`. Only providers and layouts expose values.
+A [component](component) is **not** a provider — it has no `.useValue()` /
+`.getValue()`. Only providers and layouts expose values.
 
 ## Endpoint behavior
 
-A provider becomes a real HTTP [endpoint](query) **only if it has a server
+A provider becomes an HTTP [endpoint](query) **only if it has a server
 `.loader()`** — then it gets a path
 (`POST /_point0/<scope>/provider/<kebab-name>`) so children can fetch its data.
 A provider with no loader (a pure computed or props-driven value) issues no
-request and has no endpoint. The loader is server-only — its body and the
-imports it uses are cut from the client bundle at compile time, so they never
-reach the public browser build; an auth gate belongs in a [`.with`](with)
-wrapper, not in `.ctx` alone (`.ctx` runs only when the point has a loader).
+request and has no endpoint. An auth gate belongs in a [`.with`](with) wrapper,
+not in `.ctx` alone (`.ctx` runs only when the point has a loader).
 
 ## Reference
 
@@ -286,8 +279,7 @@ wrapper, not in `.ctx` alone (`.ctx` runs only when the point has a loader).
 with `.lets.provider()` / `.lets('provider', name)`). It is terminal: it returns
 a `Mountable`, after which only the value/component helpers below remain. As a
 mountable closer it is **server-ssr-and-client** — cut from the server bundle
-(body and imports removed) when `ssr:false` or after a `.clientOnly()`; kept in
-the client build always, and in the server build only when SSR is on.
+when `ssr:false` or after a `.clientOnly()`.
 
 | Argument  | Type              | Notes                                                         |
 | --------- | ----------------- | ------------------------------------------------------------- |
@@ -329,4 +321,4 @@ provider's auto-generated self-query. It is configured on the [root](root), a
 [base](base), or a [plugin](plugin) — not on the provider itself — alongside the
 other `*QueryOptions` methods (see [stage-methods](stage-methods)). Like the
 rest of the `*QueryOptions` family it is **server-and-client** — not cut from
-either bundle, kept in both (isomorphic), nothing pruned.
+either bundle.

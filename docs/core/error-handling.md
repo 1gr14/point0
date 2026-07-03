@@ -18,17 +18,17 @@ the wire it's serialized for the audience — public for an untrusted client in
 production, full for the developer in development — and the server stack never
 reaches the browser, even though the first page load is server-rendered.
 
-The page below describes that class — its fields, how it serializes, and how a
-throw reaches your error component. One convenient way to _build_ such a class
-is [error0](https://1gr14.dev/error0); it's only an example implementation,
-covered [at the end](#building-apperror-with-error0). You could equally
-hand-write a `class extends Error`.
+This page describes that class — its fields, how it serializes, and how a throw
+reaches your error component. One way to _build_ such a class is
+[Error0](https://1gr14.dev/error0), covered
+[below](#building-apperror-with-error0); you could equally hand-write a
+`class extends Error`.
 
-This is the full error class start0 wires onto its root — typical of a real app,
+This is the full error class Start0 wires onto its root — typical of a real app,
 plugins and all:
 
 ```tsx
-// src/lib/error.ts — built with error0 (one option; see below)
+// src/lib/error.ts — built with Error0 (one option; see below)
 import { Error0 } from '@1gr14/error0'
 import { causePlugin } from '@1gr14/error0/plugins/cause'
 import { codeStatusPlugin } from '@1gr14/error0/plugins/code-status'
@@ -66,9 +66,7 @@ throw new AppError('Not found', { status: 404, meta: { id } })
 ```
 
 The thrown `AppError` is what the client receives, what `query.error` is typed
-as, and what the error component renders. The rest of this page shows where each
-piece comes from — first the class contract itself, then error0 as one way to
-satisfy it.
+as, and what the error component renders.
 
 ## The default error class: `ErrorPoint0`
 
@@ -100,9 +98,9 @@ own class (below) and throw that. But it's the type behind every
 framework-raised error (a 404 on an unmatched route, a redirect carrier) when
 you haven't set one.
 
-Both fields are wired in the engine. When `error.response` is set, it's used
-verbatim as the emitted `Response`; otherwise the engine builds a JSON error
-response from `status`. When `error.headers` is set, it's merged into the
+`response` and `headers` are wired in the engine. When `error.response` is set,
+it's used verbatim as the emitted `Response`; otherwise the engine builds a JSON
+error response from `status`. When `error.headers` is set, it's merged into the
 response headers through the effects system.
 
 ## Replacing the class: `.errorClass(AppError)`
@@ -114,15 +112,14 @@ entire chain — every downstream typed-error slot becomes your class:
 export const root = Point0.lets.root().errorClass(AppError).root()
 ```
 
-Your class doesn't have to be an error0 class. The contract is structural: a
-constructor with the `(message?, options?)` shape plus three statics — `from`,
-`serializePublic`, `serializePrivate`. A plain `class extends Error` that
-satisfies that works; error0 just gives it to you for free. A custom class is
-**optional** — there's always the `ErrorPoint0` default.
+The contract is structural: a constructor with the `(message?, options?)` shape
+plus three statics — `from`, `serializePublic`, `serializePrivate`. A plain
+`class extends Error` that satisfies it works; Error0 just gives it to you for
+free.
 
 ```tsx
 // either of these is valid as the app error class:
-const AppError = Error0.mark('AppError').use(/* plugins */) // built with error0
+const AppError = Error0.mark('AppError').use(/* plugins */) // built with Error0
 class AppError extends Error {
   /* …implements from/serializePublic/serializePrivate */
 }
@@ -132,13 +129,12 @@ Once set, the engine constructs every framework error through your class
 (`new AppError(...)`, `AppError.from(...)`), so it's the wire and render type
 end to end. See [`.errorClass`](stage-methods) for the setter itself.
 
-## Building `AppError` with error0
+## Building `AppError` with Error0
 
-[error0](https://1gr14.dev/error0) is a separate `@1gr14` library for composing
+[Error0](https://1gr14.dev/error0) is a separate `@1gr14` library for composing
 a serializable error class from plugins. It's **one** way to satisfy the
-contract above, not a requirement — Point0 only cares that the resulting class
-matches the structure; the plugin API belongs to error0. Two real shapes from
-the codebase:
+contract above, not a requirement; the plugin API belongs to Error0. Two real
+shapes from the codebase:
 
 **The examples shape** — status from a plugin, stack stripped in production:
 
@@ -159,7 +155,7 @@ export const AppError = Error0.use(statusPlugin())
 export type AppError = InstanceType<typeof AppError>
 ```
 
-**The production shape** (start0) — a `code → status` map, so a code implies a
+**The production shape** (Start0) — a `code → status` map, so a code implies a
 status:
 
 ```tsx
@@ -180,18 +176,14 @@ throw new AppError('Sign in to continue', { code: 'UNAUTHORIZED' }) // => 401
 ```
 
 `transport: 'public'` opts a property into the public projection — it survives
-the production wire to the client, where it's safe to read, so the client can
-branch on it even for an error that arrived from the server. (In start0 that's
-how the `expected` flag — its own plugin, also marked `transport: 'public'` —
-reaches the client to decide whether to report an error to Sentry; the `code`
-above is public for the same reason.) Without it, a property is private and only
-appears in logs / development.
+the production wire, so the client can branch on it even for an error that
+arrived from the server. (In Start0 that's how the `expected` flag — its own
+plugin, also marked `transport: 'public'` — reaches the client to decide whether
+to report an error to Sentry; the `code` above is public for the same reason.)
+Without it, a property is private and appears only in logs / development.
 
-The full error0 plugin API — `Error0.mark`, `.use`, the option semantics of
-`codeStatusPlugin` / `metaPlugin` / `stackPlugin` / the inline
-`.use('name', { serialize })` form, and `transport` — is documented on
-[error0](https://1gr14.dev/error0). The shapes above are copied from real
-config.
+The full Error0 plugin API — `Error0.mark`, `.use`, the plugin options,
+`transport` — is documented on [Error0](https://1gr14.dev/error0).
 
 ## Two audiences: `serializePublic` vs `serializePrivate`
 
@@ -233,15 +225,15 @@ audience by env**. The rule everywhere:
 console.error(AppError.serializePrivate(error))
 ```
 
-If you use the `logger` exported from `@point0/core`, you don't even call
+With the `log` function exported from `@point0/core` you don't call
 `serializePrivate` yourself: hand it the raw error in the `error` field and it
 serializes privately for you (never `toJSON`, which is the public projection).
 Its `LogOptions` is `{ level, category: string[], message, error?, meta? }`:
 
 ```tsx
-import { logger } from '@point0/core'
+import { log } from '@point0/core'
 
-console.error({
+log({
   level: 'error',
   category: ['point0'],
   message: 'request failed',
@@ -256,11 +248,8 @@ the stack or meta:
 
 ```tsx
 JSON.stringify({ error: new ErrorPoint0('x', { meta: { secret: 1 } }) })
-// => '{"error":{"name":"ErrorPoint0","message":"x"}}'  — no meta, no stack
+// => '{"error":{"message":"x"}}'  — no meta, no stack
 ```
-
-For logs, call `serializePrivate` explicitly rather than relying on
-`JSON.stringify` (which gives you the public one).
 
 ## How a thrown error reaches the error component
 
@@ -336,7 +325,7 @@ const json = env.mode.is.production
 ```
 
 Mirror that in your own component: gate the stack on `!env.mode.is.production`
-(and render it client-only). The start0 error component does exactly this — it
+(and render it client-only). The Start0 error component does exactly this — it
 branches on `error.code` / `error.status` for the user-facing copy and shows the
 stack only off-production, inside `<ClientOnly>`.
 
@@ -409,7 +398,7 @@ The two transports differ by where the navigation happens:
 
 `ErrorPoint0` carries a `redirect` field, and both serializers include
 `redirect: error.redirect.serialize()` when present — that's how the instruction
-survives the wire. When you build your class with error0, the
+survives the wire. When you build your class with Error0, the
 [`point0-redirect`](https://1gr14.dev/error0) plugin bridges a
 `cause: RedirectTask` into `error.redirect` for you, so throwing a `redirect`
 through an ordinary error path just works. Full navigation mechanics are on

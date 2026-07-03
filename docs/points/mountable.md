@@ -10,8 +10,7 @@ A **mountable** is a point that renders React. There are four: [page](page),
 [layout](layout), [component](component), and [provider](provider). They differ
 in what they mount (a route, a wrapper around children, a piece of UI, a context
 value) but share one model: the same composition methods, the same loading/error
-wiring, and the same render-prop bag (`data`, `queries`, `props`, …). Learn it
-once and it transfers across all four.
+wiring, and the same render-prop bag (`data`, `queries`, `props`, …).
 
 ```tsx
 // a component, a layout, a page — the same chain shape:
@@ -31,9 +30,8 @@ export const ideaLayout = generalLayout.lets
   ))
 ```
 
-`UserCard` and `ideaLayout` use the same `.with`, the same `data`/`queries`
-destructure, the same loading and error behavior. The rest of this page is the
-shared surface; each point type's own page covers its specifics.
+The rest of this page covers the shared surface; each point type's own page
+covers its specifics.
 
 ## The four mountables
 
@@ -72,7 +70,7 @@ point
 The closing method (`.page` / `.layout` / `.component` / `.provider`) ends
 composition and returns the ready point. After that the composition methods are
 gone — the ready point exposes only render helpers (`.X`, `.route`, queries,
-`.Infer`, …). You compose, then close; you can't compose a closed point.
+`.Infer`, …).
 
 The closer (`.page`/`.layout`/`.component`/`.provider`) is
 **server-ssr-and-client**: cut from the SERVER bundle when `ssr:false` (or after
@@ -117,9 +115,7 @@ read them from `queries` in declaration order, or fold them with
 [`.mapper`](mapper). See [`.with`](with) for the full range.
 
 `.with` and `.mapper` are both **server-ssr-and-client** — cut from the SERVER
-bundle when `ssr:false` (or after a `.clientOnly()`): their bodies and imports
-are then removed from the server build; kept in the client build always, and in
-the server build only when SSR is on.
+bundle when `ssr:false` (or after a `.clientOnly()`), like the closer.
 
 ## The render-prop bag
 
@@ -149,9 +145,7 @@ provider get `children`. The exact per-type bag is in the
 
 A `.mapper` reshapes `data` for the component. On a [provider](provider), the
 mapper's return value _is_ the provided value — what `useValue()` and
-`getValue()` hand out. `.mapper` is **server-ssr-and-client** — cut from the
-server bundle when `ssr:false`: body and imports removed from the server build;
-kept in the client build always, and in the server build only when SSR is on.
+`getValue()` hand out.
 
 ## Loading and error
 
@@ -181,13 +175,11 @@ boundaries for itself and for the pages beneath it — `.layoutError` /
 interaction, are in [Loading & error](loading-error).
 
 `.loading` and `.error` (and their split forms) are **server-ssr-and-client** —
-cut from the SERVER bundle when `ssr:false` (or after a `.clientOnly()`): their
-bodies and imports are then removed from the server build; kept in the client
-build always, and in the server build only when SSR is on.
+cut from the SERVER bundle when `ssr:false` (or after a `.clientOnly()`).
 
 ## Wrapping: `.wrapper` vs a `.with` wrapper
 
-Two ways to wrap a mountable's render, with a real difference.
+Two ways to wrap a mountable's render.
 
 **`.with(({ children }) => …)`** sits _inside_ the lifecycle — it sees the
 resolved `data`, `queries`, and `props`, and can short-circuit to loading/error
@@ -211,9 +203,7 @@ Multiple `.wrapper` calls nest with the first-registered outermost. Use
 an outer error boundary); use a `.with` wrapper when you need the loaded data.
 
 Both `.wrapper` and the `.with` wrapper are **server-ssr-and-client** — cut from
-the SERVER bundle when `ssr:false` (or after a `.clientOnly()`): their bodies
-and imports are then removed from the server build; kept in the client build
-always, and in the server build only when SSR is on.
+the SERVER bundle when `ssr:false` (or after a `.clientOnly()`).
 
 A `.wrapper` wraps the render of the point it's set on. A [layout](layout)'s
 wrappers don't carry to the pages beneath it — see that page for why.
@@ -256,9 +246,8 @@ fetch.
   entry.
 
 A [query](query), [mutation](mutation), or [action](action) is _always_ an
-endpoint; a mountable is one only sometimes. "Endpoint" is about whether the
-server serves the point directly, not about whether it renders. The [page](page)
-page covers the page case (`SSR on` vs loader) in detail.
+endpoint; a mountable is one only sometimes. The [page](page) page covers the
+page case (`SSR on` vs loader) in detail.
 
 ## Gating a mountable: `.with`, not `.ctx`
 
@@ -271,9 +260,8 @@ put secret content in the markup expecting it to stay on the server.
 Gate access in a [`.with`](with), not in `.ctx`. A mountable's `.ctx` runs
 **only when the point has a loader** (no loader → no server request → `.ctx`
 never runs), so a loader-less mountable's `.ctx` protects nothing. `.ctx` is
-**server-only** — cut from the client bundle: its body and the imports it uses
-are removed, so it never ships to the browser (it runs server-side). A `.with`
-runs at render, every time, on the client and (under SSR) the server:
+**server-only** — cut from the client bundle, like `.loader`. A `.with` runs at
+render, every time, on the client and (under SSR) the server:
 
 ```tsx
 import { authPlugin } from '@/lib/auth' // a plugin that resolves the user into props.me
@@ -293,14 +281,13 @@ export const AdminPanel = root.lets
 Returning an error from `.with` short-circuits to the error component. The class
 can be the default [`ErrorPoint0`](error-handling) or any error class of the
 same-or-wider structure (one option for building one is
-[error0](https://1gr14.dev/error0)). See [`.with`](with) for the full gate
+[Error0](https://1gr14.dev/error0)). See [`.with`](with) for the full gate
 pattern.
 
 ## `.X` — the bound component
 
 Closing a mountable produces a ready point that is itself a React component
-carrying the full point API. The same component is exposed two ways, and they
-are identical:
+carrying the full point API. The same component is exposed two ways:
 
 ```tsx
 <UserCard userId={1} />   // short — the ready point IS the component

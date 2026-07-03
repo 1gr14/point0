@@ -65,6 +65,6 @@ key, where Bun names it by source basename; always read the example's own
 ## For a real app
 
 This example shows the Vite path in isolation. For a real product, start from
-**[start0](https://1gr14.dev/start0)** — the SaaS boilerplate with auth, admin,
+**[Start0](https://1gr14.dev/start0)** — the SaaS boilerplate with auth, admin,
 forms, CRUD, email, and deploy already wired together
 (`bun create start0@latest my-app`).

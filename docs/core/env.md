@@ -9,8 +9,7 @@ description:
 "Env" in Point0 covers two separate things. The first is the **`env` helper**
 from `@point0/core` — one object that answers _where am I running_: server or
 client, which mode, which runtime. The second is **env variables**: who can read
-them, and which ones reach the browser. They share a name and nothing else; keep
-them apart.
+them, and which ones reach the browser.
 
 ```ts
 import { env } from '@point0/core'
@@ -22,9 +21,7 @@ env.vars.NODE_ENV // => 'production' — reads process.env, typed
 
 The `env` helper is also the safe boundary. Most of its fields are **rewritten
 to literals at compile time** — `env.side.is.server` becomes `false` in the
-client bundle, and a server-only branch behind it is deleted as dead code. The
-rest of this page shows each field, then how env variables cross the compile
-boundary without leaking secrets.
+client bundle, and a server-only branch behind it is deleted as dead code.
 
 ## The `env` helper at a glance
 
@@ -44,14 +41,12 @@ env.vars // the env variables, as a typed record
 
 Every field but `vars` and `build` follows the same shape: `.name`,
 `.is.<value>`, and (except `mode`) a `.define(...)` that picks a value by the
-current field. `env.build` is the odd one out — it exposes `.was` (boolean) and
-`.define` instead of `.name`/`.is` (see its section below). We'll go field by
-field, then come back to `vars`.
+current field. `env.build` exposes `.was` (boolean) and `.define` instead of
+`.name`/`.is` (see its section below).
 
 ## `env.side` — server or client
 
-The one you reach for most. `is` is the cheap check; `name` is the
-discriminator.
+`is` is the cheap check; `name` is the discriminator.
 
 ```ts
 env.side.is.server // => true on the server
@@ -83,8 +78,8 @@ env.side.define.client(token) // => token on the client, undefined on the server
 ```
 
 Because the compiler replaces the whole `define(...)` call with the live branch,
-the other side's value (and its imports) is removed from the bundle — this is
-how an isomorphic helper ships only the right implementation to each side.
+the other side's value (and its imports) is removed from the bundle — each side
+ships only its own implementation.
 
 > **Gotcha:** `env.side.define.unsafe.server(v)` types the result as `T` (no
 > `| undefined`), but at runtime it **still returns `undefined` on the wrong
@@ -185,11 +180,8 @@ the build, so the unused branch is eliminated.
 
 ## `env.vars` — reading env variables
 
-`env.vars` is a typed read of your env variables. On the server it's essentially
-`process.env` with types attached; on the client it transparently reads the
-values Point0 injected into the page instead of a `process` that doesn't exist.
-It's a convenience, not a mandate — most apps validate their env through their
-own helper (see
+`env.vars` is a typed read of your env variables. It's a convenience, not a
+mandate — most apps validate their env through their own helper (see
 [the validation pattern](#validating-env-variables-the-sharedenv--serverenv-pattern)
 below) and read that.
 
@@ -197,8 +189,6 @@ below) and read that.
 env.vars.NODE_ENV // => 'production' — always present
 env.vars.API_URL // => string | undefined (widen the type via EnvDefinition)
 ```
-
-A few things to know:
 
 - **It's a live getter**, not a snapshot — each access re-reads the source.
 - **On the server** it reads `process.env` (every process variable is visible).
@@ -271,10 +261,6 @@ export const engine = Engine.create({
 })
 ```
 
-A bare string reads the live value from `process.env`. A glob (`'PUBLIC_*'`)
-expands to every matching process variable. An object sets the value explicitly,
-overriding `process.env`.
-
 > **Gotcha:** for the **client**, an empty string or a bare `'*'` is rejected at
 > startup —
 > `Environment variable "*" is not allowed for client env vars config`. A
@@ -293,7 +279,7 @@ the browser. You don't declare them.
 ## Validating env variables (the `sharedEnv` / `serverEnv` pattern)
 
 Point0 ships **no** `createEnv` / `serverEnv` API — env validation is app code,
-and the pattern below is the convention `examples/basic` and start0 use. The
+and the pattern below is the convention `examples/basic` and Start0 use. The
 idea: parse `process.env` against a schema once, export a typed object, and read
 **that** everywhere instead of `process.env`.
 
@@ -304,9 +290,9 @@ basic example uses five small files — two `*-shape.ts` shape files plus the
 **1. The shared shape** — keys safe on both sides. Shape only, no top-level
 _validation_, because the engine config imports it and validation that threw at
 import time would crash the config before the app starts. (The basic example's
-`shared-shape.ts` does keep one harmless module-scope side effect — rewriting
+`shared-shape.ts` does keep one module-scope side effect — rewriting
 `SERVER_URL` to `CLIENT_URL` on the client to proxy through the client origin in
-dev — but it never validates or throws at import.)
+dev — but nothing that validates or throws at import.)
 
 ```ts
 // lib/env/shared-shape.ts
@@ -361,18 +347,16 @@ export const clientEnvKeys = Object.keys(clientEnvShape)
 ```
 
 `clientEnvKeys` is the bridge: it feeds `client.env.vars` (above), so the schema
-is the single source of truth for what's whitelisted — no scattered `PUBLIC_`
-prefix convention, one list managed in one place.
+is the single source of truth for what's whitelisted — one list in one place, no
+scattered `PUBLIC_` prefix convention.
 
 > **Why split shape from validation:** `engine.ts` imports `clientEnvKeys` ←
-> `client-shape.ts` ← `shared-shape.ts`. If any of those validated (and threw)
-> at import time, building the engine config would crash before the app starts.
-> Keep the shape files free of top-level _validation_ (nothing that throws at
-> import); validate in the `server.ts` / `client.ts` / `shared.ts` files that
-> aren't on the config path.
+> `client-shape.ts` ← `shared-shape.ts` — that whole chain loads while building
+> the engine config. Keep the shape files free of top-level _validation_
+> (nothing that throws at import); validate in the `server.ts` / `client.ts` /
+> `shared.ts` files that aren't on the config path.
 
-This is just one way to organize it — Point0 doesn't prescribe a validation API.
-Use Zod, Valibot, hand-written checks, or nothing; the only contract is that
+Use Zod, Valibot, hand-written checks, or nothing — the only contract is that
 `client.env.vars` gets the list of keys to expose.
 
 ## `server-only` and `client-only` guards
@@ -392,15 +376,13 @@ graph (or a `client-only` file on the server), the import is replaced with a
 module that throws, and on a `point0 build` (which forces `onDeny: 'throw'`) the
 build stops. The config default of `compiler.importer.onDeny` is `'log'`, so in
 dev the violation is logged rather than fatal — the replaced module still throws
-at runtime. This is the mechanism that lets you put `DATABASE_URL` and Prisma
-calls in plain imported files without fear of bundling them. More in
-[Importer](importer).
+at runtime. This is what lets you put `DATABASE_URL` and Prisma calls in plain
+imported files. More in [Importer](importer).
 
 ## How the compile boundary stays safe
 
-The reason `env` is trustworthy across the server/client split is that the
-compiler **statically rewrites** every `env.*` check into a literal, then runs
-dead-code elimination. A server-only branch in a client build isn't
+The compiler **statically rewrites** every `env.*` check into a literal, then
+runs dead-code elimination. A server-only branch in a client build isn't
 conditionally skipped — it's gone.
 
 ```ts
@@ -439,12 +421,10 @@ export const engine = Engine.create({
 ```
 
 Setting these bakes a `POINT0_RUNTIME` / `POINT0_OS` const into that side's
-build, which is what lets the compiler inline `env.runtime.is.*` / `env.os.is.*`
-to literals and dead-strip the losing branch. Until you set them, a branch
-behind `env.runtime.is.nodejs` or `env.os.is.ios` is **not** rewritten to a
-literal and **not** dead-stripped from the client bundle — it stays a runtime
-read (it evaluates `false` on the client, but the branch and its imports remain
-in the bundle).
+build, so the compiler can inline `env.runtime.is.*` / `env.os.is.*` to literals
+and dead-strip the losing branch. Until you set them, a branch behind
+`env.runtime.is.nodejs` or `env.os.is.ios` stays a runtime read — it evaluates
+`false` on the client, but the branch and its imports remain in the bundle.
 
 > **Gotcha:** this rewrite only fires for `env` (or its alias `_point0_env`)
 > when it's imported **directly from `@point0/core`**. Shadow the name with a
@@ -515,5 +495,5 @@ parser. The cascade for a mode is `.env`, `.env.<mode>`, `.env.local`,
 `.env.<mode>.local` (Bun **skips `.env.local` in test mode**). Mode is resolved
 by precedence: an explicit flag (`--mode` / `-p` / `-d` / `-t`) >
 `--env NODE_ENV=…` > a shell-exported `NODE_ENV` > the default (production for
-`build`, development otherwise). **The shell always wins over files.** Details
-belong on [CLI](cli) and [Engine config](engine-config).
+`build`, development otherwise). **The shell always wins over files.** Full
+detail: [CLI](cli) and [Engine config](engine-config).

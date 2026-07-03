@@ -25,8 +25,8 @@ export const ideaPage = root.lets
   .page(({ data: { idea } }) => <h1>{idea.title}</h1>) // close it
 ```
 
-Two points, two types, one grammar. The rest of this page lists every point type
-and explains the two ways to write `.lets`.
+The rest of this page lists every point type and explains the two ways to write
+`.lets`.
 
 ## The point types
 
@@ -74,9 +74,8 @@ Each point's own page says exactly when.
 ## The short `.lets` notation
 
 Every example in these docs opens a point with the short form —
-`root.lets.page('/ideas')`, `root.lets.query()`, `root.lets.mutation()`. It
-reads cleanly because the point's **type is the method name** and its **name is
-read from the variable**:
+`root.lets.page('/ideas')`, `root.lets.query()`, `root.lets.mutation()`. The
+point's **type is the method name**; its **name is read from the variable**:
 
 ```tsx
 export const ideaPage = root.lets.page('/ideas/:id').page(/* ... */)
@@ -98,9 +97,6 @@ runtime feature: without the compiler, `root.lets.page(...)` throws
 lets[type] notation can not work without compiler, please use compiler
 ```
 
-So short `.lets.<type>()` only works inside a Point0 app, where the compiler
-runs.
-
 ## The full `.lets(type, name, …)` form
 
 The short form is sugar. The compiler rewrites every `.lets.<type>(...)` into
@@ -121,10 +117,9 @@ compiler isn't in play:
 export const generalLayout = root.lets('layout', 'general').layout(/* ... */)
 ```
 
-Both forms are valid and identically typed. The examples in these docs use the
-short form throughout for readability; a few places in the example apps use the
-full form where a name is pinned explicitly (and the `expo` example, which
-doesn't run `generate`, uses it everywhere).
+Both forms are valid and identically typed. The example apps use the full form
+in a few places where a name is pinned explicitly — most of all the `expo`
+example, which doesn't run `generate`.
 
 ### Static vs instance `.lets`
 
@@ -163,14 +158,13 @@ with `.page(...)`, a mutation with `.mutation(...)`. (An [action](action) is the
 exception: it can close as `.action()`, `.query()`, or `.mutation()`, depending
 on how you want to call it.)
 
-The two ends have names worth fixing now, so the rest of the docs stay
-consistent. Everything from the opener up to (and including) the closing call is
-a **stage-method** — the chain methods you call while the point is still being
-built (`.input`, `.loader`, `.with`, the closing `.page(...)`, …). What you get
-_after_ the close is a **ready-method** — the surface on the finished point
-(`useQuery`, `fetchMutation`, `.route`, `.id`, `.useValue`, …). The two states
-even have their own types in the code: a point under construction is a
-`StagePoint`, a closed one is a `ReadyPoint`.
+The two ends have names the rest of the docs rely on. Everything from the opener
+up to (and including) the closing call is a **stage-method** — the chain methods
+you call while the point is still being built (`.input`, `.loader`, `.with`, the
+closing `.page(...)`, …). What you get _after_ the close is a **ready-method** —
+the surface on the finished point (`useQuery`, `fetchMutation`, `.route`, `.id`,
+`.useValue`, …). The two states have their own types in the code: a point under
+construction is a `StagePoint`, a closed one is a `ReadyPoint`.
 
 ```tsx
 const ideaQuery = root.lets
@@ -185,8 +179,7 @@ ideaQuery.useQuery({ id: 1 }) //       ready-method on the finished query
 ## Everything lands in one collection
 
 Because all eleven types are the same class, the compiler collects them into one
-array — the points collection the engine loads. Every point, whatever its type,
-sits in the same list:
+array — the points collection the engine loads:
 
 ```ts
 // generated points file (shape)

@@ -21,8 +21,7 @@ export const root = Point0.lets
 ```
 
 Every page, layout, and component below this root now has a loading and an error
-screen — without repeating them. The rest of this page shows where each piece
-comes from.
+screen — without repeating them.
 
 ## The component contracts
 
@@ -41,25 +40,21 @@ receives the error:
 `'page'`, an inline one for `'component'`. `error` is normalized through the
 configured error class first (`ErrorPoint0.from(...)` by default), so
 `error.message` is typed and you can read `error.status`, `error.code`, and the
-rest. The error class is `ErrorPoint0` unless you swap it for your own — any
-class with a compatible (same-or-wider) structure works. See
-[Error handling](error-handling).
+rest. Swap `ErrorPoint0` for your own error class — any class with a compatible
+(same-or-wider) structure works. See [Error handling](error-handling).
 
 If you set nothing, Point0 falls back to its defaults: `Loading...` text, and a
 `<pre>` dump of the error. The default error component **never renders the stack
 in production** — only in dev — to avoid baking a server stack trace into the
 SSR HTML.
 
-These are **server-ssr-and-client** methods (see
-[stage-methods](stage-methods)): `.loading` / `.error` and their per-variant
-forms (`.pageLoading`, `.layoutError`, …) are render-side, so they always ship
-to the browser bundle and run wherever the point renders. They also run on the
-server, but **only when SSR is on** — under `ssr: false`, or after a
-`.clientOnly()` earlier in the chain (which makes the rest of the chain behave
-as `ssr: false`), their bodies are stripped from the server bundle along with
-the other render methods (`.page` / `.layout` / `.with` / …). They never carry
-server-only secrets, so gate auth in a [`.with`](with), not here (see
-[below](#security-dont-gate-auth-with-loadingerror-alone)).
+`.loading` / `.error` and their per-variant forms (`.pageLoading`,
+`.layoutError`, …) are render-side [stage-methods](stage-methods): under
+`ssr: false`, or after a `.clientOnly()` earlier in the chain (which makes the
+rest of the chain behave as `ssr: false`), their bodies are stripped from the
+server bundle along with the other render methods (`.page` / `.layout` / `.with`
+/ …). They never carry server-only secrets, so gate auth in a [`.with`](with),
+not here (see [below](#security-dont-gate-auth-with-loadingerror-alone)).
 
 > **Strip category — server-ssr-and-client.** Applies to `.loading` and `.error`
 > and every per-variant form (`.pageLoading` / `.pageError`, `.layoutLoading` /
@@ -121,11 +116,10 @@ came before — handy for shipping a loading/error theme as a plugin.
 
 ## Where to put `.loading` in the chain
 
-Inside one point, the placement of `.loading` relative to a `.with(query)` is
-relaxed. Wiring a query in with `.with(query)` doesn't suspend on its own —
-every query on the chain starts fetching in **parallel**, and the point only
-blocks on that pending data right before it renders (`.page` / `.layout` /
-`.component`). So `.loading` works whether it sits before or after the `.with`:
+Wiring a query in with `.with(query)` doesn't suspend on its own — every query
+on the chain starts fetching in **parallel**, and the point only blocks on that
+pending data right before it renders (`.page` / `.layout` / `.component`). So
+`.loading` works whether it sits before or after the `.with`:
 
 ```tsx
 export const ideaPage = root.lets
@@ -136,10 +130,10 @@ export const ideaPage = root.lets
 ```
 
 Order _does_ matter when a `.with` callback itself decides to show loading or
-throw — there the rule is sequential. A `.with` that returns `'loading'` or an
-error (see [below](#driving-loading-and-error-by-hand-from-with)) renders the
-nearest `.loading` / `.error` declared **above** it; one declared lower in the
-chain wasn't in scope yet:
+throw. A `.with` that returns `'loading'` or an error (see
+[below](#driving-loading-and-error-by-hand-from-with)) renders the nearest
+`.loading` / `.error` declared **above** it; one declared lower in the chain
+wasn't in scope yet:
 
 ```tsx
 export const ideaPage = root.lets
@@ -175,9 +169,6 @@ The full set, per render position:
 - `.pageLoading` / `.pageError` — for a page rendered below this point.
 - `.layoutLoading` / `.layoutError` — for this point's own layout render.
 - `.componentLoading` / `.componentError` — for a component rendered below.
-
-Every variant above is **server-ssr-and-client**, same as the collapsing
-`.loading` / `.error`: always on the client, on the server only under SSR.
 
 The plain `.loading` / `.error` are the **collapsing aliases**: on these
 multi-variant points they set page, layout, and component at once. For the
@@ -257,12 +248,11 @@ export const NProgress = () => {
 ```
 
 The 30 ms timeout keeps the bar from flashing on instant transitions — a
-convention, not a framework rule. `useOnNavigate(fn)` runs `fn` at the start of
-a navigation and its returned cleanup at the end. Related: `useIsNavigating()`
-returns a boolean you can use to dim the page during a transition (the basic
-example does this), and `useNavigationPageState()` exposes the `status` /
-`loading` / `error` of the current transition. All ship from
-`@point0/core/navigation` — see [Navigation](navigation).
+convention, not a framework rule. Related: `useIsNavigating()` returns a boolean
+you can use to dim the page during a transition (the basic example does this),
+and `useNavigationPageState()` exposes the `status` / `loading` / `error` of the
+current transition. All ship from `@point0/core/navigation` — see
+[Navigation](navigation).
 
 ## Driving loading and error by hand from `.with`
 
@@ -322,7 +312,7 @@ fires it. See [`.with`](with).
 | `.componentLoading` / `.componentError` |          ✅          |              —              |   —    |
 
 [query](query), [infinite-query](infinite-query), [mutation](mutation), and
-[action](action) expose none of these. So does a finalized (ready) point —
+[action](action) expose none of these. Neither does a finalized (ready) point —
 declare loading and error during the build phase, before the point is closed.
 
 ### The component props
@@ -336,9 +326,10 @@ declare loading and error during the build phase, before the point is closed.
 
 - **Nearest up the chain.** Pending data → nearest `.loading`; thrown data →
   nearest `.error`. Loading and error resolve independently.
-- **Position matters.** `.loading` / `.error` apply only to data methods
-  declared _after_ them — declare them before the suspending `.loader` /
-  `.with`.
+- **Position matters for `.with` short-circuits.** A `.with` that returns
+  `'loading'` or an error uses the nearest `.loading` / `.error` declared above
+  it. For plain query data, placement is relaxed — the point blocks at render,
+  so `.loading` works before or after the `.with`.
 - **Unified beats variant.** For the active render variant, a plain `.loading` /
   `.error` wins over the variant-specific setter, which wins over the built-in
   default.

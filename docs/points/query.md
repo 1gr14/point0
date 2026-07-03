@@ -54,9 +54,8 @@ options (`staleTime`, `gcTime`, `retry`, `select`, `refetch*`, …); `queryKey`
 and `queryFn` are supplied by Point0. They become the query's defaults and can
 be overridden at every call site.
 
-The closing `.query(...)` closer is **not cut from either bundle** — kept in
-both (isomorphic), nothing pruned (it has to resolve the query on the server and
-the client alike).
+The closing `.query(...)` is **not cut from either bundle** — kept in both
+(isomorphic): it has to resolve the query on the server and the client alike.
 
 ## A real endpoint
 
@@ -85,9 +84,9 @@ child can't _widen_ the parent's input, and input can't collide with
 params/search/body.
 
 A query uses `.input` (plus `.clientInput` / `.sharedInput` for client-loader
-cases) — **not** `.params`, `.search`, or `.body`; those are for [pages](page)
-and [actions](action) and are a type error on a query. Full schema mechanics
-live in [Validation](validation).
+cases) — **not** `.params` and `.search` (those belong to [pages](page) and
+[actions](action)) and not `.body` (actions only); all three are a type error on
+a query. Full schema mechanics live in [Validation](validation).
 
 `.input` is the **server schema** — cut from the client bundle: its body and the
 imports it uses are removed, so it never ships to the browser (it runs
@@ -207,8 +206,8 @@ a server render fetches once and ships the result. The full list of
 `*QueryOptions` methods is in [stage-methods](stage-methods).
 
 `.queryOptions` and the whole `*QueryOptions` family are **not cut from either
-bundle** — kept in both (isomorphic), nothing pruned (the same defaults have to
-apply server- and client-side).
+bundle** — kept in both (isomorphic): the same defaults have to apply server-
+and client-side.
 
 ## mode, tags, scope
 
@@ -217,8 +216,8 @@ apply server- and client-side).
   query, so the mode is unambiguous.
 - **tags** come from `.tag('a', 'b')` and ride along in the key, so you can
   invalidate or match groups of queries by tag. `.tag` is **not cut from either
-  bundle** — kept in both (isomorphic), nothing pruned (the tag is part of the
-  key on both sides).
+  bundle** — kept in both (isomorphic): the tag is part of the key on both
+  sides.
 - **scope** identifies which client/root a query belongs to in a multi-client
   setup (one server, many clients). It's set by the root you build from, not by
   a method.
@@ -262,10 +261,10 @@ once — drop down to a raw `invalidateQueries` with
 ### Method surface
 
 The query method surface is **not cut from either bundle** (server-and-client) —
-kept in both, nothing pruned. `useQuery` / `fetchQuery` and the cache helpers
-work on the server (during SSR) and the client alike; only the underlying
-`.loader` body (and its imports) is cut from the client bundle, and `fetchQuery`
-routes to its endpoint over HTTP from the browser.
+kept in both. `useQuery` / `fetchQuery` and the cache helpers work on the server
+(during SSR) and the client alike; only the underlying `.loader` body (and its
+imports) is cut from the client bundle, and `fetchQuery` routes to its endpoint
+over HTTP from the browser.
 
 These are plain [TanStack Query](https://tanstack.com/query/latest) methods —
 `useQuery`, `fetchQuery`, `invalidateQuery`, `setQueryData`, and the rest behave
@@ -310,6 +309,5 @@ The `outputType` option selects what a fetch returns — `'data'` (the default) 
 one of the dehydrated forms (`'queryClientDehydratedState'`,
 `'queryClientDehydratedStateRedirect'`, `'html'`). It's prefetch/SSR plumbing
 the framework drives for you, so call sites rarely set it; the [SSR](ssr) page
-covers when dehydrated state is fetched. A query's `mode` (`'server'` vs
-`'client'`) is derived from its loader, not a call-site option — there's no
-public `mode` argument on these methods.
+covers when dehydrated state is fetched. A query's `mode` is derived from its
+loader — there's no `mode` argument on these methods.

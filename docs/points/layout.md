@@ -28,7 +28,7 @@ export const generalLayout = root.lets.layout(({ children }) => (
 ```
 
 Every page built off `generalLayout` now renders inside that shell, in place of
-`{children}`. The rest of this page shows where each piece comes from.
+`{children}`.
 
 ## Declaring a layout
 
@@ -85,11 +85,9 @@ A layout's route **can't contain a wildcard**:
 root.lets.layout('/files/*') // throws: Wildcard is not allowed in layout point
 ```
 
-You never need one. A layout doesn't try to match a span of URLs — the pages
-decide which layout they belong to by building off it (or attaching it with
-`.layout(...)`), and a page is free to carry its own wildcard. The layout just
-contributes its optional route prefix to those pages; matching the actual URL is
-the page's job.
+You never need one. A layout doesn't match URLs — it only contributes its route
+prefix. Pages decide which layout they belong to by building off it (or
+attaching it with `.layout(...)`), and a page is free to carry its own wildcard.
 
 ## Getting data into a layout
 
@@ -111,13 +109,12 @@ export const ideaLayout = generalLayout.lets
 
 Strip categories here: [`.loader`](loader) is **server-only** — cut from the
 client bundle: its body and the imports it uses are removed, so it never ships
-to the browser (it runs on the server). [`.with`](with) is
-**server-ssr-and-client** — cut from the server bundle when `ssr: false` (or
-after a `.clientOnly()`); kept in the client build always, and in the server
-build only when SSR is on. Either way it ships to the browser, so put secrets in
-the loader/`.ctx`, not in a `.with` mapper. A layout that closes with a loader
-is also a query, and that self-query is **finite by default**; close with
-[`.infiniteQuery`](infinite-query) after the loader to make it infinite instead.
+to the browser. [`.with`](with) is **server-ssr-and-client** — cut from the
+server bundle when `ssr: false` (or after a `.clientOnly()`). It ships to the
+browser either way, so put secrets in the loader/`.ctx`, not in a `.with`
+mapper. A layout that closes with a loader is also a query, and its self-query
+is **finite by default**; close with [`.infiniteQuery`](infinite-query) after
+the loader to make it infinite.
 
 A layout owns its loading and error states, gating its whole subtree:
 
@@ -127,9 +124,8 @@ A layout owns its loading and error states, gating its whole subtree:
 - If the layout's loader throws, the nearest [error](loading-error) component
   replaces the whole subtree, and the page inside is never rendered.
 
-Because of this gate, by the time a page inside the layout renders, the layout's
-data is guaranteed to be loaded. That's what makes reading it from the page safe
-(next section).
+By the time a page inside the layout renders, the layout's data is guaranteed to
+be loaded — that's what makes reading it from the page safe (next section).
 
 You can target the layout's own states specifically with `.layoutLoading(...)`
 and `.layoutError(...)`, leaving the generic `.loading` / `.error` for
@@ -170,9 +166,8 @@ ideaLayout.getValue() // => data; throws if not yet loaded
 ideaLayout.getValueOrUndefined() // => data | undefined; never throws
 ```
 
-`getValue` throws if the value isn't set yet, so call it only from code that
-runs after the layout has mounted and loaded; `getValueOrUndefined` is the safe
-variant when you can't guarantee that.
+Call `getValue` only from code that runs after the layout has mounted and
+loaded; `getValueOrUndefined` is the safe variant when you can't guarantee that.
 
 ## Nesting layouts
 
@@ -218,26 +213,23 @@ not re-run.
 ```
 
 This is why a layout is the right place for a shell, a nav bar, or shared data
-that several pages read: it loads once and survives navigation within its
-subtree.
+that several pages read.
 
 ## Gating a layout's subtree
 
 A layout is a natural place to enforce access for every page beneath it. The
 layout's loader body, `.ctx`, secrets, and DB calls are cut from the client
-bundle by the compiler — body and the imports they pull in are removed, so they
-never reach the browser — but the shell you render is shipped to the browser, so
-put the gate in the data flow, not in the markup:
+bundle, so they never reach the browser — but the shell you render ships to the
+browser, so put the gate in the data flow, not in the markup:
 
 - Gate with a [`.with`](with) wrapper (or a [plugin](plugin)), not by relying on
   `.ctx` alone. A layout's `.ctx` runs **only when the layout has a loader** — a
   loader-less layout makes no server request, so its `.ctx` never runs.
 
-[`.ctx`](ctx) is **server-only** — cut from the client bundle: its body and
-imports are removed, so it never reaches the browser. [`.use`](plugin) and
-[`.with`](with) are **server-and-client** — not cut from either bundle, kept in
-both (isomorphic): a plugin or wrapper ships to both bundles, so the gate must
-do its real check in code that the loader runs, not in markup that reaches the
+[`.use`](plugin) is **server-and-client** — not cut from either bundle
+(isomorphic) — and [`.with`](with) is **server-ssr-and-client** — always kept in
+the client build: a plugin or wrapper ships to the browser, so the gate must do
+its real check in code that the loader runs, not in markup that reaches the
 browser.
 
 ```tsx
@@ -284,8 +276,8 @@ The layout component receives one object:
 | `LoadingComponent` | the resolved loading component                | always                                                   |
 | `ErrorComponent`   | the resolved error component (`{ error }`)    | always                                                   |
 
-A layout's `location` can be an ancestor location, not just the exact current
-route — unlike a page, whose location always matches the page's route exactly.
+A layout's `location` can be an ancestor location — unlike a page, whose
+location always matches the page's route.
 
 ### Provider accessors (after `.layout()` closes it)
 
@@ -297,7 +289,7 @@ Available once the layout carries a server loader or a suitable query:
 | `getValue(input?)`            | data; throws if not yet set                                                       |
 | `getValueOrUndefined(input?)` | data \| undefined; never throws                                                   |
 
-The closed layout point also exposes `.route` (a callable [route0](navigation)
+The closed layout point also exposes `.route` (a callable [Route0](navigation)
 route), `.Layout` / `.X` (the bound component), `.Infer`, and `.lets` to keep
 building child points.
 
@@ -338,10 +330,9 @@ Where each of these runs (strip categories):
   `.clientOnPrefetchPage`, `.prefetchPageOnNavigate`,
   `.prefetchPageOnLinkHover`, `.prefetchPagePolicy`.
 - **server-and-client** — not cut from either bundle, kept in both (isomorphic):
-  the `.layout` closer's query closers [`.query`](query) /
-  [`.infiniteQuery`](infinite-query) / [`.relatedQuery`](query),
-  `.onPrefetchPage` (it runs on the client during prefetch and on the server
-  before the first render), [`.use`](plugin),
+  the self-query closers [`.query`](query) / [`.infiniteQuery`](infinite-query)
+  and [`.relatedQuery`](query), `.onPrefetchPage` (it runs on the client during
+  prefetch and on the server before the first render), [`.use`](plugin),
   [`.params` / `.search`](validation), `.tag`, `.on`, and the option setters
   [`.queryOptions`](stage-methods) / `.layoutQueryOptions` / `.pageQueryOptions`
   / `.pageDehydratedStateQueryOptions`.
@@ -350,8 +341,8 @@ Where each of these runs (strip categories):
   in the client build always, and in the server build only when SSR is on: the
   [`.layout`](mountable) component, [`.head`](head), [`.loading`](loading-error)
   / `.layoutLoading` / `.pageLoading`, [`.error`](loading-error) /
-  `.layoutError` / `.pageError`, [`.wrapper`](mountable), [`.with`](with) mapper
-  output, [`.mapper`](mapper).
+  `.layoutError` / `.pageError`, [`.wrapper`](mountable), [`.with`](with),
+  [`.mapper`](mapper).
 
 [`.relatedQuery`](query) adds its query to the layout's `queries` array just
 like a `.with(query)` result — the difference is prefetch: a related query is
@@ -361,8 +352,8 @@ policies (`serverQuery` / `clientQuery` / `serverAndClientQuery`), whereas a
 expensive `pageDehydratedState*` policy.
 
 `.scrollRestore` / `.scrollPosition` are **client-only** — cut from the server
-bundle: body and their imports removed — and documented in full on the
-[navigation](navigation) page — see there rather than here.
+bundle: body and their imports removed. They're documented in full on the
+[navigation](navigation) page.
 
 `.head` on a layout sets the document `<head>` while the layout is mounted, and
 because the layout wraps its pages, that head applies across the subtree. A

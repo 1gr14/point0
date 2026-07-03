@@ -55,8 +55,7 @@ await engine.dev() // `point0 build` → engine.build(), `point0 generate` → e
 ```
 
 Every request the server answers also runs through the same instance —
-`engine.fetch(request)` is the entry point. So config (`Engine.create`) and
-runtime (the methods below) live on one value you can import anywhere.
+`engine.fetch(request)` is the entry point.
 
 The CLI looks for the engine file in `./`, `./src`, `./lib`, and a few `point0`
 subfolders, basename `engine`, and imports `module.engine ?? module.default`. So
@@ -139,9 +138,9 @@ mutation's `fetchServer`/`fetchServerDetailed`, a loader calling another loader
 no running server. Outside that context they throw, because the server-only
 fetch fn has nowhere to read its port and query client from.
 
-This is exactly what makes it the tool for **integration tests**: you hit your
-points in-process, with full types, without booting a server. This is how
-start0's test suite exercises its API:
+This makes `withFetch` the tool for **integration tests**: you hit your points
+in-process, with full types, without booting a server. Start0's test suite
+exercises its API this way:
 
 ```ts
 import { engine } from '@/engine'
@@ -179,7 +178,7 @@ existing request — call `query.fetch()` (or `fetchServer`) from within
 
 ## Dev, build, generate
 
-These three are what the CLI commands map to. Each is also callable directly.
+These three are what the CLI commands map to.
 
 ```ts
 await engine.dev() // start dev (server + clients), watch, regenerate, hot-reload
@@ -257,20 +256,19 @@ await engine.preload({
 })
 ```
 
-`preload()` is a **no-op in a built process** — once the build baked everything
-in, re-running it could even flip a production server to development, so it
-returns early there. The call stays in the bundle but does nothing.
+`preload()` is a **no-op in a built process** — the build baked everything in,
+and re-running it could even flip a production server to development. The call
+stays in the bundle and does nothing.
 
 ## The wiring files
 
-A point0 app boots through a few small files. They are plain files you write
-once; `create-point0-app` scaffolds them. The boot order is the point.
+A point0 app boots through a few small files you write once; `create-point0-app`
+scaffolds them. The boot order is the point.
 
 ### src/preload.ts
 
-Imported explicitly — never ambient. One call to `engine.preload()` (above). It
-must finish before any app code is imported, because it installs the compiler
-plugin that everything downstream relies on.
+Imported explicitly — never ambient. One call to `engine.preload()` (above); it
+must finish before any app code is imported.
 
 ### src/index.server.ts
 

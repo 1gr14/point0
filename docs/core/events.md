@@ -22,14 +22,12 @@ export const root = Point0.lets
 ```
 
 Every failed query or mutation now reaches your handler, with `side`, the event
-`name`, the typed `error`, and a slim `meta` you can spread straight in. The
-rest of this page shows the full event set, the subscription methods, and the
-event shape.
+`name`, the typed `error`, and a slim `meta` you can spread straight in.
 
 ## Subscribing
 
 Three methods, all on **every point type**, all chainable (they return the same
-point, so add as many as you like):
+point):
 
 ```tsx
 .on('pointQuerySuccess', (e) => { /* kept in both bundles */ })
@@ -40,21 +38,14 @@ point, so add as many as you like):
 - **`.on`** — not cut from either bundle: kept in both (isomorphic), so it fires
   on both sides.
 - **`.serverOn`** — cut from the client bundle: its body and the imports it uses
-  are removed, so the handler never ships to the browser. (It fires only for
-  server-side events.)
-- **`.clientOn`** — cut from the server bundle: body and its imports removed.
-  (It fires only for client-side events.)
+  are removed, so the handler — server secrets included — never ships to the
+  browser. It fires only for server-side events.
+- **`.clientOn`** — cut from the server bundle: body and its imports removed. It
+  fires only for client-side events.
 
 The `side` is decided when the event is emitted, from where the emitting code
 runs — not from the event name. A `.serverOn` callback never sees a client-side
 event, and vice versa.
-
-The compiler cuts each side-bound callback from the bundle it doesn't belong in,
-along with the imports that only that callback pulls in: a `.serverOn` callback
-— body and its imports — is removed from the client bundle, so server secrets in
-a `.serverOn` handler never reach the browser; a `.clientOn` callback — body and
-imports — is removed from the server bundle. A plain `.on` callback is not cut
-from either bundle: it's kept in both (isomorphic) and runs on both sides.
 
 Subscriptions accumulate: each call adds to the list, and a point inherits every
 subscription from its parents up the chain. Put app-wide logging on the root and
@@ -75,9 +66,8 @@ narrowed to that event. The wildcard still respects the side filter —
 ## The full event set
 
 Six families, each with four lifecycle phases — `Start`, `Settled`, `Success`,
-`Error` — plus one `emitError` event. Twenty-five events in all (six families ×
-four phases, plus `emitError`); the table below lists the families, the
-[Reference](#event-names) enumerates every expanded name:
+`Error` — plus one `emitError` event: twenty-five events in all. The table below
+lists the families; the [Reference](#event-names) enumerates every name:
 
 | Family                | What it tracks                                          | Side             |
 | --------------------- | ------------------------------------------------------- | ---------------- |
@@ -90,8 +80,7 @@ four phases, plus `emitError`); the table below lists the families, the
 | `emitError`           | a subscriber callback itself threw (see below)          | client \| server |
 
 Each family gives you `<Family>Start`, `<Family>Settled`, `<Family>Success`, and
-`<Family>Error` — e.g. `pointQueryStart`, `pointQuerySettled`,
-`pointQuerySuccess`, `pointQueryError`.
+`<Family>Error`.
 
 ### Lifecycle phases
 
@@ -107,18 +96,17 @@ For any one run:
 // a query that throws:     pointQueryStart → pointQuerySettled → pointQueryError
 ```
 
-One edge case worth knowing: **a redirect is a success, not an error.** When a
-loader redirects (`throw redirect(...)`), the query settles down the _success_
-path — `Settled` then `Success` fire, not `Error`. See [Navigation](navigation)
-for redirects.
+One edge case: **a redirect is a success, not an error.** When a loader
+redirects (`throw redirect(...)`), the query settles down the _success_ path —
+`Settled` then `Success` fire, not `Error`. See [Navigation](navigation) for
+redirects.
 
 ### Why `engineFetch*` is server-only
 
 `engineFetch*` wraps the actual outgoing HTTP request, which only the server
 makes — so those events are typed `'server'` and are only reachable through
 `.on` and `.serverOn`. Naming `engineFetch*` inside `.clientOn` is a **type
-error**: it isn't in the client event set. This is the rule behind "server-only
-events visible only in serverOn".
+error**: it isn't in the client event set.
 
 The other `point*` events report `side: 'client'` even during SSR, because the
 query/fetch code that emits them is client-authored (it runs on the server under
@@ -149,11 +137,10 @@ error event:
 .on(['pointMutationError', 'pointQueryError', 'pointInfiniteQueryError', 'engineFetchError'], (e) => { /* … */ })
 ```
 
-Inside the callback, `error` is narrowed to a non-`undefined` error instance —
-the typed reason these are the error events. One user `throw` can produce more
-than one of them: a failing server query surfaces as `engineFetchError` (server)
-**and** `pointQueryError` (client), so an `.on('error')` logger may see the same
-failure from two angles.
+Inside the callback, `error` is narrowed to a non-`undefined` error instance.
+One user `throw` can produce more than one of them: a failing server query
+surfaces as `engineFetchError` (server) **and** `pointQueryError` (client), so
+an `.on('error')` logger may see the same failure from two angles.
 
 > **GOTCHA:** the shorthand covers query, infinite-query, mutation, and
 > engineFetch errors — **not** `pointFetchServerError` or
@@ -178,12 +165,11 @@ Every callback receives one object with the same five fields:
   [side](#why-enginefetch-is-server-only) above).
 - **`name`** — the event name.
 - **`data`** — the full payload (the query result, the request object, the
-  `QueryClient`, …). Accurate, but not pleasant to serialize. Prefer `meta` for
-  logging.
+  `QueryClient`, …). Prefer `meta` for logging.
 - **`error`** — the error instance, hoisted to the top level so an `'error'`
-  handler can read it directly. It's the **same object** as `data.error`. It's
-  the typed `error` (your [error class](error-handling)) on error events, and
-  `undefined` on every other event (the key is always present).
+  handler can read it directly — the **same object** as `data.error`. Typed
+  (your [error class](error-handling)) on error events, `undefined` on every
+  other event (the key is always present).
 - **`meta`** — the log-friendly projection, below.
 
 ## `meta`: the log-friendly projection
@@ -198,15 +184,14 @@ Every callback receives one object with the same five fields:
 })
 ```
 
-It exists because `data` carries heavy objects (responses, requests, query
-results) that you don't want in a log line. `meta` replaces them with compact
-forms: points become their string id (`<scope>:<type>:<name>`), requests become
-`{ method, path }`, errors and redirects are serialized, and it drops bulky
-members. For an engineFetch event, `meta.result` and `meta.response` are
-dropped; for the SSR case, a `settled` event's `meta.request.renders` reports
-how many SSR render passes ran.
+`data` carries heavy objects (responses, requests, query results) that you don't
+want in a log line; `meta` replaces them with compact forms: points become their
+string id (`<scope>:<type>:<name>`), requests become `{ method, path }`, errors
+and redirects are serialized, and it drops bulky members. For an engineFetch
+event, `meta.result` and `meta.response` are dropped; for the SSR case, a
+`settled` event's `meta.request.renders` reports how many SSR render passes ran.
 
-Note `meta` does **not** carry the error — on an error event, `meta.error` is
+`meta` does **not** carry the error — on an error event, `meta.error` is
 `undefined`. The error lives on the envelope `error` (and `data.error`). So a
 typical error log spreads `meta` and adds the parts it needs:
 
@@ -255,21 +240,11 @@ recursion, so a broken error reporter can't cause an emit loop.
 ## Wiring events to your observability
 
 Funnel events through one subscriber on the root and let your logging stack fan
-out. The simplest version just writes to the console:
-
-```tsx
-export const root = Point0.lets
-  .root()
-  .on('error', ({ side, name, error, meta }) => {
-    console.error({ side, name, error, ...meta })
-  })
-  .root()
-```
-
-Swap `console.error` for your own logger and you get error reporting with no
-extra call sites at the points. In start0, for example, this subscriber writes
-to a LogTape logger whose sink forwards `error` records to Sentry — the same
-single root subscription, just a richer sink behind it.
+out — the `.on('error')` subscriber at the top of this page is the whole
+pattern. Swap `console.error` for your own logger and you get error reporting
+with no extra call sites at the points. In Start0, for example, that subscriber
+writes to a LogTape logger whose sink forwards `error` records to Sentry — the
+same single root subscription, just a richer sink behind it.
 
 Subscribe to the success/settled events the same way for request metrics or
 audit logs.

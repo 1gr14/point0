@@ -7,14 +7,14 @@ description:
 ---
 
 `@point0/basic-auth` is an HTTP Basic auth gate. `basicAuth(options)` returns a
-Point0 [middleware](middleware) function (the value of `BasicAuth`'s
-`.middleware` getter): give it a user table, mount it on a point, and every
-request without valid `username:password` credentials gets a `401`. It runs
-server-side only and adds per-user / per-IP brute-force throttling for free.
+Point0 [middleware](middleware) function: give it a user table, mount it on a
+point, and every request without valid `username:password` credentials gets a
+`401`. It runs server-side only and adds per-user / per-IP brute-force
+throttling.
 
-The most direct use is to close your whole site off from prying eyes — a staging
-deploy, a private preview, an internal tool. Mount it on `root` and the browser
-pops its native login dialog before anyone reaches a single page:
+The most direct use is to close your whole site off — a staging deploy, a
+private preview, an internal tool. Mount it on `root` and the browser pops its
+native login dialog before anyone reaches a single page:
 
 ```tsx
 import { basicAuth } from '@point0/basic-auth'
@@ -27,9 +27,7 @@ export const root = Point0.lets
   .root()
 ```
 
-That's it — no page knows or cares it's there. The rest of this page covers
-scoping the gate to one subtree, guarding only your OpenAPI docs, the config,
-and the responses it returns.
+No page knows or cares it's there.
 
 ## Mounting it
 
@@ -45,10 +43,6 @@ from above:
 .middleware(basicAuth({ users: { admin: 'secret' } }))
 ```
 
-This is what the package's own test does: a `root` with `basicAuth` and an
-`/api/test` action returns `401` without credentials and `200` with them
-(`packages/basic-auth/tests/index.test.tsx`).
-
 **Guard one path.** `.middleware` also takes a route, so you can scope the gate
 to a subtree — e.g. an `/admin/*` area while the rest of the site stays open:
 
@@ -58,8 +52,7 @@ to a subtree — e.g. an `/admin/*` area while the rest of the site stays open:
 
 **Guard the OpenAPI docs.** Pass it as the `before` option of
 [`openapi(...)`](openapi), which runs it _only_ on the doc routes. This is how
-every shipped example uses it — the app stays open, the schema and viewers
-don't:
+every shipped example uses it:
 
 ```tsx
 import { openapi } from '@point0/openapi'
@@ -93,9 +86,8 @@ basicAuth({ users: 'admin:secret' }) //                       single "user:pass"
 basicAuth({ users: ['admin:secret', 'john:pass123'] }) //     list of "user:pass" strings
 ```
 
-The string form is the one to reach for in production — keep the credentials in
-an env var, not in source. This is what `create-point0-app` scaffolds and what
-start0 ships:
+Use the string form in production — keep the credentials in an env var, not in
+source. This is what `create-point0-app` scaffolds and what Start0 ships:
 
 ```tsx
 // packages/create-app/template/src/lib/root.tsx
@@ -136,9 +128,9 @@ is a discriminated union, so passing both (or neither) is a compile error.
 
 ## Hooks: logging failures
 
-Three optional callbacks fire on each failure path. They're side-effect hooks —
-run for logging or metrics, **before** the failure response is built; they may
-be async (and are awaited), but they can't change the response:
+Three optional callbacks fire on each failure path, **before** the failure
+response is built — for logging or metrics. They may be async (and are awaited)
+but can't change the response:
 
 ```tsx
 basicAuth({
@@ -175,10 +167,9 @@ The `Basic` scheme is matched **case-insensitively**, so `Basic`, `basic`, and
 
 ### `challenge: false` — suppress the browser dialog
 
-By default (`challenge: true`) a `401` carries the `WWW-Authenticate` header,
-which triggers the browser's native login popup. Set `challenge: false` to drop
-that header — useful for an API where you handle the `401` in your own client
-and don't want a browser prompt:
+Set `challenge: false` to drop the `WWW-Authenticate` header from `401`s —
+useful for an API where you handle the `401` in your own client and don't want a
+browser prompt:
 
 ```tsx
 basicAuth({ users: { admin: 'secret' }, challenge: false }) // 401s carry no WWW-Authenticate
@@ -222,9 +213,8 @@ lower-level surface:
 
 - **`BasicAuth.create(options)`** — the class behind the factory (the
   constructor is private). Its `.middleware` getter is exactly what
-  `basicAuth()` returns. `validateRequest` and `getFailureResponse` are
-  **methods on a `BasicAuth` instance** (reachable via `BasicAuth.create(...)`),
-  not separate top-level exports.
+  `basicAuth()` returns. `validateRequest` and `getFailureResponse` are methods
+  on a `BasicAuth` instance, not separate top-level exports.
 - **`instance.validateRequest(request)`** — returns the full
   `BasicAuthValidationResult` (`{ ok, username, ip, response, reason }` on
   failure) instead of acting as middleware.
@@ -232,8 +222,7 @@ lower-level surface:
   or `undefined` when the request is authorized. For gating by hand, outside
   `.middleware()`.
 - **`getBasicAuthHeader(username, password)`** — a top-level export that builds
-  a `Basic <base64>` header value. Handy for crafting authenticated requests in
-  tests.
+  a `Basic <base64>` header value, for crafting authenticated requests in tests.
 
 ## Reference
 

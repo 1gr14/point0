@@ -34,7 +34,7 @@ export const setTheme = (mode: ColorMode) => {
 
 `colorModeCookie.use()` reads the theme during SSR, so the server renders the
 HTML with the right `<html class="dark">` already on it — no flash on the
-client. The rest of this page shows where each piece comes from.
+client.
 
 ## Installing it
 
@@ -53,12 +53,8 @@ The plugin subscribes to `pointFetchServerSettled` and calls
 the server just set is reflected in your `use()` readers. The SSR commit (the
 mechanism in
 [SSR-set values reach the client](#how-an-ssr-set-value-reaches-the-client)) is
-driven by the engine itself and does not need the plugin.
-
-Skip the plugin and the SSR round-trip still works — what you lose is the
-client-side `CookieStore.refresh()` after a server point settles, so `use()`
-readers won't pick up a cookie the server set during a mutation until something
-else refreshes them.
+driven by the engine itself and does not need the plugin — skip the plugin and
+you only lose that client refresh after a server point settles.
 
 ## Defining a cookie
 
@@ -156,8 +152,7 @@ colorModeCookie.use((next) => {
 
 ## Server vs client — the same cookie, both sides
 
-The point of `CookieStore` is that the _same_ item works in three places, and
-routes itself correctly:
+The _same_ item works in three places and routes itself correctly:
 
 - **In the browser** — `set` writes `document.cookie` and refreshes readers;
   `get` reads `document.cookie`.
@@ -184,8 +179,6 @@ nickCookie.set('bob')
 nickCookie.get() // => 'bob'   even though the request arrived with nick=alice
 ```
 
-This is exactly what makes SSR reads reflect what the page itself set.
-
 ## Relation to `set.cookies` and `request.cookies`
 
 `CookieStore` is a typed, named convenience over the raw cookie API. You can
@@ -209,10 +202,7 @@ nickCookie.get() // → reads request.cookies + response, merged
 ```
 
 Under the hood a server `CookieStore.set` calls the same `set.cookies` effect,
-so the two are interchangeable on the server — Point0's tests run the identical
-login/logout flow once with raw `set.cookies` + `request.cookies` and once with
-`nickCookie.set`/`.delete` (reads still go through the loader's
-`request.cookies`) and get byte-identical output. See [Response](response) for
+so the two are interchangeable on the server. See [Response](response) for
 `set.cookies` and [Request](request) for `request.cookies`.
 
 When both write the same cookie name, an explicit response `Set-Cookie` wins
@@ -220,9 +210,8 @@ over a CookieStore/effects cookie of that name.
 
 ## How an SSR-set value reaches the client
 
-This is the part that makes it "work across SSR". A cookie set during the SSR
-render does not mutate the current render — it is **staged**, like a React
-`setState`. The engine's render loop then:
+A cookie set during the SSR render does not mutate the current render — it is
+**staged**, like a React `setState`. The engine's render loop then:
 
 1. commits the staged cookies into the response before the next pass;
 2. re-renders if a committed cookie would change what `get()` returns, so
@@ -232,8 +221,7 @@ render does not mutate the current render — it is **staged**, like a React
 
 The committed cookies become `Set-Cookie` headers on the SSR response. The
 browser stores them, and on hydration `CookieStore.get()`/`use()` read them back
-from `document.cookie`. There is no separate dehydration payload — the value
-travels by the normal cookie round-trip.
+from `document.cookie`.
 
 ```tsx
 // a layout reads the theme during SSR
@@ -245,10 +233,10 @@ export const generalLayout = root.lets.layout('/').layout(({ children }) => {
 ```
 
 Because the value is always committed, even an app capped to zero SSR re-renders
-still ships the cookie. The cost is re-renders: a non-deterministic cookie value
-(`Date.now()`, `Math.random()`) keeps changing every pass and can hit the
-engine's hard re-render cap (`forbiddenRerendersCount`, default 25), which logs
-an SSR error. Set stable values during SSR.
+still ships the cookie. A non-deterministic cookie value (`Date.now()`,
+`Math.random()`) keeps changing every pass and can hit the engine's hard
+re-render cap (`forbiddenRerendersCount`, default 25), which logs an SSR error.
+Set stable values during SSR.
 
 This is the two-way counterpart of [SsrStore](ssr-store): an `SsrStore` value is
 computed on the server and sent to the client one way and is dropped if a
@@ -275,9 +263,7 @@ export const tokenCookie = CookieStore.define<string>({
 tokenCookie.get()
 ```
 
-Use `httpOnly` for anything the browser must not read in JS (session tokens). A
-non-`httpOnly` cookie (like the theme) is the right choice when the client needs
-to read or write it.
+Use `httpOnly` for anything the browser must not read in JS (session tokens).
 
 ## Non-string values: the transformer
 
@@ -299,8 +285,8 @@ CookieStore.define<{ role: string }>({ name: 'data', transformer: true })
 CookieStore.define<Profile>({ name: 'profile', transformer: superjson })
 ```
 
-The default `'auto'` is what you want for primitives and plain JSON. For richer
-values (a `Date` inside an object) pass a transformer like `superjson`.
+The default `'auto'` covers primitives and plain JSON. For richer values (a
+`Date` inside an object) pass a transformer like `superjson`.
 
 The class-level transformer is **not** taken from the root
 `.transformer(superjson)`. For a non-primitive cookie you must wire the
@@ -320,12 +306,10 @@ CookieStore.plugin({
 })
 ```
 
-By default the client getter/setter read and write `document.cookie`. The getter
-takes an optional cookie name and returns the value (or the whole map when
-called with no name); the setter takes the resolved cookie options (`name`,
-`value`, and the attributes) and persists them however the platform stores
-cookies. Point0 ships only the `document.cookie` pair — a native adapter is
-yours to write against this shape.
+Point0 ships only the `document.cookie` pair — a native adapter is yours to
+write against this shape. The getter takes an optional cookie name and returns
+the value (or the whole map when called with no name); the setter takes the
+resolved cookie options (`name`, `value`, and the attributes) and persists them.
 
 ## Reference
 

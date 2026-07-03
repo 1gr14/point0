@@ -4792,7 +4792,7 @@ The repository has several examples:
   is stripped from the bundle by the compiler's Babel plugin. (experimental)
 
 But so you don't have to go far, I'll show one more piece of code right here,
-from my production-ready boilerplate start0, so that you can get a feel for the
+from my production-ready boilerplate Start0, so that you can get a feel for the
 code of a real project:
 
 ```ts
@@ -5185,7 +5185,7 @@ production. I just don't know what the criteria are here. I am now going to
 actively use it to build my own projects, as well as projects for my clients.
 
 I created a production-ready boilerplate for SaaS called
-[start0](https://1gr14.dev/start0), which is built around Point0. I connected
+[Start0](https://1gr14.dev/start0), which is built around Point0. I connected
 and configured everything needed for it to build real projects. The stack is as
 follows:
 

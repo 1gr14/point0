@@ -12,10 +12,9 @@ example: examples/basic
 blog where anyone posts an idea and adds news updates to it. It is the reference
 the other four examples are described against: each of them is "the same app,
 but with one piece swapped". The buttons above and below open it on CodeSandbox,
-GitHub, and github.dev — the full source is one click away, so this page only
-sketches the shape.
+GitHub, and github.dev; this page only sketches the shape.
 
-What it puts together, in one app:
+What it puts together:
 
 - SSR for the first load, then client-side (SPA-style) navigation between pages
 - the whole point family wired up — pages, layouts, queries, mutations,
@@ -99,13 +98,11 @@ then `bun run start`. See [getting-started](getting-started), [CLI](cli), and
 ## For a real app
 
 This example shows Point0 in isolation. For a real product, start from
-**[start0](https://1gr14.dev/start0)** — the SaaS boilerplate with auth, admin,
+**[Start0](https://1gr14.dev/start0)** — the SaaS boilerplate with auth, admin,
 forms, CRUD, email, and deploy already wired together
 (`bun create start0@latest my-app`).
 
 ## The other examples
-
-The same blog appears in each, with one piece swapped:
 
 - [vite](example-vite) — same app, client bundled by Vite instead of Bun.
 - [better-auth](example-better-auth) — same app, plus Better Auth.

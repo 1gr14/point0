@@ -27,7 +27,7 @@ export const ideaPage = generalLayout.lets
 ```
 
 `/ideas/123` now renders that component, with `idea` already loaded — no loading
-branch in sight. The rest of this page shows where each piece comes from.
+branch in sight.
 
 ## Declaring a page
 
@@ -38,19 +38,19 @@ A page is opened off a parent — the [root](root), a [base](base), or a
 export const homePage = root.lets.page('/').page(() => <h1>Home</h1>)
 ```
 
-The short `root.lets.page('/')` form needs the compiler; it expands to the
-explicit `root.lets('page', 'home', '/')`, where `'home'` is read from the
-variable name. Both forms are valid and identically typed — see [points](points)
-for the notation. A page can only grow from a `root`, `base`, or `layout`; you
-can't open a page off a query or a mutation.
+`root.lets.page('/')` is the short notation for the explicit
+`root.lets('page', 'home', '/')` — both are valid and identically typed; see
+[points](points) for how the short form works. You can't open a page off a query
+or a mutation.
 
 The `.page(component)` closer is **server-ssr-and-client** — it's cut from the
 SERVER bundle when `ssr:false` (or after a `.clientOnly()` earlier in the
 chain): its body and imports are removed from the server build. Kept in the
 client build always, and in the server build only when SSR is on.
 
-The component argument is **optional**. Omit it and the page renders nothing
-(`() => null`) — useful when the page only runs an effect or a loader:
+The component argument is **optional** — omit it and the page renders nothing
+(`() => null`). A page can also do its work in an effect and show only the
+inherited loading view:
 
 ```tsx
 export const logoutPage = root.lets
@@ -115,8 +115,7 @@ export const ideaPage = root.lets
 ```
 
 `.loader` is **server-only** — cut from the client bundle: its body and the
-imports it uses are removed, so it never ships to the browser. Stays in the
-server build.
+imports it uses are removed.
 
 **Injected query.** When the data lives in a reusable [query](query), hand it to
 the page with [`.with`](with) and map the route params to its input:
@@ -130,33 +129,27 @@ export const ideaPage = root.lets
 
 Both forms feed `data`. Inject more than one query and read them from `queries`
 (in declaration order), or fold them into one shape with [`.mapper`](mapper) —
-see [`.with`](with) for the full range. You can also skip `.with` entirely and
-call `ideaQuery.useQuery({ id })` inside the component, handling `isLoading`
-yourself — the page doesn't force either style.
+see [`.with`](with) for the full range. You can also skip `.with` and call
+`ideaQuery.useQuery({ id })` inside the component, handling `isLoading` yourself
+— the page doesn't force either style.
 
 `.with` and `.mapper` are **server-ssr-and-client** — cut from the SERVER bundle
 when `ssr:false` (or after a `.clientOnly()`): their bodies and imports are
-removed from the server build. Kept in the client build always, and in the
-server build only when SSR is on. A `.with` query is discovered only by
-rendering the page, so it's prefetched only under the expensive
-`pageDehydratedState*` policies (the full SSR render); see
-[`.relatedQuery` vs `.with`](#relatedquery-vs-with) below for the cheaper,
-render-free path.
+removed from the server build.
 
-### `.relatedQuery` vs `.with` {#relatedquery-vs-with}
+### `.relatedQuery` vs `.with`
 
 [`.relatedQuery`](query) declares a query the page depends on. Like a `.with`
-query, it **adds its query to the `queries` array** and feeds `data` — it does
-not skip them. The difference is **prefetch**: a related query is statically
-discoverable, so prefetch can self-fetch it **without rendering** the page,
-under the cheap policies (`serverQuery` / `clientQuery` /
-`serverAndClientQuery`). A `.with` query is found only by rendering, so it's
-prefetched only under the expensive, SSR-only `pageDehydratedState*` policies.
-Reach for `.relatedQuery` when you want a page's data warm before navigation
-without paying for a full render.
+query, it **adds its query to the `queries` array** and feeds `data`. The
+difference is **prefetch**: a related query is statically discoverable, so
+prefetch can self-fetch it **without rendering** the page, under the cheap
+policies (`serverQuery` / `clientQuery` / `serverAndClientQuery`). A `.with`
+query is found only by rendering, so it's prefetched only under the expensive,
+SSR-only `pageDehydratedState*` policies. Reach for `.relatedQuery` when you
+want a page's data warm before navigation without paying for a full render.
 
-`.relatedQuery` is **server-and-client** — not cut from either bundle: kept in
-both builds (isomorphic), nothing pruned.
+`.relatedQuery` is **server-and-client** — not cut from either bundle
+(isomorphic).
 
 ## Loading and error states
 
@@ -188,9 +181,7 @@ the page is prefetched before navigation. Full rules, including prefetch
 policies, are in [Loading & error](loading-error).
 
 `.loading` and `.error` are **server-ssr-and-client** — cut from the SERVER
-bundle when `ssr:false` (or after a `.clientOnly()`): their bodies and imports
-are removed from the server build. Kept in the client build always, and in the
-server build only when SSR is on.
+bundle when `ssr:false` (or after a `.clientOnly()`).
 
 ## Head and SEO
 
@@ -211,9 +202,7 @@ export const ideaPage = root.lets
 and can be set per state. Details on [Head](head).
 
 `.head` is **server-ssr-and-client** — cut from the SERVER bundle when
-`ssr:false` (or after a `.clientOnly()`): its body and imports are removed from
-the server build. Kept in the client build always, and in the server build only
-when SSR is on.
+`ssr:false` (or after a `.clientOnly()`).
 
 ## A page is also a query
 
@@ -229,8 +218,8 @@ ideaPage.prefetchQuery({ id: 123 })
 
 This is what makes SSR and navigation prefetch work without you wiring anything.
 The page's self query is **finite by default**. To make it infinite, close the
-chain with [`.infiniteQuery({...})`](infinite-query) after the loader (instead
-of a plain loader) — wire the cursor to search with `pageParamFromInput`:
+chain with [`.infiniteQuery({...})`](infinite-query) after the loader — wire the
+cursor to search with `pageParamFromInput`:
 
 ```tsx
 export const ideaListPage = root.lets
@@ -251,16 +240,16 @@ export const ideaListPage = root.lets
 ```
 
 `.infiniteQuery` and `.query` (the self-query closers) are **server-and-client**
-— not cut from either bundle: kept in both builds (isomorphic), nothing pruned.
+— not cut from either bundle (isomorphic).
 
 A page with no loader issues no request and exposes no useful query — calling
 `.useQuery()` on it returns an empty result, not an error.
 
 ## Page or endpoint?
 
-Not every page is an HTTP endpoint. The distinction matters because a query, a
-mutation, or an action is _always_ a real endpoint (its own path, in the OpenAPI
-spec), but a page is only sometimes one:
+Not every page is an HTTP endpoint. A query, a mutation, or an action is
+_always_ a real endpoint (its own path, in the OpenAPI spec); a page is only
+sometimes one:
 
 - **SSR on** → the page is server-rendered, so it's an endpoint.
 - **SSR off** → the page is an endpoint **only if it has a server `.loader()`**
@@ -273,10 +262,10 @@ whether the server serves it directly.
 
 ## Gating a page
 
-The page component is browser code, and the page's route is reachable in the
-client. The server-only parts of the chain — your loader body, secrets, DB calls
-— are stripped from the client bundle at compile time, so they never leak, but a
-render that depends on access has to be guarded in code that always runs:
+The page component is browser code. The server-only parts of the chain — your
+loader body, secrets, DB calls — are stripped from the client bundle at compile
+time, so they never leak, but a render that depends on access has to be guarded
+in code that always runs:
 
 - Don't put secret content in the rendered markup expecting it to be server-only
   — the markup ships to the browser.
@@ -370,7 +359,7 @@ one state. A bare `.head(value)` defaults to the `'success'` state.
 
 ### The page's route
 
-`page.route` is a callable [route0](navigation) route:
+`page.route` is a callable [Route0](navigation) route:
 
 ```tsx
 page.route({ id: 123 }) // => "/ideas/123"   (relative)

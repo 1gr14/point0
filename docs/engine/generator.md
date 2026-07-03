@@ -46,8 +46,7 @@ point0 generate -w    # ...and keep watching for changes
 ```
 
 `dev` and `build` run it for you — `point0 dev` generates once at startup and
-watches; `point0 build` always generates first. The rest of this page covers
-each generated file, when it reruns, and the config that controls it.
+watches; `point0 build` always generates first.
 
 ## The generated files
 
@@ -73,8 +72,8 @@ export default [root_0, page_1, layout_2] as PointsDefinition<
 A point lands here when it's the [root](root) of the scope or has an HTTP
 endpoint — a [query](query), [mutation](mutation), or [action](action), or any
 other point ([page](page), [layout](layout), [component](component),
-[provider](provider)) that has a [`.loader`](loader) (and pages also come
-whenever `ssr: true`). The app feeds it back to the engine:
+[provider](provider)) that has a [`.loader`](loader). The app feeds it back to
+the engine:
 
 ```ts
 // engine.ts → server
@@ -130,12 +129,12 @@ the server one — every point in a single bundle, no per-page chunks:
 generate: { points: { outfile: './generated/point0/points.client.ts', lazy: false } },
 ```
 
-There is no per-page `.lazy()` method; lazy-vs-ready is a whole-file switch in
+There is no per-page `.lazy()` method; lazy vs static is a whole-file switch in
 the codegen config. See the [page](page) authoring notes for the trade-off.
 
 ### routes.ts — the typed route table
 
-Every page route, collected into a [route0](navigation) table you import for
+Every page route, collected into a [Route0](navigation) table you import for
 `<Link>`s and `navigate`:
 
 ```ts
@@ -173,8 +172,7 @@ diffs stay clean.
 ### meta.ts — point metadata for tooling
 
 A full description of every point — including invalid ones — for tools that need
-to reason about your app without importing it. The [project MCP](mcp-project)
-reads it.
+to reason about your app without importing it.
 
 ```ts
 // generated meta.ts (engine block)
@@ -209,9 +207,7 @@ export default {
 }
 ```
 
-Each entry carries the point's scope, type, name, id, tags, description, route,
-endpoint, source position, a lazy `import`, validity, and its linked parents and
-layouts. The [project MCP](mcp-project) bin consumes it:
+The [project MCP](mcp-project) bin consumes it:
 
 ```sh
 point0-project-mcp --meta ./src/generated/point0/meta.ts
@@ -394,10 +390,6 @@ type Handler = (options: {
 }) => /* customFile */ string | Promise<string>
 // /* customControlled */ | void | Promise<void>
 ```
-
-`customFile`'s `handler` returns a `string` (or `Promise<string>`) — the full
-file content. `customControlled`'s `handler` returns `void` (or `Promise<void>`)
-and is responsible for writing whatever files it needs itself.
 
 Each `point` is a `CompilerPoint` (exported from `@point0/compiler`). The fields
 a handler reads to describe or import a point: `id` (`scope:type:name`),
