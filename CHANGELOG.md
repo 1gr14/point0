@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.9 — 2026-07-03
+
 - Docs only: the intro is reshaped — `overview.md` is now the short pitch, the
   long announcement-article walkthrough moves to `full-overview.md`, and a new
   `benchmarks.md` sizes Point0 up against Next.js and TanStack Start. The
