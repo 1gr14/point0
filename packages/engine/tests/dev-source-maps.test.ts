@@ -1,11 +1,5 @@
-import assert from 'assert'
-import { existsSync, readdirSync } from 'node:fs'
-import { rename, rm } from 'node:fs/promises'
-import nodePath from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
-import { resolveServerHotStoreDir } from '../src/server-hot-store.js'
-import { bundlers } from './utils/focus.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 import type {
   TestProjectOneClient,
@@ -14,25 +8,6 @@ import type {
 import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
 setDefaultTimeout(80000)
-
-// Resolve the server-hot store dir the way the dev child actually does: walk up from its cwd (the test project dir) to
-// the nearest `node_modules`, then `.cache/server-hot/<scope>-<port>`. The engine resolves it with
-// `resolveCacheDirPath` from `process.cwd()`; replicating that walk from the project dir keeps the test robust to
-// node_modules hoisting. A fully-hoisted install (fresh git worktree, CI) has NO `packages/engine/node_modules`, so the
-// store lands in the REPO-ROOT `node_modules/.cache` — a fixed `__dirname/../node_modules` path missed it and read 0.
-const resolveStoreDirFromProject = (projectDir: string, scope: string, port: number | string): string => {
-  let dir = projectDir
-  let lastDir = ''
-  while (dir !== lastDir) {
-    const nodeModules = nodePath.join(dir, 'node_modules')
-    if (existsSync(nodeModules)) {
-      return nodePath.join(nodeModules, '.cache', 'server-hot', `${scope}-${port}`)
-    }
-    lastDir = dir
-    dir = nodePath.dirname(dir)
-  }
-  throw new Error(`No node_modules found above ${projectDir}`)
-}
 
 const tpf = TestProjectOneClientFactory.create({
   namespace: 'dev',

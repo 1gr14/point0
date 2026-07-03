@@ -5,6 +5,10 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- Internal: cleared dead imports and an unused store-dir helper from the engine
+  `dev-hot-reload` / `dev-source-maps` tests, so `bun run lint` is green across
+  the whole repo. No runtime or API change.
+
 ## 0.1.11 — 2026-07-03
 
 - `point0 dev` now forwards origin `Content-Encoding` transparently. A server

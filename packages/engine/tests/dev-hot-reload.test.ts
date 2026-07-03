@@ -1,11 +1,9 @@
-import assert from 'assert'
 import { existsSync, readdirSync } from 'node:fs'
 import { rename, rm } from 'node:fs/promises'
 import nodePath from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import type { Engine } from '../src/engine.js'
 import { resolveServerHotStoreDir } from '../src/server-hot-store.js'
-import { bundlers } from './utils/focus.js'
 import { PlaywrightBrowser } from './utils/playwright.js'
 import type {
   TestProjectOneClient,
