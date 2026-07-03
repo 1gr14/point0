@@ -52,8 +52,9 @@ Use `--skip-ci` (or GitHub's native `[skip ci]`) to skip CI on a trivial commit.
 
 PRs are **squash-merged**, so `main` keeps a clean, linear history — one commit
 per PR. Your authorship is preserved: GitHub records you as the commit author
-(and adds `Co-authored-by:` for everyone who committed to the PR), so you show up
-in the contributors list. The full commit-by-commit detail stays on the PR page.
+(and adds `Co-authored-by:` for everyone who committed to the PR), so you show
+up in the contributors list. The full commit-by-commit detail stays on the PR
+page.
 
 ## Releases
 

@@ -67,8 +67,8 @@ jobs:
     # failed build, or a failed `decide`. `!cancelled()` is required so this still evaluates when `test` was
     # skipped (a skipped dependency would otherwise skip this job too).
     if:
-      ${{ !cancelled() && needs.decide.result == 'success' && needs.build.result == 'success' &&
-      (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+      ${{ !cancelled() && needs.decide.result == 'success' && needs.build.result == 'success' && (needs.test.result ==
+      'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

@@ -1,9 +1,8 @@
 name: bun install
 description: >
-  bun install --frozen-lockfile, retried. The `bun` npm package's postinstall (which fetches Bun's
-  native binary) is flaky on Windows runners — it intermittently aborts the whole install with
-  "Your package manager doesn't seem to support bun" (see AGENTS.md). A couple of retries make it
-  reliable without masking a real, repeatable failure.
+  bun install --frozen-lockfile, retried. The `bun` npm package's postinstall (which fetches Bun's native binary) is
+  flaky on Windows runners — it intermittently aborts the whole install with "Your package manager doesn't seem to
+  support bun" (see AGENTS.md). A couple of retries make it reliable without masking a real, repeatable failure.
 runs:
   using: composite
   steps:
