@@ -1,6 +1,43 @@
+import type { AnyLocation } from '@1gr14/route0'
 import { describe, expect, it } from 'bun:test'
-import { resolveScrollToHashBehavior, resolveScrollToHashPolicy } from '../src/navigation.js'
+import { resolveNavigationTarget, resolveScrollToHashBehavior, resolveScrollToHashPolicy } from '../src/navigation.js'
 import type { ScrollToHashPolicy, SetSearchHelper } from '../src/navigation.js'
+
+describe('resolveNavigationTarget', () => {
+  // The function only reads `href` (the absolute base) and `pathname` (the no-base fallback).
+  const current = { href: 'https://app.test/ideas/list?page=2#top', pathname: '/ideas/list' } as AnyLocation
+
+  it('resolves relative targets against the current page, like a browser resolves <a href>', () => {
+    expect(resolveNavigationTarget('edit', current)).toBe('/ideas/edit')
+    expect(resolveNavigationTarget('../x', current)).toBe('/x')
+  })
+
+  it('a bare #hash / ?query resolves in place (the hash keeps the current search)', () => {
+    expect(resolveNavigationTarget('#faq', current)).toBe('/ideas/list?page=2#faq')
+    expect(resolveNavigationTarget('?q=1', current)).toBe('/ideas/list?q=1')
+  })
+
+  it('root-relative and same-origin absolute targets become root-relative hrefs', () => {
+    expect(resolveNavigationTarget('/about?x=1#y', current)).toBe('/about?x=1#y')
+    expect(resolveNavigationTarget('https://app.test/about', current)).toBe('/about')
+  })
+
+  it('cross-origin targets keep the full href, so the external-navigation branch can hand off', () => {
+    expect(resolveNavigationTarget('https://other.test/docs', current)).toBe('https://other.test/docs')
+    expect(resolveNavigationTarget('mailto:a@b.c', current)).toBe('mailto:a@b.c')
+  })
+
+  it('an unparsable target passes through instead of crashing the navigation', () => {
+    expect(resolveNavigationTarget('http://', current)).toBe('http://')
+    expect(resolveNavigationTarget('https://exa mple.com/x', current)).toBe('https://exa mple.com/x')
+  })
+
+  it('without an absolute base (SSR, no origin) keeps the historical #hash handling, passes the rest through', () => {
+    const bare = { pathname: '/a' } as AnyLocation
+    expect(resolveNavigationTarget('#x', bare)).toBe('/a#x')
+    expect(resolveNavigationTarget('edit', bare)).toBe('edit')
+  })
+})
 
 describe('resolveScrollToHashPolicy', () => {
   it('maps each preset to its per-trigger behavior', () => {

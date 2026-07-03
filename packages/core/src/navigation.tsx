@@ -635,11 +635,13 @@ export const useSearch = <TSearch = UnknownSearchParsed,>(): [TSearch, SetSearch
 
 // --- Scroll restoration --------------------------------------------------------
 // Centralized in the router (mount <ScrollRestoration/> once) instead of a
-// per-page effect. On a pathname change it saves the leaving page's scroll
-// position and applies the entering page's restore policy. Default: a new
-// navigation (push) scrolls to the top; back/forward (pop) restores the saved
-// position. Per-page `.scrollPosition()` / `.scrollRestore()` still apply.
-// Search-only changes (e.g. setSearch) keep the scroll untouched.
+// per-page effect. On a pathname change it applies the entering page's restore
+// policy. Default: a new navigation (push) scrolls to the top; back/forward
+// (pop) restores the saved position. Per-page `.scrollPosition()` /
+// `.scrollRestore()` still apply. Search-only changes (e.g. setSearch) keep the
+// scroll untouched. Leaving positions are captured while the leaving page is
+// still mounted — continuously on scroll plus right before a programmatic
+// commit (see saveScrollPositionForLocation) — never after the location change.
 const scrollPositionsByHref = singletonize('Point0ScrollPositionsByHref', new Map<string, { x: number; y: number }>())
 // Hard (instant) vs smooth scrolling to a #hash element.
 export type ScrollToHashBehavior = 'hard' | 'smooth'
@@ -683,9 +685,9 @@ export const resolveScrollToHashBehavior = (
   return resolveScrollToHashPolicy(perCall ?? globalPolicy)[trigger]
 }
 
-// Per-navigation scrollToHash override, set by navigateWithTransitions for the
-// upcoming cross-page navigation and consumed (cleared) by the scroll manager.
-// `undefined` → fall back to the global default.
+// Per-navigation scrollToHash override, set by navigateWithTransitions immediately before the
+// adapter commit of a cross-page navigation (see the no-leak reasoning at scrollRestorationSignal)
+// and consumed (cleared) by the scroll manager. `undefined` → fall back to the global default.
 const scrollToHashSignal = singletonize('Point0ScrollToHashSignal', {
   override: undefined as ScrollToHashPolicy | undefined,
 })
@@ -703,6 +705,21 @@ const getScrollConfigForLocation = (location: AnyLocation): ScrollConfig => {
     getter: windowScrollPositionGetter,
     setter: windowScrollPositionSetter,
     policy: defaultScrollPositionRestorePolicy,
+  }
+}
+
+// Remember `location`'s current scroll position for a later pop restore. Must run while that
+// page's DOM is still mounted: once a shorter page replaces it, the browser has already clamped
+// the scroll and the read is wrong. Hence the call sites — continuously on scroll events, right
+// before the adapter commit for a programmatic navigation, on pagehide for a reload — and never
+// the location effect, which runs after the new page rendered. (The continuous capture is what
+// covers back/forward: React flushes a popstate's render and effects synchronously inside the
+// history adapter's own popstate listener, so by the time any listener of ours fires the old
+// page is gone and the restore has already run — the position must already be in the map.)
+const saveScrollPositionForLocation = (location: AnyLocation): void => {
+  const position = getScrollConfigForLocation(location).getter()
+  if (position) {
+    scrollPositionsByHref.set(location.hrefRel, position)
   }
 }
 
@@ -745,33 +762,211 @@ const scrollToHashElementWithRetry = (hash: string, behavior: ScrollToHashBehavi
   }
 }
 
+const isNearScrollPosition = (a: { x: number; y: number }, b: { x: number; y: number }): boolean =>
+  Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1
+const retryRestoreScrollPosition = (
+  config: ScrollConfig,
+  position: { x: number; y: number },
+  attemptsLeft: number,
+): void => {
+  if (typeof window === 'undefined' || attemptsLeft <= 0) {
+    return
+  }
+  // What the last apply actually achieved (post-clamp). If by the next frame the position is
+  // anything else, something other than clamping moved the scroll (the user, an anchor jump) —
+  // back off for good instead of fighting it.
+  const applied = config.getter()
+  window.requestAnimationFrame(() => {
+    const current = config.getter()
+    if (!current || !applied) {
+      return
+    }
+    if (isNearScrollPosition(current, position)) {
+      return
+    }
+    if (!isNearScrollPosition(current, applied)) {
+      return
+    }
+    config.setter(position)
+    retryRestoreScrollPosition(config, position, attemptsLeft - 1)
+  })
+}
+// Apply a remembered scroll position, re-applying when it doesn't stick — a scroll past the
+// current document height is silently clamped, and the entering page's content may need time to
+// reach its full height (async data, images). Keeps trying for up to ~1s (60 frames), but backs
+// off the moment anything else moves the scroll, so it never wrestles the user.
+const restoreScrollPosition = (config: ScrollConfig, position: { x: number; y: number }): void => {
+  config.setter(position)
+  retryRestoreScrollPosition(config, position, 60)
+}
+
+// Scroll-manager signals, set by `navigateWithTransitions` immediately before the adapter
+// navigate commits a cross-page location change and consumed (cleared) by the scroll manager's
+// location effect. Set at the commit rather than when the navigation starts, so an aborted or
+// superseded navigation (external target, redirect found, another navigate started) returns
+// before ever touching them and can't leak stale state into an unrelated location change — e.g.
+// a back/forward that lands while a slow prefetch is still in flight.
+// - `programmaticPush`: push vs pop. A flagged change is a push → scroll to top / #hash. An
+//   unflagged one is a pop → restore the saved position: back/forward arrive via popstate and
+//   never pass through `navigateWithTransitions`.
+// - `captureSuspended`: pauses the continuous scroll capture between the commit and the location
+//   effect. When the entering page is shorter, its very first render clamps the scroll and fires
+//   a scroll event; without the pause that event would overwrite the leaving page's remembered
+//   position with the clamped one.
+const scrollRestorationSignal = singletonize('Point0ScrollRestorationSignal', {
+  programmaticPush: false,
+  captureSuspended: false,
+})
+
+// The History API may be missing or partial outside the browser (React Native / Expo, some
+// embeddings). Everything that touches it is guarded so scroll restoration degrades to a no-op
+// there instead of throwing.
+const scrollHistoryApiAvailable = (): boolean => typeof window !== 'undefined' && typeof window.history !== 'undefined'
+
+// `sessionStorage` can be absent or throw on access (Expo, privacy mode, sandboxed iframes).
+const getScrollSessionStorage = (): Storage | undefined => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- sessionStorage isn't guaranteed at runtime (Expo, sandboxed iframe)
+    return typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage : undefined
+  } catch {
+    return undefined
+  }
+}
+const scrollSessionKey = '__point0ScrollPositions__'
+// The in-memory map is lost on reload; persisting it lets a reload restore the scroll the browser
+// no longer restores for us under `scrollRestoration = 'manual'`.
+const loadScrollPositionsFromSession = (): void => {
+  const storage = getScrollSessionStorage()
+  if (!storage) {
+    return
+  }
+  try {
+    const raw = storage.getItem(scrollSessionKey)
+    if (!raw) {
+      return
+    }
+    const parsed = JSON.parse(raw) as Record<string, { x: number; y: number }>
+    for (const [href, pos] of Object.entries(parsed)) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- parsed JSON isn't guaranteed to match the asserted type
+      if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+        scrollPositionsByHref.set(href, pos)
+      }
+    }
+  } catch {
+    // corrupt or unavailable — ignore
+  }
+}
+const saveScrollPositionsToSession = (): void => {
+  const storage = getScrollSessionStorage()
+  if (!storage) {
+    return
+  }
+  try {
+    storage.setItem(scrollSessionKey, JSON.stringify(Object.fromEntries(scrollPositionsByHref)))
+  } catch {
+    // quota or unavailable — ignore
+  }
+}
+
+// How the current document was loaded — 'reload' / 'back_forward' restore the remembered scroll,
+// a plain 'navigate' with a #hash is a deep link (the hash wins). Guarded: `undefined` where the
+// Performance API isn't available.
+const getInitialNavigationType = (): string | undefined => {
+  try {
+    if (typeof performance === 'undefined' || typeof performance.getEntriesByType !== 'function') {
+      return undefined
+    }
+    const entries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
+    return entries.length > 0 ? entries[0].type : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export const useScrollRestoration = (): void => {
   const location = useLocation()
   const { scrollToHash } = useNavigationHelpers()
   const prevLocationRef = useRef<AnyLocation | null>(null)
-  const navTypeRef = useRef<ScrollPositionRestoreType>('push')
 
+  // Take scroll restoration away from the browser. With the default (`'auto'`), a back/forward to a
+  // URL that carries a `#hash` makes the browser jump to that fragment instead of restoring the
+  // remembered scroll position. With `'manual'` the browser does nothing on history traversal (incl.
+  // reload) and this hook is the single source of truth. Guarded — no-op where the History API /
+  // `scrollRestoration` aren't available (SSR, React Native / Expo).
+  useEffect(() => {
+    if (!scrollHistoryApiAvailable() || !('scrollRestoration' in window.history)) {
+      return
+    }
+    const previous = window.history.scrollRestoration
+    window.history.scrollRestoration = 'manual'
+    return () => {
+      window.history.scrollRestoration = previous
+    }
+  }, [])
+
+  // Keep the current page's remembered position fresh, while its DOM is still mounted (see
+  // saveScrollPositionForLocation):
+  // - scroll (capture phase, so container scrolls are seen too): the continuous capture — this is
+  //   what a back/forward restores from. Skipped while `captureSuspended` (see the signal).
+  // - pagehide: reload / tab close / bfcache — capture once more and persist the map, so the next
+  //   document (whose in-memory map starts empty) can restore. That snapshot is rehydrated here
+  //   on mount, before the main effect below runs its initial restore.
   useEffect(() => {
     if (typeof window === 'undefined') {
       return
     }
-    const onPopState = () => {
-      navTypeRef.current = 'pop'
+    loadScrollPositionsFromSession()
+    const capture = () => {
+      if (prevLocationRef.current) {
+        saveScrollPositionForLocation(prevLocationRef.current)
+      }
     }
-    window.addEventListener('popstate', onPopState)
+    const captureOnScroll = () => {
+      if (!scrollRestorationSignal.captureSuspended) {
+        capture()
+      }
+    }
+    const persist = () => {
+      capture()
+      saveScrollPositionsToSession()
+    }
+    window.addEventListener('scroll', captureOnScroll, { capture: true, passive: true })
+    window.addEventListener('pagehide', persist)
     return () => {
-      window.removeEventListener('popstate', onPopState)
+      window.removeEventListener('scroll', captureOnScroll, { capture: true })
+      window.removeEventListener('pagehide', persist)
     }
   }, [])
 
   useEffect(() => {
     const prevLocation = prevLocationRef.current
     prevLocationRef.current = location
-    const type = navTypeRef.current
-    navTypeRef.current = 'push'
-    // Initial render — let the browser keep its own scroll (incl. native #hash
-    // scrolling on an SSR'd page).
+    // Push (programmatic cross-page navigate) vs pop (back / forward / reload). See scrollRestorationSignal.
+    const type: ScrollPositionRestoreType = scrollRestorationSignal.programmaticPush ? 'push' : 'pop'
+    scrollRestorationSignal.programmaticPush = false
+    // The location change this suspension guarded has been processed (its clamp scroll event, if
+    // any, fired before this post-paint effect) — resume the continuous capture.
+    scrollRestorationSignal.captureSuspended = false
+
+    // Initial mount. A reload / bf-cache-miss restores the remembered position (the browser no
+    // longer does under `'manual'`). A fresh navigation with an explicit `#hash` is a deep link →
+    // jump to it (the hash wins over any remembered position); a plain one keeps the first paint.
     if (!prevLocation) {
+      const initialNavType = getInitialNavigationType()
+      if (initialNavType === 'reload' || initialNavType === 'back_forward') {
+        const saved = scrollPositionsByHref.get(location.hrefRel)
+        if (saved) {
+          restoreScrollPosition(getScrollConfigForLocation(location), saved)
+          return
+        }
+      }
+      const initialHash = typeof window !== 'undefined' ? window.location.hash : ''
+      if (initialHash) {
+        const behavior = resolveScrollToHashBehavior(undefined, scrollToHash, 'push')
+        if (behavior) {
+          scrollToHashElementWithRetry(initialHash, behavior)
+        }
+      }
       return
     }
     // Search/hash-only change (e.g. setSearch): keep the scroll untouched.
@@ -781,15 +976,13 @@ export const useScrollRestoration = (): void => {
       return
     }
     // Per-navigation scrollToHash override (set by navigateWithTransitions for
-    // this cross-page navigation), else the global default.
+    // this cross-page navigation), else the global default. (The leaving page's
+    // position is not read here — by now its DOM is gone and a shorter incoming
+    // page has already clamped the scroll; it was captured at the commit, see
+    // saveScrollPositionForLocation.)
     const scrollToHashOverride = scrollToHashSignal.override
     scrollToHashSignal.override = undefined
-    // Save the position of the page we are leaving.
-    const leavingPosition = getScrollConfigForLocation(prevLocation).getter()
-    if (leavingPosition) {
-      scrollPositionsByHref.set(prevLocation.hrefRel, leavingPosition)
-    }
-    const { setter, policy } = getScrollConfigForLocation(location)
+    const scrollConfig = getScrollConfigForLocation(location)
     // Cross-page (push) to a #hash → jump to that element per the policy. On
     // back/forward (pop) we restore instead (below), so we don't override the
     // remembered scroll position.
@@ -800,21 +993,21 @@ export const useScrollRestoration = (): void => {
       if (!scrollToHashElement(hash, hashBehavior)) {
         // Not in the DOM yet: land at the top, then snap to the anchor once the
         // page content renders.
-        setter({ x: 0, y: 0 })
+        scrollConfig.setter({ x: 0, y: 0 })
         retryScrollToHashElement(hash, hashBehavior, 5)
       }
       return
     }
     // Otherwise apply the entering page's restore policy.
-    const decision = policy({ prevLocation, type })
+    const decision = scrollConfig.policy({ prevLocation, type })
     if (decision === false) {
       return
     }
     if (decision === true) {
-      setter(scrollPositionsByHref.get(location.hrefRel) ?? { x: 0, y: 0 })
+      restoreScrollPosition(scrollConfig, scrollPositionsByHref.get(location.hrefRel) ?? { x: 0, y: 0 })
       return
     }
-    setter({ x: 0, y: 0 })
+    scrollConfig.setter({ x: 0, y: 0 })
   }, [location.hrefRel])
 }
 
@@ -917,6 +1110,32 @@ export const specialNavigationOptionsSymbols = {
 export type NavigateWithTransitionsReturnType<
   TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
 > = Promise<{ location: AnyLocation; error: InstanceType<TErrorClass> | undefined }>
+// Resolve a navigation target against the current location, the same way a browser resolves an
+// `<a href>`: a relative path (`deploy`, `../x`), a bare `#hash`, or a `?query` all resolve against
+// the page you are on — while an absolute URL or a root-relative `/path` pass through unchanged.
+// Without this, a relative target is resolved against the site root when computing the prefetch
+// location, so prefetch misses the page the adapter navigate actually lands on and the navigation
+// commits before that page's query is ready (a mid-page loading flash instead of a prefetched jump).
+export const resolveNavigationTarget = (providedTo: string, currentLocation: AnyLocation): string => {
+  const base = currentLocation.href ?? (typeof window !== 'undefined' ? window.location.href : undefined)
+  if (base) {
+    try {
+      const resolved = new URL(providedTo, base)
+      // Same-origin → a root-relative href (what the adapter navigate and `getLocation` expect);
+      // cross-origin → the full href, so the external-navigation branch can detect and hand it off.
+      return resolved.origin === new URL(base).origin
+        ? resolved.pathname + resolved.search + resolved.hash
+        : resolved.href
+    } catch {
+      // A target even `new URL` can't parse against a valid base (`http://`, a space in the
+      // host): fall through to the passthrough below instead of crashing the navigation.
+    }
+  }
+  // No absolute base to resolve against (SSR without an origin), or an unparsable target: keep
+  // the historical `#hash` handling and pass everything else through untouched.
+  return providedTo.startsWith('#') ? currentLocation.pathname + providedTo : providedTo
+}
+
 export async function navigateWithTransitions<
   TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavigateFn,
   TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
@@ -927,7 +1146,7 @@ export async function navigateWithTransitions<
   ErrorClass = ErrorPoint0 as unknown as TErrorClass,
 }: {
   to: string
-  navigate: () => any
+  navigate: (to: string) => any
   options?: NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn> &
     SpecialNavigateOptions<NavigateOptionsByAdapterNavigateFn<TAdapterNavigateFn>>
   ErrorClass?: TErrorClass
@@ -936,12 +1155,7 @@ export async function navigateWithTransitions<
   _ss.__POINT0_CURRENT_NAVIGATE_ID__.set(navigateId)
   const helpers = getNavigationHelpers()
   const prevLocation = getLocation()
-  const to = (() => {
-    if (providedTo.startsWith('#')) {
-      return prevLocation.pathname + providedTo
-    }
-    return providedTo
-  })()
+  const to = resolveNavigationTarget(providedTo, prevLocation)
   const clientPoints = getClientPoints()
   const location = clientPoints.routes._.getLocation(to)
   // Leave the SPA when the target is cross-origin, or when a new tab is requested.
@@ -967,16 +1181,36 @@ export async function navigateWithTransitions<
   }
   // Resolve scrollToHash for this navigation. The cross-page case is handled by
   // the central scroll manager (correct timing — after the new page renders) via
-  // this signal; the current-page (#anchor) case is handled imperatively below,
-  // because the manager's location effect doesn't refire for a hash-only change.
+  // the signal set in commitNavigate; the current-page (#anchor) case is handled
+  // imperatively below, because the manager's location effect doesn't refire for
+  // a hash-only change.
   const scrollToHashOption = (options as { scrollToHash?: ScrollToHashPolicy } | undefined)?.scrollToHash
   const isCurrentPathname = location.pathname === prevLocation.pathname
-  // Cross-page: hand the per-call override to the central scroll manager. Current
-  // page: resolve the behavior here (the manager won't refire) and jump below.
-  scrollToHashSignal.override = isCurrentPathname ? undefined : scrollToHashOption
   const currentScrollToHashBehavior = isCurrentPathname
     ? resolveScrollToHashBehavior(scrollToHashOption, helpers.scrollToHash, 'current')
     : undefined
+  // Commit the location change through the adapter. The scroll signals and the leaving page's
+  // position are handled here — immediately before the commit — rather than when the navigation
+  // starts: every abort path (redirect found, superseded by another navigate) returns before this
+  // point, so nothing leaks into an unrelated location change (e.g. a back/forward landing while
+  // a slow prefetch is still in flight), and the position is read while the leaving page's DOM is
+  // still mounted (not yet clamped by a shorter incoming page). Same-page #hash changes skip all
+  // of it — they don't re-fire the scroll manager's location effect, nothing would consume it.
+  const commitNavigate = async () => {
+    if (!isCurrentPathname) {
+      saveScrollPositionForLocation(prevLocation)
+      scrollToHashSignal.override = scrollToHashOption
+      scrollRestorationSignal.programmaticPush = true
+      scrollRestorationSignal.captureSuspended = true
+    }
+    try {
+      await navigate(to)
+    } catch (error) {
+      // The location effect that would resume the capture may never fire — resume it here.
+      scrollRestorationSignal.captureSuspended = false
+      throw error
+    }
+  }
 
   helpers.setPrevLocation(prevLocation)
   helpers.setTransitionError(undefined)
@@ -1025,7 +1259,7 @@ export async function navigateWithTransitions<
       return { location, error: new ErrorClass('Another navigate has been started') as InstanceType<TErrorClass> }
     }
     helpers.setTransitionStatus('transitioning')
-    await navigate()
+    await commitNavigate()
     void options?.after?.(to, options)
     helpers.setTransitionStatus('idle')
     helpers.setNextLocation(null)
@@ -1048,7 +1282,7 @@ export async function navigateWithTransitions<
     const error0 = ErrorClass.from(error) as InstanceType<TErrorClass>
     helpers.setTransitionError(error0)
     helpers.setTransitionStatus('transitioning')
-    await navigate()
+    await commitNavigate()
     void options?.after?.(to, options)
     helpers.setTransitionStatus('idle')
     helpers.setNextLocation(null)

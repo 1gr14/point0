@@ -408,6 +408,18 @@ return <main className={isNavigating ? 'opacity-60' : ''}>{children}</main>
 
 ## Scroll restoration
 
+Point0 manages scroll itself: it sets `history.scrollRestoration = 'manual'` and
+the router becomes the single source of truth. A new navigation (push) scrolls
+to the top — or to the target `#hash` per the `scrollToHash` policy.
+Back/Forward (pop) restores the remembered position, even when the URL carries a
+`#hash` (the browser's own restoration would jump to the fragment instead).
+Positions are remembered per URL and survive a reload (persisted to
+`sessionStorage`), so reloading a scrolled page brings you back to the same
+offset. A first load with a `#hash` in the URL is a deep link — it jumps to the
+anchor. If the entering page's content is still rendering (async data), the
+restore keeps re-applying the position for up to a second while the document
+grows — and backs off the moment anything else moves the scroll.
+
 Two stage-methods on a mountable control where the page scrolls when you
 navigate to it. They're set on the point chain (page/layout), not on
 `createNavigation`:
@@ -624,8 +636,13 @@ createNavigation({
 - **Same-URL re-navigation is a no-op** — navigating to the exact current path +
   search (no hash) does nothing: no prefetch, no callbacks, no history entry. A
   hash-only change still goes through, so in-page anchors work.
-- **Hash-only `to`** (`navigate.to('#section')`) resolves against the current
-  pathname.
+- **Relative `to`** — a string target resolves against the current page the way
+  a browser resolves an `<a href>`: `navigate.to('edit')` from `/ideas/list`
+  goes to `/ideas/edit`, `'../x'` climbs a segment, a bare `'#section'` stays on
+  the current URL (keeping its search), a bare `'?page=2'` replaces the search.
+  Root-relative (`'/x'`) and same-origin absolute targets become root-relative
+  hrefs; cross-origin ones go to `openExternal`. An unparsable target is handed
+  to the adapter as-is.
 - **Concurrent navigations** — if a second navigation starts before the first
   finishes, the stale one resolves with
   `error: "Another navigate has been started"`.

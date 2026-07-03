@@ -654,7 +654,7 @@ export const createNavigate = <
     return navigateWithTransitions({
       to,
       options: normalOptions,
-      navigate: () => resolveAdapterNavigate()(to, wouterOptions),
+      navigate: (resolvedTo) => resolveAdapterNavigate()(resolvedTo, wouterOptions),
       ErrorClass,
     })
   }
@@ -689,7 +689,7 @@ export const createNavigate = <
     return await navigateWithTransitions({
       to,
       options: normalOptions,
-      navigate: () => resolveAdapterNavigate()(to, wouterOptions),
+      navigate: (resolvedTo) => resolveAdapterNavigate()(resolvedTo, wouterOptions),
       ErrorClass,
     })
   }
@@ -1228,7 +1228,7 @@ export const createRouter = <
       return navigateWithTransitions({
         to,
         options: normalOptions,
-        navigate: () => navigate(to, wouterOptions),
+        navigate: (resolvedTo) => navigate(resolvedTo, wouterOptions),
         ErrorClass,
       })
     }, [])

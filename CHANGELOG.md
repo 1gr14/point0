@@ -12,6 +12,27 @@ release` promotes that section to the new version.
   tried to decode already-decoded bytes. The proxy now forwards the compressed
   bytes as-is (`decompress: false`) on every hop, so origin compression behaves
   in dev exactly as in a production build.
+- Scroll restoration is now the router's job, not the browser's. Point0 sets
+  `history.scrollRestoration = 'manual'` and becomes the single source of truth:
+  a push scrolls to the top (or the target `#hash`), while back/forward restores
+  the remembered position — even when the URL carries a `#hash`, where the
+  browser would otherwise jump to the fragment instead of the saved offset.
+  Positions are remembered per URL and persisted to `sessionStorage`, so a
+  reload lands back at the same offset; a first load with a `#hash` is treated
+  as a deep link and jumps to the anchor. While the entering page is still
+  growing (async data, images), the restore re-applies for up to ~1s and backs
+  off the instant anything else moves the scroll, so it never fights the user.
+- `navigate.to(...)` now resolves a string target relatively, the way a browser
+  resolves an `<a href>`: `'edit'` from `/ideas/list` goes to `/ideas/edit`,
+  `'../x'` climbs a segment, a bare `'#section'` stays on the current URL
+  (keeping its search), and a bare `'?page=2'` replaces just the search.
+  Root-relative (`'/x'`) and same-origin absolute targets become root-relative
+  hrefs; cross-origin ones go to `openExternal`; an unparsable target is handed
+  to the adapter as-is.
+- Docs: the intro overview and README gain a "The rest of the framework" section
+  that sizes up everything beyond the five examples, and lead with a tighter
+  pitch ("the scope of Next.js and TanStack Start, the simplicity of tRPC"). The
+  README's `## Root` heading becomes `## Root point`, matching the overview.
 
 ## 0.1.10 — 2026-07-03
 
