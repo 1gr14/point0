@@ -5,6 +5,13 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.10 — 2026-07-03
+
+- Docs fix: the overview's `## Root` heading is renamed to `## Root point`. Its
+  slugified anchor id was `root`, which collided with the docs site's `#root`
+  mount element and broke that page's layout. (Matches full-overview, which
+  already uses "Root point".)
+
 ## 0.1.9 — 2026-07-03
 
 - Docs only: the intro is reshaped — `overview.md` is now the short pitch, the

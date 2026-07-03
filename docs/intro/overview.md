@@ -29,7 +29,7 @@ Below is the root — the shared setup every point inherits — and five example
 built on it. That's enough to feel how Point0 works. Where to go next is at the
 end of the page.
 
-## Root
+## Root point
 
 Every point grows from a root — `root`. You set the shared things once here: the
 loading view, the error view, the transformer, the schema helper, and more.
