@@ -70,7 +70,10 @@ everything same-origin for the browser:
   server** — including the query/mutation POSTs your code fires. Each forwarded
   request is tagged `X-Point0-Forwarded-From-Dev-Client` so the server answers
   it instead of bouncing it back. So there are **no CORS preflights and no
-  [`@point0/cors`](cors) needed** in dev.
+  [`@point0/cors`](cors) needed** in dev. The proxy is byte-transparent, too — a
+  `Content-Encoding` your server sets (a gzip/brotli compression middleware)
+  rides through untouched, so origin compression behaves in dev exactly as in
+  prod.
 - **Hit the server port directly and dev redirects you to the client.** A page
   URL opened on the server's port `302`s to the matching client dev server port
   (same path), so the browser lands on the origin that owns HMR. (Production

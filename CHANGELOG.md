@@ -5,6 +5,14 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- `point0 dev` now forwards origin `Content-Encoding` transparently. A server
+  compression middleware (gzip/brotli) used to serve a 200 + blank page in dev
+  (`ERR_CONTENT_DECODING_FAILED`): the client dev-server proxy's `fetch()`
+  decoded the body but left the `Content-Encoding` header on it, so the browser
+  tried to decode already-decoded bytes. The proxy now forwards the compressed
+  bytes as-is (`decompress: false`) on every hop, so origin compression behaves
+  in dev exactly as in a production build.
+
 ## 0.1.10 — 2026-07-03
 
 - Docs fix: the overview's `## Root` heading is renamed to `## Root point`. Its

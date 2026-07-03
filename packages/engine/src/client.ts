@@ -876,6 +876,9 @@ try {
         method: request.method,
         headers: middlewareRequestHeaders,
         body: request.body,
+        // Byte-transparent proxy: keep a compressed body coherent with its Content-Encoding header (see
+        // fetchRetryingConnectionRefused) — a decoding fetch() would strand the header over decoded bytes.
+        decompress: false,
       })
     }
     return undefined
@@ -894,6 +897,9 @@ try {
         method: request.method,
         headers: middlewareRequestHeaders,
         // body: request.body, do not send body to middleware, becouse vite middle ware do not need, it and we ant it will be not read if we will pass it later out main middleware
+        // Byte-transparent proxy: keep a compressed body coherent with its Content-Encoding header (see
+        // fetchRetryingConnectionRefused) — a decoding fetch() would strand the header over decoded bytes.
+        decompress: false,
       })
       if (middlewareResponse.status === 404) {
         return undefined

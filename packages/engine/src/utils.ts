@@ -801,6 +801,12 @@ const isConnectionRefusedError = (error: unknown): boolean => {
  * logged either way (the server's own logs already pipe to the client). Any other error is real and propagates. If the
  * window elapses with the server still down we resolve to a silent 502 rather than throw, so the caller never surfaces
  * a noisy ConnectionRefused stack.
+ *
+ * Forwarding is byte-transparent: we pass `decompress: false` so Bun does NOT auto-decode a `gzip`/`br` body. A
+ * decoding `fetch()` hands back the decompressed bytes while leaving the origin's `Content-Encoding` (and stale
+ * `Content-Length`) header on the response, so re-emitting that verbatim tells the next hop "still compressed" over
+ * already-decoded bytes → `ERR_CONTENT_DECODING_FAILED` in the browser. Keeping the body compressed keeps it coherent
+ * with its header, so any origin compression middleware renders through the dev proxy exactly as it does in prod.
  */
 export const fetchRetryingConnectionRefused = async (
   input: string,
@@ -817,7 +823,7 @@ export const fetchRetryingConnectionRefused = async (
   const deadline = Date.now() + timeoutMs
   for (;;) {
     try {
-      return await fetch(input, { ...init, body })
+      return await fetch(input, { ...init, body, decompress: false })
     } catch (error) {
       if (!isConnectionRefusedError(error)) {
         throw error
