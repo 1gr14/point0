@@ -34,6 +34,7 @@ import type {
   SpecialLinkOptions,
   SpecialNavigateOptions,
   SpecialRedirectOptions,
+  StalePolicy,
   UseLocationFn,
 } from '@point0/core/navigation'
 import React, { Fragment, useCallback, useMemo, useRef } from 'react'
@@ -491,11 +492,22 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
         prefetchTimeoutRef.current = setTimeout(
           () => {
             prefetchTimeoutRef.current = null
-            void clientPoints.prefetchPage({
-              location: pointWithLocation.location,
-              policy: providedPolh,
-              trigger: 'linkHover',
-            })
+            clientPoints
+              .prefetchPage({
+                location: pointWithLocation.location,
+                policy: providedPolh,
+                trigger: 'linkHover',
+              })
+              .catch((error: unknown) => {
+                // A hover prefetch is a best-effort warm-up — a failure (offline, a stale-deploy chunk 404) must stay
+                // quiet: the real navigation will load the page itself and run the stale-deploy recovery if needed.
+                log({
+                  level: 'debug',
+                  category: ['navigation', 'prefetch'],
+                  message: 'Prefetch on link hover failed',
+                  error,
+                })
+              })
           },
           typeof defaultPolh === 'number' ? defaultPolh : 30,
         )
@@ -1139,6 +1151,7 @@ export const createRouter = <
   appendRoutes,
   openExternal,
   scrollToHash = true,
+  stale,
   _navigate = createNavigate({ routes, navigate: providedNavigate, ErrorClass }),
   _redirect = createRedirectHelper({ routes, navigate: providedNavigate, ErrorClass }),
   _Redirect = createRedirectComponent({ routes, hook }),
@@ -1158,6 +1171,8 @@ export const createRouter = <
   appendRoutes?: React.ReactNode
   openExternal?: OpenExternalFn
   scrollToHash?: ScrollToHashPolicy
+  /** Stale-deploy reaction for client navigations — see {@link StalePolicy}. Default `'navigate'`. */
+  stale?: StalePolicy
   _navigate?: NavigateHelper<TRoutes, AdapterNavigateFnByHook<TBaseLocationHook>, TErrorClass>
   _Redirect?: RedirectComponent<TRoutes, AdapterNavigateFnByHook<TBaseLocationHook>>
   _redirect?: RedirectHelper<TRoutes, AdapterNavigateFnByHook<TBaseLocationHook>>
@@ -1276,6 +1291,7 @@ export const createRouter = <
           ErrorClass={ErrorClass}
           openExternal={openExternal}
           scrollToHash={scrollToHash}
+          stale={stale}
         >
           <ScrollRestoration />
           {children ?? <RouterRoutes Page404={Page404} layout404={layout404} />}
@@ -1352,6 +1368,7 @@ export const createNavigation = <
   appendRoutes,
   openExternal,
   scrollToHash,
+  stale,
 }: {
   addHashToLocation?: boolean
   routes?: TRoutes
@@ -1368,6 +1385,17 @@ export const createNavigation = <
   appendRoutes?: React.ReactNode
   openExternal?: OpenExternalFn
   scrollToHash?: ScrollToHashPolicy
+  /**
+   * Reaction to a stale client build during client navigation (a redeploy changed the chunk hashes while this tab was
+   * open): `'navigate'` (default) recovers with a full document navigation to the same target, `'error'` surfaces a
+   * `POINT0_STALE_CLIENT_BUILD`-coded error through the page's `.error()`, `'off'` disables the reaction, and a custom
+   * function gets full control — see {@link StalePolicy}.
+   *
+   *     createNavigation({ routes, hook, stale: 'error' })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/navigation
+   */
+  stale?: StalePolicy
 } = {}): {
   navigate: NavigateHelper<TRoutes, TAdapterNavigateFn, TErrorClass>
   Link: CreatedLink<TRoutes, TBaseLocationHook>
@@ -1413,6 +1441,7 @@ export const createNavigation = <
       appendRoutes,
       openExternal,
       scrollToHash,
+      stale,
       _navigate: navigate,
       _redirect: redirect,
       _Redirect: Redirect,

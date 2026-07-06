@@ -211,7 +211,10 @@ navigate('docs', undefined, { newTab: true })               // open in a new tab
 
 On a `<Link>`, `prefetchOnHover ?? prefetch` controls hover and
 `prefetchOnNavigate ?? prefetch` controls the click. `before` / `after` are
-fire-and-forget — they aren't awaited.
+fire-and-forget — they aren't awaited. A hover prefetch that fails (offline, a
+[stale deploy](#stale-deploys)) stays quiet — it logs at the `debug` level and
+nothing surfaces; the real navigation loads the page itself and runs its own
+recovery.
 
 ## Active links: `NavLink` and `useNavLink`
 
@@ -585,6 +588,71 @@ await navigate('ideaView', { id }, { prefetch: 'serverAndClientQuery' })
 
 The same policies and their server-side angle appear on the [SSR](ssr) page.
 
+## Stale deploys
+
+A deploy changes the client chunk hashes. A tab loaded before the deploy still
+holds the old URLs — its next client navigation would request a page chunk that
+no longer exists. Point0 detects that and recovers by default: the navigation
+leaves the SPA and lands on the SAME target as a full document load, on the new
+build. The user gets where they clicked; only the SPA state of the old tab is
+gone — exactly what a fresh deploy requires.
+
+Detection is always on and free:
+
+- **Every server response** carries an `X-Point0-Client-Build` header with the
+  build version it serves. The client compares it with its own version (injected
+  into the HTML at build time); a mismatch marks the tab stale, and the next
+  navigation goes as a document navigation without even trying the old chunks.
+- **A page chunk that fails to load mid-navigation** triggers a confirmation
+  fetch of `build-version.json` (never cached, served next to the chunks). A new
+  version confirms the deploy → recover by document navigation. The same version
+  means a genuine network error → it surfaces through the normal error path,
+  exactly as before, coded `POINT0_PAGE_CHUNK_LOAD_FAILED` — your `.error()` can
+  branch on it (e.g. "check your connection").
+
+Reload loops cannot happen: a document navigation is attempted once per new
+build version (sessionStorage-guarded), and only after the version check
+confirmed the build actually changed. If that one attempt still fails (a broken
+deploy), the error surfaces to the page's `.error()` with the code
+`POINT0_STALE_CLIENT_BUILD`.
+
+The reaction is the `stale` option of `createNavigation`:
+
+```tsx
+createNavigation({
+  routes,
+  hook,
+  // 'navigate' (default) — full document navigation to the same target
+  // 'error' — no auto-navigation; .error() gets a POINT0_STALE_CLIENT_BUILD error
+  // 'off' — behave as if the feature didn't exist
+  stale: 'navigate',
+})
+
+// Or take full control — e.g. show your own "new version available" UI.
+// Return 'navigate' / 'error' to hand back to the framework, or nothing to
+// keep ownership (the framework then neither navigates nor commits the
+// failed client navigation — the user stays on the current page):
+createNavigation({
+  routes,
+  hook,
+  stale: async ({ to, error, clientBuildVersion, latestBuildVersion }) => {
+    const reload = await askUserToReload(latestBuildVersion)
+    return reload ? 'navigate' : undefined
+  },
+})
+```
+
+The default `'navigate'` recovery assumes the standard browser location hook —
+the SPA hrefs it produces are real document URLs, so leaving the SPA is a plain
+document navigation (a hash-only difference force-reloads, since a hash change
+alone would not fetch a new document). On a non-path location scheme (a
+hash-based or memory `hook`), SPA hrefs are not document URLs — handle staleness
+yourself with a custom `stale` function there.
+
+In dev all of this is inert — nothing is bundled, so there is no build to be
+stale against. The build/server half of the mechanism (the version file, the
+header, static hosting notes) is on [Deploy](deploy).
+
 ## Reference
 
 ### `createNavigation` options
@@ -604,6 +672,7 @@ All optional except the need for routes (via `routes` or a prior
 | `scrollToHash`                   | `true`                     | Global scroll-to-hash policy                                                         |
 | `addHashToLocation`              | `false`                    | Read `window.location.hash` into `location.hash` (client-only; off → `hash` is `''`) |
 | `openExternal`                   | `defaultOpenExternal`      | Hook for leaving the SPA (see below)                                                 |
+| `stale`                          | `'navigate'`               | Stale-deploy reaction: `'navigate'` / `'error'` / `'off'` / a custom fn (see above)  |
 | `forceRerender`                  | `false`                    | Re-render routes on every location change                                            |
 | `prependRoutes` / `appendRoutes` | —                          | Extra routes injected at the tree root                                               |
 

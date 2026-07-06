@@ -29,6 +29,7 @@ dist/
   client/**.js              # client chunks (lazy page chunks, shared chunks)
   client/_point0/assets/…    # hashed asset bytes, served at /_point0/assets/<hash>
   client/_point0/preload.json     # per-page module preload manifest
+  client/_point0/<scope>/build-version.json  # the build identity ([deploy](deploy) invalidation)
 ```
 
 ## Generate runs first, always

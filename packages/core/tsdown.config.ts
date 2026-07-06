@@ -31,6 +31,7 @@ export default defineConfig({
     'src/server-only.ts',
     'src/navigation.tsx',
     'src/ssr-store.ts',
+    'src/stale.ts',
     'src/super-store.ts',
     'src/types.ts',
     'src/unhead.ts',

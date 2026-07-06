@@ -416,6 +416,17 @@ no refetch.
   page modules from the content-addressed store (unchanged content ⇒ same URL ⇒
   cache hit), vite serves them from its module graph; the browser bundle keeps
   the lazy collection — code splitting is a client concern.
+- **A chunk-load FAILURE during navigation** is classified at the single await
+  site (`ClientPoints._loadPage` throws a `POINT0_PAGE_CHUNK_LOAD_FAILED`-coded
+  error) and lands in `navigateWithTransitions`' catch, where the stale-deploy
+  recovery runs: a confirmed newer build (per `build-version.json`) → full
+  document navigation to the target; an unchanged build → the error commits with
+  the navigation, as before. The full internal map of the mechanism (every
+  moving part with its file, edge cases, tests) is dev/docs/client-chunks.md;
+  the user-facing halves are docs/core/navigation.md ("Stale deploys") +
+  docs/engine/deploy.md ("Stale clients after a deploy"); pinned by
+  `engine/tests/client-build-stale.test.ts` (both bundlers + Playwright tabs
+  surviving a redeploy).
 
 ## The five platform gotchas (React 19.2 Fizz + Bun 1.3.14 + TanStack 5.101)
 

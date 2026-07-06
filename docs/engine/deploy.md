@@ -53,6 +53,7 @@ the bottom of this page lists the deploy-relevant flags.
 dist/
   client/                              # the browser bundle, served at /
     _point0/assets/<hash>.png           # asset bytes (only copy)
+    _point0/<scope>/build-version.json  # the build identity (deploy invalidation)
     **.js
   server/
     index.server.js                    # the production server entry — run this
@@ -273,6 +274,66 @@ The gate is `_point0_env.mode.is.production` (i.e. `NODE_ENV === 'production'`),
 which is one more reason to set `NODE_ENV=production` on deploy: forget it, and
 the public could see server stacks. The public/private split, your error class,
 and `.errorClass(...)` are covered on [Error handling](error-handling).
+
+## Stale clients after a deploy
+
+Every deploy changes the client chunk hashes. A tab loaded before the deploy
+still holds the old URLs — its next client navigation would request a chunk that
+no longer exists on the server. Point0 recovers from this out of the box; this
+section is what the build and the server do, so you can keep it working on any
+hosting. The client-side behavior and its `stale` option live on
+[Navigation](navigation).
+
+The build stamps every client build with a **deterministic version** — a hash of
+its content-hashed file names — and emits it in two places:
+
+- `dist/client/_point0/<scope>/build-version.json` — fetched by a running client
+  (the fetch itself is `cache: 'no-store'`, so no cache config is needed for
+  correctness) to confirm a suspected deploy. It ships inside the client output,
+  so it is served from the same base as the chunks on any host.
+- Into `dist/client/index.html` as `window.__POINT0_CLIENT_BUILD_VERSION__`,
+  plus a small inline guard that reloads the document once (per version) if the
+  ENTRY script itself fails to load — the case where a cached document
+  references a dead entry and the app never boots. The SSR document inherits
+  both scripts, since it is assembled from that html.
+
+The built server then:
+
+- sends `X-Point0-Client-Build: <scope>:<version>` on every response it can
+  attribute to a client scope — the running clients compare it against their own
+  version and switch to full document navigations once a new build appears;
+- answers a request for a missing chunk with an honest JSON 404 — never an html
+  fallback (whose `text/html` MIME type would make the import failure
+  undiagnosable).
+
+None of this needs configuration, and in dev it is all inert — nothing is
+bundled, so there is no build to be stale against.
+
+**Cache headers are yours.** Point0's handlers leave `Cache-Control` unset —
+caching policy belongs to the app. The split that plays best with deploys:
+content-hashed files (`/chunk-<hash>.js`, `/_point0/assets/*`) →
+`public, max-age=31536000, immutable`; html documents → `no-cache`. Set it in a
+[middleware](middleware) on the served response (or at your proxy/CDN); the
+stale handshake itself works without any of it.
+
+**Serving the client from a static host or CDN?** Ship the whole `dist/client`
+including `_point0/`, keep html `no-cache`, and do not SPA-fallback missing
+paths under the chunk directories to `index.html` — a missing chunk must 404.
+The version handshake header is optional there; the chunk-failure path alone
+recovers stale tabs.
+
+**Rolling deploys.** With several instances serving different builds mid-rollout
+(one answers with the new version, another still serves the old chunks), the
+worst case is an extra full-page navigation — the mechanism only ever downgrades
+a client navigation to a document load, it never loops: a document navigation is
+attempted once per new version, and only after the version check confirms the
+build actually changed. Platforms that keep previous deployments' assets
+serveable (CDN in front of hashed files, overlapping asset dirs) avoid even
+that, since old chunks keep resolving — a nice-to-have, not a requirement.
+
+Old tabs also keep calling your API until their next navigation — routine
+backward compatibility for the duration of a deploy window applies, as with any
+SPA.
 
 ## Scaling and migrations
 

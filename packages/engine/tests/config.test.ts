@@ -712,4 +712,21 @@ describe('config', () => {
       expect(parsed.clients[1].ssrOptions.allowedDiscoveryRenders).toBe(7)
     })
   })
+
+  describe('generate scopes', () => {
+    it('flattens the server and every client scope into the general generate tasks', () => {
+      // Regression: the client scopes used to enter the list as one NESTED array element, so a downstream
+      // `task.scopes.includes(scope)` silently dropped every point of a client scope that differs from the
+      // server's (masked in single-scope projects, where the matching server scope stands on its own).
+      const parsed = parseEngineOptions(
+        base({
+          general: { generate: { meta: './src/generated/meta.ts' } },
+          clients: [{ scope: 'web' }, { scope: 'mobile' }],
+        }),
+      )
+      const metaTask = parsed.general.generate.find((task) => task.what === 'meta')
+      expect(metaTask).toBeDefined()
+      expect((metaTask as { scopes: string[] }).scopes).toEqual(['server', 'web', 'mobile'])
+    })
+  })
 })

@@ -2,6 +2,7 @@ import { Route0, Routes } from '@1gr14/route0'
 import type { AnyLocation, AnyRoute, ExactLocation, RoutesPretty } from '@1gr14/route0'
 import type { QueryClient } from '@tanstack/react-query'
 import { _point0_env } from './env.js'
+import { POINT0_ERROR_CODES_MAP } from './error.js'
 import type { ErrorPoint0 } from './error.js'
 import { _ss } from './internals.js'
 import { _defaultLogFn, _ssClientLog } from './logger.js'
@@ -429,7 +430,20 @@ export class ClientPoints<TError extends ErrorPoint0> {
     if (!suitable) {
       return undefined
     }
-    const page: ReadyPoint = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
+    let page: ReadyPoint
+    try {
+      page = typeof suitable.point === 'function' ? await suitable.point() : suitable.point
+    } catch (error) {
+      // A failed dynamic import of the page chunk — the browser error shape varies (404, offline, an HTML fallback
+      // with a non-JS MIME type), so classify it HERE, at the single place the chunk is awaited. The navigation layer
+      // matches on the code to run deploy-invalidation recovery (see stale.ts); everything else re-surfaces as before.
+      const ErrorClass = this.manager.root._Error
+      throw new ErrorClass(`Failed to load the client chunk of page "${suitable.name}"`, {
+        code: POINT0_ERROR_CODES_MAP.PAGE_CHUNK_LOAD_FAILED,
+        cause: error,
+        meta: { point: `${this.manager.scope}.page.${suitable.name}` },
+      })
+    }
 
     // Prefetch the (possibly lazy) page component
     // But if we fetch page, then we also fetch it components, so looks like not needed
@@ -473,12 +487,18 @@ export class ClientPoints<TError extends ErrorPoint0> {
     }
     const newPromise = this._loadPage({ suitable })
     loadPagePromises?.set(hash, newPromise)
-    const result = await newPromise
-    loadPagePromises?.delete(hash)
-    if (!result) {
-      return undefined
+    try {
+      const result = await newPromise
+      if (!result) {
+        return undefined
+      }
+      return { ...result, pageLocation: suitable.pageLocation }
+    } finally {
+      // Drop the in-flight promise on failure too — the map is a concurrent-dedupe cache, not a result cache. A
+      // rejected promise left behind would replay the SAME failure on every future visit of this page (even after the
+      // network recovered or a stale-deploy reload was blocked by the loop guard).
+      loadPagePromises?.delete(hash)
     }
-    return { ...result, pageLocation: suitable.pageLocation }
   }
 
   prefetchPage = async ({

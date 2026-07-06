@@ -35,7 +35,7 @@ import type {
   SuperStoreInternalValuesOrErrors,
 } from '@point0/core'
 import { Effects } from '@point0/core/effects'
-import { RedirectTask } from '@point0/core/navigation'
+import { buildClientBuildHeaderValue, POINT0_CLIENT_BUILD_HEADER, RedirectTask } from '@point0/core/navigation'
 import { Request0 } from '@point0/core/request0'
 import type {
   RequestVariantEndpoint,
@@ -1159,6 +1159,36 @@ export class Fetcher<TError extends ErrorPoint0> {
     }
   }
 
+  /**
+   * Deploy invalidation: a BUILT server (dev has no build to be stale against) sets `X-Point0-Client-Build:
+   * <scope>:<version>` on every response attributable to a client scope. The client fetch layer compares it against its
+   * own version; a mismatch marks the running build stale and the next client navigation becomes a full document
+   * navigation (see `@point0/core`'s stale module). Cache headers are deliberately NOT set here — caching policy
+   * belongs to the app (a middleware / a proxy); the handshake doesn't need it, since the client fetches
+   * `build-version.json` with `cache: 'no-store'`.
+   */
+  private async setClientBuildHeaderEffect({
+    prepareFetchResult,
+  }: {
+    prepareFetchResult: PrepareFetchResult<TError>
+  }): Promise<void> {
+    if (!this.server.itWasBuilt) {
+      return
+    }
+    const scope = prepareFetchResult.scope
+    const client = this.server.clients.find((c) => c.scope === scope)
+    if (!client) {
+      return
+    }
+    const buildVersion = await client.getClientBuildVersion()
+    if (!buildVersion) {
+      return
+    }
+    prepareFetchResult.effects.set.headers({
+      [POINT0_CLIENT_BUILD_HEADER]: buildClientBuildHeaderValue({ scope, buildVersion }),
+    })
+  }
+
   async fetchDetailed({
     request,
     requiredCtx,
@@ -1234,6 +1264,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (result.error?.headers) {
           prepareFetchResult.effects.set.headers(result.error.headers)
         }
+        await this.setClientBuildHeaderEffect({ prepareFetchResult })
         const response = prepareFetchResult.effects.apply(result.response)
         const finalResult = {
           ...result,

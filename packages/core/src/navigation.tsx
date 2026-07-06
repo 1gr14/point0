@@ -14,14 +14,30 @@ import type {
 } from '@1gr14/route0'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ErrorPoint0 } from './error.js'
+import { ErrorPoint0, POINT0_ERROR_CODES_MAP } from './error.js'
 import type { ClassLikeError0 } from './error.js'
 import { getClientPoints, useEffectAsap, useEffectSsr } from './helpers.js'
 import { _ss } from './internals.js'
 import { log } from './logger.js'
 import { findRedirectTaskInQueryClientCache, removeRedirectsFromQueryClientCache } from './query-client.js'
 import type { RedirectTask } from './redirect.js'
-import type { IfAnyThenElse, PrefetchPagePolicy, ScrollConfig, ScrollPositionRestoreType } from './types.js'
+import {
+  documentNavigate,
+  fetchLatestClientBuildVersion,
+  getClientBuildVersion,
+  getStaleClientBuildState,
+  markClientBuildStale,
+  resolveStaleReaction,
+  shouldAttemptStaleReload,
+} from './stale.js'
+import type { StalePolicy } from './stale.js'
+import type {
+  IfAnyThenElse,
+  PointsScope,
+  PrefetchPagePolicy,
+  ScrollConfig,
+  ScrollPositionRestoreType,
+} from './types.js'
 import {
   defaultScrollPositionRestorePolicy,
   generateId,
@@ -362,6 +378,7 @@ export type NavigationHelpersContextValue<
   ErrorClass: ClassLikeError0<ErrorPoint0>
   openExternal: OpenExternalFn
   scrollToHash: ScrollToHashPolicy
+  stale: StalePolicy
 }
 export const NavigationHelpersContext = singletonize(
   'NavigationHelpersContext',
@@ -430,6 +447,7 @@ export type NavigationContextProviderProps<
   ErrorClass?: TErrorClass
   openExternal?: OpenExternalFn
   scrollToHash?: ScrollToHashPolicy
+  stale?: StalePolicy
 }
 
 export function NavigationContextProvider<
@@ -448,6 +466,7 @@ export function NavigationContextProvider<
   ErrorClass = ErrorPoint0 as unknown as TErrorClass,
   openExternal = defaultOpenExternal,
   scrollToHash = true,
+  stale = 'navigate',
 }: NavigationContextProviderProps<TRoutes, TAdapterNavigateFn, TErrorClass>) {
   const [nextLocation, setNextLocation] = useState<AnyLocation | null>(null)
   const [prevLocation, setPrevLocation] = useState<AnyLocation | null>(null)
@@ -485,8 +504,18 @@ export function NavigationContextProvider<
       Redirect,
       openExternal,
       scrollToHash,
+      stale,
     }),
-    [ssrLocation, useAdapterLocation, adapterNavigate, addHashToLocation, ErrorClass, openExternal, scrollToHash],
+    [
+      ssrLocation,
+      useAdapterLocation,
+      adapterNavigate,
+      addHashToLocation,
+      ErrorClass,
+      openExternal,
+      scrollToHash,
+      stale,
+    ],
   )
   useEffectAsap(() => {
     _ss.__POINT0_NAVIGATION_HELPERS__.set(helpersValue)
@@ -1136,6 +1165,66 @@ export const resolveNavigationTarget = (providedTo: string, currentLocation: Any
   return providedTo.startsWith('#') ? currentLocation.pathname + providedTo : providedTo
 }
 
+/**
+ * Deploy invalidation, the reactive branch: a page chunk failed to load during navigation. Only a CONFIRMED newer
+ * deploy triggers recovery — the current `build-version.json` is fetched fresh (or a header mismatch already marked the
+ * tab stale) and compared to the version this tab runs. An unchanged version means a genuine network error: it surfaces
+ * through the normal error path untouched. See {@link StalePolicy} for the reactions.
+ */
+async function handleStalePageChunkLoadFailure({
+  error0,
+  href,
+  scope,
+  stalePolicy,
+  ErrorClass,
+}: {
+  error0: ErrorPoint0
+  href: string
+  scope: PointsScope
+  stalePolicy: StalePolicy
+  ErrorClass: ClassLikeError0<ErrorPoint0>
+}): Promise<{ action: 'proceed'; error: ErrorPoint0 } | { action: 'navigated' } | { action: 'handled' }> {
+  if (
+    typeof window === 'undefined' ||
+    stalePolicy === 'off' ||
+    error0.code !== POINT0_ERROR_CODES_MAP.PAGE_CHUNK_LOAD_FAILED
+  ) {
+    return { action: 'proceed', error: error0 }
+  }
+  const clientBuildVersion = getClientBuildVersion()
+  const latestBuildVersion =
+    getStaleClientBuildState()?.latestBuildVersion ?? (await fetchLatestClientBuildVersion({ scope }))
+  const confirmedStale = Boolean(clientBuildVersion && latestBuildVersion && clientBuildVersion !== latestBuildVersion)
+  if (!confirmedStale || !latestBuildVersion) {
+    return { action: 'proceed', error: error0 }
+  }
+  markClientBuildStale({ latestBuildVersion })
+  const reaction = await resolveStaleReaction({
+    policy: stalePolicy,
+    ctx: { to: href, error: error0, clientBuildVersion, latestBuildVersion },
+  })
+  if (reaction === 'handled') {
+    return { action: 'handled' }
+  }
+  if (reaction === 'navigate' && shouldAttemptStaleReload({ latestBuildVersion })) {
+    documentNavigate(href)
+    return { action: 'navigated' }
+  }
+  // 'error' — or a 'navigate' blocked by the reload-once guard: this new build already got its document load and
+  // still cannot serve the chunk (a broken deploy) — surface instead of looping.
+  return {
+    action: 'proceed',
+    error: new ErrorClass(
+      `A newer client build "${latestBuildVersion}" was deployed while this tab runs "${clientBuildVersion ?? 'unknown'}" — the page chunk it requested no longer exists`,
+      {
+        code: POINT0_ERROR_CODES_MAP.STALE_CLIENT_BUILD,
+        cause: error0,
+        meta: { clientBuildVersion, latestBuildVersion },
+      },
+    ),
+  }
+}
+
 export async function navigateWithTransitions<
   TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavigateFn,
   TErrorClass extends ClassLikeError0<ErrorPoint0> = ClassLikeError0<ErrorPoint0>,
@@ -1178,6 +1267,36 @@ export async function navigateWithTransitions<
     location.searchString === prevLocation.searchString
   ) {
     return { location, error: undefined }
+  }
+  // Deploy invalidation, the proactive branch: a newer client build was already noticed (via the
+  // X-Point0-Client-Build response header — see stale.ts), so don't even try to client-navigate with
+  // the old chunks — leave with a full document navigation to the SAME target. `'error'` deliberately
+  // proceeds: the old chunks may still load fine (or are already loaded), and if they don't, the
+  // reactive branch in the catch below classifies the failure.
+  const stalePolicy = helpers.stale
+  const staleState = typeof window === 'undefined' ? undefined : getStaleClientBuildState()
+  if (staleState && stalePolicy !== 'off' && stalePolicy !== 'error') {
+    const staleReaction = await resolveStaleReaction({
+      policy: stalePolicy,
+      ctx: {
+        to: location.href ?? to,
+        error: undefined,
+        clientBuildVersion: getClientBuildVersion(),
+        latestBuildVersion: staleState.latestBuildVersion,
+      },
+    })
+    if (staleReaction === 'navigate') {
+      // Same reload-once-per-version guard as the failure path: if the one document load for this version already
+      // happened and the mark is back (a client whose build can never match the server — e.g. shipped inside a native
+      // app package — or a flapping rolling deploy), keep client-navigating normally; the loaded chunks still work.
+      if (shouldAttemptStaleReload({ latestBuildVersion: staleState.latestBuildVersion })) {
+        documentNavigate(location.href ?? to)
+        return { location, error: undefined }
+      }
+    } else if (staleReaction === 'handled') {
+      return { location, error: undefined }
+    }
+    // 'error' (or a guard-blocked 'navigate'): fall through to the normal client navigation.
   }
   // Resolve scrollToHash for this navigation. The cross-page case is handled by
   // the central scroll manager (correct timing — after the new page renders) via
@@ -1279,7 +1398,25 @@ export async function navigateWithTransitions<
     if (navigateId !== _ss.__POINT0_CURRENT_NAVIGATE_ID__.get()) {
       return { location, error: new ErrorClass('Another navigate has been started') as InstanceType<TErrorClass> }
     }
-    const error0 = ErrorClass.from(error) as InstanceType<TErrorClass>
+    const staleResult = await handleStalePageChunkLoadFailure({
+      error0: ErrorClass.from(error),
+      href: location.href ?? to,
+      scope: clientPoints.manager.scope,
+      stalePolicy,
+      ErrorClass,
+    })
+    if (staleResult.action === 'navigated') {
+      // The document navigation to the target is underway — nothing to commit client-side.
+      return { location, error: undefined }
+    }
+    if (staleResult.action === 'handled') {
+      // A custom stale handler took ownership: no document navigation, no commit of the failed
+      // client navigation — the user stays where they are.
+      helpers.setTransitionStatus('idle')
+      helpers.setNextLocation(null)
+      return { location, error: ErrorClass.from(error) as InstanceType<TErrorClass> }
+    }
+    const error0 = staleResult.error as InstanceType<TErrorClass>
     helpers.setTransitionError(error0)
     helpers.setTransitionStatus('transitioning')
     await commitNavigate()
@@ -1291,3 +1428,4 @@ export async function navigateWithTransitions<
 }
 
 export * from './redirect.js'
+export * from './stale.js'

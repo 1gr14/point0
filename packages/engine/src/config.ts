@@ -830,9 +830,12 @@ const parseEngineGeneralOptions = ({
                   : {}),
             }
   const providedGenerate = generalOptions.generate
+  // Spread the client scopes into the flat list — as a nested array element they would survive the Set as one opaque
+  // entry, and every downstream `task.scopes.includes(scope)` check would silently drop the points of any client scope
+  // that differs from the server's (masked in single-scope projects, where the server scope matches on its own).
   const scopes = [
-    ...new Set([serverOptions.scope, clientsOptions?.map((client) => client.scope)].filter(Boolean)),
-  ] as string[]
+    ...new Set([serverOptions.scope, ...(clientsOptions?.map((client) => client.scope) ?? [])].filter(Boolean)),
+  ]
   const generate = !providedGenerate
     ? []
     : Array.isArray(providedGenerate)

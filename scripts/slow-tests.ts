@@ -17,6 +17,8 @@ export const SLOW_TESTS = [
   'engine/tests/dev-source-maps.test.ts',
   'engine/tests/prefetch-page.test.ts',
   'engine/tests/scroll-restoration.test.ts',
+  // deploy invalidation: builds the project twice (the "redeploy") + Playwright tabs that outlive it
+  'engine/tests/client-build-stale.test.ts',
   // only the e2e half of the suspend coverage (dev server + Playwright + vite smoke) is slow;
   // the in-process half (suspend.fast.test.tsx) runs with the fast set. The fast/slow suffix
   // pair is a deliberate one-off: one feature split by speed — everywhere else a file is a

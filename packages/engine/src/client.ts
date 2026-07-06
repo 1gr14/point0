@@ -36,6 +36,11 @@ import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './dev-s
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import {
+  computeClientBuildVersionFromOutputs,
+  getClientBuildVersionPathSegments,
+  type ClientBuildVersionFile,
+} from './client-build-version.js'
+import {
   buildPreloadManifest,
   chunkGraphFromBunMetafile,
   chunkGraphFromRollup,
@@ -43,11 +48,17 @@ import {
   PRELOAD_MANIFEST_PATH_SEGMENTS,
   resolvePreloadsForPoint,
   shouldServeModulePreload,
+  type ChunkGraph,
   type PagePreloadSources,
   type PreloadManifest,
   type RollupChunkLike,
 } from './preload-manifest.js'
-import { addEnvConstsToDocumentHtml, addEnvToDocumentHtml, renderAppAsReadableStream } from './render.js'
+import {
+  addClientBuildToDocumentHtml,
+  addEnvConstsToDocumentHtml,
+  addEnvToDocumentHtml,
+  renderAppAsReadableStream,
+} from './render.js'
 import { type ServerHotStore } from './server-hot-store.js'
 import { chainBundledSourceMaps } from './sourcemap-chain.js'
 import type { EngineServer } from './server.js'
@@ -1158,13 +1169,17 @@ try {
         distOutdir: buildPaths.outdir,
         buildOutput,
       })
-      await this.writePreloadManifest({
+      const graph = chunkGraphFromBunMetafile({
+        metafile: buildOutput.metafile,
         outdir: buildPaths.outdir,
-        graph: chunkGraphFromBunMetafile({
-          metafile: buildOutput.metafile,
-          outdir: buildPaths.outdir,
-          indexHtmlKey: nodePath.relative(process.cwd(), buildPaths.indexHtml).replaceAll('\\', '/'),
-        }),
+        indexHtmlKey: nodePath.relative(process.cwd(), buildPaths.indexHtml).replaceAll('\\', '/'),
+      })
+      await this.writePreloadManifest({ outdir: buildPaths.outdir, graph })
+      await this.writeClientBuildVersionAndInjectIntoDistIndexHtml({
+        indexHtml: buildPaths.indexHtml,
+        outdir: buildPaths.outdir,
+        outputFiles: buildOutput.outputs.map((output) => output.path),
+        graph,
       })
       // Bun's bundler does not chain the inline maps our compiler plugin emits (Bun #6173), so the emitted maps point at
       // our transformed intermediate, not the original source. Re-chain them (any NODE_ENV — if we built with our
@@ -1324,7 +1339,14 @@ try {
           }
         }
       }
-      await this.writePreloadManifest({ outdir: buildPaths.outdir, graph: chunkGraphFromRollup({ chunks: allChunks }) })
+      const graph = chunkGraphFromRollup({ chunks: allChunks })
+      await this.writePreloadManifest({ outdir: buildPaths.outdir, graph })
+      await this.writeClientBuildVersionAndInjectIntoDistIndexHtml({
+        indexHtml: buildPaths.indexHtml,
+        outdir: buildPaths.outdir,
+        outputFiles,
+        graph,
+      })
       return outputFiles
     }
   }
@@ -1350,6 +1372,89 @@ try {
     if (distIndexHtmlWithConsts !== distIndexHtmlContent) {
       await Bun.write(indexHtmlDistPath, distIndexHtmlWithConsts)
     }
+  }
+
+  /**
+   * Deploy-invalidation build step, shared by the Bun and Vite builds: derive this build's version from the emitted
+   * files, write it to `<outdir>/_point0/<scope>/build-version.json` (it ships with the chunks — see `@point0/core`'s
+   * stale module for the client half), and stamp the dist index.html with the version + entry-reload guard scripts. The
+   * dist html is the single carrier: the static SPA serves it directly and the SSR document is assembled from it, so
+   * one build-time injection covers every serving mode. Like the preload manifest, this is a resilience feature — never
+   * fail an otherwise-good build over it.
+   */
+  private async writeClientBuildVersionAndInjectIntoDistIndexHtml({
+    indexHtml,
+    outdir,
+    outputFiles,
+    graph,
+  }: {
+    indexHtml: string
+    outdir: string
+    outputFiles: string[]
+    graph: ChunkGraph
+  }): Promise<void> {
+    try {
+      const buildVersion = computeClientBuildVersionFromOutputs({ outputFiles, outdir })
+      await Bun.write(
+        nodePath.join(outdir, ...getClientBuildVersionPathSegments(this.scope)),
+        JSON.stringify({ buildVersion } satisfies ClientBuildVersionFile, null, 2),
+      )
+      const indexHtmlDistPath = nodePath.join(outdir, nodePath.basename(indexHtml))
+      if (await Bun.file(indexHtmlDistPath).exists()) {
+        const distIndexHtmlContent = await Bun.file(indexHtmlDistPath).text()
+        const distIndexHtmlWithBuild = addClientBuildToDocumentHtml({
+          html: distIndexHtmlContent,
+          buildVersion,
+          entryPublicPath: graph.entryFile,
+        })
+        if (distIndexHtmlWithBuild !== distIndexHtmlContent) {
+          await Bun.write(indexHtmlDistPath, distIndexHtmlWithBuild)
+        }
+      }
+    } catch (error) {
+      this.log({
+        level: 'warn',
+        category: ['client', 'build'],
+        message: `Failed to write the client build version for client "${this.scope}" (serving continues without deploy invalidation)`,
+        error,
+      })
+    }
+  }
+
+  /**
+   * Cached read of the build-time client build version. `undefined` = not yet read, `null` = absent (dev / pre-feature
+   * build).
+   */
+  private _clientBuildVersion: string | null | undefined = undefined
+
+  /**
+   * Lazily read the client build version emitted at build time. PRODUCTION-BUILD-ONLY (same gate as the preload
+   * manifest): in dev nothing is bundled and a stale `dist` version from an earlier `point0 build` must never leak into
+   * dev serving. Cached; `null` when missing.
+   */
+  async getClientBuildVersion(): Promise<string | null> {
+    if (!_point0_env.build.was) {
+      return null
+    }
+    if (this._clientBuildVersion !== undefined) {
+      return this._clientBuildVersion
+    }
+    this._clientBuildVersion = null
+    try {
+      const outdir = this.getBuildPaths().outdir
+      if (outdir) {
+        const file = Bun.file(nodePath.join(outdir, ...getClientBuildVersionPathSegments(this.scope)))
+        if (await file.exists()) {
+          const parsed = JSON.parse(await file.text()) as ClientBuildVersionFile
+          if (typeof parsed.buildVersion === 'string' && parsed.buildVersion.length > 0) {
+            this._clientBuildVersion = parsed.buildVersion
+          }
+        }
+      }
+    } catch {
+      this._clientBuildVersion = null
+    }
+    return this._clientBuildVersion
   }
 
   async cleanClient(): Promise<boolean> {

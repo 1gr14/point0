@@ -38,6 +38,29 @@ import type {
 //   return !!Bun.main && engineCliEntryPaths.has(Bun.main)
 // }
 
+/**
+ * Normalize an emitted-output path (`./chunk-x.js`, `dist/client/chunk-x.js`, or absolute) to a client public path
+ * (`/chunk-x.js`) — the URL form the served client build uses. Shared by the preload manifest and the client build
+ * version, which both translate bundler output paths into public ones.
+ */
+export const toPublicPath = (outputPath: string, outdir: string): string => {
+  // Public paths are posix throughout: bun metafile keys use `/`, but `nodePath.relative`/`process.cwd()` emit `\` on
+  // Windows, so a native outdir prefix would never strip from a posix key.
+  let rel = toPosixPath(outputPath)
+  if (nodePath.isAbsolute(outputPath)) {
+    rel = toPosixPath(nodePath.relative(outdir, outputPath))
+  } else {
+    // Bun metafile keys are cwd-relative and usually start with the outdir (e.g. `dist/client/chunk-x.js`).
+    const outdirRel = toPosixPath(nodePath.relative(process.cwd(), outdir))
+    if (outdirRel && rel.startsWith(`${outdirRel}/`)) {
+      rel = rel.slice(outdirRel.length + 1)
+    } else if (rel.startsWith('./')) {
+      rel = rel.slice(2)
+    }
+  }
+  return rel.startsWith('/') ? rel : `/${rel}`
+}
+
 export const stripTerminalClearSequences = (text: string): string =>
   text
     .replace(/\x1bc/g, '')

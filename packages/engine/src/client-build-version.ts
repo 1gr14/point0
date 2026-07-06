@@ -1,0 +1,71 @@
+import type { PointsScope } from '@point0/core'
+import { toPublicPath } from './utils.js'
+
+/**
+ * Client build version — the build-side half of point0's deploy invalidation (the client-side half lives in
+ * `@point0/core`'s stale module).
+ *
+ * Each client build gets a deterministic version and emits it to `<outdir>/_point0/<scope>/build-version.json`. Because
+ * the file is emitted INTO the client build output, it travels with the chunks wherever they are hosted (the point0
+ * server, a static host, a CDN) and is always fetchable from the same base the chunks load from. Two consumers:
+ *
+ * - The CLIENT fetches it (never cached — the fetch itself is `cache: 'no-store'`) when a page chunk fails to load, to
+ *   confirm whether a newer build was deployed.
+ * - The SERVER reads it at serve time to echo the version on every response (the `X-Point0-Client-Build` handshake).
+ */
+export type ClientBuildVersionFile = {
+  /**
+   * Deterministic identity of this client build: a hash of the sorted public paths of every emitted content-hashed
+   * file. Chunk names already carry content hashes, so any code change changes the path set and therefore the version;
+   * an identical rebuild keeps it. Deliberately derived from NAMES, not file contents: names are what an old client
+   * requests, and a bundler that renames chunks without a code change only causes a harmless extra "new version" signal
+   * — never a missed one.
+   */
+  buildVersion: string
+}
+
+/** Outdir-relative path segments of a client's build version file (posix-joined they form its public URL path). */
+export const getClientBuildVersionPathSegments = (scope: PointsScope): string[] => [
+  '_point0',
+  scope,
+  'build-version.json',
+]
+
+/**
+ * Hash a set of public paths into a build version. Order-insensitive (sorted, deduped) so bundler emission order never
+ * shakes the version; 16 hex chars of SHA-256 — plenty against accidental collision, short enough for a header.
+ */
+export const computeClientBuildVersion = (publicPaths: string[]): string => {
+  const normalized = [...new Set(publicPaths)].sort()
+  const hasher = new Bun.CryptoHasher('sha256')
+  hasher.update(normalized.join('\n'))
+  return hasher.digest('hex').slice(0, 16)
+}
+
+/**
+ * Whether an emitted file identifies the build — i.e. carries a content hash in its name. Excluded: `.html` (stable
+ * names, mutable content), sourcemaps (never navigated to; excluding them keeps the version stable across
+ * sourcemap-mode changes), and the `_point0/` metadata files (`preload.json`, the version file itself — stable names,
+ * mutable content). `_point0/assets/*` stays IN: those are the compiler's content-addressed asset bytes.
+ */
+const identifiesBuild = (publicPath: string): boolean => {
+  if (publicPath.endsWith('.html') || publicPath.endsWith('.map')) {
+    return false
+  }
+  if (publicPath.startsWith('/_point0/') && !publicPath.startsWith('/_point0/assets/')) {
+    return false
+  }
+  return true
+}
+
+/**
+ * Compute the build version from the emitted output files of a client build (Bun.build outputs or Rollup fileNames —
+ * absolute, cwd-relative, or outdir-relative; normalized to public paths).
+ */
+export const computeClientBuildVersionFromOutputs = ({
+  outputFiles,
+  outdir,
+}: {
+  outputFiles: string[]
+  outdir: string
+}): string => computeClientBuildVersion(outputFiles.map((file) => toPublicPath(file, outdir)).filter(identifiesBuild))

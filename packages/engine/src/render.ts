@@ -287,6 +287,62 @@ window.__POINT0_ENV_EXTEND_FN__(__POINT0_ENV_CONSTS__);`,
 // window.import.meta = window.import.meta || {};
 // window.import.meta.env = { ...(window.import.meta.env || {}), ...values };
 
+/**
+ * Inject the client build identity into a document: `window.__POINT0_CLIENT_BUILD_VERSION__` (read by `@point0/core`'s
+ * stale module to compare against the server's `X-Point0-Client-Build` header and the `build-version.json` handshake)
+ * plus, when the entry chunk is known, a reload-once guard for the initial load.
+ *
+ * Injected ONLY into the BUILT `dist` index.html (see `EngineClient.buildByBun` / `buildByVite`) — and from there it
+ * reaches every serving mode for free: the static SPA serves that html directly, and the SSR document is assembled from
+ * it (`overrideDocumentHtml` preserves existing scripts). Dev never gets it — nothing is bundled, so there is no build
+ * to be stale against.
+ *
+ * The guard covers the case the navigation-level stale handling cannot: a cached/stale document whose ENTRY script is
+ * gone after a redeploy — the app never boots, so no navigation code runs. A capture-phase `error` listener (resource
+ * load errors don't bubble, but they do capture) watches for THAT entry failing to load and reloads the document once
+ * per build version (sessionStorage-guarded; when storage is unavailable it does nothing rather than risk a reload
+ * loop). Third-party scripts failing never trigger it — only the exact entry path.
+ */
+export function addClientBuildToDocumentHtml({
+  html,
+  buildVersion,
+  entryPublicPath,
+}: {
+  html: string
+  buildVersion: string
+  entryPublicPath: string | null
+}): string {
+  let result = upsertHeadScript({
+    id: '__POINT0_CLIENT_BUILD_VERSION__',
+    html,
+    scriptBody: `window.__POINT0_CLIENT_BUILD_VERSION__ = ${JSON.stringify(buildVersion)};`,
+  })
+  if (entryPublicPath) {
+    result = upsertHeadScript({
+      id: '__POINT0_STALE_ENTRY_GUARD__',
+      html: result,
+      afterScriptId: '__POINT0_CLIENT_BUILD_VERSION__',
+      scriptBody: `(function () {
+  var entry = ${JSON.stringify(entryPublicPath)};
+  var key = '__POINT0_STALE_ENTRY_RELOAD__:' + ${JSON.stringify(buildVersion)};
+  window.addEventListener('error', function (event) {
+    var el = event.target;
+    if (!el || el === window || !el.tagName || el.tagName !== 'SCRIPT' || !el.src) return;
+    var pathname;
+    try { pathname = new URL(el.src, location.href).pathname; } catch (e) { return; }
+    if (pathname !== entry) return;
+    try {
+      if (sessionStorage.getItem(key) !== null) return;
+      sessionStorage.setItem(key, '1');
+    } catch (e) { return; }
+    location.reload();
+  }, true);
+})();`,
+    })
+  }
+  return result
+}
+
 export async function overrideDocumentHtml<TContent extends string | undefined = undefined>({
   originalIndexHtml,
   content,

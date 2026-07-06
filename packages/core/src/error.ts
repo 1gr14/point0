@@ -229,6 +229,9 @@ export const POINT0_ERROR_CODES = [
   'POINT0_ROUTE_NOT_SET',
   // queries (@point0/core)
   'POINT0_POINT_NO_LOADER',
+  // client chunks / deploy invalidation (@point0/core)
+  'POINT0_PAGE_CHUNK_LOAD_FAILED',
+  'POINT0_STALE_CLIENT_BUILD',
   // fetch / execute (@point0/engine)
   'POINT0_POINT_NOT_FOUND',
   'POINT0_POINT_NO_SERVER_LOADER',

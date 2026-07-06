@@ -58,6 +58,7 @@ import type { HeadObject } from './head.js'
 import { _splitHead } from './head.js'
 import { ClientOnly, getEffectsOrUndefined, getFetch, setStatus } from './helpers.js'
 import { _getFakeClient, _ss } from './internals.js'
+import { noticeClientBuildHeaderFromResponse } from './stale.js'
 import { log, type LogFn } from './logger.js'
 import type {
   AppendProps,
@@ -8953,6 +8954,16 @@ export class Point0<
       this._emit('pointFetchServerStart', _eventData, meta)
       res = await fetchFn(fetchRequest)
       // this.modifyEffectsCookiesAfterServerFetchIfRequired(res)
+
+      // Deploy invalidation: every server response echoes the client build version it serves
+      // (X-Point0-Client-Build). A mismatch against the version this tab runs marks the build stale — the next
+      // client navigation becomes a full document navigation (see stale.ts). Client-only and free when absent.
+      if (_point0_env.side.is.client) {
+        noticeClientBuildHeaderFromResponse({
+          response: res,
+          scope: _ss.__POINT0_CLIENT_POINTS__.getOrUndefined()?.manager.scope,
+        })
+      }
 
       // Bubble up non-default status codes from nested server point fetches
       // to the current outer request (e.g. SSR page render request). Skipped once the outer
