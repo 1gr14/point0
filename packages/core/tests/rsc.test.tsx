@@ -135,12 +135,9 @@ describe('rsc normalize', () => {
 
   it('keeps component points live as references and normalizes their props', async () => {
     const root = Point0.lets('root', 'root').root()
-    const Cta = root.lets('component', 'cta').component(() => <div />)
+    const Cta = root.lets<{ slot?: React.ReactNode }>('component', 'cta').component(() => <div />)
     const Inner = () => <b>inner</b>
-    const out = (await normalizeRscOutput(
-      React.createElement(Cta.X as React.ComponentType<any>, { slot: <Inner /> }),
-      opts,
-    )) as React.ReactElement
+    const out = (await normalizeRscOutput(<Cta slot={<Inner />} />, opts)) as React.ReactElement
     expect(out.type).toBe(Cta)
     const slot = (out.props as { slot: React.ReactElement }).slot
     expect(slot.type).toBe('b') // nested element in props unfolded like data

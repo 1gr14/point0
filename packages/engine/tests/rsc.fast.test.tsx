@@ -339,7 +339,7 @@ describe('rsc', () => {
     const page = root
       .lets('page', 'home', '/')
       .rscDepth(1)
-      .loader(async () => ({ stats: (<Stats.X input={{ id: 'zxc' }} />) as React.ReactElement }))
+      .loader(async () => ({ stats: <Stats input={{ id: 'zxc' }} /> }))
       .page(({ data }) => <div id="page">{data.stats}</div>)
 
     const { render, fetchesTale } = await createTestThings({ ssr: true, points: [root, Stats, page] })
@@ -361,6 +361,125 @@ describe('rsc', () => {
       component.rscStatsWithLoader (client) < {"id":"zxc"}
       "
     `)
+  })
+
+  it('referenced component point with a loader over SSR: its query resolves server-side and ships dehydrated', async () => {
+    const root = createRoot()
+    const Stats = root
+      .lets('component', 'rscStatsSsr')
+      .sharedInput<{ id: string }>()
+      .loader(({ input }) => ({ x: input.id }))
+      .component(({ data }) => <div id="stats">x={data.x}</div>)
+    const page = root
+      .lets('page', 'home', '/')
+      .rscDepth(1)
+      .loader(async () => ({ stats: <Stats input={{ id: 'zxc' }} /> }))
+      .page(({ data }) => <div id="page">{data.stats}</div>)
+
+    const { fetchSsr } = await createTestThings({ ssr: true, points: [root, Stats, page] })
+    const ssr = await (
+      fetchSsr as unknown as (point: unknown) => Promise<{
+        preview: string
+        queryClientQueriesPreview: string
+      }>
+    )(page)
+    expect(ssr.preview).toMatchInlineSnapshot(`
+      "
+      #page:
+        #stats: x=zxc
+      "
+    `)
+    expect(ssr.queryClientQueriesPreview).toMatchInlineSnapshot(`
+      "point0|root|page|home|server|finite||data|{}
+      {"stats":{"__p0e":{"p":{"input":{"id":"zxc"}},"t":{"c":"rscStatsSsr"}}}}
+      point0|root|component|rscStatsSsr|server|finite||data|{"id":"zxc"}
+      {"x":"zxc"}
+      "
+    `)
+  })
+
+  it('children travel into a component point — slot-style, including another island', async () => {
+    const root = createRoot()
+    const Inner = root.lets('component', 'rscSlotInner').component(() => <i id="inner-island">i!</i>)
+    const Card = root
+      .lets<{ title?: React.ReactNode; children?: React.ReactNode }>('component', 'rscSlotCard')
+      .component(({ props }) => (
+        <div id="card">
+          <div id="card-title">{props.title}</div>
+          <div id="card-body">{props.children}</div>
+        </div>
+      ))
+    const page = root
+      .lets('page', 'home', '/')
+      .rscDepth(1)
+      .loader(async () => ({
+        card: (
+          <Card title={<b id="title-el">T!</b>}>
+            <span id="kid">kid</span>
+            <Inner />
+          </Card>
+        ),
+      }))
+      .page(({ data }) => <div id="page">{data.card}</div>)
+
+    const { render, fetchPreview } = await createTestThings({ ssr: true, points: [root, Inner, Card, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#inner-island')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #loading: ...
+
+          #page:
+            #card:
+              #card-title:
+                #title-el: T!
+              #card-body:
+                #kid: kid
+                #inner-island: i!
+        "
+      `)
+    })
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      #page:
+        #card:
+          #card-title:
+            #title-el: T!
+          #card-body:
+            #kid: kid
+            #inner-island: i!
+      "
+    `)
+  })
+
+  it('server component using hooks fails with the friendly error', async () => {
+    const Counter = () => {
+      const [count] = React.useState(0)
+      return <div id="counter">{count}</div>
+    }
+    const root = createRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(async () => <Counter />)
+      .page(({ data }) => <div id="page">{data}</div>)
+
+    const { render } = await createTestThings({ ssr: true, points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#error')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #loading: ...
+
+          #error: RSC: server component &lt;Counter&gt; threw while rendering on the server: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+          1. You might have mismatching versions of React and the renderer (such as React DOM)
+          2. You might be breaking the Rules of Hooks
+          3. You might have more than one copy of React in the same app
+          See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem.. Server components run as plain function calls — hooks and context are not available; if it needs them, make it a component point so it renders on the client.
+        "
+      `)
+    })
   })
 
   it('query with elements prefetched in onPrefetchPage lands in the SSR html and the dehydrated state', async () => {
@@ -559,14 +678,12 @@ describe('rsc', () => {
       .queryOptions({ retry: false, refetchOnMount: false, refetchOnWindowFocus: false, refetchOnReconnect: false })
       .root()
     const Cta = root
-      .lets('component', 'rscCtaDated')
-      .component(({ props }) => <div id="cta-d">year={(props as unknown as { at: Date }).at.getFullYear()}</div>)
+      .lets<{ at: Date }>('component', 'rscCtaDated')
+      .component(({ props }) => <div id="cta-d">year={props.at.getFullYear()}</div>)
     const page = root
       .lets('page', 'home', '/')
       .rscDepth(1)
-      .loader(async () => ({
-        cta: React.createElement(Cta.X as React.ComponentType<{ at: Date }>, { at: new Date('2026-07-06T00:00:00Z') }),
-      }))
+      .loader(async () => ({ cta: <Cta at={new Date('2026-07-06T00:00:00Z')} /> }))
       .page(({ data }) => <div id="page">{data.cta}</div>)
 
     const { render } = await createTestThings({ ssr: true, points: [root, Cta, page] })

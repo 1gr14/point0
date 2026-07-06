@@ -24,7 +24,8 @@ export const SLOW_TESTS = [
   // fast/slow suffix pair marks a feature split by speed — everywhere else a file is a distinct
   // feature and carries no suffix.
   'engine/tests/suspend.slow.test.tsx',
-  // RSC browser e2e (dev server + Playwright) + production-build strip/chunk assertions
+  // RSC browser e2e (dev server + Playwright) + production-build strip/chunk assertions — the
+  // same shared assertions run on both bundlers (bun and vite dev/build describes)
   'engine/tests/rsc.slow.test.tsx',
   'engine/tests/two-clients.test.ts',
   'engine/tests/publicdir.test.ts',
