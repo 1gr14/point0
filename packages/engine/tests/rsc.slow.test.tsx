@@ -247,7 +247,7 @@ const expectRscStripGuarantees = async (tp: TestProjectOneClient) => {
 
 // A component point in its own file becomes its own chunk, listed in the preload manifest.
 const expectRscComponentChunkManifest = async (tp: TestProjectOneClient) => {
-  const manifest = (await Bun.file(tp.resolve('dist/client/_point0/preload.json')).json()) as {
+  const manifest = (await Bun.file(tp.resolve('dist/client/_point0/root/preload-manifest.json')).json()) as {
     entry: string | null
     byComponent?: Record<string, string[]>
   }

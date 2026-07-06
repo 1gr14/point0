@@ -98,10 +98,10 @@ function envScriptElements({ envVars, envConsts }: { envVars?: EnvValues; envCon
  * plus, when the entry chunk is known, a reload-once guard for the initial load.
  *
  * Injected ONLY into the BUILT `dist` index.html (see `EngineClient.buildByBun` / `buildByVite`) — and from there it
- * reaches every serving mode for free: the static SPA serves that html directly, and the SSR document is assembled
- * from it (the parsed template's head scripts render verbatim, see ./document.ts). Dev never gets it — nothing is
- * bundled, so there is no build to be stale against. Like the env-consts bake, this is a FILE edit done with
- * HTMLRewriter (upsert: any existing copies of the two scripts are dropped, fresh ones are prepended to `<head>`).
+ * reaches every serving mode for free: the static SPA serves that html directly, and the SSR document is assembled from
+ * it (the parsed template's head scripts render verbatim, see ./document.ts). Dev never gets it — nothing is bundled,
+ * so there is no build to be stale against. Like the env-consts bake, this is a FILE edit done with HTMLRewriter
+ * (upsert: any existing copies of the two scripts are dropped, fresh ones are prepended to `<head>`).
  *
  * The guard covers the case the navigation-level stale handling cannot: a cached/stale document whose ENTRY script is
  * gone after a redeploy — the app never boots, so no navigation code runs. A capture-phase `error` listener (resource
@@ -263,8 +263,13 @@ export async function renderAppAsReadableStream({
     // possible for content the head has already shipped past). Prod-build-only by the resolver's own gating.
     const rscComponentNames = collectRscComponentNames(superstore.dehydrate())
     const rscModulePreloads =
-      rscComponentNames.length && resolveRscComponentPreloads ? await resolveRscComponentPreloads(rscComponentNames) : []
-    const allModulePreloads = [...(modulePreloads ?? []), ...rscModulePreloads.filter((f) => !modulePreloads?.includes(f))]
+      rscComponentNames.length && resolveRscComponentPreloads
+        ? await resolveRscComponentPreloads(rscComponentNames)
+        : []
+    const allModulePreloads = [
+      ...(modulePreloads ?? []),
+      ...rscModulePreloads.filter((f) => !modulePreloads?.includes(f)),
+    ]
 
     const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
 

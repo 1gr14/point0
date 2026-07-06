@@ -12,6 +12,12 @@ import { resolveTempDirPath } from './utils.js'
  * client agree (no hydration mismatch) and it resolves from any route. The same plugin runs everywhere, so the URL is
  * computed by ONE source of truth (our own content hash) rather than by two builds coincidentally agreeing.
  *
+ * The URL is deliberately NOT namespaced per client: the served name is a content hash (`<sha256(bytes)>.<ext>`), so
+ * when several clients' publicdirs merge into one static root, identical files collapse to the same path and different
+ * files never collide — content addressing already makes `_point0/assets/` merge-safe. (The stable-named per-client
+ * metadata — `_point0/<scope>/preload-manifest.json`, `_point0/<scope>/build-version.json` — IS scoped, because those
+ * names would collide.)
+ *
  * This module is the single home for all asset logic: the constants the engine shares (URL prefix, dev cache dir, the
  * served-name guard), the configurable plugin factory, the `?text`/`?raw`/`?react` modes, and the ambient-`.d.ts`
  * generation helper. Vite owns asset URLs natively, so `compilerVitePlugin` only borrows the shared bits from here

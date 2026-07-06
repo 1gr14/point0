@@ -45,8 +45,9 @@ export const computeClientBuildVersion = (publicPaths: string[]): string => {
 /**
  * Whether an emitted file identifies the build — i.e. carries a content hash in its name. Excluded: `.html` (stable
  * names, mutable content), sourcemaps (never navigated to; excluding them keeps the version stable across
- * sourcemap-mode changes), and the `_point0/` metadata files (`preload.json`, the version file itself — stable names,
- * mutable content). `_point0/assets/*` stays IN: those are the compiler's content-addressed asset bytes.
+ * sourcemap-mode changes), and the per-client `_point0/<scope>/` metadata files (`preload-manifest.json`, the version
+ * file itself — stable names, mutable content). `_point0/assets/*` stays IN: those are the compiler's content-addressed
+ * asset bytes (unscoped — shared, content-addressed).
  */
 const identifiesBuild = (publicPath: string): boolean => {
   if (publicPath.endsWith('.html') || publicPath.endsWith('.map')) {

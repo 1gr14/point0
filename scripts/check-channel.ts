@@ -1,16 +1,15 @@
 #!/usr/bin/env bun
 /**
- * check-channel — the tag ↔ version guard. In the classic single-branch model a release is published
- * ONLY from a `v*` tag (scripts/release.yml), and the tag MUST equal `v${rootVersion()}` so the
- * package.json bump and the git tag can never drift (a stale tag could otherwise publish the wrong
- * version, or a -next tag could ship as stable). Run in CI right before publishing, and locally in the
- * pre-push hook when a tag is being pushed.
+ * check-channel — the tag ↔ version guard. In the classic single-branch model a release is published ONLY from a `v*`
+ * tag (scripts/release.yml), and the tag MUST equal `v${rootVersion()}` so the package.json bump and the git tag can
+ * never drift (a stale tag could otherwise publish the wrong version, or a -next tag could ship as stable). Run in CI
+ * right before publishing, and locally in the pre-push hook when a tag is being pushed.
  *
- * The npm dist-tag / channel is derived from the version itself: a prerelease x.y.z-next.N publishes
- * under `next`, a stable x.y.z under `latest` (see channelFor / scripts/publish.ts).
+ * The npm dist-tag / channel is derived from the version itself: a prerelease x.y.z-next.N publishes under `next`, a
+ * stable x.y.z under `latest` (see channelFor / scripts/publish.ts).
  *
- *   bun run check:channel          # tag from GITHUB_REF_NAME when on a tag (CI); else informational
- *   bun run check:channel v0.1.0   # explicit tag
+ *     bun run check:channel          # tag from GITHUB_REF_NAME when on a tag (CI); else informational
+ *     bun run check:channel v0.1.0   # explicit tag
  */
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'

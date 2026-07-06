@@ -1,0 +1,50 @@
+name: check
+
+# The format + lint gate. Reusable (workflow_call), called by BOTH ci.yml and release.yml so prettier +
+# eslint block EVERY path a change can land through: pull requests (including docs-only PRs, where the
+# build/test matrix is skipped) and release tags (including a --skip-tests prerelease). The husky
+# pre-commit hook runs the same checks locally, but a hook is advisory (--no-verify exists) — this is
+# the hard gate.
+#
+# Why it builds + runs codegen first: ESLint here is type-aware (typescript-eslint projectService),
+# `@point0/*` types resolve to each package's built dist/, and the examples import generated code — so
+# lint needs a real build and `bun run setup` to behave exactly like a local `bun run lint`.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      # tsdown's build step runs on Node (the framework runtime is Bun).
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        uses: ./.github/actions/install
+      # Type-aware lint resolves @point0/* from the built dist/, and codegen needs the built CLI.
+      - name: Build
+        run: bun run build
+      # Bun links the workspace `point0` bin at install time only if its dist target exists. The first
+      # install ran before the build, so relink now — without this, setup fails with
+      # "point0: command not found".
+      - name: Relink workspace bins
+        uses: ./.github/actions/install
+      - name: Setup (codegen for examples/templates)
+        run: bun run setup
+      - name: Format check (prettier)
+        run: bun run format:check
+      - name: Lint (eslint)
+        run: bun run lint:check

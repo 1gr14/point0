@@ -2,8 +2,8 @@ import * as nodePath from 'node:path'
 import { toPublicPath } from './utils.js'
 
 /**
- * Per-client preload manifest, written to `<outdir>/_point0/preload.json` at build time and read by the server at serve
- * time.
+ * Per-client preload manifest, written to `<outdir>/_point0/<scope>/preload-manifest.json` at build time and read by
+ * the server at serve time.
  *
  * The server, for each page request, injects `<link rel="modulepreload">` for exactly the chunks that page needs (see
  * {@link import('./render.js')}). Two parts:
@@ -38,11 +38,12 @@ export type PreloadManifest = {
 /**
  * Path segments (relative to the client `outdir`) of the per-client preload manifest — kept as an array so
  * `nodePath.join(outdir, ...segments)` builds a correct native path on every OS (no embedded `/` for Windows to
- * normalize). Lives under the framework's reserved `_point0/` namespace (same dir family as `_point0/assets/` and the
- * `/_point0/<scope>/<type>/<name>` endpoints) so all internal build artifacts stay grouped and out of the way of the
- * app's emitted assets.
+ * normalize). Lives under `_point0/<scope>/` — the client's own scope, like `_point0/<scope>/build-version.json` and
+ * the `/_point0/<scope>/<type>/<name>` endpoints — so the manifests of several clients never collide when their
+ * publicdirs are merged into one static root (the manifest is per-client data, unlike the shared content-addressed,
+ * unscoped `_point0/assets/`).
  */
-export const PRELOAD_MANIFEST_PATH_SEGMENTS = ['_point0', 'preload.json']
+export const getPreloadManifestPathSegments = (scope: string): string[] => ['_point0', scope, 'preload-manifest.json']
 
 /**
  * Global env kill switch for per-page modulepreload: `POINT0_MODULE_PRELOAD=false` (also `0`/`off`) disables the

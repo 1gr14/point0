@@ -1,4 +1,12 @@
 CHANGELOG.md
+# codegen output (`bun run setup` / the docs build): the prisma + point0 generated trees and the docs
+# search corpus. They're gitignored via NESTED .gitignore files, which `--ignore-path .gitignore` (root
+# only) never sees — without these globs, `format:check` (CI's check.yml runs it right after codegen)
+# fails on files the generators just produced. The one tracked file under src/generated (expo's
+# points.server.ts) is already covered by the aggregator globs below.
+**/src/generated/
+packages/docs/content/
+
 # point0-generated point aggregators & routes — emitted by `point0 generate`, not hand-written.
 # Prettier reformats them (collapses the array, rewrites `typeof x['k']` → `(typeof x)['k']`), which
 # fights the generator and churns the committed diff on every regen. Keep prettier off them.

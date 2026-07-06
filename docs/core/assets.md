@@ -67,6 +67,10 @@ import gemUrl from '@/assets/gem.png'
 ;<img src={gemUrl} alt="gem" />
 ```
 
+The URL is content-addressed (`<sha256(bytes)>.<ext>`) and baked into the
+compiled modules as a literal, so the SSR HTML and every client bundle emit the
+same string.
+
 The hash is the first 16 hex chars of the file's sha256. The served name is flat
 and content-addressed — no slashes, no `..`, so no path traversal.
 
@@ -370,9 +374,10 @@ but are filled in per-build by the engine — not user-facing.
 
 ### Public API (`@point0/compiler`)
 
-For bring-your-own-bundler use, the module re-exports: `ASSET_URL_PREFIX`,
-`resolveAssetsCacheDir`, `assetNameRegex`, `DEFAULT_ASSET_EXTENSIONS`,
-`assetHash(buffer)`, `writeAssetOnce(dir, name, buffer)`,
-`makeAssetsBunPlugin(options?)`, `applyAssetsBunPlugin(build, options?)`,
-`svgrToJsx`, `viteAssetMode`, and `generateAssetsDts(options?)`, plus the
-`AssetResolveMode`, `AssetsSvgrOptions`, and `CompilerAssetsOptions` types.
+For bring-your-own-bundler use, the module re-exports: `ASSET_URL_PREFIX` (the
+served URL prefix `/_point0/assets/`), `resolveAssetsCacheDir`,
+`assetNameRegex`, `DEFAULT_ASSET_EXTENSIONS`, `assetHash(buffer)`,
+`writeAssetOnce(dir, name, buffer)`, `makeAssetsBunPlugin(options?)`,
+`applyAssetsBunPlugin(build, options?)`, `svgrToJsx`, `viteAssetMode`, and
+`generateAssetsDts(options?)`, plus the `AssetResolveMode`, `AssetsSvgrOptions`,
+and `CompilerAssetsOptions` types.

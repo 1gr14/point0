@@ -28,7 +28,7 @@ dist/
   client/index.html         # the HTML shell (server-rendered into on first load)
   client/**.js              # client chunks (lazy page chunks, shared chunks)
   client/_point0/assets/…    # hashed asset bytes, served at /_point0/assets/<hash>
-  client/_point0/preload.json     # per-page module preload manifest
+  client/_point0/<scope>/preload-manifest.json   # per-page module preload manifest
   client/_point0/<scope>/build-version.json  # the build identity ([deploy](deploy) invalidation)
 ```
 
@@ -249,8 +249,9 @@ maps are a separate mechanism — see [Dev](dev).
 
 ## Module preload manifest
 
-Each client build writes `dist/client/_point0/preload.json`, a map from page
-name to the JS chunks that page needs. The built server reads it and injects
+Each client build writes `dist/client/_point0/<scope>/preload-manifest.json`
+(`<scope>` is that client's own scope), a map from page name to the JS chunks
+that page needs. The built server reads it and injects
 `<link rel="modulepreload">` tags so a page's chunks download in parallel with
 the HTML instead of after hydration:
 

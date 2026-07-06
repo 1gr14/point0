@@ -35,7 +35,10 @@ and the fast/slow test split. Read it before a non-trivial change.
 ## CI
 
 Every pull request runs the full cross-OS test matrix (Linux + Windows)
-automatically — that green check is the merge gate. PRs from forks run **without
+automatically, plus a format + lint check (`prettier --check` + `eslint`, no
+autofix) — together they are the merge gate. The format/lint check runs on
+_every_ PR, even a docs-only one where the test matrix is skipped, so run
+`bun run format && bun run lint` before pushing. PRs from forks run **without
 repository secrets**, and nothing a PR does can ever publish to npm (only a
 maintainer's release tag publishes), so it's safe to propose anything.
 

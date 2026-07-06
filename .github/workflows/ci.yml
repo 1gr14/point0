@@ -6,9 +6,10 @@ name: CI
 # Triggers:
 #   pull_request → main   the real gate: runs the full matrix (forks run WITHOUT secrets), UNLESS the PR
 #                         is docs-only (EVERY changed file is *.md) — then decide returns an empty matrix
-#                         and the `gate` job is the only check that runs. The single required check is `gate`.
+#                         and only `check` (prettier + eslint) and the `gate` run. The single required
+#                         check is `gate`.
 #   push (not main)       a maintainer branch can opt in to a run via a commit-message flag
-#                         (--run-tests[=os]); without it, only the cheap `decide` job runs.
+#                         (--run-tests[=os]); without it, only `decide` and `check` run.
 # `main` is deliberately NOT gated on push: it only changes via an already-tested PR or a release
 # commit (which is gated by its tag), so a push-to-main gate would just re-test redundantly — and
 # would defeat `--skip-tests` on a release commit. The branch-filtered `push` also means tag pushes
@@ -69,6 +70,12 @@ jobs:
           CHANGED_FILES: ${{ steps.changed.outputs.files }}
         run: bun scripts/ci-decide.ts >> "$GITHUB_OUTPUT"
 
+  # Prettier + ESLint (check.yml), on EVERY run — no `needs`, no `if`, so it still gates a docs-only PR
+  # where the build/test matrix is skipped. The pre-commit hook is advisory (--no-verify); this is the
+  # hard gate.
+  check:
+    uses: ./.github/workflows/check.yml
+
   # Build ONCE (ubuntu-only) → `dist` artifact. The test shards download it instead of each building per-OS,
   # so every runner exercises the exact bytes that ship.
   build:
@@ -84,27 +91,33 @@ jobs:
       oses: ${{ needs.decide.outputs.oses }}
       slow: ${{ needs.decide.outputs.slow }}
 
-  # The single required status check. Because build/test are reusable-workflow calls, skipping them (a
+  # The single required status check. Because check/build/test are reusable-workflow calls, skipping them (a
   # docs-only PR) makes their nested contexts NEVER report — a bare required `build / build` would then hang
   # the PR forever. This gate always runs, so exactly one context is always present: it passes when the
   # stages succeeded OR were legitimately skipped, and fails if any actually failed/was cancelled.
+  # `check` is the exception: it runs unconditionally, so anything but success fails the gate.
   # Make the ruleset require `gate` (+ `decide`) instead of `build / build` and the `test / fast …` shards.
   gate:
     name: gate
-    needs: [decide, build, test]
+    needs: [decide, check, build, test]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require decide green and no stage failure
+      - name: Require decide and check green and no stage failure
         env:
           DECIDE: ${{ needs.decide.result }}
+          CHECK: ${{ needs.check.result }}
           BUILD: ${{ needs.build.result }}
           TEST: ${{ needs.test.result }}
         run: |
-          echo "decide=$DECIDE build=$BUILD test=$TEST"
+          echo "decide=$DECIDE check=$CHECK build=$BUILD test=$TEST"
           if [ "$DECIDE" != "success" ]; then
             echo "::error::decide did not succeed ($DECIDE)"; exit 1
+          fi
+          # check is never legitimately skipped — anything but success fails the gate.
+          if [ "$CHECK" != "success" ]; then
+            echo "::error::check (prettier + eslint) did not succeed ($CHECK)"; exit 1
           fi
           for r in "$BUILD" "$TEST"; do
             if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then

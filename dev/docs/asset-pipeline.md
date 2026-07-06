@@ -25,7 +25,10 @@ import Logo from './logo.svg?react' // a React component (SVGR), svg only
 ```
 
 `<hash>` = `sha256(bytes).slice(0, 16)`. URL scheme:
-`/_point0/assets/<hash>.<ext>`.
+`/_point0/assets/<hash>.<ext>` — a fixed, unscoped constant
+(`ASSET_URL_PREFIX`). The URL is content-addressed, so it is a literal baked
+into the compiled modules, identical across the server bundle and every client
+bundle by construction.
 
 ## Why (the bugs this fixes)
 
@@ -70,8 +73,10 @@ dist/server/**.js                       ← references the same string; no file 
   → `dist/client/_point0/assets/<hash>.png`.
 - **Dev serving:** the plugin writes bytes to a content-addressed cache
   (`node_modules/.cache/@point0/assets`) and the engine serves
-  `/_point0/assets/*` from it via a dev-only route (`Fetcher.fetchDevAsset`).
-  Prod doesn't need that route.
+  `/_point0/assets/*` from it via a dev-only route (`Fetcher.fetchDevAsset`,
+  matching a request whose `pathname.startsWith(ASSET_URL_PREFIX)` and whose
+  name matches `assetNameRegex`; the cache is one shared content-addressed
+  pool). Prod doesn't need that route.
 - **Per-side builds (`point0 build --side …`) — where the bytes come from:**
   url-mode bytes are written **only by the client build** (the server build runs
   with `writeUrlBytes: false` — same URL, no file, no `dist/server` duplicate).
@@ -177,10 +182,10 @@ only on the extension list, not on points), so it is emitted via a dedicated
   (the standalone `BunPlugin` factory that builds the onResolve/onLoad hooks,
   kept for unit tests / bring-your-own-bundler), `applyAssetsBunPlugin` (the
   thin wrapper `makeAssetsBunPlugin(o).setup(build)` the compiler plugin calls
-  so assets ride inside it), the modes, `DEFAULT_ASSET_EXTENSIONS`, the
-  constants (`ASSET_URL_PREFIX`, `resolveAssetsCacheDir`, `assetNameRegex`), and
-  the d.ts helper `generateAssetsDts`. Re-exported through the
-  `@point0/compiler` barrel.
+  so assets ride inside it), the modes, `DEFAULT_ASSET_EXTENSIONS`, the shared
+  URL/serving helpers (`ASSET_URL_PREFIX`, `resolveAssetsCacheDir`,
+  `assetNameRegex`), and the d.ts helper `generateAssetsDts`. Re-exported
+  through the `@point0/compiler` barrel.
 - **Assets are a first-class `Compiler` field:** `compiler.ts` carries `assets`
   on the `Compiler` instance next to `filter`/`markdown`/`babel` (the ctor +
   `create` store it; `CompilerOptions.assets` feeds it). `plugin/bun.ts`
@@ -218,7 +223,8 @@ only on the extension list, not on points), so it is emitted via a dedicated
     carries assets with dev defaults (not under Vite, not in the built runtime —
     where the compiler plugin itself is absent).
   - client build — `client.ts` `buildByBun`: merges
-    `urlDir = <dist/client>/_point0/assets`, `fileDir = <dist/client>` into
+    `urlDir = <dist/client>/_point0/assets` (a fixed constant path, mirroring
+    `ASSET_URL_PREFIX`), `fileDir = <dist/client>` into
     `compilerOptions.assets`.
   - server build — `server.ts` `buildByBun`: passes
     `assetsDirs = { writeUrlBytes: false, fileDir: <dist/server> }` into
@@ -364,7 +370,8 @@ Assets ride inside the compiler options already threaded everywhere (incl.
 
 ## Decisions locked
 
-- URL scheme `/_point0/assets/<hash>.<ext>`; `hash = sha256(bytes).slice(0, 16)`
+- URL scheme `/_point0/assets/<hash>.<ext>` — a fixed, unscoped constant
+  (`ASSET_URL_PREFIX`), baked as a literal; `hash = sha256(bytes).slice(0, 16)`
   (ours; identical client + server).
 - Default managed extensions: images (`png jpg jpeg gif webp avif ico bmp svg`),
   a/v (`mp3 wav ogg mp4 webm mov`), fonts (`woff woff2 ttf otf eot`), other

@@ -30,6 +30,7 @@ export default defineConfig({
     'src/request0.ts',
     'src/server-only.ts',
     'src/navigation.tsx',
+    'src/scroll.tsx',
     'src/ssr-store.ts',
     'src/stale.ts',
     'src/super-store.ts',

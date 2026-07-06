@@ -2,16 +2,23 @@
 
 point0 follows the classic OSS shape: one `main` trunk, contributors fork → PR →
 `main`, and **a `v*` git tag is the only thing that publishes**. Pushing code
-never releases. Four workflow files, one decision script.
+never releases. Five workflow files, one decision script.
 
 ## Workflows (`.github/workflows/`)
 
 - **`ci.yml`** — the test GATE. Runs on `pull_request → main` and on opt-in
   branch pushes (`push` to any branch except `main`). A cheap `decide` job runs
-  [`scripts/ci-decide.ts`](../../scripts/ci-decide.ts), then calls `test.yml`.
-  Never publishes. `main` is **not** gated on push — the PR is the gate, and a
-  push-to-main gate would just re-test (and would defeat `--skip-tests` on a
-  release commit).
+  [`scripts/ci-decide.ts`](../../scripts/ci-decide.ts), then calls `check.yml`
+  and `test.yml`. Never publishes. `main` is **not** gated on push — the PR is
+  the gate, and a push-to-main gate would just re-test (and would defeat
+  `--skip-tests` on a release commit).
+- **`check.yml`** — the reusable format + lint gate (`workflow_call`): builds,
+  runs codegen (ESLint is type-aware, so it needs the real dist + generated
+  code), then `bun run format:check` (prettier) and `bun run lint:check`
+  (eslint, no fix). Called by both the gate and the release with no `needs` and
+  no `if`, so it runs on **every** path — including a docs-only PR (where the
+  build/test matrix is skipped) and a `--skip-tests` prerelease. The pre-commit
+  hook is advisory (`--no-verify` exists); this is the hard gate.
 - **`build.yml`** — builds the framework once (ubuntu-only) and uploads the
   single `dist` artifact. Called by both the gate and the release, so the tested
   bytes are the published bytes and the code is never built twice.
@@ -48,10 +55,16 @@ silently regress. The full table:
    (`vX.Y.Z`) tag — it always runs the full matrix before publishing.
 2. **Publishing is only reachable via a tag.** No PR, fork, or branch push can
    publish; the `publish` job's guard
-   (`!cancelled() && decide succeeded && build succeeded && tests green-or-skipped`)
+   (`!cancelled() && decide succeeded && check succeeded && build succeeded && tests green-or-skipped`)
    means a _failed_ gate never publishes, while a _deliberately skipped_
    prerelease gate still does.
-3. **The major version is pinned.**
+3. **Format + lint can never be skipped.** `check.yml` (prettier + eslint) runs
+   unconditionally on every PR and every tag; `ci.yml`'s `gate` and
+   `release.yml`'s `publish` both require its result to be exactly `success` —
+   unlike `test`, a skipped `check` is never legitimate. So unformatted or
+   unlinted code can't land via a `--no-verify` commit, a docs-only PR, or a
+   `--skip-tests` prerelease.
+4. **The major version is pinned.**
    [`scripts/release.ts`](../../scripts/release.ts) refuses any bump whose major
    ≠ `PINNED_MAJOR` — no command or flag can raise it. A major is cut only by a
    human hardcoding that constant. Never automatic, never accidental.

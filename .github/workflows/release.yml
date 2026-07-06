@@ -45,6 +45,11 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: bun scripts/ci-decide.ts >> "$GITHUB_OUTPUT"
 
+  # Prettier + ESLint (check.yml), on EVERY tag — no `needs`, no `if`, so a --skip-tests prerelease
+  # (test skipped) is still blocked from publishing unformatted/unlinted code.
+  check:
+    uses: ./.github/workflows/check.yml
+
   # Build ONCE (ubuntu-only) → `dist` artifact, consumed by BOTH test and publish. Runs on every tag with no
   # oses gate, so a --skip-tests prerelease (oses=[], test skipped) still has the exact artifact to publish —
   # the publish job no longer builds its own, so what ships is byte-identical to what the matrix tested.
@@ -61,14 +66,15 @@ jobs:
       slow: ${{ needs.decide.outputs.slow }}
 
   publish:
-    needs: [decide, build, test]
-    # Publish when `decide` + `build` succeeded AND the gate is GREEN or was deliberately SKIPPED (a prerelease
-    # with --skip-tests → the test job never runs → result 'skipped'). Never on a failed/cancelled gate, a
-    # failed build, or a failed `decide`. `!cancelled()` is required so this still evaluates when `test` was
-    # skipped (a skipped dependency would otherwise skip this job too).
+    needs: [decide, check, build, test]
+    # Publish when `decide` + `check` + `build` succeeded AND the gate is GREEN or was deliberately SKIPPED (a
+    # prerelease with --skip-tests → the test job never runs → result 'skipped'). Unlike `test`, `check` is
+    # never legitimately skipped — it must be exactly 'success'. Never on a failed/cancelled gate, a failed
+    # build, or a failed `decide`. `!cancelled()` is required so this still evaluates when `test` was skipped
+    # (a skipped dependency would otherwise skip this job too).
     if:
-      ${{ !cancelled() && needs.decide.result == 'success' && needs.build.result == 'success' && (needs.test.result ==
-      'success' || needs.test.result == 'skipped') }}
+      ${{ !cancelled() && needs.decide.result == 'success' && needs.check.result == 'success' && needs.build.result ==
+      'success' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

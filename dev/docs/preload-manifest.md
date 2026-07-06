@@ -35,9 +35,13 @@ standalone or fighting the bootstrap.)
 
 ## The manifest
 
-Each client writes `dist/client/_point0/preload.json`
-([`PRELOAD_MANIFEST_PATH_SEGMENTS`](../../packages/engine/src/preload-manifest.ts)
-= `['_point0', 'preload.json']`):
+Each client writes `dist/client/_point0/<scope>/preload-manifest.json`
+([`getPreloadManifestPathSegments(scope)`](../../packages/engine/src/preload-manifest.ts)
+= `['_point0', <scope>, 'preload-manifest.json']`). `<scope>` is the client's
+OWN scope — like `_point0/<scope>/build-version.json`, per-client data — so
+several clients' publicdirs can merge into one static root without their
+`_point0/` internals colliding (unlike the shared, unscoped, content-addressed
+`_point0/assets/`):
 
 ```jsonc
 {
@@ -146,10 +150,10 @@ returns true. Two reasons it might not:
   _only_ in the built, prod-serve runtime — the same signal the dev servers gate
   on. In dev nothing is bundled (there are no `/chunk-*.js` to point at), so the
   feature must be inert. This holds **even when a stale
-  `dist/client/_point0/preload.json` is present** (e.g. the user ran
-  `point0 build` once, then `point0 dev`): without the gate that leftover
-  manifest would leak hashed prod chunk links into dev-served HTML, so the gate
-  keys on `buildWas`, never on "a manifest exists".
+  `dist/client/_point0/<scope>/preload-manifest.json` is present** (e.g. the
+  user ran `point0 build` once, then `point0 dev`): without the gate that
+  leftover manifest would leak hashed prod chunk links into dev-served HTML, so
+  the gate keys on `buildWas`, never on "a manifest exists".
 - **The env kill switch.** `POINT0_MODULE_PRELOAD=false` (also `0` / `off`)
   disables the feature entirely, in prod too. It's checked in **both**
   directions: serve-time injection here, and manifest emission at build time

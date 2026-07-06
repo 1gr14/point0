@@ -9,7 +9,7 @@ territory. The игрич site already carries the proof-of-shape as app code:
 the app already set one:
 
 - `public, max-age=31536000, immutable` for content-hashed publicdir files
-  (bundle chunks + `/_point0/assets/*`),
+  (bundle chunks + `/_point0/<scope>/assets/*`),
 - a short revalidate for stable-name publicdir files (favicons, og images…),
 - `private, no-store` for SSR `page`/`error` HTML (the dehydrated store embeds
   the current user's data — it must never sit in a shared cache).
@@ -29,10 +29,10 @@ Requirements from the deploy-invalidation session:
 - Transparent, overridable defaults close to the игрич middleware above; an
   explicit `Cache-Control` set by the app (auth, streams, downloads) always
   wins.
-- Immutable detection: pattern-based (`/chunk-<hash>.js`, `/_point0/assets/*`)
-  or config; note the exact set of a build's hashed files is knowable — the
-  client build can enumerate its outputs — if we ever want precision over
-  patterns.
+- Immutable detection: pattern-based (`/chunk-<hash>.js`,
+  `/_point0/<scope>/assets/*`) or config; note the exact set of a build's hashed
+  files is knowable — the client build can enumerate its outputs — if we ever
+  want precision over patterns.
 - The deploy-invalidation handshake does NOT depend on this package: the client
   fetches `/_point0/<scope>/build-version.json` with `cache: 'no-store'` on the
   request, so no response header is required for correctness. But the docs

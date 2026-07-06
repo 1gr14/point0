@@ -44,8 +44,8 @@ import {
   buildPreloadManifest,
   chunkGraphFromBunMetafile,
   chunkGraphFromRollup,
+  getPreloadManifestPathSegments,
   isModulePreloadDisabledByEnv,
-  PRELOAD_MANIFEST_PATH_SEGMENTS,
   resolvePreloadsForPoint,
   resolveRscComponentPreloads,
   shouldServeModulePreload,
@@ -1551,7 +1551,10 @@ try {
    */
   preloadComponentSources: PagePreloadSources[] = []
 
-  /** Build + write the per-client preload manifest (`<outdir>/_point0/preload.json`) from the emitted chunk graph. */
+  /**
+   * Build + write the per-client preload manifest (`<outdir>/_point0/<scope>/preload-manifest.json`) from the emitted
+   * chunk graph.
+   */
   private async writePreloadManifest({
     outdir,
     graph,
@@ -1568,7 +1571,7 @@ try {
         pages: this.preloadPageSources,
         components: this.preloadComponentSources,
       })
-      await Bun.write(nodePath.join(outdir, ...PRELOAD_MANIFEST_PATH_SEGMENTS), JSON.stringify(manifest))
+      await Bun.write(nodePath.join(outdir, ...getPreloadManifestPathSegments(this.scope)), JSON.stringify(manifest))
     } catch (error) {
       // Preload is a pure perf hint — never let manifest emission fail an otherwise-good build. Warn, then carry on.
       this.log({
@@ -1589,7 +1592,7 @@ try {
     try {
       const outdir = this.getBuildPaths().outdir
       if (outdir) {
-        const file = Bun.file(nodePath.join(outdir, ...PRELOAD_MANIFEST_PATH_SEGMENTS))
+        const file = Bun.file(nodePath.join(outdir, ...getPreloadManifestPathSegments(this.scope)))
         if (await file.exists()) {
           this._preloadManifest = JSON.parse(await file.text()) as PreloadManifest
         }

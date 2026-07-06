@@ -33,7 +33,7 @@ describe('computeClientBuildVersionFromOutputs', () => {
         '/proj/dist/client/assets/style-def.css',
         '/proj/dist/client/index.html',
         '/proj/dist/client/chunk-abc.js.map',
-        '/proj/dist/client/_point0/preload.json',
+        '/proj/dist/client/_point0/root/preload-manifest.json',
         '/proj/dist/client/_point0/root/build-version.json',
       ]),
     ).toBe(base)

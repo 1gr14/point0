@@ -65,8 +65,9 @@ git push origin main --follow-tags   # the TAG triggers CI to build → test →
 
 What the tag run does
 ([`.github/workflows/release.yml`](../../.github/workflows/release.yml)): build
-→ **tests** → tag guard → `publish:packages`. The dist-tag (`next` / `latest`)
-comes from the version.
+→ **format + lint check** (prettier + eslint, `check.yml`) → **tests** → tag
+guard → `publish:packages`. The dist-tag (`next` / `latest`) comes from the
+version.
 
 **Tests on a release:**
 
@@ -75,6 +76,8 @@ comes from the version.
   `--skip-tests` (or `--skip-tests=windows`) in the release commit message — the
   commit already passed CI as a PR, so re-testing is optional. See
   [`scripts/ci-decide.ts`](../../scripts/ci-decide.ts) for the full flag set.
+- The **format + lint check** (`check.yml`) can never be skipped — it runs on
+  every tag, `--skip-tests` or not, and `publish` requires it green.
 
 ## Notes
 

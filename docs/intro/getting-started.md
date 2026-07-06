@@ -19,6 +19,10 @@ bun run dev # http://localhost:3001 (client) + http://localhost:3000 (server)
 That's it — the app is running. You need Bun; the scaffolder offers to install
 it if it's missing.
 
+The home page ships a small playground: an `Idea` Prisma model, a query that
+lists the rows, and a mutation with a form that adds one — `setup` seeds a few
+ideas, so there's something to poke at right away.
+
 The rest of the page is optional depth: [the scaffolder](#the-scaffolder),
 [the commands you'll run every day](#everyday-commands), and
 [manual setup](#manual-setup) — every file the scaffolder writes, for when you'd
@@ -329,7 +333,11 @@ working example built on top of them:
   (shared / client / server [env](env) shapes and validators).
 - **Example points**: `src/layouts/general.tsx` (a [layout](layout)),
   `src/pages/home.tsx` (a [page](page)), `src/pages/about.mdx` (an [mdx](mdx)
-  page).
+  page). The home page doubles as a playground: right in `home.tsx` it declares
+  `ideaListQuery` (a [query](query)) over the `Idea` Prisma model and
+  `ideaCreateMutation` (a [mutation](mutation)), plus a form that creates rows
+  and invalidates the list. `src/lib/seed.ts` seeds three ideas (`setup` runs
+  it).
 - **`src/generated/`** — never hand-edited; produced by `point0 generate` and
   `prisma generate`, and gitignored. See [generator](generator).
 
