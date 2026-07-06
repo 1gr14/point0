@@ -346,30 +346,48 @@ export class ClientPoints<TError extends ErrorPoint0> {
 
   // prefetching
 
-  // private static readonly prefetchLazyComponent = async (
-  //   component: React.ComponentType<any> | React.LazyExoticComponent<React.ComponentType<any>> | undefined,
-  // ): Promise<void> => {
-  //   const anyComp = component as any
-  //   if (!anyComp) return
-  //   try {
-  //     // React 18 lazy internals
-  //     if (anyComp?._init && anyComp?._payload) {
-  //       await anyComp._init(anyComp._payload)
-  //       return
-  //     }
-  //     // Some libraries expose preload()
-  //     if (typeof anyComp?.preload === 'function') {
-  //       await anyComp.preload()
-  //       return
-  //     }
-  //     // Fallback: sometimes the payload carries a thunk
-  //     if (anyComp?._payload && typeof anyComp._payload._result === 'function') {
-  //       await anyComp._payload._result()
-  //     }
-  //   } catch {
-  //     // ignore — prefetch is best-effort
-  //   }
-  // }
+  // Resolve a React.lazy component's payload so its NEXT render is synchronous. Awaiting the
+  // MODULE (`await point()` in `_loadPage`) is not enough: the lazy INSTANCE captured in the
+  // pagesTree initializes its payload only on its first RENDER attempt — and that first render
+  // therefore suspends, no matter how warm the import is. Point0 navigations are SYNC React
+  // updates (wouter's location rides useSyncExternalStore, so React transitions cannot defer
+  // them), and since every mountable got an entry Suspense, that one-render suspension lands in
+  // the parent LAYOUT's already-visible boundary — React then commits the layout fallback and
+  // hides the current children (`display: none`), flashing "old page + loading" for a beat on
+  // EVERY first navigation to a page. Pre-warming the instance removes the suspension entirely
+  // (pre-boundaries the same suspension had no boundary to land in, so React just delayed the
+  // commit — the warm restores that clean behavior). Calling `_init(_payload)` on a pending lazy
+  // THROWS the loading thenable (React's lazyInitializer contract) — catch and await it; React's
+  // own then-handler (attached first, inside _init) marks the payload resolved before the await
+  // continues. A non-lazy (already eager) component is a no-op — the server's eager-loaded
+  // collections short-circuit here. Module-load errors are swallowed: a real chunk failure
+  // already surfaced as the coded PAGE_CHUNK_LOAD_FAILED throw at `await point()` (same
+  // underlying import).
+  private static readonly prefetchLazyComponent = async (
+    component: React.ComponentType<any> | React.LazyExoticComponent<React.ComponentType<any>> | undefined,
+  ): Promise<void> => {
+    const anyComp = component as
+      | { _init?: (payload: unknown) => unknown; _payload?: unknown; preload?: () => Promise<unknown> }
+      | undefined
+    if (!anyComp) {
+      return
+    }
+    try {
+      if (typeof anyComp.preload === 'function') {
+        await anyComp.preload()
+        return
+      }
+      if (anyComp._init && anyComp._payload) {
+        anyComp._init(anyComp._payload)
+      }
+    } catch (thrown) {
+      if (thrown && typeof (thrown as PromiseLike<unknown>).then === 'function') {
+        try {
+          await (thrown as PromiseLike<unknown>)
+        } catch {}
+      }
+    }
+  }
 
   readonly getPage = ({
     location,
@@ -445,11 +463,22 @@ export class ClientPoints<TError extends ErrorPoint0> {
       })
     }
 
-    // Prefetch the (possibly lazy) page component
-    // But if we fetch page, then we also fetch it components, so looks like not needed
-    // await ClientPoints.prefetchLazyComponent(suitable.FC)
+    // Warm the (possibly lazy) page and layout FC INSTANCES the pagesTree captured at creation —
+    // the ones the router actually renders (`setReadyPoint` below only swaps the collection
+    // records, which the tree does not read). Without this the loaded page still SUSPENDS on its
+    // first render and flashes the parent layout's fallback over the current page — see
+    // `prefetchLazyComponent`. Capture the layout FCs BEFORE setReadyPoint (after it the records
+    // point at the eager components and the tree's lazy instances become unreachable).
+    const lazyFCs = [
+      suitable.FC,
+      ...page._layouts.map(
+        (layout) => this.manager.collection.find((r) => r.type === 'layout' && r.name === layout.name)?.FC,
+      ),
+    ]
 
     this.manager.setReadyPoint(page)
+
+    await Promise.all(lazyFCs.map((FC) => ClientPoints.prefetchLazyComponent(FC)))
 
     return {
       page: page as PagePoint,

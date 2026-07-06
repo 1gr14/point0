@@ -57,3 +57,12 @@ file only carries what is left.
       `queryClientDehydratedState` request per process no longer misses the
       page's queries. The browser bundle keeps the lazy collection (code
       splitting unchanged).
+
+- [ ] **Release-note bullet** (SPA boot behavior): on the very first client-side
+      mount of an SPA (`ssr: false` client, no server HTML) the root/layout
+      `.loading()` now renders while the first page chunk loads — previously the
+      root stayed BLANK until the chunk was ready (a suspension with no boundary
+      just delayed the first commit; now the mountable entry boundaries catch
+      it). Client NAVIGATIONS are unaffected: `loadPage` pre-warms the lazy page
+      instance (payload included), so navigating never flashes a wrapper
+      fallback — pinned by the prefetch-page suite.

@@ -397,15 +397,28 @@ no refetch.
   a successful refetch does not reach a subtree the boundary replaced. Decision:
   documented, not coded around — resetting on query success would couple the
   generic boundary to the query cache for a narrow case.
-- **Lazy points don't flash the wrappers' fallbacks on navigation.** Client
-  navigation awaits the chunk BEFORE rendering (`navigateWithTransitions` →
-  `prefetchPage` → `loadPage` → `await point()` — the same thunk `React.lazy`
-  uses, so the module cache is warm when React renders). And a point's own
-  `React.lazy` boundary sits ABOVE its `_MountableWithBoundaries` wrapper (the
-  wrapper exists only once the chunk resolved), so the entry Suspense cannot
-  catch its own point's chunk load anyway — a cold chunk rendered outside the
-  awaited path would land in the parent layout's boundary. Covered by the
-  client-navigation e2e test (no fallback flash in the tale).
+- **Lazy points don't flash the wrappers' fallbacks on navigation — ENFORCED by
+  a lazy-instance warm, not by the module await.** Awaiting the chunk before
+  rendering (`navigateWithTransitions` → `prefetchPage` → `loadPage` →
+  `await point()`) warms the MODULE, but a `React.lazy` INSTANCE initializes its
+  payload only on its first RENDER — that first render suspends no matter how
+  warm the import is. Navigations are SYNC React updates (wouter's location
+  rides useSyncExternalStore, so `startTransition` cannot defer them), and for a
+  page under a LAYOUT the suspension lands in the layout's already-visible entry
+  Suspense — React commits the layout fallback and hides the current children
+  (`display: none`), flashing "old page + loading" for a beat on every first
+  navigation to a page (the prefetch-page suite catches this deterministically;
+  the suspend e2e didn't — its pages have no layout, and a boundary-less sync
+  suspension just delays the commit, which is also why pre-branch main looked
+  clean). Fix: `_loadPage` pre-warms the lazy FC instances the pagesTree
+  captured (page + its layouts, via `prefetchLazyComponent` — `_init(_payload)`
+  with the thrown-thenable contract), so by the time the location flips the lazy
+  renders synchronously and nothing suspends. One deliberate behavior change
+  remains: the INITIAL SPA mount (no loadPage before the first render) now shows
+  the root/layout `.loading()` while the first page chunk loads — pre-branch
+  React delayed the whole first commit and the user stared at a BLANK root
+  instead; the loading component is what that state is for (prefetch-page SPA
+  snapshots pin the new frame).
 - **On the server nothing is ever lazy — ENFORCED, not incidental.** The engine
   loads the client points eagerly
   (`ClientPoints.createFromSource(source, { eager: true })` in
@@ -555,13 +568,15 @@ data branch passes 'data'; `readPoints` loads the client points EAGERLY —
 `createFromSource(…, { eager: true })`, see "On the server nothing is ever lazy"
 above). Core also: `client-points.ts` (the `eager` option on `createFromSource`
 — `manager.load()` BEFORE `createFromDefintion`, so the pagesTree/layouts
-capture eager FCs). React-dom: `mount.ts` (receiver install, onRecoverableError
-logging via the core logger). Compiler: `file.ts` (folds
-`env.ssr.active/phase/target` to constants on the client — replaces the old
-`env.side.is.ssr` fold). Tests: `packages/engine/tests/suspend.fast.test.tsx`
-(see Tests below), 6 test files with updated error-path snapshots,
-`scripts/slow-tests.ts` (the suspend file is a slow shard),
-`packages/core/tests/env.test.ts` (the `env.ssr` union),
+capture eager FCs; `prefetchLazyComponent` + the `_loadPage` warm of the
+tree-captured lazy FC instances — kills the layout-fallback flash on client
+navigation, see "Lazy points don't flash" above). React-dom: `mount.ts`
+(receiver install, onRecoverableError logging via the core logger). Compiler:
+`file.ts` (folds `env.ssr.active/phase/target` to constants on the client —
+replaces the old `env.side.is.ssr` fold). Tests:
+`packages/engine/tests/suspend.fast.test.tsx` (see Tests below), 6 test files
+with updated error-path snapshots, `scripts/slow-tests.ts` (the suspend file is
+a slow shard), `packages/core/tests/env.test.ts` (the `env.ssr` union),
 `packages/core/tests/effects.test.ts` (sealed idempotency),
 `packages/core/tests/point0-no-loader-guard.test.ts` (new — the loaderless throw
 on every query surface), `packages/compiler/tests/file.test.tsx` (`env.ssr`

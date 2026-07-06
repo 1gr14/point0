@@ -737,6 +737,8 @@ describe('prefetch-page', () => {
             /
               (Empty)
               
+              div: Loading...
+              
               #home: home
               
             /with-server
@@ -795,6 +797,8 @@ describe('prefetch-page', () => {
             "
             /
               (Empty)
+              
+              div: Loading...
               
               #home: home
               
@@ -857,6 +861,8 @@ describe('prefetch-page', () => {
               /
                 (Empty)
                 
+                div: Loading...
+                
                 #home: home
                 
               /with-server
@@ -906,6 +912,8 @@ describe('prefetch-page', () => {
               /
                 (Empty)
                 
+                div: Loading...
+                
                 #home: home
                 
               /with-server
@@ -954,6 +962,8 @@ describe('prefetch-page', () => {
               "
               /
                 (Empty)
+                
+                div: Loading...
                 
                 #home: home
                 
@@ -1012,6 +1022,8 @@ describe('prefetch-page', () => {
               /
                 (Empty)
                 
+                div: Loading...
+                
                 #home: home
                 
               /with-server
@@ -1063,6 +1075,8 @@ describe('prefetch-page', () => {
               /
                 (Empty)
                 
+                div: Loading...
+                
                 #home: home
                 
               /with-server
@@ -1112,6 +1126,8 @@ describe('prefetch-page', () => {
               "
               /
                 (Empty)
+                
+                div: Loading...
                 
                 #home: home
                 
