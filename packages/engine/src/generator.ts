@@ -336,6 +336,22 @@ export class FilesGenerator {
     return pages
   }
 
+  /** Component points (name → source file) per scope — feeds the RSC per-component modulepreload manifest entries. */
+  getComponentPoints(): Array<{ scope: PointsScope; name: string; file: string }> {
+    const components: Array<{ scope: PointsScope; name: string; file: string }> = []
+    for (const point of this.safePoints) {
+      if (point.type !== 'component' || !point.scope) {
+        continue
+      }
+      const file = point.pos?.file
+      if (!file) {
+        continue
+      }
+      components.push({ scope: point.scope, name: point.name, file })
+    }
+    return components
+  }
+
   actualizePointsByPaths(points: CompilerPoint[]): void {
     this.pointsByPaths.clear()
     for (const point of points) {
@@ -749,7 +765,12 @@ export class FilesGenerator {
     if (point.type === 'plugin' || point.type === 'base' || point.exportName === undefined || !point.valid) {
       return false
     }
-    return point.scope === scope && (point.type === 'page' || point.type === 'layout' || point.type === 'root')
+    return (
+      point.scope === scope &&
+      // components ride in the aggregator as lazy records too — RSC resolves a component-point reference from the
+      // collection, and the record's dynamic import gives each referenced component its own chunk
+      (point.type === 'page' || point.type === 'layout' || point.type === 'component' || point.type === 'root')
+    )
   }
 
   private emitLazyPointCollectionRecord({
@@ -786,10 +807,31 @@ export class FilesGenerator {
     return lines
   }
 
+  /**
+   * RSC references a component point by bare name, so names must be unique per scope — two exports sharing one would
+   * silently render the wrong component. Checked on every aggregator emit; fails generation with both file paths.
+   */
+  private assertUniqueRscComponentNames(points: Array<CompilerPoint<true>>): void {
+    const seen = new Map<string, CompilerPoint>()
+    for (const point of points) {
+      if (point.type !== 'component') {
+        continue
+      }
+      const existing = seen.get(point.name)
+      if (existing) {
+        throw new Error(
+          `Two component points share the name "${point.name}" (${existing.file.abs} and ${point.file.abs}) — component point names must be unique per scope to be referenced from loader data (RSC).`,
+        )
+      }
+      seen.set(point.name, point)
+    }
+  }
+
   emitLazyPointsFile(task: FilesGeneratorTaskClientPoints): string {
     const points = this.safePoints.filter((p) =>
       FilesGenerator.shouldExistsInClientPointsFile({ point: p, scope: task.scope }),
     ) as Array<CompilerPoint<true>>
+    this.assertUniqueRscComponentNames(points)
     const lines: string[] = []
     if (task.banner) {
       lines.push(task.banner)
@@ -838,6 +880,7 @@ export class FilesGenerator {
         ? FilesGenerator.shouldExistsInClientPointsFile({ point: p, scope: task.scope })
         : FilesGenerator.shouldExistsInServerPointsFile({ point: p, scope: task.scope }),
     ) as Array<CompilerPoint<true>>
+    this.assertUniqueRscComponentNames(points)
 
     const lines: string[] = []
     if (task.banner) {

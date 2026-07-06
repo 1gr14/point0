@@ -96,13 +96,11 @@ streams — the shell ships immediately with that mountable's `.loading()` in
 place, and the real content follows **in the same response** when the loader
 resolves. For a query that shouldn't run on the server at all, `ssr: false`
 skips it entirely and the client fetches it after hydration. React Server
-Components aren't supported — not a current goal. Point0's render-to-discover
-SSR already fetches on the server and strips server-only code from the client
-bundle; we don't see much additional value in RSC on top of that. If RSC would
-unlock something concrete for you, the likely first step is letting a
-`.loader()` return React elements directly — make the case in a
-[GitHub issue](https://github.com/1gr14/point0): who it helps and why the
-current model isn't enough.
+Components are supported as "elements as data": a `.loader()` returns React
+elements next to regular values, server components render on the server and
+never ship to the browser, and component points hydrate as interactive islands —
+all through the same data pipe SSR already uses. The whole model is on the
+[RSC](rsc) page.
 
 Every mountable render (page, layout, component, provider) is wrapped in an
 error boundary and a Suspense boundary. A throw inside a mountable's render

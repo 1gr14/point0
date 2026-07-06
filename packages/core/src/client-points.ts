@@ -101,7 +101,9 @@ export class ClientPoints<TError extends ErrorPoint0> {
     const layouts = ClientPoints.toLayouts({ points: manager.collection })
     const basePath = root._basePath
     const middlewares = root._middlewares
-    const transformer = root._getTransformer()
+    // the RSC-wrapped transformer — ClientPoints' transformer serializes/parses data payloads only:
+    // the SSR-embedded dehydrated state, streamed push scripts, and hydration on the client
+    const transformer = root._getTransformerWithRsc()
 
     return new ClientPoints<any>({
       manager,

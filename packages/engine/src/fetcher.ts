@@ -1,6 +1,5 @@
 import * as flat from '@1gr14/flat'
 import nodePath from 'node:path'
-import * as React from 'react'
 import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@1gr14/route0'
 import { ASSET_URL_PREFIX, assetNameRegex, resolveAssetsCacheDir } from '@point0/compiler'
 import {
@@ -12,6 +11,7 @@ import {
   blankDataTransformerExtended,
   generateId,
   serializeErrorsInDehydratedState,
+  wrapTransformerWithRsc,
 } from '@point0/core'
 import type {
   AnyPoint,
@@ -133,6 +133,19 @@ export class Fetcher<TError extends ErrorPoint0> {
     })
     this._transformers.set(scope, transformer)
     return transformer
+  }
+
+  /**
+   * The transformer for OUTPUT payloads — the app transformer wrapped with the RSC element codec, so normalized React
+   * elements in loader/query/mutation outputs (and dehydrated state) encode into wire markers. Input parsing must stay
+   * on `getTransformer` (raw): the server never decodes elements from client-sent bytes.
+   */
+  private getTransformerWithRsc = (options: {
+    scope: PointsScope
+    point: ReadyPoint | undefined
+    transform: boolean
+  }): DataTransformerExtended => {
+    return wrapTransformerWithRsc(this.getTransformer(options))
   }
 
   private readonly _getPointInputFromEndpointRequest = async ({
@@ -592,7 +605,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       data: undefined,
       error: undefined,
     }
-    const transformer = this.getTransformer({ scope: point.scope, point, transform })
+    const transformer = this.getTransformerWithRsc({ scope: point.scope, point, transform })
     const ErrorClass = client?.points?.manager.root._Error ?? this.server.points.manager.root._Error
 
     try {
@@ -758,18 +771,6 @@ export class Fetcher<TError extends ErrorPoint0> {
           ...partialResult,
           response: executeResult.output,
         }
-      }
-
-      if (React.isValidElement(executeResult.output)) {
-        throw new ErrorClass('RSC is not yet supported', { code: POINT0_ERROR_CODES_MAP.RSC_NOT_SUPPORTED })
-        // const stream = await renderToReadableStream(executeResult.output)
-        // const response = new Response(stream, {
-        //   headers: { 'Content-Type': 'text/x-component' },
-        // })
-        // return {
-        //   ...partialResult,
-        //   response,
-        // }
       }
 
       if (!executeResult.output) {

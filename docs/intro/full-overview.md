@@ -2861,9 +2861,8 @@ there's a separate instance per request, so users' data never gets mixed up):
 ```tsx
 // @/lib/query-client
 import { createQueryClient } from '@point0/core'
-import { QueryClient } from '@tanstack/react-query'
 
-export const queryClient = createQueryClient(() => new QueryClient())
+export const queryClient = createQueryClient()
 ```
 
 And from there it's passed into a regular `QueryClientProvider` in your
@@ -5277,7 +5276,9 @@ on [YouTube](https://www.youtube.com/@s_1gr14) and
 After that, I want to finish realtime points that work over WebSocket, in the
 same style as regular points. I also want to finish static site generation.
 
-I really don't want to do React Server Components — I honestly don't understand
-what benefit they could bring here. But if they do happen, I will essentially
-just allow returning React elements from `.loader()`. But what the benefit of
-that would be, I don't yet understand. Let's discuss this another time.
+For a long time I didn't want to do React Server Components — I didn't
+understand what benefit they could bring here. In the end I built them, and
+exactly the way described here: `.loader()` can simply return React elements as
+data. Server components render on the server and never ship to the browser,
+while component points travel as references and come alive on the client as
+interactive islands. Details: [about RSC](rsc).

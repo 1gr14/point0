@@ -43,6 +43,7 @@ import {
   _ssRunWithServerStorageState,
   getEffects,
   isQueryClientDehydratedStateQuery,
+  normalizeRscOutput,
   parseQueryKey,
 } from '@point0/core'
 import { CookieStore } from '@point0/core/cookie-store'
@@ -659,9 +660,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                     layer.output = result[1]
                   })
                 } else {
+                  // RSC: unfold server components and validate element positions ONCE, right here — SSR renders this
+                  // normalized tree and the wire encodes the same tree, so hydration matches by construction
+                  const data = (await normalizeRscOutput(result[1] ?? {}, {
+                    depth: point.point._rscDepth ?? 0,
+                    label: point.toString(),
+                  })) as Data
                   layers.forEach((layer) => {
-                    layer.data = result[1] ?? {}
-                    layer.output = result[1] ?? {}
+                    layer.data = data
+                    layer.output = data
                   })
                 }
               } else {
@@ -677,9 +684,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                     layer.output = result
                   })
                 } else {
+                  const data = (await normalizeRscOutput(result ?? {}, {
+                    depth: point.point._rscDepth ?? 0,
+                    label: point.toString(),
+                  })) as Data
                   layers.forEach((layer) => {
-                    layer.data = result ?? {}
-                    layer.output = result ?? {}
+                    layer.data = data
+                    layer.output = data
                   })
                 }
               }

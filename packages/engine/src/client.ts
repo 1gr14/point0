@@ -47,6 +47,7 @@ import {
   isModulePreloadDisabledByEnv,
   PRELOAD_MANIFEST_PATH_SEGMENTS,
   resolvePreloadsForPoint,
+  resolveRscComponentPreloads,
   shouldServeModulePreload,
   type ChunkGraph,
   type PagePreloadSources,
@@ -1544,6 +1545,12 @@ try {
    */
   preloadPageSources: PagePreloadSources[] = []
 
+  /**
+   * Per component point: the source file(s) whose chunks should be preloaded when a loader payload references that
+   * component (RSC). Same feeding path and best-effort semantics as {@link preloadPageSources}.
+   */
+  preloadComponentSources: PagePreloadSources[] = []
+
   /** Build + write the per-client preload manifest (`<outdir>/_point0/preload.json`) from the emitted chunk graph. */
   private async writePreloadManifest({
     outdir,
@@ -1556,7 +1563,11 @@ try {
       if (isModulePreloadDisabledByEnv(process.env.POINT0_MODULE_PRELOAD) || !graph.entryFile) {
         return
       }
-      const manifest = buildPreloadManifest({ graph, pages: this.preloadPageSources })
+      const manifest = buildPreloadManifest({
+        graph,
+        pages: this.preloadPageSources,
+        components: this.preloadComponentSources,
+      })
       await Bun.write(nodePath.join(outdir, ...PRELOAD_MANIFEST_PATH_SEGMENTS), JSON.stringify(manifest))
     } catch (error) {
       // Preload is a pure perf hint — never let manifest emission fail an otherwise-good build. Warn, then carry on.
@@ -1590,7 +1601,7 @@ try {
   }
 
   /** Public-path chunks to `<link rel=modulepreload>` for a page point (entry shared closure + that page's extras). */
-  private async resolvePreloads(pointName: string | undefined): Promise<string[]> {
+  private async resolvePagePreloads(pointName: string | undefined): Promise<string[]> {
     // PRODUCTION-BUILD-ONLY, and fully inert until then: in dev nothing is bundled and a stale `dist` manifest from an
     // earlier `point0 build` must never leak into the dev-served HTML (see {@link shouldServeModulePreload}). Gate first,
     // before touching the manifest, so in dev (and in the builder process) we read nothing and inject nothing.
@@ -1602,6 +1613,25 @@ try {
       return []
     }
     return resolvePreloadsForPoint(manifest, pointName)
+  }
+
+  /**
+   * Public-path chunks to `<link rel=modulepreload>` for component points referenced from a loader payload (RSC). Same
+   * production-build-only gating as {@link resolvePagePreloads}; empty everywhere else, so the render path can call it
+   * unconditionally.
+   */
+  private async resolveRscPreloads(componentNames: string[]): Promise<string[]> {
+    if (!componentNames.length) {
+      return []
+    }
+    if (!shouldServeModulePreload({ buildWas: _point0_env.build.was, envFlag: process.env.POINT0_MODULE_PRELOAD })) {
+      return []
+    }
+    const manifest = await this.getPreloadManifest()
+    if (!manifest) {
+      return []
+    }
+    return resolveRscComponentPreloads(manifest, componentNames)
   }
 
   async renderAsReadableStream({
@@ -1631,7 +1661,9 @@ try {
       originalIndexHtml: await this.getOriginalIndexHtml(pageLocation.href ?? pageLocation.hrefRel),
       domRootElementId: this.domRootElementId,
       // Preload the entry's shared closure (every page) + THIS page's own lazy chunk/layouts (keyed by point name).
-      modulePreloads: await this.resolvePreloads(pagePoint?.name),
+      modulePreloads: await this.resolvePagePreloads(pagePoint?.name),
+      // RSC: component points referenced by the payload get preload links next to the embedded data.
+      resolveRscComponentPreloads: (componentNames) => this.resolveRscPreloads(componentNames),
       redirectPolicy,
       waitForAllReady,
       ssrOptions: this.ssrOptions,

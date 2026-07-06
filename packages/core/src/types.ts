@@ -64,8 +64,7 @@ export type UndefinedData = undefined
 export type Data = UnknownData | EmptyData
 // export type Data = UnknownData
 // export type PromiseReactNode = Promise<React.ReactNode> & React.ReactNode
-// export type LoaderOutput = UnknownData | Response | React.ReactElement
-export type LoaderOutput = UnknownData | Response
+export type LoaderOutput = UnknownData | Response | React.ReactElement
 export type UndefinedLoaderOutput = undefined
 export type MapperOutput = Data
 export type UndefinedMapperOutput = undefined
@@ -2253,6 +2252,7 @@ export type NiceRootStagePoint<
   | 'providerQueryOptions'
   | 'layoutQueryOptions'
   | 'fetchOptions'
+  | 'rscDepth'
   | 'layoutError'
   | 'pageError'
   | 'componentError'
@@ -2360,6 +2360,7 @@ export type NicePluginStagePoint<
   | 'providerQueryOptions'
   | 'layoutQueryOptions'
   | 'fetchOptions'
+  | 'rscDepth'
   | 'layoutError'
   | 'pageError'
   | 'componentError'
@@ -2465,6 +2466,7 @@ export type NiceBaseStagePoint<
   | 'providerQueryOptions'
   | 'layoutQueryOptions'
   | 'fetchOptions'
+  | 'rscDepth'
   | 'layoutError'
   | 'pageError'
   | 'componentError'
@@ -2561,6 +2563,7 @@ export type NicePageStagePoint<
   | 'middleware'
   | 'use'
   | 'fetchOptions'
+  | 'rscDepth'
   | 'error'
   | 'loading'
   | 'wrapper'
@@ -2648,6 +2651,7 @@ export type NiceComponentStagePoint<
   | 'middleware'
   | 'use'
   | 'fetchOptions'
+  | 'rscDepth'
   | 'error'
   | 'loading'
   | 'wrapper'
@@ -2728,6 +2732,7 @@ export type NiceActionStagePoint<
   | 'clientOn'
   | 'middleware'
   | 'fetchOptions'
+  | 'rscDepth'
   | 'use'
   | 'headers'
   | 'cookies'
@@ -2798,6 +2803,7 @@ export type NiceQueryStagePoint<
   | 'middleware'
   | 'use'
   | 'fetchOptions'
+  | 'rscDepth'
   | 'headers'
   | 'cookies'
   | 'input'
@@ -2869,6 +2875,7 @@ export type NiceInfiniteQueryStagePoint<
   | 'middleware'
   | 'use'
   | 'fetchOptions'
+  | 'rscDepth'
   | 'headers'
   | 'cookies'
   | 'input'
@@ -2941,6 +2948,7 @@ export type NiceMutationStagePoint<
   | 'use'
   // | 'asFormData'
   | 'fetchOptions'
+  | 'rscDepth'
   | 'headers'
   | 'cookies'
   | 'input'
@@ -3010,6 +3018,7 @@ export type NiceLayoutStagePoint<
   | 'middleware'
   | 'use'
   | 'fetchOptions'
+  | 'rscDepth'
   | 'pageQueryOptions'
   | 'pageDehydratedStateQueryOptions'
   | 'error'
@@ -3103,6 +3112,7 @@ export type NiceProviderStagePoint<
   | 'middleware'
   | 'use'
   | 'fetchOptions'
+  | 'rscDepth'
   | 'headers'
   | 'cookies'
   | 'input'

@@ -768,10 +768,16 @@ export class Engine<
     try {
       if (!isModulePreloadDisabledByEnv(process.env.POINT0_MODULE_PRELOAD)) {
         const pagePoints = this.generator.getPagePoints()
+        const componentPoints = this.generator.getComponentPoints()
         for (const client of this.clients) {
           client.preloadPageSources = pagePoints
             .filter((page) => page.scope === client.scope)
             .map((page) => ({ name: page.name, sourceFiles: [page.file] }))
+          // RSC: component points referenced from loader data get their own manifest entries, so a payload's
+          // references turn into <link rel=modulepreload> next to the embedded data instead of a client-side discovery
+          client.preloadComponentSources = componentPoints
+            .filter((component) => component.scope === client.scope)
+            .map((component) => ({ name: component.name, sourceFiles: [component.file] }))
         }
       }
     } catch (error) {

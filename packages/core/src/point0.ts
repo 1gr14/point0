@@ -301,6 +301,7 @@ import {
   windowScrollPositionSetter,
   withLetsSugar,
 } from './utils.js'
+import { rscComponentsRegistry, wrapTransformerWithRsc } from './rsc.js'
 
 export class Point0<
   in out TPointType extends PointType,
@@ -440,6 +441,14 @@ export class Point0<
   private readonly _letsReadyPointType: TLetsReadyPointType
   readonly _transformer: DataTransformerExtended | undefined
   _getTransformer = () => this._transformer ?? blankDataTransformerExtended
+  private _transformerWithRsc: DataTransformerExtended | undefined
+  /**
+   * The transformer for DATA payloads (loader/query/mutation outputs, dehydrated state, push scripts) — the app
+   * transformer wrapped with the RSC element codec, built once per point instance. Input parsing must stay on
+   * `_getTransformer` (raw), so the server never decodes React elements from untrusted bytes.
+   */
+  _getTransformerWithRsc = () => (this._transformerWithRsc ??= wrapTransformerWithRsc(this._getTransformer()))
+  readonly _rscDepth: number | undefined
   private readonly _eventerSubscriptions: EventerSubscription<any, TError>[]
   readonly _ssr: boolean | undefined
   readonly _getSsr = () => (typeof this._ssr === 'boolean' ? this._ssr : _point0_env.vars.POINT0_SSR === 'true')
@@ -731,6 +740,7 @@ export class Point0<
     _layouts?: LayoutPoint[]
     name: PointName
     _fetchOptions?: FetchOptionsFn
+    _rscDepth?: number
     _scrollPositionGetter?: ScrollPositionGetter | undefined
     _scrollPositionSetter?: ScrollPositionSetter | undefined
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy | undefined
@@ -807,6 +817,7 @@ export class Point0<
     this._layouts = options._layouts ?? []
     this.name = options.name
     this._fetchOptions = options._fetchOptions ?? (() => ({}))
+    this._rscDepth = options._rscDepth ?? undefined
     this._scrollPositionGetter = options._scrollPositionGetter ?? undefined
     this._scrollPositionSetter = options._scrollPositionSetter ?? undefined
     this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? undefined
@@ -918,6 +929,7 @@ export class Point0<
     _layouts?: LayoutPoint[]
     name?: PointName
     _fetchOptions?: FetchOptionsFn
+    _rscDepth?: number
     _scrollPositionGetter?: ScrollPositionGetter | undefined
     _scrollPositionSetter?: ScrollPositionSetter | undefined
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy | undefined
@@ -1042,6 +1054,7 @@ export class Point0<
       _layouts: set('_layouts'),
       name: set('name'),
       _fetchOptions: set('_fetchOptions'),
+      _rscDepth: set('_rscDepth'),
       _scrollPositionGetter: set('_scrollPositionGetter'),
       _scrollPositionSetter: set('_scrollPositionSetter'),
       _scrollPositionRestorePolicy: set('_scrollPositionRestorePolicy'),
@@ -1466,6 +1479,7 @@ export class Point0<
       _pageDehydratedStateQueryOptions: this._base?._pageDehydratedStateQueryOptions,
       _infiniteQueryOptions: {} as never,
       _fetchOptions: this._base?._fetchOptions,
+      _rscDepth: this._base?._rscDepth,
       _scrollPositionGetter: this._base?._scrollPositionGetter,
       _scrollPositionSetter: this._base?._scrollPositionSetter,
       _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
@@ -2918,6 +2932,32 @@ export class Point0<
     }
     return this._continue({
       _fetchOptions: newFetchOptionsFn,
+    }) as never
+  }
+
+  /**
+   * How deep in the loader output React elements are allowed (RSC — "elements as data"). `0` (the default) allows an
+   * element only as the whole output — `.loader(async () => <Hello />)`; `1` also allows elements in first-level fields
+   * — `.loader(async () => ({ stats, hero: <Hero /> }))`; and so on. Arrays don't consume a level (`{ items: [<Row />]
+   * }` needs `1`). Elements found deeper than the declared depth fail the loader with an error naming the path — depth
+   * is an explicitness gate, so elements never leak into data by accident.
+   *
+   * Inside an element tree the depth no longer applies: props and children nest freely, including further elements.
+   * Plain function components unfold on the server (they are server components — their code never ships to the
+   * browser); component points serialize as references and render on the client. On root, base, plugin, and every point
+   * type.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config).
+   *
+   *     .rscDepth(1)
+   *     .loader(async () => ({ hero: <Hero />, cta: <MyCta label="Go" /> }))
+   *
+   * Full reference: https://1gr14.dev/point0/latest/rsc
+   */
+  rscDepth<TSelf>(this: TSelf, rscDepth: number): TSelf
+  rscDepth(rscDepth: number) {
+    return this._continue({
+      _rscDepth: rscDepth,
     }) as never
   }
 
@@ -7284,6 +7324,7 @@ export class Point0<
       ...set('_openapiSchema', () => {
         return mergeEndpointOpenapiSchemas(this._openapiSchema, point._openapiSchema)
       }),
+      ...set('_rscDepth'),
       ...set('_scrollPositionGetter'),
       ...set('_scrollPositionSetter'),
       ...set('_scrollPositionRestorePolicy'),
@@ -8996,27 +9037,11 @@ export class Point0<
         return result
       }
 
-      // if (res.headers.get('Content-Type') === 'text/x-component' && res.body) {
-      //   const { createFromReadableStream } = await import('react-server-dom-bun/client.browser')
-      //   const data = createFromReadableStream(res.body)
-      //   const result = {
-      //     response: res,
-      //     data,
-      //     error: undefined,
-      //     redirect: undefined,
-      //     output: data,
-      //   } as Extract<FetchServerDetailedOutput<TServerLoaderOutput, TError>, { error: undefined }>
-      //   const eventData = {
-      //     ..._eventData,
-      //     ...result,
-      //   }
-      //   this._emit('pointFetchServerSettled', eventData)
-      //   this._emit('pointFetchServerSuccess', eventData)
-      //   return result
-      // }
-
       const json = await res.json()
-      const data: unknown = fetchOptions.transform ? (this._getTransformer().deserialize(json) ?? json) : json
+      const data: unknown = fetchOptions.transform ? (this._getTransformerWithRsc().deserialize(json) ?? json) : json
+      // decoding may have started component-point chunk imports (RSC references) — resolve the fetch only with the
+      // chunks warm, so the consumer never renders a Suspense fallback for an island that is already in the data
+      await rscComponentsRegistry.drainPending()
       if (res.ok) {
         if (
           outputType === 'queryClientDehydratedState' &&

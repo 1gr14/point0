@@ -13,10 +13,9 @@ each SSR request its own instance, and ships its cache to the browser.
 ```tsx
 // src/lib/query-client.ts
 import { createQueryClient } from '@point0/core'
-import { QueryClient } from '@tanstack/react-query'
 
 // Safe on both server and client — each SSR request gets its own instance.
-export const queryClient = createQueryClient(() => new QueryClient())
+export const queryClient = createQueryClient()
 ```
 
 ```tsx
@@ -43,7 +42,7 @@ The value you export is **not** a real `QueryClient` — it's a proxy that alway
 forwards to whichever real client is current:
 
 ```tsx
-export const queryClient = createQueryClient(() => new QueryClient())
+export const queryClient = createQueryClient()
 // queryClient is typed as QueryClient, but every method call is delegated, at
 // call time, to the active client for the current context.
 ```
@@ -54,18 +53,23 @@ per-request instance, so one user's data never leaks into another's render. In
 the browser there's a single client for the tab, so the proxy always lands on
 it.
 
-The `init` argument — `() => new QueryClient()` — is the factory Point0 calls to
-build each real client. It's **optional**; omit it and Point0 uses a bare
-`new QueryClient()`:
+The optional argument is a function returning a TanStack `QueryClientConfig` —
+Point0 constructs each real client itself and merges your config over its own
+defaults, so framework defaults survive app customization instead of being
+silently overwritten:
 
 ```tsx
-export const queryClient = createQueryClient() // bare new QueryClient() per context
+export const queryClient = createQueryClient(() => ({
+  defaultOptions: { queries: { staleTime: 60_000 } },
+}))
 ```
 
-Point0 sets no `defaultOptions` of its own — the defaults are TanStack's. To
-tune the client app's defaults (`staleTime`, `retry`, `refetchOnWindowFocus`,
-…), pass them to your `new QueryClient({ defaultOptions: { … } })`, or set
-per-query defaults higher in the chain with [`.queryOptions`](query).
+Top-level keys and `defaultOptions.queries` keys you set win; defaults you don't
+touch stay. Point0 ships one default of its own — the RSC-safe
+`structuralSharing` (element-containing query data is handed back fresh instead
+of deep-merged; see [RSC](rsc)) — override it by setting `structuralSharing`
+yourself. Per-query defaults are also settable higher in the chain with
+[`.queryOptions`](query).
 
 ## The QueryClientProvider is yours to wire
 
@@ -282,16 +286,20 @@ private error detail off the wire.
 
 ## Reference
 
-### `createQueryClient(init?)`
+### `createQueryClient(getConfig?)`
 
 ```tsx
-createQueryClient(init?: () => QueryClient) // => QueryClient (a proxy)
+createQueryClient(getConfig?: () => QueryClientConfig) // => QueryClient (a proxy)
 ```
 
-- `init` — optional factory for each real client. Provided once, it overrides
-  the default `() => new QueryClient()`. You cannot replace a _built_ client
-  instance later (the item is read-only); you only replace the factory, and only
-  by calling `createQueryClient` again.
+- `getConfig` — optional function returning a TanStack `QueryClientConfig`.
+  Point0 builds each real client as
+  `new QueryClient(merge(point0Defaults, getConfig()))` — your keys win, the
+  defaults you don't touch stay (today that's the RSC-safe `structuralSharing`).
+  Returning a `QueryClient` instance throws — the client is Point0's to
+  construct. You cannot replace a _built_ client instance later (the item is
+  read-only); you only replace the config, and only by calling
+  `createQueryClient` again.
 - Returns the proxy. Use it as `queryClient` everywhere, including as the
   `QueryClientProvider client` prop.
 

@@ -1167,40 +1167,6 @@ describe('page', () => {
     baseInput.lets('page', 'home', '/:id').page()
   })
 
-  // it('can return async component from loader', async () => {
-  //   const root = createRoot()
-  //   const x = await import('react-server-dom-bun/client.browser')
-  //   const { createFromReadableStream } = await import('react-server-dom-bun/client.browser')
-  //   const page = root
-  //     .lets('page', 'home', '/')
-  //     .loader(async () => {
-  //       return <div id="page-inner">x=1</div>
-  //     })
-  //     .page(({ data }) => {
-  //       return <div id="page-outer">{data}</div>
-  //     })
-  //   const { render, fetchPreview, fetchesTale } = await createTestThings({ ssr: true, points: [root, page] })
-  //   await render(page.route(), async ({ waitContent, tale }) => {
-  //     // await waitContent('#page-outer')
-  //     expect(await tale()).toMatchInlineSnapshot(`
-  //       "
-  //       /
-  //         #page-outer: x=1
-  //       "
-  //     `)
-  //   })
-  //   expect(await fetchesTale()).toMatchInlineSnapshot(`
-  //     "
-  //     page.home (client) < {}
-  //     "
-  //   `)
-  //   expect(await fetchPreview(page)).toMatchInlineSnapshot(`
-  //     "
-  //     #page-outer: x=1
-  //     "
-  //   `)
-  // })
-
   it('same query key when a search param is undefined', async () => {
     const root = createRoot()
     const page = root

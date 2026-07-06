@@ -19,11 +19,13 @@ export const SLOW_TESTS = [
   'engine/tests/scroll-restoration.test.ts',
   // deploy invalidation: builds the project twice (the "redeploy") + Playwright tabs that outlive it
   'engine/tests/client-build-stale.test.ts',
-  // only the e2e half of the suspend coverage (dev server + Playwright + vite smoke) is slow;
-  // the in-process half (suspend.fast.test.tsx) runs with the fast set. The fast/slow suffix
-  // pair is a deliberate one-off: one feature split by speed — everywhere else a file is a
-  // distinct feature and carries no suffix.
+  // only the e2e half of the suspend and rsc coverage (dev server + Playwright) is slow; the
+  // in-process halves (suspend.fast.test.tsx, rsc.fast.test.tsx) run with the fast set. The
+  // fast/slow suffix pair marks a feature split by speed — everywhere else a file is a distinct
+  // feature and carries no suffix.
   'engine/tests/suspend.slow.test.tsx',
+  // RSC browser e2e (dev server + Playwright) + production-build strip/chunk assertions
+  'engine/tests/rsc.slow.test.tsx',
   'engine/tests/two-clients.test.ts',
   'engine/tests/publicdir.test.ts',
   'engine/tests/assets.test.tsx',

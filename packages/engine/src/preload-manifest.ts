@@ -27,6 +27,12 @@ export type PreloadManifest = {
   entryPreload: string[]
   /** page point name → extra chunks to preload for that page (the page chunk's static closure, minus `entryPreload`). */
   byPoint: Record<string, string[]>
+  /**
+   * component point name → that component's chunk + static closure, minus `entryPreload` (RSC: components referenced
+   * from loader data — a payload's references become modulepreload links next to the embedded data). Optional so a
+   * manifest written before this field existed still parses.
+   */
+  byComponent?: Record<string, string[]>
 }
 
 /**
@@ -246,18 +252,19 @@ export type PagePreloadSources = { name: string; sourceFiles: string[] }
 export function buildPreloadManifest({
   graph,
   pages = [],
+  components = [],
 }: {
   graph: ChunkGraph
   pages?: PagePreloadSources[]
+  components?: PagePreloadSources[]
 }): PreloadManifest {
   const entry = graph.entryFile
   const entryPreload = entry ? staticClosure(graph, entry) : []
   const entrySet = new Set([entry, ...entryPreload].filter((x): x is string => !!x))
 
-  const byPoint: Record<string, string[]> = {}
-  for (const page of pages) {
+  const closureForSources = (sourceFiles: string[]): string[] => {
     const chunkFiles = new Set<string>()
-    for (const sourceFile of page.sourceFiles) {
+    for (const sourceFile of sourceFiles) {
       const chunk = findChunkForSourceFile(graph, [sourceFile])
       if (!chunk) {
         continue
@@ -271,12 +278,26 @@ export function buildPreloadManifest({
         }
       }
     }
-    if (chunkFiles.size > 0) {
-      byPoint[page.name] = [...chunkFiles]
+    return [...chunkFiles]
+  }
+
+  const byPoint: Record<string, string[]> = {}
+  for (const page of pages) {
+    const chunkFiles = closureForSources(page.sourceFiles)
+    if (chunkFiles.length > 0) {
+      byPoint[page.name] = chunkFiles
     }
   }
 
-  return { entry, entryPreload, byPoint }
+  const byComponent: Record<string, string[]> = {}
+  for (const component of components) {
+    const chunkFiles = closureForSources(component.sourceFiles)
+    if (chunkFiles.length > 0) {
+      byComponent[component.name] = chunkFiles
+    }
+  }
+
+  return { entry, entryPreload, byPoint, byComponent }
 }
 
 /**
@@ -299,6 +320,25 @@ export function resolvePreloadsForPoint(manifest: PreloadManifest, pointName: st
   if (extras) {
     for (const f of extras) {
       push(f)
+    }
+  }
+  return out
+}
+
+/**
+ * The chunks to preload for component points referenced from a loader payload (RSC): the union of the components'
+ * manifest entries, deduped. Entry-closure chunks are already excluded at build time and the document already carries
+ * them via {@link resolvePreloadsForPoint} — this list is purely the payload's extras.
+ */
+export function resolveRscComponentPreloads(manifest: PreloadManifest, componentNames: string[]): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const name of componentNames) {
+    for (const file of manifest.byComponent?.[name] ?? []) {
+      if (file !== manifest.entry && !seen.has(file)) {
+        seen.add(file)
+        out.push(file)
+      }
     }
   }
   return out

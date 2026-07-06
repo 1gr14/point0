@@ -1,5 +1,5 @@
-import { dehydrate, hydrate, QueryClient } from '@tanstack/react-query'
-import type { DehydratedState, QueryState } from '@tanstack/react-query'
+import { dehydrate, hydrate, QueryClient, replaceEqualDeep } from '@tanstack/react-query'
+import type { DehydratedState, QueryClientConfig, QueryState } from '@tanstack/react-query'
 import type { ClassLikeError0, ErrorPoint0 } from './error.js'
 import { log } from './logger.js'
 import type { DataTransformerExtended } from './types.js'
@@ -7,6 +7,7 @@ import { _point0_env } from './env.js'
 // import { getClientPoints } from './helpers.js'
 import { getClientPoints } from './helpers.js'
 import { RedirectTask } from './redirect.js'
+import { rscComponentsRegistry, rscDataHasElements } from './rsc.js'
 import { superstore } from './super-store.js'
 import type { QueryKey } from './types.js'
 import { parseQueryKey } from './utils.js'
@@ -44,9 +45,30 @@ export const toLiveDehydratedState = (snapshot: DehydratedState, queryClient: Qu
   })
 }
 
+/**
+ * TanStack's structural sharing, RSC-safe: element-containing data is handed back fresh (the deep merge would corrupt
+ * React elements), element-free data keeps the standard `replaceEqualDeep` sharing. The default `structuralSharing` of
+ * Point0's QueryClient — `createQueryClient` keeps it when you pass your own config, unless you override the option
+ * yourself.
+ */
+export const rscStructuralSharing = (oldData: unknown, newData: unknown): unknown =>
+  rscDataHasElements(newData) || rscDataHasElements(oldData) ? newData : replaceEqualDeep(oldData, newData)
+
+/** Point0's QueryClient defaults merged UNDER a user config — user keys win, ours fill the gaps. */
+const toQueryClientConfigWithDefaults = (config: QueryClientConfig = {}): QueryClientConfig => ({
+  ...config,
+  defaultOptions: {
+    ...config.defaultOptions,
+    queries: {
+      structuralSharing: rscStructuralSharing,
+      ...config.defaultOptions?.queries,
+    },
+  },
+})
+
 export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, DehydratedState, 'readonlyRedefine'>(
   '__POINT0_QUERY_CLIENT__',
-  () => new QueryClient(),
+  () => new QueryClient(toQueryClientConfigWithDefaults()),
   {
     dehydrate: (queryClient) => {
       const dehydratedStateOriginal = dehydrate(queryClient, {
@@ -113,9 +135,31 @@ export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, Dehydrated
 //     QueryClientProvider,
 //   }
 // }
-export const createQueryClient = (init?: () => QueryClient) => {
-  if (init) {
-    __POINT0_QUERY_CLIENT__.redefine(init)
+/**
+ * Configure the app's QueryClient. Pass a function returning a TanStack `QueryClientConfig` — Point0 builds the client
+ * itself, merging your config over its own defaults (top-level and `defaultOptions.queries` keys you set win; defaults
+ * you don't touch stay, e.g. the RSC-safe `structuralSharing`). Call it with no argument just to get the client proxy.
+ *
+ *     export const queryClient = createQueryClient(() => ({
+ *       defaultOptions: { queries: { staleTime: 60_000 } },
+ *     }))
+ *
+ * The callback returns CONFIG, not a `QueryClient` — constructing the client is Point0's job, so framework defaults
+ * survive app customization instead of being silently overwritten.
+ *
+ * Full reference: https://1gr14.dev/point0/latest/query-client
+ */
+export const createQueryClient = (getConfig?: () => QueryClientConfig) => {
+  if (getConfig) {
+    __POINT0_QUERY_CLIENT__.redefine(() => {
+      const config = getConfig()
+      if (config instanceof QueryClient) {
+        throw new Error(
+          'createQueryClient takes a function returning a QueryClientConfig (options object), not a QueryClient instance — Point0 constructs the client itself so its defaults merge with yours. Replace `createQueryClient(() => new QueryClient({ … }))` with `createQueryClient(() => ({ … }))`.',
+        )
+      }
+      return new QueryClient(toQueryClientConfigWithDefaults(config))
+    })
   }
   return __POINT0_QUERY_CLIENT__.proxy
 }
@@ -143,41 +187,57 @@ export const installPushedQueriesReceiver = (transformer: DataTransformerExtende
     __POINT0_PUSH_QUERY_BUFFER__?: string[]
   }
   const receive = (serialized: string): void => {
-    try {
-      const payload = transformer.parse(serialized) as PushedQueryPayload
-      const queryClient = __POINT0_QUERY_CLIENT__.get()
-      // Same error revival + freshness treatment the prefix store gets: a pushed ERROR state (a
-      // failed streamed loader whose `.error()` was streamed in place) must hydrate as a real
-      // error0 so the boundary content matches what the server rendered.
-      const ErrorClass = getClientPoints().manager.root._Error
-      const deserialized = deserializeErrorsInDehydratedState(
-        {
-          queries: [{ queryKey: payload.queryKey as never, queryHash: payload.queryHash, state: payload.state }],
-          mutations: [],
-        },
-        ErrorClass,
-      ).queries[0]
-      const now = Date.now()
-      hydrate(queryClient, {
-        queries: [
-          {
-            ...deserialized,
-            state: {
-              ...deserialized.state,
-              dataUpdatedAt: deserialized.state.dataUpdatedAt ? now : deserialized.state.dataUpdatedAt,
-              errorUpdatedAt: deserialized.state.errorUpdatedAt ? now : deserialized.state.errorUpdatedAt,
-            },
-          },
-        ],
-        mutations: [],
-      })
-    } catch (error) {
+    const logFailure = (error: unknown): void => {
       log({
         level: 'error',
         category: ['ssr'],
         message: 'Failed to hydrate a streamed query push',
         error,
       })
+    }
+    try {
+      const payload = transformer.parse(serialized) as PushedQueryPayload
+      const hydratePayload = (): void => {
+        const queryClient = __POINT0_QUERY_CLIENT__.get()
+        // Same error revival + freshness treatment the prefix store gets: a pushed ERROR state (a
+        // failed streamed loader whose `.error()` was streamed in place) must hydrate as a real
+        // error0 so the boundary content matches what the server rendered.
+        const ErrorClass = getClientPoints().manager.root._Error
+        const deserialized = deserializeErrorsInDehydratedState(
+          {
+            queries: [{ queryKey: payload.queryKey as never, queryHash: payload.queryHash, state: payload.state }],
+            mutations: [],
+          },
+          ErrorClass,
+        ).queries[0]
+        const now = Date.now()
+        hydrate(queryClient, {
+          queries: [
+            {
+              ...deserialized,
+              state: {
+                ...deserialized.state,
+                dataUpdatedAt: deserialized.state.dataUpdatedAt ? now : deserialized.state.dataUpdatedAt,
+                errorUpdatedAt: deserialized.state.errorUpdatedAt ? now : deserialized.state.errorUpdatedAt,
+              },
+            },
+          ],
+          mutations: [],
+        })
+      }
+      const hydratePayloadSafe = (): void => {
+        try {
+          hydratePayload()
+        } catch (error) {
+          logFailure(error)
+        }
+      }
+      // RSC: parsing may have started component-point chunk imports — hydrate the cache only with the chunks warm,
+      // so consumers of the pushed query never render a Suspense fallback for an island already in the data.
+      // Resolves in a microtask when nothing is pending.
+      void rscComponentsRegistry.drainPending().then(hydratePayloadSafe, hydratePayloadSafe)
+    } catch (error) {
+      logFailure(error)
     }
   }
   const buffered = w.__POINT0_PUSH_QUERY_BUFFER__ ?? []

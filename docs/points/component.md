@@ -443,3 +443,17 @@ with a `<Stats />` tag, so it ships inside whatever module imports it. There is
 no automatic per-component code splitting at the mount site. To defer a heavy
 component's code, wrap it in your own `React.lazy` / `Suspense` like any other
 React component.
+
+The exception is [RSC](rsc): every component point also lands in the generated
+points aggregator as a lazy record, so a component referenced **from loader
+data** (`.loader(async () => ({ cta: <HomeCta /> }))`) resolves by name from the
+points collection and its chunk is fetched on demand — declare it in its own
+file and it stays out of every page's bundle until a payload references it.
+
+### Referencing a component from loader data (RSC)
+
+A component point inside a loader's output serializes as a reference — its name
+plus its props as data — and renders on the client as an interactive island,
+while plain function components in the same payload render on the server. The
+full model, including `.rscDepth(n)` and the wire format, is on the [RSC](rsc)
+page.

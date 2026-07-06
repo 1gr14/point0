@@ -1,6 +1,7 @@
 import type { AnyLocation } from '@1gr14/route0'
 import {
   _ss,
+  collectRscComponentNames,
   getDehydratedStateFromQueryClientDehydratedStateQuery,
   isQueryClientDehydratedStateQuery,
   serializeErrorsInDehydratedState,
@@ -204,6 +205,7 @@ export async function renderAppAsReadableStream({
   originalIndexHtml,
   domRootElementId = 'root',
   modulePreloads,
+  resolveRscComponentPreloads,
 }: {
   App: AppComponent
   executor: Executor
@@ -215,6 +217,7 @@ export async function renderAppAsReadableStream({
   originalIndexHtml: string
   domRootElementId?: string
   modulePreloads?: string[]
+  resolveRscComponentPreloads?: (componentNames: string[]) => Promise<string[]>
   redirectPolicy: 'continue' | 'throw'
   waitForAllReady?: boolean | 'auto'
   ssrOptions: SsrOptionsResolved
@@ -252,6 +255,16 @@ export async function renderAppAsReadableStream({
     const serverHead = executor.serverStorageState.__POINT0_UNHEAD_SERVER_HEAD__
     serverHead.push(template.headInput, { _index: 0 })
     const resolvedHeadTags = resolveTags(serverHead, { tagWeight: capoTagWeight })
+
+    // RSC: component points referenced by the payload get <link rel=modulepreload> in the document head, so the
+    // browser fetches their chunks in parallel with the entry bundle instead of discovering them after decode.
+    // Discovery is over, so the store already holds every reference the shell will carry (a query streaming in
+    // post-shell delivers its references via the push script — decode starts those imports itself; no head link is
+    // possible for content the head has already shipped past). Prod-build-only by the resolver's own gating.
+    const rscComponentNames = collectRscComponentNames(superstore.dehydrate())
+    const rscModulePreloads =
+      rscComponentNames.length && resolveRscComponentPreloads ? await resolveRscComponentPreloads(rscComponentNames) : []
+    const allModulePreloads = [...(modulePreloads ?? []), ...rscModulePreloads.filter((f) => !modulePreloads?.includes(f))]
 
     const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
 
@@ -310,7 +323,7 @@ window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientP
       domRootElementId,
       headStart: envScriptElements({ envVars, envConsts }),
       headEnd: [createElement(StoreScript, { key: 'p0-store' })],
-      modulePreloads,
+      modulePreloads: allModulePreloads,
       omitHeadScriptIds: ENGINE_OWNED_HEAD_SCRIPT_IDS,
     })
 

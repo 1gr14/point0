@@ -254,6 +254,20 @@ most of these calls).
 .fetchOptions(() => ({ headers: { authorization: `Bearer ${getToken()}` } }))
 ```
 
+### .rscDepth
+
+How deep in the loader output React elements are allowed (RSC — elements as
+data). `0` (the default) allows an element only as the whole output; `1` also
+allows elements in first-level fields; arrays don't consume a level. On **every
+point type** (and root/base/plugin — set an app default once).
+**Server-and-client** — not cut from either bundle (isomorphic config). Full
+page: [RSC](rsc).
+
+```tsx
+.rscDepth(1)
+.loader(async () => ({ hero: <Hero />, cta: <HomeCta label="Join" /> }))
+```
+
 ### .transformer
 
 Serialize query input and loader output across the wire — pass any tRPC-style
@@ -503,6 +517,7 @@ infinite-query, mutation, root, base, plugin).
 | `.use`                                                            | all                                                                      | per contributed method                             |
 | `.middleware`                                                     | all                                                                      | server-only                                        |
 | `.fetchOptions`                                                   | all                                                                      | server-and-client                                  |
+| `.rscDepth`                                                       | all                                                                      | server-and-client                                  |
 | `.transformer`                                                    | root, plugin                                                             | server-and-client                                  |
 | `.serverUrl` / `.clientUrl`                                       | root, plugin                                                             | server-and-client                                  |
 | `.basePath`                                                       | root, base, plugin                                                       | server-and-client                                  |
