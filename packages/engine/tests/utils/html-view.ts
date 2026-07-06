@@ -163,6 +163,11 @@ export class HtmlView<TParsed extends boolean = any> {
           if (!insideRoot || !stack.length) return
           // Skip the root element itself
           if (el.getAttribute('id') === 'root' && el.tagName === 'div') return
+          // `display: contents` elements generate no box — previews model the visual tree, so
+          // hoist their children in place. The framework's app wrapper (the streaming host div
+          // around the whole app) is one of these.
+          const style = el.getAttribute('style')
+          if (style && style.replaceAll(' ', '').includes('display:contents')) return
 
           const node = HtmlView.buildTreeItem(el)
 

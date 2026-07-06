@@ -1,5 +1,11 @@
 import type { AnyLocation } from '@1gr14/route0'
-import { superstore } from '@point0/core'
+import {
+  _ss,
+  getDehydratedStateFromQueryClientDehydratedStateQuery,
+  isQueryClientDehydratedStateQuery,
+  serializeErrorsInDehydratedState,
+  superstore,
+} from '@point0/core'
 import type { AppComponent, ClientPoints, PagePoint } from '@point0/core'
 import { transformHtmlTemplate } from '@unhead/react/server'
 import { uneval } from 'devalue'
@@ -377,35 +383,144 @@ export async function getReadableStreamWithWrapper({
 
   // one scope for both render and pack ensures consistency
   return await executor.withServerGlobalState(async () => {
-    // Kick off the render first; any randoms used during render happen now
-    const reactStream = await renderer(createElement(App), {
-      ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
-    })
+    // Kick off the render first; any randoms used during render happen now.
+    //
+    // The app is wrapped in a `display: contents` host div (no box, zero layout impact,
+    // self-identifying via `data-point0`; `mount()` renders the same wrapper on the client so
+    // hydration matches). Without it, when the FIRST markup-producing mountable suspends (a
+    // streamed suspense query), the pending Suspense boundary is the ROOT of React's output — and
+    // Fizz then withholds the entire response until the boundary resolves (a root-level boundary
+    // may still contribute preamble/head content, so React cannot commit the shell). A host
+    // element around the tree pins the host context and streaming works.
+    const reactStream = await renderer(
+      createElement('div', { 'data-point0': '', style: { display: 'contents' } }, createElement(App)),
+      {
+        ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
+        // Render errors that happen after the shell was sent (a throw inside a streamed Suspense
+        // boundary) have no other server-side trace — log them. Failed streamed LOADERS never
+        // reach this callback: their suspension resolves and the mountable's `.error()` streams in
+        // place, with the failure logged through the query-error event pipeline. Providing onError
+        // also replaces React's default console.error for shell errors — those still reject the
+        // render promise and travel the usual SPA-fallback path.
+        onError: (error: unknown) => {
+          executor.logStreamRenderError(error)
+        },
+      },
+    )
     if (waitForAllReady) {
       await reactStream.allReady
     }
 
-    // Snapshot AFTER render started, in the same state scope
+    // Snapshot AFTER render started, in the same state scope. The tiny receiver ahead of the
+    // dehydrated store buffers streamed query pushes (see below) until `mount()` installs the
+    // real handler — inline push <script>s can execute both before and after the bundle loads.
     const compiledPrefix = (prefix ?? '').replace(
       '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
       `<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">
+         window.__POINT0_PUSH_QUERY_BUFFER__ = [];
+         window.__POINT0_PUSH_QUERY__ = function (pushedQuery) { window.__POINT0_PUSH_QUERY_BUFFER__.push(pushedQuery) };
          window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientPoints.transformer))};
        </script>`,
     )
 
-    const transform = new TransformStream<Uint8Array, Uint8Array>({
+    // Streamed query push-hydration. The dehydrated store in the prefix was snapshotted before any
+    // streamed query resolved, so their data is NOT in it — without this the client would silently
+    // refetch after hydration and flash the streamed content. Every React flush after the shell is
+    // a resolved Suspense boundary; prepending the newly settled query states to that same chunk
+    // guarantees the data <script> executes (in document order) before React's reveal script and
+    // before the revealed content hydrates — the client's useQuery finds the data in cache.
+    // "Sent" = what the client actually receives from the prefix. When the page carries a
+    // dehydrated-state snapshot query, the client's hydrated cache is exactly its INNER queries
+    // (taken at end of discovery, pending-filtered) — a query that settled after that snapshot is
+    // in the raw server cache but NOT in the prefix, so it must be pushed. Without a snapshot
+    // query the prefix dehydrates the raw cache, so everything non-pending counts as sent.
+    const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
+    const sentQueryHashes = new Set<string>()
+    const dehydratedStateQueries = queryClient.getQueryCache().getAll().filter(isQueryClientDehydratedStateQuery)
+    if (dehydratedStateQueries.length > 0) {
+      for (const query of dehydratedStateQueries) {
+        sentQueryHashes.add(query.queryHash)
+        const innerDehydratedState = getDehydratedStateFromQueryClientDehydratedStateQuery(query)
+        for (const innerQuery of innerDehydratedState?.queries ?? []) {
+          sentQueryHashes.add(innerQuery.queryHash)
+        }
+      }
+    } else {
+      for (const query of queryClient.getQueryCache().getAll()) {
+        if (query.state.status !== 'pending') {
+          sentQueryHashes.add(query.queryHash)
+        }
+      }
+    }
+    // Both success AND error states are pushed: a failed streamed loader streams the mountable's
+    // `.error()` in place, so the client cache must hold the same error state — otherwise the
+    // hydrated boundary would mismatch (server shows `.error()`, client cache says pending).
+    // Errors travel through the same projection the prefix uses (public in production).
+    const ErrorClass = clientPoints.manager.root._Error
+    const collectNewlySettledQueryScripts = (): string | undefined => {
+      const scripts: string[] = []
+      for (const query of queryClient.getQueryCache().getAll()) {
+        if (query.state.status === 'pending' || sentQueryHashes.has(query.queryHash)) {
+          continue
+        }
+        sentQueryHashes.add(query.queryHash)
+        if (isQueryClientDehydratedStateQuery(query)) {
+          // client-navigation snapshots, not page data — never pushed
+          continue
+        }
+        const payload = serializeErrorsInDehydratedState(
+          {
+            queries: [{ queryKey: query.queryKey, queryHash: query.queryHash, state: query.state }],
+            mutations: [],
+          },
+          ErrorClass,
+        ).queries[0]
+        scripts.push(
+          `<script>window.__POINT0_PUSH_QUERY__(${uneval(clientPoints.transformer.stringify(payload))})</script>`,
+        )
+      }
+      return scripts.length > 0 ? scripts.join('') : undefined
+    }
+
+    // In streaming mode, the first flushed chunk is the shell leaving the process — from that
+    // moment a still-running loader can no longer redirect or change cookies/headers/status. Seal
+    // the effects so late writes warn instead of disappearing silently (`Effects.sealed` itself
+    // is the idempotency guard — re-sealing would only rewrite the same reason).
+    const sealEffectsOnFirstChunk = () => {
+      if (waitForAllReady || executor.effects.sealed) {
+        return
+      }
+      executor.effects.seal(
+        'the response shell was already sent (this page streams suspended queries); a loader that resolves after the shell cannot redirect or change cookies/headers/status',
+      )
+    }
+
+    // Manual pull-based pump, NOT `reactStream.pipeThrough(transform)`: piping React's (direct)
+    // stream through a TransformStream makes Bun deliver nothing until the render fully completes,
+    // which silently turns streamed SSR back into whole-page SSR. Reading the React stream with
+    // its own reader (what a plain consumer does) keeps the progressive flushes — shell first,
+    // each resolved Suspense boundary as its own chunk.
+    const reactStreamReader = reactStream.getReader()
+    return new ReadableStream<Uint8Array>({
       start(controller) {
         if (compiledPrefix) controller.enqueue(encoder.encode(compiledPrefix))
       },
-      transform(chunk, controller) {
-        controller.enqueue(chunk)
+      async pull(controller) {
+        const { done, value } = await reactStreamReader.read()
+        if (done) {
+          if (suffix) controller.enqueue(encoder.encode(suffix))
+          controller.close()
+          return
+        }
+        sealEffectsOnFirstChunk()
+        const pushScripts = collectNewlySettledQueryScripts()
+        if (pushScripts) controller.enqueue(encoder.encode(pushScripts))
+        controller.enqueue(value)
       },
-      flush(controller) {
-        if (suffix) controller.enqueue(encoder.encode(suffix))
+      cancel(reason) {
+        void reactStreamReader.cancel(reason)
       },
     })
-
-    return reactStream.pipeThrough(transform)
   })
 }
 
@@ -478,7 +593,7 @@ export async function renderAppAsReadableStream({
   domRootElementId?: string
   modulePreloads?: string[]
   redirectPolicy: 'continue' | 'throw'
-  waitForAllReady?: boolean
+  waitForAllReady?: boolean | 'auto'
   ssrOptions: SsrOptionsResolved
 }): Promise<ReadableStream> {
   await executor.prefetchAppPagePointDeep({
@@ -489,12 +604,22 @@ export async function renderAppAsReadableStream({
     pageLocation,
     redirectPolicy,
     ssrOptions,
+    target: 'html',
   })
+  // Discovery is over — from here the suspense query gates may suspend (final render). The same
+  // boundary call decides whether the final render may suspend, from what discovery saw + what
+  // is still pending in the cache.
+  const { shouldStreamSuspense } = executor.markSsrRenderPhase()
+  // 'auto': hold the response for the full tree (the classic whole-HTML behavior) unless the
+  // final render may suspend — then stream: the shell ships at once and each suspended Suspense
+  // boundary follows in the same response as it resolves. An explicit boolean (e.g.
+  // renderAsString) is respected as-is: `true` degrades streaming to blocking.
+  const resolvedWaitForAllReady = waitForAllReady === 'auto' ? !shouldStreamSuspense : waitForAllReady
   return await renderReadableStream({
     ...props,
     App,
     executor,
     clientPoints,
-    waitForAllReady,
+    waitForAllReady: resolvedWaitForAllReady,
   })
 }

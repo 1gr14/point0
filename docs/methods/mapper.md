@@ -84,13 +84,13 @@ loaded, so `queries[n].data` is always there. There is no `loading`, `error`,
 it doesn't decide loading or error (that's [`.with`](with) and
 [Loading & error](loading-error)).
 
-A mapper that throws is **not** caught by `.error`. The mapper runs inside the
-render (in a `useMemo`), so a throw there is a render-phase error, not a data
-error — and `.error` only handles the resolved error _state_ of a loader or
-query. Point0 ships no React error boundary around your render, so the throw
-bubbles to whatever boundary your app provides (and fails the SSR render). Keep
-the mapper total: return data, don't throw. To signal an error from the data
-phase, return one from a [`.with`](with) instead — that routes to `.error`.
+A mapper that throws IS caught: the mapper runs inside the render (in a
+`useMemo`), and every mountable render is wrapped in an error boundary — the
+throw renders the nearest [`.error`](loading-error) above it, on the server and
+on the client, while the rest of the page stays alive. Still, prefer keeping the
+mapper total: signal errors from the data phase by returning one from a
+[`.with`](with) — that path is typed and carries an HTTP `status` into the SSR
+response; the render boundary is the safety net.
 
 ## `data` shadows `queries[0].data`
 

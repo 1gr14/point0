@@ -14,6 +14,7 @@ import type {
   PagePoint,
 } from '@point0/core'
 import { _point0_env, ClientPoints, PointsSourceNotReadyError } from '@point0/core'
+import type { SsrTarget } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
 import * as nodeFs from 'node:fs/promises'
@@ -1474,7 +1475,7 @@ try {
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
     redirectPolicy: 'continue' | 'throw'
-    waitForAllReady?: boolean
+    waitForAllReady?: boolean | 'auto'
   }): Promise<ReadableStream> {
     if (!this.points) {
       throw new Error('Client points not provided, so we can not render app as readable stream')
@@ -1508,7 +1509,7 @@ try {
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
     redirectPolicy: 'continue' | 'throw'
-    waitForAllReady?: boolean
+    waitForAllReady?: boolean | 'auto'
   }): Promise<string> {
     const readableStream = await this.renderAsReadableStream({
       executor,
@@ -1525,11 +1526,15 @@ try {
     pagePoint,
     pageLocation,
     redirectPolicy,
+    target,
+    suspenseQueryPolicy,
   }: {
     executor: Executor<RequiredCtx, any>
     pagePoint: PagePoint | undefined
     pageLocation: AnyLocation
     redirectPolicy: 'continue' | 'throw'
+    target: Exclude<SsrTarget, 'none'>
+    suspenseQueryPolicy?: 'background' | 'skip'
   }): Promise<void> {
     if (!this.points) {
       throw new Error('Client points not provided, so we can not prefetch app page point deep')
@@ -1542,6 +1547,8 @@ try {
       clientPoints: this.points,
       redirectPolicy,
       ssrOptions: this.ssrOptions,
+      target,
+      suspenseQueryPolicy,
     })
   }
 }

@@ -1,6 +1,8 @@
 import { dehydrate, hydrate, QueryClient } from '@tanstack/react-query'
 import type { DehydratedState, QueryState } from '@tanstack/react-query'
 import type { ClassLikeError0, ErrorPoint0 } from './error.js'
+import { log } from './logger.js'
+import type { DataTransformerExtended } from './types.js'
 import { _point0_env } from './env.js'
 // import { getClientPoints } from './helpers.js'
 import { getClientPoints } from './helpers.js'
@@ -48,8 +50,13 @@ export const __POINT0_QUERY_CLIENT__ = superstore.define<QueryClient, Dehydrated
   {
     dehydrate: (queryClient) => {
       const dehydratedStateOriginal = dehydrate(queryClient, {
-        shouldDehydrateQuery: () => {
-          return true
+        shouldDehydrateQuery: (query) => {
+          // Everything except pending: a pending query carries no data for the client (it starts
+          // its own fetch after hydration anyway), and dehydrating one makes TanStack capture
+          // `query.promise` — if that promise later rejects (a failed streamed loader), the
+          // promise-chase machinery refetches the errored query in a tight endless loop on the
+          // server and the streamed response never closes.
+          return query.state.status !== 'pending'
         },
       })
       const clientPoints = getClientPoints()
@@ -111,6 +118,74 @@ export const createQueryClient = (init?: () => QueryClient) => {
     __POINT0_QUERY_CLIENT__.redefine(init)
   }
   return __POINT0_QUERY_CLIENT__.proxy
+}
+
+type PushedQueryPayload = {
+  queryKey: readonly unknown[]
+  queryHash: string
+  state: QueryState
+}
+
+/**
+ * Install the client side of streamed query push-hydration (streamed suspense queries). The server streams an inline
+ * `<script>window.__POINT0_PUSH_QUERY__(…)</script>` right before each resolved Suspense boundary's content; a tiny
+ * bootstrap in the HTML prefix buffers calls that execute before the bundle loads. `mount()` calls this after
+ * `superstore.prepare` — it replaces the buffering stub with the real receiver and drains whatever arrived early, so
+ * both script orders (before and after mount) hydrate the cache before React hydrates the pushed content. Data is
+ * force-freshened (same idea as `forceFreshDehydratedState`) so the client does not refetch what just streamed in.
+ */
+export const installPushedQueriesReceiver = (transformer: DataTransformerExtended): void => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  const w = window as unknown as {
+    __POINT0_PUSH_QUERY__?: (serialized: string) => void
+    __POINT0_PUSH_QUERY_BUFFER__?: string[]
+  }
+  const receive = (serialized: string): void => {
+    try {
+      const payload = transformer.parse(serialized) as PushedQueryPayload
+      const queryClient = __POINT0_QUERY_CLIENT__.get()
+      // Same error revival + freshness treatment the prefix store gets: a pushed ERROR state (a
+      // failed streamed loader whose `.error()` was streamed in place) must hydrate as a real
+      // error0 so the boundary content matches what the server rendered.
+      const ErrorClass = getClientPoints().manager.root._Error
+      const deserialized = deserializeErrorsInDehydratedState(
+        {
+          queries: [{ queryKey: payload.queryKey as never, queryHash: payload.queryHash, state: payload.state }],
+          mutations: [],
+        },
+        ErrorClass,
+      ).queries[0]
+      const now = Date.now()
+      hydrate(queryClient, {
+        queries: [
+          {
+            ...deserialized,
+            state: {
+              ...deserialized.state,
+              dataUpdatedAt: deserialized.state.dataUpdatedAt ? now : deserialized.state.dataUpdatedAt,
+              errorUpdatedAt: deserialized.state.errorUpdatedAt ? now : deserialized.state.errorUpdatedAt,
+            },
+          },
+        ],
+        mutations: [],
+      })
+    } catch (error) {
+      log({
+        level: 'error',
+        category: ['ssr'],
+        message: 'Failed to hydrate a streamed query push',
+        error,
+      })
+    }
+  }
+  const buffered = w.__POINT0_PUSH_QUERY_BUFFER__ ?? []
+  w.__POINT0_PUSH_QUERY__ = receive
+  w.__POINT0_PUSH_QUERY_BUFFER__ = []
+  for (const serialized of buffered) {
+    receive(serialized)
+  }
 }
 
 // Errors in the dehydrated state travel to the browser: public projection in production,

@@ -215,11 +215,12 @@ export const authServer = env.side.define.unsafe.server(
 ```
 
 The same shaking covers `env.mode.*` (production/development/test),
-`env.build.was`, `env.runtime.*`, `env.os.*`, `env.scope.*`, and `env.vars.*`,
-plus `process.env.X` / `import.meta.env.X` against your configured constants.
-Each resolves to a literal at compile time; the now-dead branches and their
-unused imports are removed by a dead-code-elimination pass. The full list lives
-on the [env](env) page.
+`env.build.was`, `env.runtime.*`, `env.os.*`, `env.scope.*`,
+`env.ssr.active/phase/target` (client-side constants — SSR is never underway in
+the browser), and `env.vars.*`, plus `process.env.X` / `import.meta.env.X`
+against your configured constants. Each resolves to a literal at compile time;
+the now-dead branches and their unused imports are removed by a
+dead-code-elimination pass. The full list lives on the [env](env) page.
 
 `env.runtime.is.<X>` covers `browser`, `reactNative`, `nodejs`, `bun`, `deno`,
 and `worker`; `env.os.is.<X>` covers `ios`, `android`, `linux`, `mac`, and
@@ -493,7 +494,7 @@ forces it to `false` (a built app never compiles sources at runtime).
 | `os`       | `EnvOsName \| false`             | resolve `env.os.*`                            |
 | `consts`   | env-const table                  | replace `env.vars.*` / `process.env.*`        |
 | `filter`   | `RegExp`                         | which files the compiler claims               |
-| `ssr`      | toggle                           | set `POINT0_SSR` / `env.side.is.ssr`          |
+| `ssr`      | toggle                           | set `POINT0_SSR` / fold `env.ssr.*` on client |
 | `cache`    | boolean                          | on-disk transform cache (default on)          |
 | `markdown` | MDX options                      | remark/rehype/recma plugins, MDX config       |
 | `babel`    | plugins / `{ plugins, presets }` | your babel plugins (see above)                |

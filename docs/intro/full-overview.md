@@ -2351,8 +2351,10 @@ export const redirectUnauthorizedPlugin = Point0.lets
   .use(mePlugin)
   .with(({ props: { me } }) => {
     if (!me) {
-      // here you don't need to throw, this is sort of a react component
-      // in react components we don't throw anything, we just return
+      // returning is the idiomatic way — this is sort of a react component, and in
+      // render code we prefer returning over throwing. (A thrown redirect works too:
+      // every mountable is wrapped in an error boundary and a redirect passes through
+      // it — but keep that as the escape hatch, not the pattern.)
       return redirect('login')
       // return <Redirect route="login" /> is also ok
     }
@@ -3870,6 +3872,11 @@ env.side.name // 'server' | 'client'
 env.side.is.server // true | false
 env.side.is.client // true | false
 
+env.ssr.active // true while a server render pass is in progress
+env.ssr.phase // 'none' | 'discovery' | 'render'
+env.ssr.target // 'none' | 'html' | 'data' — what the pass is for
+// checking env.ssr.active narrows the other two; on the client all three fold to constants
+
 env.build.was // true | false // you can control how the code looks before the build and after the build
 ```
 
@@ -4224,6 +4231,46 @@ success or into error, doesn't matter. Then I render the page again. And so on
 in a loop, until there are no unresolved queries left. In practice this comes
 out to 2–4 re-renders per request.
 
+This discover loop ships the page whole — the server waits until nothing is
+pending and sends the finished HTML. And I consider that the right default: you
+turned SSR on to get the finished page in the first response. But sometimes one
+query is just slow, and it shouldn't hold everything else back. So on top of the
+same model there is streaming. Mark a query with `suspend: 'server'` and the
+server stops waiting for it: the loader starts immediately, the shell of the
+page goes out with that block's `.loading()` fallback in place, and when the
+loader resolves, React streams the real content into the SAME response —
+together with a tiny inline script that puts the result into the client's query
+cache, so after hydration there is no refetch and no flicker:
+
+```tsx
+export const StatsComponent = root.lets
+  .component()
+  // fallbacks go ABOVE the query — the closest .loading() declared above it is
+  // the boundary that streams first
+  .loading(() => <StatsSkeleton />)
+  .loader(async () => ({ stats: await computeSlowStats() })) // ~2 seconds
+  .query({ suspend: 'server' })
+  .component(({ data }) => <Stats stats={data.stats} />)
+```
+
+The important part: this is not a separate mode you switch the app into — it
+composes with the discovery loop. Queries you didn't mark keep blocking as
+before, the marked ones stream, and since `suspend` is an ordinary query option,
+it merges like everything else — `.queryOptions({ suspend: 'server' })` on the
+root or a layout turns the whole subtree streaming-first with one line. The
+default `suspend: 'auto'` also knows to suspend by itself when waiting is no
+longer possible — a query that only appears under an already-streamed block, or
+one the loop didn't get to — so nothing ever ships as a dead pending state.
+
+And for those who like honest suspense there are `useSuspenseQuery` and
+`useSuspenseInfiniteQuery` with the TanStack semantics: `data` is non-optional
+in types, a pending query suspends into the nearest `.loading()` declared above
+it, an error throws to the nearest `.error()`. On the server the fallback ships
+and the content streams in; on the client they suspend on navigations and fresh
+inputs. If you want the earliest possible shell, there is also
+`ssr: { allowedDiscoveryRenders: 0 }` — skip the discovery loop entirely, ship
+the shell with the first bytes, and let every query stream in as it resolves.
+
 You have to understand that SSR actually only happens on the first request of a
 page; afterwards, when navigating, we no longer request html, we only download
 the js chunk of the page itself, plus request the necessary data and insert it
@@ -4293,7 +4340,7 @@ the first render, so whatever you warmed there is already in the cache when
 rendering starts, collapsing the discover loop. And if your loaders are
 predictable, you don't even have to write the warm-up by hand — flip on
 `prefetchLoadersBeforePageRender` and Point0 prefetches the page's and layouts'
-declared loaders up front for you. Add `allowedRerendersCount: 0` to also stop
+declared loaders up front for you. Add `allowedDiscoveryRenders: 1` to also stop
 the store/cookie stabilization re-renders:
 
 ```ts
@@ -4301,7 +4348,7 @@ export const engine = Engine.create({
   // ...
   ssr: {
     prefetchLoadersBeforePageRender: true,
-    allowedRerendersCount: 0,
+    allowedDiscoveryRenders: 1,
   },
 })
 ```

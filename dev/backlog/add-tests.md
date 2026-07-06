@@ -99,7 +99,7 @@ stay assertive instead of hedging.
   around an inner page switch (design intent); no test asserts a fetch-count
   across such a navigation.
 - **ssr — re-render tuning is read from the client, not the server.** The
-  executor reads `allowedRerendersCount` / `forbiddenRerendersCount` /
+  executor reads `allowedDiscoveryRenders` / `forbiddenDiscoveryRenders` /
   `prefetchLoadersBeforePageRender` from the resolved client SSR options; the
   server keeps only the boolean. No test asserts that tuning on `server.ssr` is
   dropped while the client's value takes effect for server-rendered output.

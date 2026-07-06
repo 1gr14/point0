@@ -322,13 +322,17 @@ export const root = Point0.lets
 | `.pageDehydratedStateQueryOptions` | the SSR dehydrated-state prefetch query | root, base, page, layout, plugin |
 
 Each takes the TanStack option type with `queryKey`/`queryFn` (or
-`mutationKey`/`mutationFn`) stripped — Point0 owns those. As a defaults setter,
-`.infiniteQueryOptions` takes a **partial** object, so `pageParamFromInput` is
-optional here (it's **required** on the per-point `.infiniteQuery({...})`
-instead). Calling a setter twice keeps earlier plain keys (last call wins per
-key); the callback keys `onSuccess` / `onError` / `onSettled` (plus `onMutate`)
-**chain** so every registered callback runs. How these layer with a query's own
-options is on the [query](query) page.
+`mutationKey`/`mutationFn`) stripped — Point0 owns those — plus Point0's
+per-query SSR switches `ssr` and `suspend` (so
+`.queryOptions({ suspend: 'server' })` on a root or layout makes the whole
+subtree stream — see
+[the `ssr` and `suspend` query options](ssr#the-ssr-and-suspend-query-options)).
+As a defaults setter, `.infiniteQueryOptions` takes a **partial** object, so
+`pageParamFromInput` is optional here (it's **required** on the per-point
+`.infiniteQuery({...})` instead). Calling a setter twice keeps earlier plain
+keys (last call wins per key); the callback keys `onSuccess` / `onError` /
+`onSettled` (plus `onMutate`) **chain** so every registered callback runs. How
+these layer with a query's own options is on the [query](query) page.
 
 ## Events
 

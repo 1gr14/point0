@@ -683,7 +683,7 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
             ]),
           )
         : {}
-      const rendersCount = Number(response.headers.get('x-point0-renders-count'))
+      const rendersCount = Number(response.headers.get('x-point0-discovery-renders'))
       const queryClientQueriesPreview =
         Object.entries(queryClientQueriesState)
           .map(([key, value]) => {
@@ -750,7 +750,7 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
 ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${value.status}`}`
           })
           .join('\n') + '\n'
-      const rendersCount = Number(response.headers.get('x-point0-renders-count'))
+      const rendersCount = Number(response.headers.get('x-point0-discovery-renders'))
       return {
         dehydratedState,
         queryClientQueriesKeys,

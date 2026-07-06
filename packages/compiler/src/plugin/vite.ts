@@ -1,3 +1,4 @@
+import { log } from '@point0/core'
 import type { Plugin } from 'vite'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
@@ -101,7 +102,12 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
         if (e instanceof CriticalCompilerError) {
           throw e
         }
-        console.error(e)
+        log({
+          level: 'error',
+          category: ['compiler'],
+          message: 'Compiler transform failed (non-critical) — serving the file untransformed',
+          error: e,
+        })
         return null
       }
     },
@@ -126,7 +132,12 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
         if (e instanceof CriticalCompilerError) {
           throw e
         }
-        console.error(e)
+        log({
+          level: 'error',
+          category: ['compiler'],
+          message: 'Compiler transform failed (non-critical) — serving the file untransformed',
+          error: e,
+        })
         return null
       }
     },

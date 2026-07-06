@@ -396,6 +396,14 @@ it into props in a [plugin](plugin) first.
 | `undefined` / nothing                            | proceed to the next method                         |
 | a non-`'loading'` string, or a non-query array   | **type error** — those shapes are reserved         |
 
+Throwing works too. Every mountable render is wrapped in an error boundary, so a
+`throw` inside a `.with` callback (or anywhere else in the render) is caught and
+renders the nearest `.error` declared above it in the chain — the rest of the
+page stays alive. Returning the error does the same thing with more control:
+it's typed, it short-circuits the chain as data (no boundary involved), and it
+carries an HTTP `status` into the SSR response. Prefer returning; treat a throw
+as the safety net it is.
+
 ### `resolve` forms
 
 ```tsx
@@ -453,6 +461,8 @@ own class of the same-or-wider shape via `.errorClass(...)` — see
 a `.ctx` that resolves the user for server loaders and a `.with` that resolves
 it for the render — see [Plugin](plugin).
 
-An `Error` you return (not throw) from `.with` is normalized through that error
-class and rendered by the error component, the same as a thrown one — see
+An `Error` you return from `.with` is normalized through that error class and
+rendered by the error component. A thrown one lands in the same `.error` — the
+mountable's error boundary catches it — but returning is the better gate: it is
+typed, and it carries the HTTP `status` into the SSR response. See
 [How a thrown error reaches the error component](error-handling#how-a-thrown-error-reaches-the-error-component).

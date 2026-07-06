@@ -211,6 +211,7 @@ query_ so the page can be fetched and prefetched like any other:
 
 ```tsx
 ideaPage.useQuery({ id: 123 })
+ideaPage.useSuspenseQuery({ id: 123 }) // data non-optional, suspends into `.loading`
 ideaPage.fetchQuery({ id: 123 })
 ideaPage.getQueryKey({ id: 123 })
 ideaPage.prefetchQuery({ id: 123 })

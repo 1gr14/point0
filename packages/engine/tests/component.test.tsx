@@ -129,7 +129,7 @@ describe('component', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #page:
-        #loading: ...
+        #error: test error
       "
     `)
   })

@@ -5,7 +5,7 @@ import type { ResolvableHead } from 'unhead/types'
 import type { ClientPoints } from './client-points.js'
 import type { CookieStorePendingMap } from './cookie-store.js'
 import type { Effects } from './effects.js'
-import { __POINT0_IS_SSR_IN_PROGRESS__ } from './env.js'
+import { __POINT0_SSR_PHASE__, __POINT0_SSR_TARGET__ } from './env.js'
 import type {
   NavigationHelpersContextValue,
   NavigationPageStateContextValue,
@@ -43,7 +43,8 @@ export const _ss = {
     () => undefined,
     'serverOnlyStorage',
   ),
-  __POINT0_IS_SSR_IN_PROGRESS__: __POINT0_IS_SSR_IN_PROGRESS__,
+  __POINT0_SSR_PHASE__: __POINT0_SSR_PHASE__,
+  __POINT0_SSR_TARGET__: __POINT0_SSR_TARGET__,
   __POINT0_FETCH_FN__: superstore.define<RichFetchFn>('__POINT0_FETCH_FN__', initUndefined, 'serverOnlyStorage'),
   __POINT0_FAKE_CLIENT__: superstore.define<LikeFakeClient>(
     '__POINT0_FAKE_CLIENT__',

@@ -192,7 +192,12 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
         return JSON.parse(rawBody)
       } catch (error) {
-        console.error(error)
+        this.server.log({
+          level: 'error',
+          category: ['server'],
+          message: 'Failed to parse the request body as JSON — treating it as an empty body',
+          error,
+        })
         return {}
       }
     })()
@@ -679,6 +684,11 @@ export class Fetcher<TError extends ErrorPoint0> {
           pagePoint: point as PagePoint,
           pageLocation: pageLocation as ExactLocation | AnyLocation,
           redirectPolicy: 'continue',
+          target: 'data',
+          // Data-only render: there is no stream to push a streamed result into — don't even
+          // start `suspend: 'server' | true` loaders (`ssr: false` ones never run on the server
+          // anyway), the client fetches them after navigating.
+          suspenseQueryPolicy: 'skip',
         })
         const originalDehydratedState = await executor.getQueryClientReadyDehydratedState({
           withPagesDehydratedState: false,
@@ -849,7 +859,11 @@ export class Fetcher<TError extends ErrorPoint0> {
             pagePoint: point,
             pageLocation,
             redirectPolicy: 'throw',
-            waitForAllReady: true,
+            // Whole-HTML by default; switches to streaming (shell first, suspended Suspense
+            // boundaries follow in-order) when the final render may suspend: the page declared
+            // `suspend: 'server' | true` queries, or the discover loop stopped with pending
+            // suspendable ones.
+            waitForAllReady: 'auto',
           })
           const response = new Response(readableStream, {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -1189,7 +1203,8 @@ export class Fetcher<TError extends ErrorPoint0> {
         __POINT0_COOKIE_STORE_PENDING__: _ss.__POINT0_COOKIE_STORE_PENDING__.getOrUndefined() || new Map(),
         __POINT0_SERVER_PORT__: this.server.port,
         __POINT0_FAKE_CLIENT__: undefined,
-        __POINT0_IS_SSR_IN_PROGRESS__: false,
+        __POINT0_SSR_PHASE__: 'none',
+        __POINT0_SSR_TARGET__: 'none',
         __POINT0_SSR_REDIRECT_TASK__: undefined,
         __POINT0_REQUEST0__: prepareFetchResult.request,
         __POINT0_EFFECTS__: prepareFetchResult.effects,

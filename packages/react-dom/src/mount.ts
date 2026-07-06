@@ -1,6 +1,6 @@
-import { ClientPoints, superstore } from '@point0/core'
+import { ClientPoints, installPushedQueriesReceiver, log, superstore } from '@point0/core'
 import type { PointsDefinition, PointsManager } from '@point0/core'
-import type * as React from 'react'
+import * as React from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 
@@ -36,21 +36,43 @@ export function mount(
   if (__POINT0_DEHYDRATED_SUPER_STORE__) {
     superstore.prepare(__POINT0_DEHYDRATED_SUPER_STORE__, clientPoints.transformer)
   }
+  // Streamed suspense-query pushes: replace the prefix's buffering stub with the real receiver and
+  // drain what already arrived — before hydrateRoot, so pushed data is in the cache when React
+  // hydrates the streamed boundary content (no refetch, no flicker).
+  installPushedQueriesReceiver(clientPoints.transformer)
+
+  // Must mirror the server render exactly (see getReadableStreamWithWrapper in @point0/engine): a
+  // `display: contents` host div around the app — no box, zero layout impact, self-identifying via
+  // `data-point0`. It exists so a streamed Suspense boundary is never the ROOT of React's markup,
+  // which would make the server withhold the whole streamed response until the boundary resolves.
+  const wrappedElement = React.createElement('div', { 'data-point0': '', style: { display: 'contents' } }, element)
 
   // First invocation: create the root once.
   //    - If SSR markup exists, hydrate.
   //    - If not, do a client-side mount.
   if (!reactRoot) {
     if (domRootElement.hasChildNodes()) {
-      reactRoot = hydrateRoot(domRootElement, element)
+      reactRoot = hydrateRoot(domRootElement, wrappedElement, {
+        // Every mountable is wrapped in an ErrorBoundary now, so a hydration mismatch can be
+        // silently masked by a boundary re-render — keep an explicit client-side trace of it.
+        onRecoverableError: (error, errorInfo) => {
+          log({
+            level: 'error',
+            category: ['ssr'],
+            message: 'Recoverable hydration/render error',
+            error,
+            meta: { componentStack: errorInfo.componentStack },
+          })
+        },
+      })
     } else {
       reactRoot = createRoot(domRootElement)
-      reactRoot.render(element)
+      reactRoot.render(wrappedElement)
     }
   } else {
     // Subsequent invocations (e.g., HMR updates):
     // Don’t recreate the root; just render the new element tree.
     // With React Fast Refresh, this preserves hook state when component boundaries match.
-    reactRoot.render(element)
+    reactRoot.render(wrappedElement)
   }
 }

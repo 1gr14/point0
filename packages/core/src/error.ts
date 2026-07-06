@@ -227,6 +227,8 @@ export const POINT0_ERROR_CODES = [
   'POINT0_SEARCH_SCHEMA_NOT_ALLOWED',
   // prefetch (@point0/core)
   'POINT0_ROUTE_NOT_SET',
+  // queries (@point0/core)
+  'POINT0_POINT_NO_LOADER',
   // fetch / execute (@point0/engine)
   'POINT0_POINT_NOT_FOUND',
   'POINT0_POINT_NO_SERVER_LOADER',
@@ -240,6 +242,8 @@ export const POINT0_ERROR_CODES = [
   'POINT0_NOT_FOUND',
   'POINT0_REDIRECT',
   'POINT0_ERROR_STRINGIFY_FAILED',
+  // ssr (@point0/engine)
+  'POINT0_SSR_STREAM_RENDER_ERROR',
 ] as const
 
 export type Point0ErrorCode = (typeof POINT0_ERROR_CODES)[number]

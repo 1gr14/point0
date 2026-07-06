@@ -75,11 +75,21 @@ const getSideName = (): 'client' | 'server' => {
   return isSideClient() ? 'client' : 'server'
 }
 
-const isSideSsr = (): boolean => {
+const getSsrPhase = (): SsrPhase => {
   if (isSideClient()) {
-    return false
+    return 'none'
   }
-  return __POINT0_IS_SSR_IN_PROGRESS__.get()
+  return __POINT0_SSR_PHASE__.get()
+}
+
+const getSsrTarget = (): SsrTarget => {
+  if (getSsrPhase() === 'none') {
+    return 'none'
+  }
+  // Set by the executor together with `phase: 'discovery'` — inside an SSR pass it is always
+  // there; the 'html' fallback covers only direct low-level render calls that bypass the
+  // executor (and normalizes a malformed storage value instead of leaking it into the union).
+  return __POINT0_SSR_TARGET__.getOrUndefined() === 'data' ? 'data' : 'html'
 }
 
 function sideDefineUniversal<TServerResult>(options: { server: TServerResult }): TServerResult | undefined
@@ -132,19 +142,16 @@ const sideDefine = Object.assign(sideDefineUniversal, {
 type SideIsClient = {
   readonly client: true
   readonly server: false
-  readonly ssr: false
 }
 type SideIsServer = {
   readonly client: false
   readonly server: true
-  readonly ssr: boolean
 }
 const sideIs = Object.defineProperties(
   {},
   {
     client: { get: isSideClient },
     server: { get: isSideServer },
-    ssr: { get: isSideSsr },
   },
 ) as SideIsClient | SideIsServer
 
@@ -171,6 +178,29 @@ export const envSide = Object.defineProperties(
     name: { get: getSideName },
   },
 ) as EnvSide
+
+// ssr
+
+/**
+ * The SSR state of the CURRENT execution, as a discriminated union: checking `env.ssr.active` narrows the rest. Outside
+ * an SSR pass (the client always; the server outside a page render — middleware, plain endpoint calls) everything is
+ * inactive/'none'. Inside an SSR pass, `phase` says where the pass currently is ('discovery' render-to-discover passes
+ * vs the final 'render' that becomes the response) and `target` says what the pass is FOR: an 'html' page response or
+ * 'data' (the `queryClientDehydratedState` endpoint behind client-navigation prefetch — that mode has no final render,
+ * so its whole life is 'discovery').
+ */
+export type EnvSsr =
+  | { readonly active: false; readonly phase: 'none'; readonly target: 'none' }
+  | { readonly active: true; readonly phase: 'discovery' | 'render'; readonly target: 'html' | 'data' }
+
+const envSsr = Object.defineProperties(
+  {},
+  {
+    active: { get: () => getSsrPhase() !== 'none' },
+    phase: { get: getSsrPhase },
+    target: { get: getSsrTarget },
+  },
+) as EnvSsr
 
 // scope
 
@@ -727,6 +757,7 @@ export type Env<
   readonly os: EnvOs<IsAny<TOs> extends true ? EnvOsName | undefined : TOs>
   readonly vars: Readonly<EnvVars<TVars>>
   readonly side: EnvSide
+  readonly ssr: EnvSsr
   readonly scope: EnvScope<IsAny<TScope> extends true ? string : TScope>
   readonly build: EnvBuild
 }
@@ -737,6 +768,7 @@ export const env: Env = Object.defineProperties(
     runtime: envRuntime,
     os: envOs,
     side: envSide,
+    ssr: envSsr,
     scope: envScope,
     build: envBuild, // can be statically shaken by compiler
   },
@@ -747,8 +779,28 @@ export const env: Env = Object.defineProperties(
 
 export const _point0_env = env
 
-export const __POINT0_IS_SSR_IN_PROGRESS__ = superstore.define<boolean>(
-  '__POINT0_IS_SSR_IN_PROGRESS__',
-  () => false,
+// The single source of truth for where an SSR pass currently is:
+// - 'none' — no SSR underway (the client always; the server outside an SSR pass — middleware,
+//   plain data fetches).
+// - 'discovery' — the render-to-discover passes. Option-driven suspense queries stay
+//   non-suspending pending results here (a suspend would gate the pass on the loader); only the
+//   dedicated suspense hooks throw, and the pass awaits just the shell. The render-less data mode
+//   (`queryClientDehydratedState`) lives its whole life in this phase.
+// - 'render' — the final render that becomes the response; the one place a pending query with
+//   `suspend !== false` suspends, so React streams its Suspense boundary.
+export type SsrPhase = 'none' | 'discovery' | 'render'
+export const __POINT0_SSR_PHASE__ = superstore.define<SsrPhase>(
+  '__POINT0_SSR_PHASE__',
+  () => 'none',
+  'clientServerIsolated',
+)
+
+// What the SSR pass is FOR — an 'html' page response or the render-less 'data' mode
+// (`queryClientDehydratedState`); 'none' while no SSR is underway (mirrors SsrPhase's 'none').
+// Set by the executor together with `phase: 'discovery'`; exposed as `env.ssr.target`.
+export type SsrTarget = 'html' | 'data' | 'none'
+export const __POINT0_SSR_TARGET__ = superstore.define<SsrTarget>(
+  '__POINT0_SSR_TARGET__',
+  () => 'none',
   'clientServerIsolated',
 )

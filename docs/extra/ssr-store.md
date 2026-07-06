@@ -118,7 +118,7 @@ Always write from inside a render or effect — use
 [`useEffectSsr`](#useeffectssr-the-companion-hook), not module top-level.
 
 A `set` in a render that is never followed by another render is simply dropped —
-so with `ssr.allowedRerendersCount: 0` (or at the soft cap) a final-pass `set`
+so with `ssr.allowedDiscoveryRenders: 1` (or at the soft cap) a final-pass `set`
 never reaches the HTML, keeping the markup and the transferred value consistent.
 
 ## `.set` on the client: plain React state
@@ -167,20 +167,24 @@ until the values stabilize. Two engine options bound it (under `ssr` in
 Engine.create({
   // ...
   ssr: {
-    allowedRerendersCount: Infinity, // soft budget — stop quietly when hit (default Infinity)
-    forbiddenRerendersCount: 25, // hard cap — stop AND log a server error (default 25)
+    allowedDiscoveryRenders: Infinity, // soft budget of discovery renders (default Infinity)
+    forbiddenDiscoveryRenders: 25, // hard cap — stop AND log a server error (default 25)
   },
 })
 ```
 
-- **`allowedRerendersCount`** — soft budget. When reached the loop stops
-  quietly, no error, **without committing** the staged change. `0` or `1` opts
-  out of stabilization re-renders for performance.
-- **`forbiddenRerendersCount`** — hard cap. Reaching it stops the loop **and**
+Both count **discovery renders** (the final render is not counted — there is
+always exactly one).
+
+- **`allowedDiscoveryRenders`** — soft budget. When spent the loop stops
+  quietly, no error, **without committing** the staged change. `1` opts out of
+  stabilization re-renders for performance; `0` skips discovery entirely (see
+  [SSR](ssr)).
+- **`forbiddenDiscoveryRenders`** — hard cap. Reaching it stops the loop **and**
   logs a server error — the safety net for values that never stabilize:
 
   ```
-  SSR stores/cookies did not stabilize after 25 re-renders (forbiddenRerendersCount);
+  SSR stores/cookies did not stabilize after 25 discovery renders (forbiddenDiscoveryRenders);
   using the last render. Check for non-deterministic SsrStore or cookie values
   (e.g. Date.now(), Math.random()).
   ```
@@ -262,7 +266,7 @@ intentionally dropped on a dropped final pass.
   overwrites. Use a clear, namespaced key.
 - **No non-deterministic defaults or sets.** `Date.now()`, `Math.random()`, a
   raw `new Date()` make the loop never stabilize → it hits
-  `forbiddenRerendersCount` and logs an error.
+  `forbiddenDiscoveryRenders` and logs an error.
 - **Write from render/effects, not module top-level.** Server `set` needs the
   SSR render scope; in a real app the engine sets that up per request. Call
   `set` from inside a component or `useEffectSsr`.
@@ -303,10 +307,10 @@ them) — not part of the author surface.
 
 ### Engine `ssr` options (loop control)
 
-| Option                            | Default    | Effect                                                           |
-| --------------------------------- | ---------- | ---------------------------------------------------------------- |
-| `allowedRerendersCount`           | `Infinity` | soft budget; stop quietly when hit (staged change not committed) |
-| `forbiddenRerendersCount`         | `25`       | hard cap; stop **and** log a server error                        |
-| `prefetchLoadersBeforePageRender` | `false`    | prefetch declared loaders up front to need fewer passes          |
+| Option                            | Default    | Effect                                                               |
+| --------------------------------- | ---------- | -------------------------------------------------------------------- |
+| `allowedDiscoveryRenders`         | `Infinity` | soft budget of discovery renders (staged change not committed at it) |
+| `forbiddenDiscoveryRenders`       | `25`       | hard cap; stop **and** log a server error                            |
+| `prefetchLoadersBeforePageRender` | `false`    | prefetch declared loaders up front to need fewer passes              |
 
 Full SSR options live in [engine-config](engine-config) and [ssr](ssr).

@@ -61,13 +61,18 @@ And you don't have to pay it: warm a page's cache in
 and the loop settles in a single pass. Pick per page — write nothing and let the
 loop discover, or declare the data once and skip the re-renders.
 
-Two things the loop deliberately does **not** do:
+Three things the loop deliberately does **not** wait for:
 
 - **Client loaders don't run on the server.** A `.clientLoader()` query stays
   pending through SSR and renders its loading state — the data arrives after
   hydration. Only server queries are fetched during SSR.
 - **Disabled queries are skipped.** A query with `enabled: false` is never
   prefetched, which is exactly how a dependent query waits for its input.
+- **`ssr: false` and streamed (`suspend: 'server' | true`) queries don't
+  block.** `ssr: false` is never executed on the server at all; a streamed query
+  starts immediately but delivers its result after the shell instead of holding
+  it back — see
+  [the `ssr` and `suspend` query options](#the-ssr-and-suspend-query-options).
 
 ## Shipping the HTML, then the SPA
 
@@ -82,26 +87,30 @@ A page that started life as a bare `index.html` and fetched on the client ends
 up identical to its SSR'd version. SSR changes _when_ the data arrives (with the
 HTML vs. after a client fetch), not the final result.
 
-The HTML ships **whole**. Point0 waits for the entire React tree
-(`stream.allReady`) before it sends a byte — there's no progressive,
-Suspense-boundary streaming and no out-of-order chunks. That's the intent: if
-you turned SSR on, you asked for the finished page in the first response, and
-streaming a half-built page full of spinners would undo that. When you _do_ want
-a slow part to load in pieces, reach for the explicit tools instead — turn SSR
-off so the whole page fetches on the client (`ssr: false`), or mark just that
-part client-only with `.clientOnly()` / `<ClientOnly>`
-([below](#turning-ssr-off)), so SSR ships its fallback and the real content
-mounts after hydration. React Server Components aren't supported either — not a
-current goal. Point0's render-to-discover SSR already fetches on the server and
-strips server-only code from the client bundle; we don't see much additional
-value in RSC on top of that. If RSC would unlock something concrete for you, the
-likely first step is letting a `.loader()` return React elements directly — make
-the case in a [GitHub issue](https://github.com/1gr14/point0): who it helps and
-why the current model isn't enough.
+By default the HTML ships **whole**: Point0 waits for the entire React tree
+(`stream.allReady`) before it sends a byte. That's the intent — if you turned
+SSR on, you asked for the finished page in the first response. When one slow
+query shouldn't hold everything back, you don't give up on that: mark it
+`suspend: 'server'` ([below](#the-ssr-and-suspend-query-options)) and the server
+streams — the shell ships immediately with that mountable's `.loading()` in
+place, and the real content follows **in the same response** when the loader
+resolves. For a query that shouldn't run on the server at all, `ssr: false`
+skips it entirely and the client fetches it after hydration. React Server
+Components aren't supported — not a current goal. Point0's render-to-discover
+SSR already fetches on the server and strips server-only code from the client
+bundle; we don't see much additional value in RSC on top of that. If RSC would
+unlock something concrete for you, the likely first step is letting a
+`.loader()` return React elements directly — make the case in a
+[GitHub issue](https://github.com/1gr14/point0): who it helps and why the
+current model isn't enough.
 
-When the server render throws (anything that isn't a [redirect](navigation)),
-the engine falls back to serving the bare `index.html` with the error attached —
-the page still loads as an SPA instead of 500-ing.
+Every mountable render (page, layout, component, provider) is wrapped in an
+error boundary and a Suspense boundary. A throw inside a mountable's render — on
+the server or on the client — renders **that mountable's `.error()`** in place,
+and the rest of the page stays alive. The engine's SPA fallback (serving the
+bare `index.html` with the error attached) still exists, but only for errors
+outside every boundary — a broken root, a failing wrapper. Redirects keep
+working: a thrown redirect passes through the boundary and navigates as usual.
 
 > **Security:** server-only code (loader bodies, secrets, DB calls) is cut from
 > the client bundle — its body and the imports it uses are removed at compile
@@ -164,6 +173,120 @@ methods (closers like `.query`, the `*QueryOptions` setters, `.relatedQuery`, �
 are cut from neither bundle. `.clientOnly()` only client-restricts what
 _renders_, not what loads.
 
+## The `ssr` and `suspend` query options
+
+Every place that accepts query options — `useQuery` / `useInfiniteQuery` calls,
+the `.query()` / `.infiniteQuery()` closers, `.with(query, …)`, `.relatedQuery`,
+and the `*QueryOptions` defaults — accepts two per-query switches, merged like
+any other query option (the later, more specific declaration wins: defaults →
+point-kind defaults → `.query()` options → the call site).
+
+**`ssr?: boolean`** — does the server execute this query during SSR?
+
+- **`true`** (the default, same as omitting) — the server fetches the query.
+- **`false`** — the server never executes the query. The HTML ships this
+  mountable's loading state and the client fetches after hydration — the same
+  shape a `.clientLoader()` query has during SSR, opted into per query.
+
+**`suspend?: 'auto' | 'server' | 'client' | boolean`** — does a pending query
+suspend into the nearest Suspense boundary (the closest positional
+`.loading()`), and where?
+
+- **`'auto'`** (the default, same as omitting) — while the server can still wait
+  for the query, nothing special happens: the discover loop fetches it and its
+  data ships inside the HTML. It suspends only when waiting is impossible — in
+  the final streamed render (revealed under an already-streamed boundary, or
+  left pending because [`allowedDiscoveryRenders`](#tuning-the-loop) cut the
+  loop short) it suspends and streams into the response instead of shipping a
+  dead pending state. Never suspends on the client.
+- **`'server'`** — the server never blocks the response on this query: the
+  loader starts immediately, the shell ships with the mountable's `.loading()`
+  fallback, and when the loader resolves React streams the real content **into
+  the same response**, together with an inline script that seeds the query cache
+  — after hydration the client has the data, no refetch, no flicker. Never
+  suspends on the client.
+- **`true`** — like `'server'`, and the query also suspends on the **client**
+  (client navigations, fresh inputs) into the same positional boundaries. For
+  non-optional `data` in types, prefer
+  [`useSuspenseQuery`](#usesuspensequery--usesuspenseinfinitequery).
+- **`'client'`** — suspends only on the **client** (client navigations, fresh
+  inputs); during SSR it never suspends — like `false` on the server, a query
+  still pending at the final render ships its loading state. The mirror of
+  `'server'`, for completeness.
+- **`false`** — never suspends anywhere: a query still pending at the final
+  render ships the loading state in the HTML and the client fetches after
+  hydration.
+
+```tsx
+export const statsComponent = root.lets
+  .component()
+  .loading(() => <StatsSkeleton />) // declared ABOVE the query — this boundary catches it
+  .loader(async () => ({ stats: await computeSlowStats() })) // ~2s
+  .query({ suspend: 'server' }) // don't hold the page's TTFB for it
+  .component(({ data }) => <Stats stats={data.stats} />)
+```
+
+Because the options merge, **streaming-first is one declaration**:
+`.queryOptions({ suspend: 'server' })` on a root, layout, or page makes the
+whole subtree stream — the discover loop has nothing to wait for, the shell
+ships with the first bytes, and every query streams in as it resolves.
+
+Which fallback shows while a query streams? The boundaries are **positional**:
+the `.loading()` / `.error()` declared closest above the query in the chain
+catches it (a query declared before any `.loading()` uses the point's
+last-declared one). Streamed queries can **cascade**: a layout's streamed query
+resolves, its subtree renders, and a page below it suspends on its own query —
+React streams the nested boundaries out of the box, any depth.
+
+### `useSuspenseQuery` / `useSuspenseInfiniteQuery`
+
+Every query point also has suspense hooks with TanStack semantics: `data` is
+**non-optional in types**, a pending query suspends into the nearest Suspense
+boundary, an error **throws** to the nearest ErrorBoundary (the mountable's
+positional `.error()`). During SSR the shell ships with the fallback and the
+resolved content streams into the same response; on the client they suspend on
+navigations and fresh inputs. They take no `enabled`, `ssr`, or `suspend`
+options — a suspense query always runs and always suspends.
+
+```tsx
+const { data } = ideaQuery.useSuspenseQuery({ id }) // data: never undefined
+```
+
+### What a streamed loader can't do
+
+A loader that resolves **after the response headers are sent** cannot affect
+them anymore. Point0 warns at runtime when it tries anyway:
+
+- It cannot **redirect**, set **cookies**, or change the **status/headers** —
+  the response is already streaming. This covers both the `set.*` helpers and a
+  `CookieStore` write from a streamed subtree rendering after the shell.
+- It cannot feed an [SsrStore](ssr-store) or cookie value into the SSR re-render
+  loop — the loop is over by the time it resolves.
+- If it **throws**, the mountable's `.error()` streams into the response in
+  place of the content, and the error state travels to the client cache with the
+  same public/private projection the dehydrated store uses — after hydration the
+  client shows the same `.error()` (and retries per its normal query options).
+  The rest of the page is unaffected; the server logs the failure through the
+  usual query-error events.
+- A `.head()` that depends on streamed data ships the loading-state head in the
+  shell; the client corrects it after hydration.
+
+### Point level vs query level
+
+Don't confuse the point-level and query-level switches — they work at different
+layers:
+
+| Switch                                        | Layer                            | What it does                                                                                                                                                                   |
+| --------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ssr: false` (engine) / `.clientOnly()` point | **Compiler** — build-time strip  | Cuts the render methods' bodies and imports from the server bundle; the point (or app) renders only on the client                                                              |
+| `ssr` / `suspend` in query options            | **Runtime** — per-query behavior | Decide whether one query runs on the server at all (`ssr`) and whether it blocks the HTML, streams after the shell, or suspends on the client (`suspend`); nothing is stripped |
+
+The [dehydrated-state endpoint](#the-dehydrated-state-endpoint) and the
+server-render prefetch policies (`pageDehydratedState*`) skip `ssr: false` and
+streamed (`suspend: 'server' | true`) queries — there is no stream to push their
+results into, so the client fetches them itself after navigating. Client-side
+prefetch policies are unaffected.
+
 ## Tuning the loop
 
 The discover loop is comfortable, but every re-render is a render you paid for.
@@ -207,11 +330,11 @@ loaders are predictable, flip on
 [`prefetchLoadersBeforePageRender`](#prefetchloadersbeforepagerender) to
 prefetch the declared `.loader()` queries up front as well — no hook needed.
 
-A separate source of re-renders is store/cookie stabilization, which you cap
-independently with `allowedRerendersCount` (below) — set it to `0` to also stop
-those.
+All discovery renders — query discovery and store/cookie stabilization alike —
+count against one budget, `allowedDiscoveryRenders` (below). Set it to `1` for a
+single pass with no re-renders, or `0` to skip discovery entirely.
 
-Pass an object instead of a boolean to tune the re-render loop. The object form
+Pass an object instead of a boolean to tune the discover loop. The object form
 is **SSR on** unless you set `enabled: false`:
 
 ```ts
@@ -219,7 +342,7 @@ export const engine = Engine.create({
   ssr: {
     // best case: prefetch loaders up front so the first render already has the data
     prefetchLoadersBeforePageRender: true,
-    allowedRerendersCount: 0,
+    allowedDiscoveryRenders: 1,
   },
 })
 ```
@@ -244,43 +367,63 @@ route params, so they are always correct. Queries injected with `.with()` (or
 declared inside a component) take render-time inputs and are still discovered by
 the render loop, which runs as the fallback. Default `false`.
 
-### allowedRerendersCount (soft cap)
+### allowedDiscoveryRenders (soft cap)
 
-A budget on the SsrStore/cookie **stabilization** re-renders. Once this many of
-those passes happen, the loop **stops quietly** — no error, it just uses the
-last render. Default `Infinity` (re-render until stable). Set it to `0` or `1`
-to opt out of the stabilization re-renders that an [SsrStore](ssr-store) or
-cookie write would otherwise trigger:
+A budget of **discovery renders** — the passes that discover queries and
+stabilize SsrStore/cookie values before the final render. The final render is
+not counted: there is always exactly one. Once the budget is spent, the loop
+**stops quietly** — no error. Default `Infinity` (render until everything is
+discovered and stable).
 
 ```ts
 ssr: {
-  allowedRerendersCount: 0
-} // never re-render just to settle a store/cookie
+  allowedDiscoveryRenders: 1
+} // a single discovery render, no stabilization re-renders
 ```
 
-When the soft cap is hit, any staged `SsrStore` change from the last render is
-**left uncommitted** — the HTML and the transferred store value stay consistent.
+Spending the budget doesn't lose data — it changes **how** it arrives. The
+loaders discovery saw are still fetched and their data ships in the HTML; a
+query the stopped loop never reached surfaces in the final render, which then
+**streams** (its `suspend` option decides: `'auto'` suspends and streams,
+`false` ships the loading state and leaves the fetch to the client). When the
+soft cap stops a stabilization pass, any staged `SsrStore` change from the last
+render is **left uncommitted** — the HTML and the transferred store value stay
+consistent.
 
-### forbiddenRerendersCount (hard cap)
+`0` is the earliest-shell mode: **no discovery render at all**. The
+`.onPrefetchPage` hooks and the `prefetchLoadersBeforePageRender` warm-up still
+run, then the final render streams immediately — every query it reveals behaves
+as under a spent budget (suspend-and-stream or client fetch). The price:
+anything only discovery would have found cannot touch the HTTP response anymore
+— redirects from those branches degrade to client-side redirects, and their
+status/cookie writes are too late (you get the
+[late-loader warnings](#what-a-streamed-loader-cant-do)). The
+[data endpoint](#the-dehydrated-state-endpoint) stays useful at `0`: it serves
+whatever the warm-up prefetched, so a client-navigation prefetch behaves exactly
+like a direct visit — the same data preloaded, the rest loading on the client.
 
-A safety net. Reaching it stops the loop **and logs a server error**. It catches
-non-deterministic values — `Date.now()`, `Math.random()` in a store or cookie —
-that never stabilize and would otherwise re-render forever. Default `25`.
+### forbiddenDiscoveryRenders (hard cap)
+
+A safety net, counted the same way. Reaching it stops the loop **and logs a
+server error**. It catches non-deterministic values — `Date.now()`,
+`Math.random()` in a store or cookie — that never stabilize and would otherwise
+re-render forever. Default `25`.
 
 ```
-// after 25 passes, logged at level 'error', category ['ssr']:
-// "SSR stores/cookies did not stabilize after 25 re-renders (forbiddenRerendersCount);
+// after 25 discovery renders, logged at level 'error', category ['ssr']:
+// "SSR stores/cookies did not stabilize after 25 discovery renders (forbiddenDiscoveryRenders);
 //  using the last render. Check for non-deterministic SsrStore or cookie values..."
 ```
 
 If both caps are set, the hard cap is checked first.
 
-> **Dev only:** a server render sets an `X-Point0-Renders-Count` response header
-> with the final pass count, so you can eyeball how many re-renders a page took
+> **Dev only:** a server render sets an `X-Point0-Discovery-Renders` response
+> header with the discovery-render count (the final render is not counted — it
+> always happens exactly once), so you can eyeball how many passes a page took
 > straight from the network tab. It's not set in production.
 >
 > For anything beyond eyeballing, read the count in code:
-> [`request.renders`](request) holds the pass count for the current request, in
+> [`request.renders`](request) holds the same count for the current request, in
 > dev **and** production — log it from a [middleware](middleware), alert on
 > pages that re-render too much, or feed it into metrics.
 
@@ -350,7 +493,7 @@ on navigation.** The client calls the page's declared queries directly, no
 server render. Queries buried inside components aren't seen this way, so you
 make up the difference with [`.onPrefetchPage`](#onprefetchpage), warming
 exactly what the page needs — and that same hook keeps the first SSR load
-single-pass. Add `allowedRerendersCount: 0` if you also want to forbid
+single-pass. Add `allowedDiscoveryRenders: 1` if you also want to forbid
 store/cookie stabilization re-renders.
 
 ```tsx
@@ -517,8 +660,8 @@ a dropped cookie is worse than a re-render. Full mechanics on
 ```ts
 type SsrOptions = {
   enabled?: boolean // default true when an object is given
-  allowedRerendersCount?: number // soft cap; default Infinity
-  forbiddenRerendersCount?: number // hard cap (+ logs an error); default 25
+  allowedDiscoveryRenders?: number // soft cap on discovery renders; default Infinity
+  forbiddenDiscoveryRenders?: number // hard cap (+ logs an error); default 25
   prefetchLoadersBeforePageRender?: boolean // also prefetch loaders before first render; default false
 }
 
@@ -530,14 +673,38 @@ ssr: {
   enabled: false
 } // off (object form, explicitly disabled)
 ssr: {
-  allowedRerendersCount: 0
-} // on, no stabilization re-renders
+  allowedDiscoveryRenders: 1
+} // on, one discovery render, no stabilization re-renders
+ssr: {
+  allowedDiscoveryRenders: 0
+} // on, skip discovery — earliest shell, everything streams
 ```
 
 SSR is **off** unless you turn it on — omitting `ssr` resolves the same as
 `ssr: false`. A boolean sets every loop default; an object overrides only the
 keys you set (`enabled` defaults to `true` in the object form, so `ssr: {}` is
 on). Per-point, [`.clientOnly`](mountable) forces that one point off.
+
+### The `ssr` and `suspend` query options
+
+```ts
+// in any query options: useQuery/useInfiniteQuery, .query(), .with(), *QueryOptions defaults
+ssr?: boolean // does the server execute this query during SSR
+ssr: true // (default) fetch on the server
+ssr: false // never executed on the server; the client fetches after hydration
+
+suspend?: 'auto' | 'server' | 'client' | boolean // does a pending query suspend into the nearest .loading()
+suspend: 'auto' // (default) blocks while the server can wait; suspends and streams only when it can't
+suspend: 'server' // never blocks the response: started immediately, streamed into the same response
+suspend: true // like 'server' + suspends on the client too
+suspend: 'client' // suspends on the client only; never on the server (the mirror of 'server')
+suspend: false // never suspends; still-pending at the final render ships the loading state
+```
+
+Details:
+[The `ssr` and `suspend` query options](#the-ssr-and-suspend-query-options). The
+suspense hooks (`useSuspenseQuery` / `useSuspenseInfiniteQuery`) always suspend
+and take neither option.
 
 ### Prefetch policy values
 

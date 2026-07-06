@@ -9,7 +9,8 @@ import {
 
 const serverStorageState = _getSsItemsWithRestErrors(
   {
-    __POINT0_IS_SSR_IN_PROGRESS__: false,
+    __POINT0_SSR_PHASE__: 'none',
+    __POINT0_SSR_TARGET__: 'none',
     __POINT0_FAKE_CLIENT__: undefined,
   },
   'Value "%s" not exists in middleware call, this value accessible only in loader, ctx, components etc',
@@ -37,7 +38,7 @@ const init = async <
     ;(globalThis as any).navigator = {}
   }
   if (ssr !== undefined) {
-    serverStorageState.__POINT0_IS_SSR_IN_PROGRESS__ = ssr
+    serverStorageState.__POINT0_SSR_PHASE__ = ssr ? 'discovery' : 'none'
   }
   Object.assign(process.env, vars)
   if (scope) {
@@ -66,7 +67,7 @@ describe('env', () => {
       delete (globalThis as any).document
       delete (globalThis as any).navigator
 
-      serverStorageState.__POINT0_IS_SSR_IN_PROGRESS__ = false
+      serverStorageState.__POINT0_SSR_PHASE__ = 'none'
     } catch {
       // console.error(error)
     }
@@ -78,7 +79,7 @@ describe('env', () => {
     ;(globalThis as any).window = originalWindow
     ;(globalThis as any).document = originalDocument
     ;(globalThis as any).navigator = originalNavigator
-    serverStorageState.__POINT0_IS_SSR_IN_PROGRESS__ = false
+    serverStorageState.__POINT0_SSR_PHASE__ = 'none'
     ;(globalThis as any).process = originalProcess
   })
 
@@ -305,38 +306,61 @@ describe('env', () => {
       })
     })
 
-    describe('side.is.ssr', () => {
-      it('should return false on client', async () => {
+    describe('env.ssr', () => {
+      it('inactive on client: phase and target are "none"', async () => {
         const env = await init({ side: 'client' })
-        expect(env.side.is.ssr).toBe(false)
+        expect(env.ssr.active).toBe(false)
+        expect(env.ssr.phase).toBe('none')
+        expect(env.ssr.target).toBe('none')
       })
 
-      it('should return false on server when SSR is not defined', async () => {
+      it('inactive on server when no SSR pass is underway', async () => {
         await withServerStorage(async () => {
           const env = await init({ side: 'server' })
-          expect(env.side.is.ssr).toBe(false)
+          expect(env.ssr.active).toBe(false)
+          expect(env.ssr.phase).toBe('none')
+          expect(env.ssr.target).toBe('none')
         })
       })
 
-      it('should return false on server when SSR is not enabled', async () => {
-        await withServerStorage(async () => {
-          const env = await init({ side: 'server', ssr: false })
-          expect(env.side.is.ssr).toBe(false)
-        })
-      })
-
-      it('should return true on server when SSR is enabled', async () => {
+      it('active on server during discovery, target defaults to "html"', async () => {
         await withServerStorage(async () => {
           const env = await init({ side: 'server', ssr: true })
-          expect(env.side.is.ssr).toBe(true)
+          expect(env.ssr.active).toBe(true)
+          expect(env.ssr.phase).toBe('discovery')
+          expect(env.ssr.target).toBe('html')
         })
       })
 
-      it('should return false on server when SSR is undefined', async () => {
+      it('active on server in the final render phase too', async () => {
         await withServerStorage(async () => {
-          const env = await init({ side: 'server', ssr: undefined })
-          expect(env.side.is.ssr).toBe(false)
+          const env = await init({ side: 'server' })
+          serverStorageState.__POINT0_SSR_PHASE__ = 'render'
+          expect(env.ssr.active).toBe(true)
+          expect(env.ssr.phase).toBe('render')
+          expect(env.ssr.target).toBe('html')
         })
+      })
+
+      it('target reads "data" for the render-less dehydrated-state mode', async () => {
+        await withServerStorage(async () => {
+          const env = await init({ side: 'server', ssr: true })
+          serverStorageState.__POINT0_SSR_TARGET__ = 'data'
+          expect(env.ssr.active).toBe(true)
+          expect(env.ssr.phase).toBe('discovery')
+          expect(env.ssr.target).toBe('data')
+        })
+      })
+
+      it('narrows by active (discriminated union)', async () => {
+        const env = await init({ side: 'client' })
+        if (env.ssr.active) {
+          expectTypeOf(env.ssr.phase).toEqualTypeOf<'discovery' | 'render'>()
+          expectTypeOf(env.ssr.target).toEqualTypeOf<'html' | 'data'>()
+        } else {
+          expectTypeOf(env.ssr.phase).toEqualTypeOf<'none'>()
+          expectTypeOf(env.ssr.target).toEqualTypeOf<'none'>()
+        }
       })
     })
   })

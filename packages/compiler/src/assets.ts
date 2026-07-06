@@ -1,3 +1,4 @@
+import { log } from '@point0/core'
 import type { Config } from '@svgr/core'
 import type { BunPlugin, OnLoadResult } from 'bun'
 import crypto from 'node:crypto'
@@ -203,7 +204,11 @@ export const writeAssetOnce = async (dir: string, name: string, buffer: Buffer):
         () => false,
       )
       if (!ok) {
-        console.warn(`[point0] assets: failed to write asset "${name}" to "${dir}"`)
+        log({
+          level: 'warn',
+          category: ['compiler'],
+          message: `Assets: failed to write asset "${name}" to "${dir}"`,
+        })
       }
     }
   }

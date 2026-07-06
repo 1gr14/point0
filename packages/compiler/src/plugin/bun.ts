@@ -1,3 +1,4 @@
+import { log } from '@point0/core'
 import type { BunPlugin, OnLoadResult } from 'bun'
 import nodeFs from 'node:fs'
 import { applyAssetsBunPlugin } from '../assets.js'
@@ -46,7 +47,12 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
           if (e instanceof CriticalCompilerError) {
             throw e
           }
-          console.error(e)
+          log({
+            level: 'error',
+            category: ['compiler'],
+            message: 'Compiler transform failed (non-critical) — serving the file untransformed',
+            error: e,
+          })
           const contents = (() => {
             try {
               return nodeFs.readFileSync(filepath, 'utf-8')

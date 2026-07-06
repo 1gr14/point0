@@ -1175,16 +1175,32 @@ export class CompilerFile<THasContent extends boolean> {
                   p.replaceWith(makeBooleanLiteral(side === 'server'))
                   modified = true
                   passModified = true
-                } else if (name === 'ssr') {
-                  // If side is client, ssr is always false.
-                  // If side is server, leave it as-is (it is resolved by runtime getter).
-                  if (side === 'client') {
-                    p.replaceWith(makeBooleanLiteral(false))
-                    modified = true
-                    passModified = true
-                  }
-                  // Note: For server side, env.side.is.ssr is a getter, so we leave it as-is.
                 }
+              }
+            }
+            // Handle env.ssr.active / env.ssr.phase / env.ssr.target — on the client SSR is never
+            // underway, so all three are compile-time constants (false / 'none' / 'none') and the
+            // server-only branches behind them dead-code-eliminate. On the server they are
+            // runtime getters — left as-is.
+            else if (
+              side === 'client' &&
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'Identifier' &&
+              (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'ssr' &&
+              node.property.type === 'Identifier' &&
+              isTrustedEnvRootIdentifier(node.object.object.name)
+            ) {
+              const name = node.property.name
+              if (name === 'active') {
+                p.replaceWith(makeBooleanLiteral(false))
+                modified = true
+                passModified = true
+              } else if (name === 'phase' || name === 'target') {
+                p.replaceWith(makeStringLiteral('none'))
+                modified = true
+                passModified = true
               }
             }
             // Handle env.mode.name

@@ -153,7 +153,7 @@ describe('ssr-store', () => {
     ])
   })
 
-  it('allowedRerendersCount stops the loop quietly (no error) before the hard cap', async () => {
+  it('allowedDiscoveryRenders stops the loop quietly (no error) before the hard cap', async () => {
     let setCount = 0
     const title = SsrStore.define('ssr-store.test.allowed-one', () => 'init')
     const root = Point0.lets('root', 'root').root()
@@ -163,7 +163,7 @@ describe('ssr-store', () => {
         {children}
       </div>
     ))
-    // Never stabilizes, but the soft cap stops it well before forbiddenRerendersCount.
+    // Never stabilizes, but the soft cap stops it well before forbiddenDiscoveryRenders.
     const page = layout.lets('page', 'home', '/').page(() => {
       useEffectSsr(() => {
         title.set(`v${setCount}`)
@@ -174,7 +174,7 @@ describe('ssr-store', () => {
 
     const logs: Array<{ level: string; category: string[]; message: string }> = []
     const { fetchSsr } = await createTestThings({
-      ssr: { allowedRerendersCount: 1 },
+      ssr: { allowedDiscoveryRenders: 2 },
       points: [root, layout, page],
       engineOptions: {
         logger: {
@@ -186,7 +186,7 @@ describe('ssr-store', () => {
     })
     await fetchSsr(page)
 
-    // Soft cap: stops at allowedRerendersCount without raising the forbidden-cap error.
+    // Soft cap: stops at allowedDiscoveryRenders without raising the forbidden-cap error.
     expect(logs.filter((l) => l.level === 'error' && l.category.includes('ssr'))).toEqual([])
   })
 
@@ -262,7 +262,7 @@ describe('ssr-store', () => {
     expect(result.rendersCount).toBe(5) // initial, page, q1, ssr-store, q2
   })
 
-  it('forbiddenRerendersCount stops the loop and logs a server error', async () => {
+  it('forbiddenDiscoveryRenders stops the loop and logs a server error', async () => {
     let setCount = 0
     const title = SsrStore.define('ssr-store.test.forbidden', () => 'init')
     const root = Point0.lets('root', 'root').root()
@@ -283,7 +283,7 @@ describe('ssr-store', () => {
 
     const logs: Array<{ level: string; category: string[]; message: string }> = []
     const { fetchSsr } = await createTestThings({
-      ssr: { forbiddenRerendersCount: 2 },
+      ssr: { forbiddenDiscoveryRenders: 3 },
       points: [root, layout, page],
       engineOptions: {
         logger: {
@@ -297,6 +297,6 @@ describe('ssr-store', () => {
 
     const ssrErrors = logs.filter((l) => l.level === 'error' && l.category.includes('ssr'))
     expect(ssrErrors.length).toBe(1)
-    expect(ssrErrors[0].message).toContain('did not stabilize after 2 re-renders')
+    expect(ssrErrors[0].message).toContain('did not stabilize after 3 discovery renders')
   })
 })

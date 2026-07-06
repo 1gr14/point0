@@ -1,3 +1,5 @@
+import { log } from './logger.js'
+
 export type CookieSameSite = 'strict' | 'lax' | 'none'
 
 export type CookieOptions = {
@@ -68,6 +70,12 @@ export class Effects {
   cookies: ResponseCookiesValues
   status: ResponseStatus | undefined
   set: ResponseEffectsSetHelper
+  // Set once the response has left the process (the streamed SSR shell was sent). From then on
+  // the effects are FROZEN — a late write is dropped (mutating the snapshot would only lie about
+  // what was sent) and warns, unless it is idempotent: re-setting the exact status/header/cookie
+  // that already went out is not a loss, so it stays silent (e.g. the final render repeating a
+  // `setStatus` it already applied during discovery).
+  private _sealedReason: string | undefined
 
   constructor() {
     this.headers = {}
@@ -98,62 +106,130 @@ export class Effects {
     }
   }
 
+  seal(reason: string): void {
+    this._sealedReason = reason
+  }
+
+  // The engine's own bookkeeping (e.g. bubbling a nested fetch's status up to the page request)
+  // checks this to skip writes that can no longer reach the response — the sealed warning is
+  // reserved for USER code touching the response too late.
+  get sealed(): boolean {
+    return this._sealedReason !== undefined
+  }
+
+  // For staged writers that never touch `set.*` directly (CookieStore staging) but must emit the
+  // same warning when the response is gone.
+  get sealedReason(): string | undefined {
+    return this._sealedReason
+  }
+
+  // True = the write must be dropped (the effects are sealed). Warns only when the write would
+  // have CHANGED what was sent — an idempotent late write is not a loss and stays silent.
+  private _rejectIfSealed(what: string, wouldChange: boolean): boolean {
+    if (this._sealedReason === undefined) {
+      return false
+    }
+    if (wouldChange) {
+      log({
+        level: 'warn',
+        category: ['ssr'],
+        message: `effects.set.${what} has no effect: ${this._sealedReason}`,
+      })
+    }
+    return true
+  }
+
   private _setHeaders(...args: any[]): void {
+    const entries: Array<[string, string | undefined]> = []
     if (args.length === 1) {
       const arg = args[0]
       if (arg instanceof Headers) {
         arg.forEach((value, key) => {
-          this.headers[key.toLowerCase()] = value
+          entries.push([key.toLowerCase(), value])
         })
       } else if (typeof arg === 'object' && arg !== null) {
         for (const [name, value] of Object.entries(arg)) {
-          this.headers[name.toLowerCase()] = value as string | undefined
+          entries.push([name.toLowerCase(), value as string | undefined])
         }
       }
     } else if (args.length === 2) {
       const [name, value] = args as [string, string | undefined]
-      this.headers[name.toLowerCase()] = value
+      entries.push([name.toLowerCase(), value])
+    }
+    if (
+      this._rejectIfSealed(
+        'headers',
+        entries.some(([name, value]) => this.headers[name] !== value),
+      )
+    ) {
+      return
+    }
+    for (const [name, value] of entries) {
+      this.headers[name] = value
     }
   }
 
   private _setCookies(...args: any[]): void {
-    if (args.length === 1) {
-      const cookieOptions = args[0] as Omit<CookieOptionsInput, 'value'> & { value?: string }
-      this.cookies[cookieOptions.name] = {
-        name: cookieOptions.name,
-        value: cookieOptions.value === undefined ? '' : cookieOptions.value,
-        path: cookieOptions.path ?? '/',
-        sameSite: cookieOptions.sameSite ?? 'lax',
-        domain: cookieOptions.domain,
-        expires: cookieOptions.value === undefined ? new Date(0) : cookieOptions.expires,
-        secure: cookieOptions.secure,
-        httpOnly: cookieOptions.httpOnly,
-        partitioned: cookieOptions.partitioned,
-        maxAge: cookieOptions.value === undefined ? 0 : cookieOptions.maxAge,
+    const cookie: CookieOptions | undefined = (() => {
+      if (args.length === 1) {
+        const cookieOptions = args[0] as Omit<CookieOptionsInput, 'value'> & { value?: string }
+        return {
+          name: cookieOptions.name,
+          value: cookieOptions.value === undefined ? '' : cookieOptions.value,
+          path: cookieOptions.path ?? '/',
+          sameSite: cookieOptions.sameSite ?? 'lax',
+          domain: cookieOptions.domain,
+          expires: cookieOptions.value === undefined ? new Date(0) : cookieOptions.expires,
+          secure: cookieOptions.secure,
+          httpOnly: cookieOptions.httpOnly,
+          partitioned: cookieOptions.partitioned,
+          maxAge: cookieOptions.value === undefined ? 0 : cookieOptions.maxAge,
+        }
       }
-    } else if (args.length >= 2) {
-      const [cookieName, cookieValue, cookieOptions] = args as [
-        string,
-        string | undefined,
-        Omit<CookieOptionsInput, 'name' | 'value'> | undefined,
-      ]
-      const shouldDelete = cookieValue === undefined
-      this.cookies[cookieName] = {
-        name: cookieName,
-        value: shouldDelete ? '' : cookieValue,
-        path: cookieOptions?.path ?? '/',
-        sameSite: cookieOptions?.sameSite ?? 'lax',
-        domain: cookieOptions?.domain,
-        expires: shouldDelete ? new Date(0) : cookieOptions?.expires,
-        secure: cookieOptions?.secure,
-        httpOnly: cookieOptions?.httpOnly,
-        partitioned: cookieOptions?.partitioned,
-        maxAge: shouldDelete ? 0 : cookieOptions?.maxAge,
+      if (args.length >= 2) {
+        const [cookieName, cookieValue, cookieOptions] = args as [
+          string,
+          string | undefined,
+          Omit<CookieOptionsInput, 'name' | 'value'> | undefined,
+        ]
+        const shouldDelete = cookieValue === undefined
+        return {
+          name: cookieName,
+          value: shouldDelete ? '' : cookieValue,
+          path: cookieOptions?.path ?? '/',
+          sameSite: cookieOptions?.sameSite ?? 'lax',
+          domain: cookieOptions?.domain,
+          expires: shouldDelete ? new Date(0) : cookieOptions?.expires,
+          secure: cookieOptions?.secure,
+          httpOnly: cookieOptions?.httpOnly,
+          partitioned: cookieOptions?.partitioned,
+          maxAge: shouldDelete ? 0 : cookieOptions?.maxAge,
+        }
       }
+      return undefined
+    })()
+    if (!cookie) {
+      return
     }
+    // "Same cookie" = same canonical Set-Cookie line (value AND attributes) — a differing
+    // expires/maxAge is a real change even with an equal value. The cast is honest: the record
+    // type has no `undefined` in its index signature, but the key may be absent.
+    const existing = this.cookies[cookie.name] as CookieOptions | undefined
+    if (
+      this._rejectIfSealed(
+        'cookies',
+        !existing || Effects.serializeCookie(existing) !== Effects.serializeCookie(cookie),
+      )
+    ) {
+      return
+    }
+    this.cookies[cookie.name] = cookie
   }
 
   private _setStatus(status: number): void {
+    if (this._rejectIfSealed('status', this.status !== status)) {
+      return
+    }
     this.status = status
   }
 

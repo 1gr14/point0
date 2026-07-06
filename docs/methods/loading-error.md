@@ -116,35 +116,41 @@ came before — handy for shipping a loading/error theme as a plugin.
 
 ## Where to put `.loading` in the chain
 
-Wiring a query in with `.with(query)` doesn't suspend on its own — every query
-on the chain starts fetching in **parallel**, and the point only blocks on that
-pending data right before it renders (`.page` / `.layout` / `.component`). So
-`.loading` works whether it sits before or after the `.with`:
+**Above the loaders and queries.** One habit covers every case:
 
 ```tsx
 export const ideaPage = root.lets
   .page('/ideas/:id')
-  .with(ideaQuery, ({ params }) => ({ id: Number(params.id) }))
-  .loading(() => <IdeaSkeleton />) // applies — render is what blocks, not .with
+  .loading(() => <IdeaSkeleton />) // fallbacks first…
+  .error(({ error }) => <IdeaError error={error} />)
+  .with(ideaQuery, ({ params }) => ({ id: Number(params.id) })) // …data below
   .page(/* ... */)
 ```
 
-Order _does_ matter when a `.with` callback itself decides to show loading or
-throw. A `.with` that returns `'loading'` or an error (see
-[below](#driving-loading-and-error-by-hand-from-with)) renders the nearest
-`.loading` / `.error` declared **above** it; one declared lower in the chain
-wasn't in scope yet:
+The reason is that each `.loading` / `.error` is **positional**: it opens a
+Suspense/error boundary around the REST of the chain below it. Whatever suspends
+or throws is caught by the closest boundary declared **above** it:
 
-```tsx
-export const ideaPage = root.lets
-  .page('/ideas/:id')
-  .loading(() => <IdeaSkeleton />) // ✅ in scope for the .with below
-  .with(() => (useSomethingReady() ? undefined : 'loading'))
-  .page(/* ... */)
-```
+- A [streamed or suspending query](ssr#the-ssr-and-suspend-query-options)
+  (`suspend: 'server' | 'client' | true`, the
+  [suspense hooks](ssr#usesuspensequery--usesuspenseinfinitequery)) suspends
+  into that boundary — one declared below the query cannot catch it.
+- A `.with` that returns `'loading'` or an error (see
+  [below](#driving-loading-and-error-by-hand-from-with)) renders the nearest
+  `.loading` / `.error` declared above it; one declared lower in the chain
+  wasn't in scope yet.
+- A render **throw** lands in the nearest `.error` above it the same way.
+
+Only for a plain blocking query is placement relaxed: it doesn't suspend — every
+chain query fetches in **parallel** and the point blocks on pending data right
+before it renders (`.page` / `.layout` / `.component`), so the entry fallback
+(the point's **last-declared** `.loading`) shows either way. That relaxation is
+easy to outgrow — add `suspend` to that query later and a below-the-query
+`.loading` silently stops applying. Declare fallbacks first and you never think
+about it.
 
 Chain position is what counts, not where the data was declared: a page's
-`.loading` placed before such a `.with` overrides the loading even for a query
+`.loading` placed above such a `.with` overrides the loading even for a query
 inherited from a [base](base) upstream.
 
 ## Per-variant declarations
@@ -326,10 +332,15 @@ declare loading and error during the build phase, before the point is closed.
 
 - **Nearest up the chain.** Pending data → nearest `.loading`; thrown data →
   nearest `.error`. Loading and error resolve independently.
-- **Position matters for `.with` short-circuits.** A `.with` that returns
-  `'loading'` or an error uses the nearest `.loading` / `.error` declared above
-  it. For plain query data, placement is relaxed — the point blocks at render,
-  so `.loading` works before or after the `.with`.
+- **Position matters.** Each `.loading` / `.error` opens a boundary around the
+  rest of the chain below it; a suspending query, a `.with` short-circuit, or a
+  render throw uses the nearest one declared **above** it. Only a plain blocking
+  query relaxes this (the point blocks at render, so the last-declared
+  `.loading` shows either way) — declare fallbacks above the loaders anyway.
+- **Render throws are caught.** Every mountable render is wrapped in an error
+  boundary; a throw in a component body, a `.with`, or a `.mapper` renders the
+  nearest `.error` in place and the rest of the page stays alive. The boundary
+  resets on navigation.
 - **Unified beats variant.** For the active render variant, a plain `.loading` /
   `.error` wins over the variant-specific setter, which wins over the built-in
   default.
@@ -347,14 +358,27 @@ declare loading and error during the build phase, before the point is closed.
   their per-variant forms ship to the client always and to the server only when
   SSR is on (stripped under `ssr: false` or after `.clientOnly()`).
 
-## `.error` vs a React error boundary
+## `.error` IS a React error boundary (and a data error path)
 
-`.error` is a **data** error path, not a render error boundary. It fires when a
-loader or query resolves to an error state, or when a [`.with`](with) returns an
-error — Point0 surfaces that as the point's error status and renders the nearest
-`.error` in its place. It does **not** catch a throw from your own render: a
-component body that throws, or a [`.mapper`](mapper) that throws, is a
-render-phase error, and Point0 ships no React error boundary around your tree.
-An uncaught render throw bubbles to whatever boundary your app mounts (and fails
-the SSR render). So keep render code total and signal errors from the data phase
-— return an error from a [`.with`](with), and `.error` handles it.
+`.error` handles both error phases. As the **data** path, it fires when a loader
+or query resolves to an error state, or when a [`.with`](with) returns an error
+— Point0 surfaces that as the point's error status and renders the nearest
+`.error` in its place. As a **render boundary**: every mountable render (page,
+layout, component, provider) is wrapped in a React error boundary, so a throw
+from a component body, a [`.with`](with), or a [`.mapper`](mapper) is caught and
+renders the nearest `.error` above it — on the server and on the client — while
+the rest of the page stays alive. The engine's SPA fallback (serving the bare
+`index.html`) remains only for errors outside every boundary: a broken root, a
+failing wrapper.
+
+Details of the boundary behavior:
+
+- A thrown **redirect** passes through the boundary and navigates as usual.
+- The boundary **resets on navigation** — moving to another location drops the
+  caught error and re-renders. It does not reset on a query refetch: query
+  errors normally travel through query state (never thrown), so if your error UI
+  refetches without navigating, render a fresh state from the data phase instead
+  of relying on the boundary to clear.
+- Prefer signaling errors from the **data phase** anyway — return an error from
+  a [`.with`](with): it's typed, and it carries an HTTP `status` into the SSR
+  response. The render boundary is the safety net, not the API.

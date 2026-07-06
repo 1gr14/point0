@@ -392,11 +392,14 @@ request.variant.type // => 'page' | 'endpoint' | ...
 
 ### `request.renders`
 
-The SSR render-pass counter, backed by `cache` (so chain-shared). Live during
-SSR — a loader prefetched on the first pass reads `1` — and the final total once
-the request settles; `0` for a plain endpoint request with no SSR. It's
-**read-only**: assigning to it throws (getter with no setter). The engine also
-emits the final total as a dev-only `X-Point0-Renders-Count` response header.
+The SSR **discovery-render** counter, backed by `cache` (so chain-shared) — the
+passes that discover queries and stabilize SSR stores/cookies; the final render
+is not counted (it always happens exactly once). Live during SSR — a loader
+prefetched on the first pass reads `1` — and the final total once discovery
+settles; `0` for a plain endpoint request with no SSR (or with
+`ssr.allowedDiscoveryRenders: 0`). It's **read-only**: assigning to it throws
+(getter with no setter). The engine also emits the final total as a dev-only
+`X-Point0-Discovery-Renders` response header.
 
 ### `request.id`
 

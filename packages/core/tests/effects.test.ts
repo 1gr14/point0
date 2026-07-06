@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, spyOn } from 'bun:test'
 import { Effects } from '../src/effects.js'
 
 describe('Effects', () => {
@@ -297,6 +297,40 @@ describe('Effects', () => {
       expect(values.headers['x-test']).toBe('value')
       expect(values.cookies.test).toBeDefined()
       expect(values.status).toBe(500)
+    })
+  })
+
+  describe('seal', () => {
+    it('sealed effects are frozen: idempotent writes stay silent, changing writes warn and are dropped', () => {
+      const effects = Effects.create()
+      effects.set.status(200)
+      effects.set.headers('x-a', '1')
+      effects.set.cookies('theme', 'dark')
+      effects.seal('the response shell was already sent')
+
+      const warnSpy = spyOn(console, 'warn')
+      try {
+        // idempotent — re-setting exactly what already went out is not a loss
+        effects.set.status(200)
+        effects.set.headers('x-a', '1')
+        effects.set.cookies('theme', 'dark')
+        expect(warnSpy).toHaveBeenCalledTimes(0)
+
+        // changing — warns and the write is dropped (the snapshot must reflect what was sent)
+        effects.set.status(404)
+        expect(effects.status).toBe(200)
+        effects.set.headers('x-a', '2')
+        expect(effects.headers['x-a']).toBe('1')
+        effects.set.cookies('theme', 'light')
+        expect(effects.cookies.theme.value).toBe('dark')
+        // same value but different attributes is a real change too
+        effects.set.cookies('theme', 'dark', { maxAge: 60 })
+        expect(effects.cookies.theme.maxAge).toBeUndefined()
+        expect(warnSpy).toHaveBeenCalledTimes(4)
+        expect(warnSpy.mock.calls.flat().map(String).join('\n')).toContain('has no effect')
+      } finally {
+        warnSpy.mockRestore()
+      }
     })
   })
 })

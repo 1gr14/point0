@@ -160,7 +160,7 @@ describe('layout', () => {
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
-      #loading: ...
+      #error: test error
       "
     `)
   })

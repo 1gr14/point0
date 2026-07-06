@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CookieOptionsInput } from './effects.js'
 import { env } from './env.js'
 import { getEffects, getRequest } from './helpers.js'
+import { log } from './logger.js'
 import { Point0 } from './point0.js'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
@@ -268,7 +269,25 @@ export class CookieStore {
     // During SSR rendering, stage the write and flush it between renders / at the end of
     // the render loop (see `commitPending`) so render stays pure. Outside the SSR render
     // (loaders, actions, request handlers), write immediately so the cookie is never lost.
-    if (env.side.is.ssr) {
+    if (env.ssr.active) {
+      // Staging never touches `effects.set`, so it would miss the sealed-effects warning: a
+      // streamed subtree rendering AFTER the shell stages a cookie that no commit will ever
+      // flush (commits happen only between discovery passes). Emit the same warning instead of
+      // dropping it silently — but stay quiet when the write is idempotent (the value the
+      // reader already sees), mirroring the sealed Effects behavior.
+      const effects = getEffects()
+      if (effects.sealed) {
+        const stagedValue = cookieOptionsInput.value === '' ? undefined : cookieOptionsInput.value
+        const currentValue = CookieStore.serverCookieGetter(cookieOptionsInput.name)
+        if (stagedValue !== currentValue) {
+          log({
+            level: 'warn',
+            category: ['ssr'],
+            message: `CookieStore.set("${cookieOptionsInput.name}") has no effect: ${effects.sealedReason}`,
+          })
+        }
+        return
+      }
       const pending = _ss.__POINT0_COOKIE_STORE_PENDING__.get()
       pending.set(cookieOptionsInput.name, cookieOptionsInput)
       return

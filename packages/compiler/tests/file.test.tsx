@@ -143,17 +143,21 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.side.is.ssr = false when side is client',
+        'env.ssr.active = false, env.ssr.phase/target = "none" when side is client',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrp(async () => {
             const { env } = await import('@point0/core')
-            if (env.side.is.ssr) console.info('ssr')
+            if (env.ssr.active) console.info('ssr')
+            if (env.ssr.phase === 'discovery') console.info('discovery')
+            if (env.ssr.target === 'data') console.info('data')
           })
           cf.shakeForEnv({ side: 'client', scope: 'root', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
               if (false) console.info('ssr')
+              if ('none' === 'discovery') console.info('discovery')
+              if ('none' === 'data') console.info('data')
               "
             `,
           )
@@ -161,17 +165,17 @@ describe('CompilerFile', () => {
       )
 
       it.concurrent(
-        'env.side.is.ssr not changed when side is server',
+        'env.ssr.active not changed when side is server',
         helper(async ({ files: [file] }) => {
           const cf = await file.wrpsync(async () => {
             const { env } = await import('@point0/core')
-            if (env.side.is.ssr) console.info('ssr')
+            if (env.ssr.active) console.info('ssr')
           })
           cf.shakeForEnv({ side: 'server', scope: 'root', mode: 'development' })
           expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
             `
               "const { env } = await import('@point0/core')
-              if (env.side.is.ssr) console.info('ssr')
+              if (env.ssr.active) console.info('ssr')
               "
             `,
           )

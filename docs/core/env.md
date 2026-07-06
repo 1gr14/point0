@@ -51,12 +51,14 @@ current field. `env.build` exposes `.was` (boolean) and `.define` instead of
 ```ts
 env.side.is.server // => true on the server
 env.side.is.client // => true in the browser
-env.side.is.ssr // => true while a server render is in progress (server only)
 
 if (env.side.name === 'server') {
   // TS narrows here — name is the discriminator
 }
 ```
+
+Whether an SSR pass is underway is a separate axis — see
+[`env.ssr`](#envssr--the-ssr-state) below.
 
 > **Gotcha:** `if (env.side.is.client)` does **not** narrow `env.side.name` for
 > TypeScript. Branch on `env.side.name === 'server'` when you need narrowing.
@@ -85,6 +87,35 @@ ships only its own implementation.
 > `| undefined`), but at runtime it **still returns `undefined` on the wrong
 > side**. The `unsafe` is a type assertion, not a behavior change — use it only
 > when you've already guaranteed the side some other way.
+
+## `env.ssr` — the SSR state
+
+Whether an SSR pass is underway right now, as a discriminated union — checking
+`active` narrows the other fields:
+
+```ts
+env.ssr.active // => true while a server render pass is in progress
+env.ssr.phase // => 'none' | 'discovery' | 'render'
+env.ssr.target // => 'none' | 'html' | 'data'
+
+if (env.ssr.active) {
+  env.ssr.phase // TS narrows: 'discovery' | 'render'
+  env.ssr.target // TS narrows: 'html' | 'data'
+}
+```
+
+On the client (and on the server outside a page render — middleware, plain
+endpoint calls) everything is inactive: `active: false`, `phase: 'none'`,
+`target: 'none'`. Inside an SSR pass, `phase` says where the pass currently is —
+the `'discovery'` render-to-discover passes vs the final `'render'` that becomes
+the response — and `target` says what the pass is for: an `'html'` page
+response, or `'data'` (the dehydrated-state endpoint behind client-navigation
+prefetch, which never runs a final render). See [SSR](ssr) for the render loop
+these phases belong to.
+
+In the client bundle the compiler folds `env.ssr.active` / `.phase` / `.target`
+to their constants (`false` / `'none'` / `'none'`), so server-only branches
+behind them are removed at build time — same as `env.side.is.*`.
 
 ## `env.mode` — production / development / test
 
@@ -436,15 +467,16 @@ and dead-strip the losing branch. Until you set them, a branch behind
 
 ### Field surface
 
-| Field         | `.name`                        | `.is.<x>`                             | `.define(...)`            |
-| ------------- | ------------------------------ | ------------------------------------- | ------------------------- |
-| `env.mode`    | `NODE_ENV` (any string)        | `production` / `development` / `test` | —                         |
-| `env.side`    | `'server'` / `'client'`        | `client` / `server` / `ssr`           | per side (+ `.unsafe`)    |
-| `env.scope`   | active scope (throws if unset) | per scope                             | per scope (+ `.unsafe`)   |
-| `env.runtime` | runtime or `undefined`         | per runtime + `unknown`               | per runtime (+ `.unsafe`) |
-| `env.os`      | OS or `undefined`              | per OS + `unknown`                    | per OS (+ `.unsafe`)      |
-| `env.build`   | — (`.was: boolean`)            | —                                     | `{ before, after }`       |
-| `env.vars`    | —                              | —                                     | — (typed record getter)   |
+| Field         | `.name`                              | `.is.<x>`                             | `.define(...)`            |
+| ------------- | ------------------------------------ | ------------------------------------- | ------------------------- |
+| `env.mode`    | `NODE_ENV` (any string)              | `production` / `development` / `test` | —                         |
+| `env.side`    | `'server'` / `'client'`              | `client` / `server`                   | per side (+ `.unsafe`)    |
+| `env.ssr`     | — (`.active` / `.phase` / `.target`) | —                                     | —                         |
+| `env.scope`   | active scope (throws if unset)       | per scope                             | per scope (+ `.unsafe`)   |
+| `env.runtime` | runtime or `undefined`               | per runtime + `unknown`               | per runtime (+ `.unsafe`) |
+| `env.os`      | OS or `undefined`                    | per OS + `unknown`                    | per OS (+ `.unsafe`)      |
+| `env.build`   | — (`.was: boolean`)                  | —                                     | `{ before, after }`       |
+| `env.vars`    | —                                    | —                                     | — (typed record getter)   |
 
 - `EnvRuntimeName` =
   `'browser' | 'reactNative' | 'nodejs' | 'bun' | 'deno' | 'worker'`.

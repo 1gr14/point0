@@ -163,16 +163,20 @@ until its data store stabilizes; these options bound that:
 ```ts
 ssr: {
   enabled: true,                          // default true when you pass an object
-  allowedRerendersCount: 5,               // soft budget — stop quietly once hit (default Infinity)
-  forbiddenRerendersCount: 25,            // hard cap — stop AND log a server error (default 25)
+  allowedDiscoveryRenders: 5,             // soft budget of discovery renders (default Infinity)
+  forbiddenDiscoveryRenders: 25,          // hard cap — stop AND log a server error (default 25)
   prefetchLoadersBeforePageRender: true,  // prefetch declared loaders first, so fewer re-renders (default false)
 }
 ```
 
-- **`allowedRerendersCount`** is the soft budget. Default is `Infinity`
-  (re-render until the store is stable). Set `0` or `1` to opt out of the
-  stabilization re-renders for performance.
-- **`forbiddenRerendersCount`** is the safety net (default `25`). If a value
+Both caps count **discovery renders** — the passes before the final render (the
+final render always happens and is not counted).
+
+- **`allowedDiscoveryRenders`** is the soft budget. Default is `Infinity`
+  (render until the store is stable). Set `1` to opt out of the stabilization
+  re-renders for performance, or `0` to skip discovery entirely (earliest shell,
+  everything streams — see [ssr](ssr#alloweddiscoveryrenders-soft-cap)).
+- **`forbiddenDiscoveryRenders`** is the safety net (default `25`). If a value
   keeps changing every render — say a stray `Date.now()` — the loop hits this
   cap, stops, and logs an error.
 - **`prefetchLoadersBeforePageRender`** (default `false`) prefetches the page's
@@ -188,7 +192,7 @@ Resolution: an explicit `server.ssr` / `client.ssr` wins, else the engine-level
 
 **The re-render tuning is read from the client, not the server.** A page is
 server-rendered through its client, so the executor reads
-`allowedRerendersCount`, `forbiddenRerendersCount`, and
+`allowedDiscoveryRenders`, `forbiddenDiscoveryRenders`, and
 `prefetchLoadersBeforePageRender` from the resolved **client** SSR options. The
 server's `ssr` is only a boolean: it gates whether the server runs the SSR
 machinery (and the `POINT0_SSR` const). Set the object form on the engine
@@ -616,16 +620,16 @@ The remaining general options rarely appear in app code:
 ### SSR options (`SsrOptions`)
 
 Set on the engine default `ssr` or on a client `ssr`. The re-render tuning
-(`allowedRerendersCount`, `forbiddenRerendersCount`,
+(`allowedDiscoveryRenders`, `forbiddenDiscoveryRenders`,
 `prefetchLoadersBeforePageRender`) is read from the client at render time; the
 server keeps only the `enabled` boolean. See [SSR](#ssr).
 
-| Option                            | Type      | Default                          | Notes                                                                    |
-| --------------------------------- | --------- | -------------------------------- | ------------------------------------------------------------------------ |
-| `enabled`                         | `boolean` | `true` (when an object is given) | Toggle.                                                                  |
-| `allowedRerendersCount`           | `number`  | `Infinity`                       | Soft budget; stop quietly. `0`/`1` opts out of stabilization re-renders. |
-| `forbiddenRerendersCount`         | `number`  | `25`                             | Hard cap; stop and log a server error.                                   |
-| `prefetchLoadersBeforePageRender` | `boolean` | `false`                          | Also prefetch declared `.loader()` queries before the first render.      |
+| Option                            | Type      | Default                          | Notes                                                                                         |
+| --------------------------------- | --------- | -------------------------------- | --------------------------------------------------------------------------------------------- |
+| `enabled`                         | `boolean` | `true` (when an object is given) | Toggle.                                                                                       |
+| `allowedDiscoveryRenders`         | `number`  | `Infinity`                       | Soft budget of discovery renders. `1` = single pass; `0` = skip discovery, stream everything. |
+| `forbiddenDiscoveryRenders`       | `number`  | `25`                             | Hard cap; stop and log a server error.                                                        |
+| `prefetchLoadersBeforePageRender` | `boolean` | `false`                          | Also prefetch declared `.loader()` queries before the first render.                           |
 
 ### Related pages
 

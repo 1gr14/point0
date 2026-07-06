@@ -253,10 +253,10 @@ JSON.stringify({ error: new ErrorPoint0('x', { meta: { secret: 1 } }) })
 
 ## How a thrown error reaches the error component
 
-When a [loader](loader), [`.ctx`](ctx), or [`.with`](with) throws, Point0
-coerces it through `AppError.from(error)` and routes it to the nearest error
-component up the chain — set with `.error` (and the variant setters
-`.layoutError` / `.pageError` / `.componentError`):
+When a [loader](loader), [`.ctx`](ctx), a [`.with`](with), or the render body
+itself throws, Point0 coerces it through `AppError.from(error)` and routes it to
+the nearest error component up the chain — set with `.error` (and the variant
+setters `.layoutError` / `.pageError` / `.componentError`):
 
 ```tsx
 export const root = Point0.lets
@@ -292,12 +292,14 @@ For that failing point, Point0 picks the error component in this order:
 So a `.pageError` set on a layout still catches a _page_ below it, and a page's
 own `.error` overrides that inherited `.pageError`.
 
-> **GOTCHA:** these boundaries catch errors carried in **resolved state** — a
-> thrown/returned error from a loader, `.ctx`, `.with`, or a related query. They
-> are **not** React error boundaries: an error thrown _while rendering_ the page
-> component or its `.mapper` is a plain React render error and is **not** routed
-> to `.error`. Surface such failures from a loader/`.with` (or your own
-> `<ErrorBoundary>`), not from the render body.
+> These boundaries catch **both phases**. Errors carried in resolved state — a
+> thrown/returned error from a loader, `.ctx`, `.with`, or a related query —
+> route to `.error` as data. And every mountable render is additionally wrapped
+> in a real React error boundary, so an error thrown _while rendering_ (the
+> component body, a `.mapper`) also lands in the nearest `.error` and the rest
+> of the page stays alive; the boundary resets on navigation. Prefer signaling
+> from the data phase anyway — a returned error is typed and sets the SSR
+> `status`; the render boundary is the safety net.
 
 [`.with`](with) is the other path — returning (not throwing) an `Error` from a
 `.with` renders the error component too, and that's how you build an auth gate

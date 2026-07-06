@@ -56,7 +56,7 @@ import type {
 import { uniqEventerErrorEventNames } from './eventer.js'
 import type { HeadObject } from './head.js'
 import { _splitHead } from './head.js'
-import { ClientOnly, getFetch, setStatus } from './helpers.js'
+import { ClientOnly, getEffectsOrUndefined, getFetch, setStatus } from './helpers.js'
 import { _getFakeClient, _ss } from './internals.js'
 import { log, type LogFn } from './logger.js'
 import type {
@@ -110,6 +110,7 @@ import type {
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
 } from './mountable.js'
+import { ErrorBoundary0 } from './error-boundary.js'
 import {
   RedirectTask,
   getNavigationHelpers,
@@ -166,6 +167,7 @@ import type {
   ExtraUseInfiniteQueryOptions,
   ExtraUseMutationOptions,
   ExtraUseQueryOptions,
+  ExtraUseSuspenseQueryOptions,
   FetchOptions,
   FetchOptionsFn,
   FetchOptionsOrFn,
@@ -220,6 +222,7 @@ import type {
   NormalizedPrefetchPagePolicy,
   NormalizedResponseSchema,
   PartialUseInfiniteQueryOptions,
+  PartialUseSuspenseInfiniteQueryOptions,
   PointName,
   PointType,
   PointsScope,
@@ -260,6 +263,7 @@ import type {
   UndefinedRouteDefinition,
   UseInfiniteQueryOptions,
   UsePointQueryResult,
+  UsePointSuspenseQueryResult,
   UseQueryOptions,
   WithError,
 } from './types.js'
@@ -8022,6 +8026,7 @@ export class Point0<
       getQueryKey: point.getQueryKey.bind(point),
       getQueryOptions: point.getQueryOptions.bind(point),
       useQuery: point.useQuery.bind(point),
+      useSuspenseQuery: point.useSuspenseQuery.bind(point),
       prefetchQuery: point.prefetchQuery.bind(point),
       fetchQuery: point.fetchQuery.bind(point),
       getQueryData: point.getQueryData.bind(point),
@@ -8039,6 +8044,7 @@ export class Point0<
       getInfiniteQueryKey: point.getInfiniteQueryKey.bind(point),
       getInfiniteQueryOptions: point.getInfiniteQueryOptions.bind(point),
       useInfiniteQuery: point.useInfiniteQuery.bind(point),
+      useSuspenseInfiniteQuery: point.useSuspenseInfiniteQuery.bind(point),
       prefetchInfiniteQuery: point.prefetchInfiniteQuery.bind(point),
       fetchInfiniteQuery: point.fetchInfiniteQuery.bind(point),
       getInfiniteQueryData: point.getInfiniteQueryData.bind(point),
@@ -8452,7 +8458,13 @@ export class Point0<
     const serverQueryEnabled = !!this._hasServerLoader
     const clientQueryEnabled = this._hasClientLoader()
     if (!serverQueryEnabled && !clientQueryEnabled) {
-      return { data: {}, query: undefined, clientQuery: undefined } as never
+      // Same error every other query surface throws (the suspense hooks, `fetchQuery`,
+      // `getQueryOptions`, …) — types already forbid this call, so only a plain-JS caller can
+      // reach it, and a silent `{ data: {} }` stub would just move the failure downstream.
+      throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
+        code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
+        meta: { point: this.toString() },
+      })
     }
 
     if (serverQueryEnabled && !clientQueryEnabled) {
@@ -8470,6 +8482,71 @@ export class Point0<
       queryOptions,
     })
     return query as never
+  }
+
+  /**
+   * The query's `useSuspenseQuery` hook — TanStack suspense semantics: `data` is always present in types, a pending
+   * query suspends into the nearest Suspense boundary (the mountable's positional `.loading()`), an error throws to the
+   * nearest ErrorBoundary (the positional `.error()`). During SSR the shell ships with the fallback and the resolved
+   * content streams into the same response; on the client it suspends on navigations and fresh inputs. There are no
+   * `enabled`/`ssr`/`suspense` options — a suspense query always runs and always suspends.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     const { data } = ideaQuery.useSuspenseQuery({ id: 123 })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/query
+   */
+  useSuspenseQuery(
+    input: FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
+    queryOptions?: ExtraUseSuspenseQueryOptions | undefined,
+    options?: { fetchOptions?: FetchOptions | undefined },
+  ): UsePointSuspenseQueryResult<'query', TServerLoaderOutput, TClientLoaderOutput, TError> {
+    const serverQueryEnabled = !!this._hasServerLoader
+    const clientQueryEnabled = this._hasClientLoader()
+    if (!serverQueryEnabled && !clientQueryEnabled) {
+      throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
+        code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
+        meta: { point: this.toString() },
+      })
+    }
+    // `enabled: true` — a suspense query can never be disabled (a merged-in default `enabled: false` would park it
+    // forever); `suspend: true` — so the executor classifies the marker as streamed (background kick, never a
+    // blocking discovery participant). Both are call-site-level, so they beat every merged default.
+    const fixedQueryOptions = { ...queryOptions, enabled: true, suspend: true } as never as ExtraUseQueryOptions
+    if (serverQueryEnabled && !clientQueryEnabled) {
+      const serverQueryOptions = this._getServerQueryOptions({
+        input: input as never,
+        queryOptions: fixedQueryOptions,
+        fetchOptions: options?.fetchOptions,
+      })
+      const result = useQuery(serverQueryOptions)
+      return this._suspenseHookResult({
+        result,
+        mergedQueryOptions: serverQueryOptions as never,
+        ensure: () => _ss.__POINT0_QUERY_CLIENT__.get().ensureQueryData(serverQueryOptions as never),
+        loaderSide: 'server',
+      }) as never
+    }
+    // only one loader per point — any non-server query is a client query
+    const clientQueryOptions = this._getClientQueryOptions({
+      input: input as never,
+      queryOptions: fixedQueryOptions,
+    })
+    const result = useQuery(clientQueryOptions)
+    return this._suspenseHookResult({
+      result,
+      mergedQueryOptions: clientQueryOptions as never,
+      ensure: () => _ss.__POINT0_QUERY_CLIENT__.get().ensureQueryData(clientQueryOptions as never),
+      loaderSide: 'client',
+    }) as never
   }
 
   /**
@@ -8493,7 +8570,7 @@ export class Point0<
       TBodySchema
     >,
     infiniteQueryOptions?:
-      | ExtraUseInfiniteQueryOptions<
+      | PartialUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
@@ -8507,7 +8584,11 @@ export class Point0<
     const serverQueryEnabled = !!this._hasServerLoader
     const clientQueryEnabled = this._hasClientLoader()
     if (!serverQueryEnabled && !clientQueryEnabled) {
-      return { data: {}, query: undefined, clientQuery: undefined } as never
+      // see useQuery — aligned with every other query surface
+      throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
+        code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
+        meta: { point: this.toString() },
+      })
     }
 
     if (serverQueryEnabled && !clientQueryEnabled) {
@@ -8525,6 +8606,82 @@ export class Point0<
       infiniteQueryOptions,
     })
     return query as never
+  }
+
+  /**
+   * The infinite query's `useSuspenseInfiniteQuery` hook — the TanStack suspense infinite result: `data.pages` is
+   * always present in types, a pending first page suspends into the nearest Suspense boundary (the mountable's
+   * positional `.loading()`), an error throws to the nearest ErrorBoundary. During SSR the shell ships with the
+   * fallback and the first page streams into the same response; on the client it suspends on navigations and fresh
+   * inputs (`fetchNextPage` never suspends — TanStack semantics). There are no `enabled`/`ssr`/`suspend` options.
+   *
+   * Server-and-client — a runtime ready-method, callable from both bundles (not compiler-stripped).
+   *
+   *     const { data } = ideaListQuery.useSuspenseInfiniteQuery()
+   *
+   * Full reference: https://1gr14.dev/point0/latest/infinite-query
+   */
+  useSuspenseInfiniteQuery(
+    input: FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
+    infiniteQueryOptions?:
+      | PartialUseSuspenseInfiniteQueryOptions<
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+          TError,
+          InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+          QueryKey,
+          unknown
+        >
+      | undefined,
+    options?: { fetchOptions?: FetchOptions | undefined },
+  ): UsePointSuspenseQueryResult<'infiniteQuery', TServerLoaderOutput, TClientLoaderOutput, TError> {
+    const serverQueryEnabled = !!this._hasServerLoader
+    const clientQueryEnabled = this._hasClientLoader()
+    if (!serverQueryEnabled && !clientQueryEnabled) {
+      throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
+        code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
+        meta: { point: this.toString() },
+      })
+    }
+    // see useSuspenseQuery — same forced call-site options, same reasons
+    const fixedInfiniteQueryOptions = {
+      ...infiniteQueryOptions,
+      enabled: true,
+      suspend: true,
+    } as never as PartialUseInfiniteQueryOptions
+    if (serverQueryEnabled && !clientQueryEnabled) {
+      const serverInfiniteQueryOptions = this._getServerInfiniteQueryOptions({
+        input: input as never,
+        infiniteQueryOptions: fixedInfiniteQueryOptions as never,
+        fetchOptions: options?.fetchOptions,
+      })
+      const result = useInfiniteQuery(serverInfiniteQueryOptions)
+      return this._suspenseHookResult({
+        result,
+        mergedQueryOptions: serverInfiniteQueryOptions as never,
+        ensure: () => _ss.__POINT0_QUERY_CLIENT__.get().ensureInfiniteQueryData(serverInfiniteQueryOptions as never),
+        loaderSide: 'server',
+      }) as never
+    }
+    // only one loader per point — any non-server query is a client query
+    const clientInfiniteQueryOptions = this._getClientInfiniteQueryOptions({
+      input: input as never,
+      infiniteQueryOptions: fixedInfiniteQueryOptions as never,
+    })
+    const result = useInfiniteQuery(clientInfiniteQueryOptions)
+    return this._suspenseHookResult({
+      result,
+      mergedQueryOptions: clientInfiniteQueryOptions as never,
+      ensure: () => _ss.__POINT0_QUERY_CLIENT__.get().ensureInfiniteQueryData(clientInfiniteQueryOptions as never),
+      loaderSide: 'client',
+    }) as never
   }
 
   private getServerUrl(): string | undefined {
@@ -8798,11 +8955,14 @@ export class Point0<
       // this.modifyEffectsCookiesAfterServerFetchIfRequired(res)
 
       // Bubble up non-default status codes from nested server point fetches
-      // to the current outer request (e.g. SSR page render request).
+      // to the current outer request (e.g. SSR page render request). Skipped once the outer
+      // effects are sealed (the streamed shell already left with its status) — a streamed loader
+      // settling after the shell must not trip the sealed warning, which is reserved for USER
+      // code touching the response too late.
       if (_point0_env.side.is.server) {
         const currentEffects = _ss.__POINT0_EFFECTS__.getOrUndefined()
-        if (typeof currentEffects?.status === 'undefined') {
-          currentEffects?.set.status(res.status)
+        if (currentEffects && !currentEffects.sealed && typeof currentEffects.status === 'undefined') {
+          currentEffects.set.status(res.status)
         }
       }
 
@@ -9031,7 +9191,10 @@ export class Point0<
     if (this._hasServerLoader) {
       return 'server'
     }
-    throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
+    throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
+      code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
+      meta: { point: this.toString() },
+    })
   }
 
   _getFinalQueryKey({
@@ -9057,7 +9220,10 @@ export class Point0<
         isInfiniteQuery: queryResultType === 'infiniteQuery',
       })
     }
-    throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
+    throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
+      code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
+      meta: { point: this.toString() },
+    })
   }
 
   /**
@@ -9203,6 +9369,8 @@ export class Point0<
         layout: this._defaultLayoutQueryOptions,
         provider: this._defaultProviderQueryOptions,
       }[this.type as string] || {}
+    // KEEP IN SYNC: `_getMergedSsrQueryOption` mirrors this source list (the non-dehydrated-state
+    // branch) to read the merged `ssr` option cheaply — change one, change both.
     const megedQueryOptions = mergeQueryOptions(
       this._defaultQueryOptions,
       ...(outputType === 'queryClientDehydratedState'
@@ -9214,10 +9382,21 @@ export class Point0<
       ...megedQueryOptions,
       queryKey,
       queryFn,
+      // A truthy legacy `suspense` key must never reach TanStack: v5's useBaseQuery still honors
+      // it (fetch-in-render via fetchOptimistic + its own suspension), bypassing the framework's
+      // SSR phases and the data-mode skip policy. Our option is named `suspend` partly to avoid
+      // that collision; neutralize a stray key defensively (plain-JS callers bypass the types).
+      suspense: undefined,
       retryOnMount: redirect ? false : megedQueryOptions.retryOnMount,
       ...(_point0_env.side.is.server
         ? {
             retry: false,
+            // Also forced on the server: with `retryOnMount` left truthy, a fresh observer over an
+            // ERRORED query reports an optimistic `pending` result ("a mount will retry me") — but
+            // nothing ever mounts during SSR. For a failed streamed suspense query that turns the
+            // Suspense retry into an endless suspend → refetch → reject loop and the streamed
+            // response never closes. The client keeps its own `retryOnMount` behavior.
+            retryOnMount: false,
             refetchOnMount: false,
             refetchOnWindowFocus: false,
             refetchOnReconnect: false,
@@ -9323,6 +9502,8 @@ export class Point0<
       ...megedQueryOptions,
       queryKey,
       queryFn,
+      // see _getServerQueryOptions — a legacy `suspense` key must never reach TanStack
+      suspense: undefined,
       retry: ((failureCount, error) => {
         if (error.redirect) {
           return false
@@ -9386,7 +9567,10 @@ export class Point0<
         queryClient,
       }) as never
     }
-    throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
+    throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
+      code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
+      meta: { point: this.toString() },
+    })
   }
 
   private _toInputWithPageParam({ input, pageParam }: { input: InputRaw; pageParam: unknown }): InputRaw {
@@ -9427,7 +9611,7 @@ export class Point0<
   }: {
     input: InputRaw
     infiniteQueryOptions:
-      | ExtraUseInfiniteQueryOptions<
+      | PartialUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
@@ -9508,6 +9692,8 @@ export class Point0<
         }
       }
     }
+    // KEEP IN SYNC: `_getMergedSsrQueryOption` mirrors this source list to read the merged `ssr`
+    // option cheaply — change one, change both.
     const megedQueryOptions = mergeInfiniteQueryOptions(
       this._defaultQueryOptions as UseInfiniteQueryOptions<any> | undefined,
       this._defaultInfiniteQueryOptions as UseInfiniteQueryOptions<any> | undefined,
@@ -9518,10 +9704,18 @@ export class Point0<
       ...megedQueryOptions,
       queryKey,
       queryFn,
+      // see _getServerQueryOptions — a legacy `suspense` key must never reach TanStack
+      suspense: undefined,
       retryOnMount: redirect ? false : megedQueryOptions.retryOnMount,
       ...(_point0_env.side.is.server
         ? {
             retry: false,
+            // Also forced on the server: with `retryOnMount` left truthy, a fresh observer over an
+            // ERRORED query reports an optimistic `pending` result ("a mount will retry me") — but
+            // nothing ever mounts during SSR. For a failed streamed suspense query that turns the
+            // Suspense retry into an endless suspend → refetch → reject loop and the streamed
+            // response never closes. The client keeps its own `retryOnMount` behavior.
+            retryOnMount: false,
             refetchOnMount: false,
             refetchOnWindowFocus: false,
             refetchOnReconnect: false,
@@ -9554,7 +9748,7 @@ export class Point0<
     input: InputRaw
     serverData?: Data
     infiniteQueryOptions?:
-      | ExtraUseInfiniteQueryOptions<
+      | PartialUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
@@ -9631,6 +9825,8 @@ export class Point0<
       ...megedQueryOptions,
       queryKey,
       queryFn,
+      // see _getServerQueryOptions — a legacy `suspense` key must never reach TanStack
+      suspense: undefined,
       retry: ((failureCount, error) => {
         if (error.redirect) {
           return false
@@ -9665,7 +9861,7 @@ export class Point0<
       TBodySchema
     >,
     infiniteQueryOptions?:
-      | ExtraUseInfiniteQueryOptions<
+      | PartialUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
@@ -9705,7 +9901,148 @@ export class Point0<
         outputType,
       }) as never
     }
-    throw new Error(`No loader found on point ${this.toStringWithLocation()}`)
+    throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
+      code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
+      meta: { point: this.toString() },
+    })
+  }
+
+  // The option-driven suspension gate (the `suspend` option in ExtraQueryPoint0Options) — the place the
+  // framework throws a promise for plain `useQuery`/`useInfiniteQuery` calls (the dedicated
+  // suspense hooks have their own tail — see `_suspenseHookResult`).
+  //
+  // SERVER: fires exclusively in the FINAL streamed SSR render (`__POINT0_SSR_PHASE__ ===
+  // 'render'`). During the discovery passes the hook must stay a plain pending result — a suspend
+  // there would gate the pass on the loader; the EXECUTOR classifies the marker instead (`'auto'`
+  // queries are prefetched and re-rendered as usual, `'server'`/`true` ones are background-kicked).
+  // In the final render every pending query with `suspend !== false` suspends: waiting is no
+  // longer possible (the shell may already be out), so streaming is the only way to get the data
+  // into the same response. `ssr: false` never suspends on the server — suspending would execute
+  // the loader the user explicitly excluded from SSR — and a client loader never resolves during
+  // SSR at all; both stay pending and render the loading state.
+  //
+  // CLIENT: only an explicit `suspend: true | 'client'` suspends (client navigations, fresh
+  // inputs) — `'auto'`/`'server'` mean nothing after hydration.
+  //
+  // Throwing `ensureQueryData` (not a bare wait on an existing in-flight fetch) is what makes
+  // cascades work: a query revealed only after an outer streamed boundary resolved was never seen
+  // by the discovery loop, so the suspend path itself must be able to start the fetch. The thrown
+  // thenable must ALWAYS RESOLVE, never reject — Fizz on Bun never retries or aborts a boundary
+  // whose suspended thenable rejected; the response would hang open forever. Catching here makes a
+  // failed loader resolve the suspension instead: React retries the boundary, the hook re-runs,
+  // useQuery reads the ERROR state from the cache, and the chain renders the mountable's
+  // `.error()` (streamed in place on the server; the error state is also pushed to the client
+  // cache — see the push collector in @point0/engine's render). The failure itself is logged
+  // through the normal pointQueryError event pipeline.
+  private _maybeSuspendQueryByOption({
+    mergedQueryOptions,
+    outputType,
+    isPending,
+    ensure,
+    loaderSide,
+  }: {
+    mergedQueryOptions: {
+      queryKey: QueryKey
+      enabled?: unknown
+      ssr?: boolean
+      suspend?: 'auto' | 'server' | 'client' | boolean
+    }
+    outputType: FetchServerOutputType | undefined
+    isPending: boolean
+    ensure: () => Promise<unknown>
+    loaderSide: 'server' | 'client'
+  }): void {
+    if (!isPending || (outputType ?? 'data') !== 'data') {
+      return
+    }
+    const suspense = mergedQueryOptions.suspend ?? 'auto'
+    if (suspense === false) {
+      return
+    }
+    if (_point0_env.side.is.server) {
+      // `'client'` = suspend ONLY on the client — the server half of `false`: never suspends
+      // during SSR (a still-pending query ships its loading state, the client fetches after
+      // hydration). The mirror of `'server'`, which means nothing on the client.
+      if (suspense === 'client') {
+        return
+      }
+      if (loaderSide === 'client') {
+        return
+      }
+      if (_ss.__POINT0_SSR_PHASE__.get() !== 'render') {
+        return
+      }
+      if (mergedQueryOptions.ssr === false) {
+        return
+      }
+    } else if (suspense !== true && suspense !== 'client') {
+      return
+    }
+    // A disabled query is a dependent query waiting for its input — never fetch or suspend it.
+    const enabled = mergedQueryOptions.enabled
+    if (enabled === false) {
+      return
+    }
+    if (typeof enabled === 'function') {
+      const query = _ss.__POINT0_QUERY_CLIENT__
+        .get()
+        .getQueryCache()
+        .find({ queryKey: mergedQueryOptions.queryKey, exact: true })
+      if (query && !(enabled as (query: unknown) => boolean)(query)) {
+        return
+      }
+    }
+    throw ensure().catch(() => undefined)
+  }
+
+  // Shared tail of `useSuspenseQuery`/`useSuspenseInfiniteQuery` — TanStack v5 suspense semantics
+  // on top of the framework's SSR phases:
+  //  - success → return the result (`data` is non-optional in types, and here it is real).
+  //  - error → THROW it to the nearest ErrorBoundary (the mountable's positional `.error()`). On
+  //    the server a render throw ships the boundary's loading fallback and the CLIENT retries and
+  //    renders `.error()` — the same containment any render throw gets.
+  //  - pending, client → throw the always-resolving ensure (standard suspense; lands in the
+  //    positional Suspense boundary, the fetch starts right here).
+  //  - pending, server, final render → throw the always-resolving ensure (streams; this is also
+  //    what makes cascades under suspense hooks work). If the loader cannot run here (`ssr: false`
+  //    merged in from defaults, or a client loader) — throw a descriptive render error instead:
+  //    the HTML ships the fallback and the client retries after hydration (a never-resolving throw
+  //    would hang the open response forever).
+  //  - pending, server, discovery → throw a promise that NEVER resolves: a pure "paused subtree"
+  //    marker. Discovery awaits only the shell, so nothing waits on it; the query registered
+  //    itself in the cache BEFORE the throw, so the executor sees the marker (the hook forces
+  //    `suspend: true`) and background-kicks the fetch (HTML mode) or skips it (data-only mode).
+  private _suspenseHookResult<TResult extends { status: 'pending' | 'error' | 'success'; error: unknown }>({
+    result,
+    mergedQueryOptions,
+    ensure,
+    loaderSide,
+  }: {
+    result: TResult
+    mergedQueryOptions: { ssr?: boolean }
+    ensure: () => Promise<unknown>
+    loaderSide: 'server' | 'client'
+  }): TResult {
+    if (result.status === 'error') {
+      throw result.error
+    }
+    if (result.status !== 'pending') {
+      return result
+    }
+    if (_point0_env.side.is.server) {
+      if (_ss.__POINT0_SSR_PHASE__.get() === 'render') {
+        if (loaderSide === 'client' || mergedQueryOptions.ssr === false) {
+          throw new Error(
+            `useSuspenseQuery on point ${this.toStringWithLocation()} cannot resolve during SSR (${
+              loaderSide === 'client' ? 'the point has a client loader' : 'the query is declared `ssr: false`'
+            }); the HTML ships the Suspense fallback and the client retries after hydration`,
+          )
+        }
+        throw ensure().catch(() => undefined)
+      }
+      throw new Promise(() => undefined)
+    }
+    throw ensure().catch(() => undefined)
   }
 
   private _useServerQuery({
@@ -9719,7 +10056,16 @@ export class Point0<
     fetchOptions?: FetchOptions | undefined
     outputType?: FetchServerOutputType
   }): UseQueryResult<FetchServerOutput<TServerLoaderOutput>, TError> {
-    return useQuery(this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType }))
+    const serverQueryOptions = this._getServerQueryOptions({ input, queryOptions, fetchOptions, outputType })
+    const result = useQuery(serverQueryOptions)
+    this._maybeSuspendQueryByOption({
+      mergedQueryOptions: serverQueryOptions as never,
+      outputType,
+      isPending: result.isPending,
+      ensure: () => _ss.__POINT0_QUERY_CLIENT__.get().ensureQueryData(serverQueryOptions as never),
+      loaderSide: 'server',
+    })
+    return result
   }
 
   private _useClientQuery({
@@ -9729,12 +10075,19 @@ export class Point0<
     input: InputRaw
     queryOptions?: ExtraUseQueryOptions | undefined
   }): UseQueryResult<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError> {
-    return useQuery(
-      this._getClientQueryOptions({
-        input,
-        queryOptions,
-      }),
-    )
+    const clientQueryOptions = this._getClientQueryOptions({
+      input,
+      queryOptions,
+    })
+    const result = useQuery(clientQueryOptions)
+    this._maybeSuspendQueryByOption({
+      mergedQueryOptions: clientQueryOptions as never,
+      outputType: undefined,
+      isPending: result.isPending,
+      ensure: () => _ss.__POINT0_QUERY_CLIENT__.get().ensureQueryData(clientQueryOptions as never),
+      loaderSide: 'client',
+    })
+    return result
   }
 
   private _useServerInfiniteQuery({
@@ -9745,7 +10098,7 @@ export class Point0<
   }: {
     input: InputRaw
     infiniteQueryOptions:
-      | ExtraUseInfiniteQueryOptions<
+      | PartialUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
@@ -9763,7 +10116,15 @@ export class Point0<
       fetchOptions,
       outputType,
     })
-    return useInfiniteQuery(infiniteQueryOptions) as never
+    const result = useInfiniteQuery(infiniteQueryOptions)
+    this._maybeSuspendQueryByOption({
+      mergedQueryOptions: infiniteQueryOptions as never,
+      outputType,
+      isPending: result.isPending,
+      ensure: () => _ss.__POINT0_QUERY_CLIENT__.get().ensureInfiniteQueryData(infiniteQueryOptions as never),
+      loaderSide: 'server',
+    })
+    return result as never
   }
 
   private _useClientInfiniteQuery({
@@ -9772,7 +10133,7 @@ export class Point0<
   }: {
     input: InputRaw
     infiniteQueryOptions?:
-      | ExtraUseInfiniteQueryOptions<
+      | PartialUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
@@ -9786,7 +10147,15 @@ export class Point0<
       input,
       infiniteQueryOptions: providedInfiniteQueryOptions,
     })
-    return useInfiniteQuery(infiniteQueryOptions) as never
+    const result = useInfiniteQuery(infiniteQueryOptions)
+    this._maybeSuspendQueryByOption({
+      mergedQueryOptions: infiniteQueryOptions as never,
+      outputType: undefined,
+      isPending: result.isPending,
+      ensure: () => _ss.__POINT0_QUERY_CLIENT__.get().ensureInfiniteQueryData(infiniteQueryOptions as never),
+      loaderSide: 'client',
+    })
+    return result as never
   }
 
   /**
@@ -10783,7 +11152,7 @@ export class Point0<
       TBodySchema
     >,
     infiniteQueryOptions?:
-      | ExtraUseInfiniteQueryOptions<
+      | PartialUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
@@ -10821,7 +11190,7 @@ export class Point0<
       TBodySchema
     >,
     infiniteQueryOptions?:
-      | ExtraUseInfiniteQueryOptions<
+      | PartialUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
@@ -10859,7 +11228,7 @@ export class Point0<
       TBodySchema
     >,
     infiniteQueryOptions?:
-      | ExtraUseInfiniteQueryOptions<
+      | PartialUseInfiniteQueryOptions<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
           FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
           TError,
@@ -11342,6 +11711,46 @@ export class Point0<
     }
   }
 
+  // The merged `ssr` + `suspend` query options (see ExtraQueryPoint0Options), read without
+  // building the full query options (no input, no queryFn). `undefined` resolves to the defaults
+  // (`ssr: true`, `suspend: 'auto'`).
+  // KEEP IN SYNC: the source lists below mirror the real merges in `_getServerQueryOptions`
+  // (finite, the non-dehydrated-state branch — this helper serves only the 'data' prefetch path)
+  // and `_getServerInfiniteQueryOptions` (infinite) — same merge helpers, same order. If a source
+  // is added or reordered there, mirror it here; both ends carry this sentinel.
+  _getMergedSsrSuspendQueryOptions(queryOptions?: {
+    ssr?: boolean
+    suspend?: 'auto' | 'server' | 'client' | boolean
+  }): {
+    ssr: boolean
+    suspend: 'auto' | 'server' | 'client' | boolean
+  } {
+    const merged = (() => {
+      if (this._queryResultType === 'infiniteQuery') {
+        return mergeInfiniteQueryOptions(
+          this._defaultQueryOptions as never,
+          this._defaultInfiniteQueryOptions as never,
+          this._infiniteQueryOptions as never,
+          queryOptions as never,
+        ) as { ssr?: boolean; suspend?: 'auto' | 'server' | 'client' | boolean }
+      }
+      const mountableDefaultQueryOptions =
+        {
+          page: this._defaultPageQueryOptions,
+          component: this._defaultComponentQueryOptions,
+          layout: this._defaultLayoutQueryOptions,
+          provider: this._defaultProviderQueryOptions,
+        }[this.type as string] || {}
+      return mergeQueryOptions(
+        this._defaultQueryOptions,
+        mountableDefaultQueryOptions,
+        this._queryOptions,
+        queryOptions as never,
+      ) as { ssr?: boolean; suspend?: 'auto' | 'server' | 'client' | boolean }
+    })()
+    return { ssr: merged.ssr ?? true, suspend: merged.suspend ?? 'auto' }
+  }
+
   async _prefetchPage({
     input = {},
     options = {},
@@ -11465,6 +11874,33 @@ export class Point0<
         if (!hasLoaderForMode) {
           return []
         }
+        // Server-side SSR prefetch (prefetchLoadersBeforePageRender) honors the per-query
+        // declarations: `ssr: false` never executes on the server; `suspend: 'server' | true`
+        // starts now but never blocks the first render (the kick is NOT awaited — awaiting would
+        // hold the shell on the exact loader the user marked as streamed). `'auto'`/`false` are
+        // awaited — a full warm-up, data in the shell. On the client this changes nothing.
+        if (hasServerLoader && _point0_env.side.is.server && _ss.__POINT0_SSR_PHASE__.get() !== 'none') {
+          const { ssr, suspend } = p._getMergedSsrSuspendQueryOptions(relatedQuery.queryOptions as never)
+          if (ssr === false) {
+            return []
+          }
+          if (suspend === 'server' || suspend === true) {
+            if (p._queryResultType === 'infiniteQuery') {
+              void p.prefetchInfiniteQuery(
+                relatedQuery.inputGetter({ location, props: {} as never }),
+                relatedQuery.queryOptions as never,
+                { queryClient, fetchOptions },
+              )
+            } else if (p._queryResultType === 'query') {
+              void p.prefetchQuery(
+                relatedQuery.inputGetter({ location, props: outerProps }),
+                relatedQuery.queryOptions as never,
+                { queryClient, fetchOptions },
+              )
+            }
+            return []
+          }
+        }
         if (p._queryResultType === 'infiniteQuery') {
           return await p.prefetchInfiniteQuery(
             relatedQuery.inputGetter({ location, props: {} as never }),
@@ -11526,6 +11962,23 @@ export class Point0<
           mode === 'server' ? hasServerLoader : mode === 'client' ? hasClientLoader : hasServerLoader || hasClientLoader
         if (!hasLoaderForMode) {
           return []
+        }
+        // Server-side SSR prefetch (prefetchLoadersBeforePageRender) honors the per-query
+        // declarations — same rules as the relatedQueries block above: `ssr: false` skips,
+        // `suspend: 'server' | true` kicks without awaiting, the rest are awaited.
+        if (hasServerLoader && _point0_env.side.is.server && _ss.__POINT0_SSR_PHASE__.get() !== 'none') {
+          const { ssr, suspend } = p._getMergedSsrSuspendQueryOptions(undefined)
+          if (ssr === false) {
+            return []
+          }
+          if (suspend === 'server' || suspend === true) {
+            if (p._queryResultType === 'infiniteQuery') {
+              void p.prefetchInfiniteQuery(inputHere as never, undefined, { queryClient, fetchOptions })
+            } else if (p._queryResultType === 'query') {
+              void p.prefetchQuery(inputHere as never, undefined, { queryClient, fetchOptions })
+            }
+            return []
+          }
         }
         if (p._queryResultType === 'infiniteQuery') {
           return await p.prefetchInfiniteQuery(inputHere as never, undefined, {
@@ -11700,7 +12153,14 @@ export class Point0<
     return ({ error, _isHeadable = isHeadable }: { error: Error; _isHeadable?: boolean }) => {
       const error0 = ErrorClass.from(error)
       if (error0.status) {
-        setStatus(error0.status)
+        // The framework's own page-status bookkeeping. Once the streamed shell left, the status
+        // is out of our hands — a failed streamed loader rendering its `.error()` post-shell is
+        // normal operation, so skip instead of tripping the sealed-effects warning (reserved for
+        // USER code touching the response too late).
+        const sealed = _point0_env.side.is.server ? getEffectsOrUndefined()?.sealed : false
+        if (!sealed) {
+          setStatus(error0.status)
+        }
       }
       if (_isHeadable) {
         Point0._usePrevHeadsAndSetPageState({
@@ -11794,6 +12254,103 @@ export class Point0<
         props: outerProps,
       } as never)
     }, children)
+  }
+
+  // Builds the ErrorBoundary0 error renderer: redirect-carrying errors keep redirecting (the same
+  // passthrough the `mountState.error.redirect` tail path does), everything else renders the given
+  // bound ErrorComponent in place.
+  private readonly _renderBoundaryError = (
+    ErrorComponent: React.ComponentType<{ error: Error; _isHeadable?: boolean }>,
+  ): ((error: Error) => React.ReactNode) => {
+    return (error: Error): React.ReactNode => {
+      const redirectTask = RedirectTask.is(error) ? error : this._Error.from(error).redirect
+      if (redirectTask) {
+        const Redirect = getNavigationHelpers().Redirect
+        return React.createElement(Redirect, {
+          task: redirectTask,
+          after: () => {
+            removeRedirectsFromQueryClientCache(_ss.__POINT0_QUERY_CLIENT__.get(), redirectTask.to)
+          },
+        })
+      }
+      return React.createElement(ErrorComponent, { error })
+    }
+  }
+
+  // Every mountable render (Page/Component/Layout/Provider) goes through this entry wrapper:
+  // <ErrorBoundary0><Suspense fallback={loading}>chain…</Suspense></ErrorBoundary0>.
+  //
+  // - The Suspense boundary is what makes server-side streaming work: when a suspense query
+  //   suspends in the final SSR render, React ships this fallback in the shell and streams the
+  //   resolved content later. On the client only explicit suspension lands here (`suspend: true`
+  //   or the useSuspense* hooks). Lazy point chunks don't land here either: normal navigation
+  //   awaits the chunk before rendering (`prefetchPage` → `loadPage` → `await point()`), and a
+  //   point's own React.lazy boundary sits ABOVE this wrapper anyway (this Suspense exists only
+  //   once the chunk resolved) — a cold CHILD lazy point rendered inside an already-loaded parent
+  //   is the one case this boundary would catch its load.
+  // - The ErrorBoundary makes a throw inside the chain render this point's `.error()` in place
+  //   instead of killing the whole page (SPA fallback remains only for errors outside every
+  //   boundary).
+  // - The chain element MUST be `createElement(this._Mountable, …)`, not the former direct call:
+  //   a direct call runs the first chain slice's hooks (e.g. the self query) in the CALLER's
+  //   instance — outside this boundary — so its suspend/throw would escape the wrapper.
+  // - The fallbacks bind with an empty prevMountActions, so they resolve to the point's own
+  //   `.loading()`/`.error()` fields (the LAST declared one — each call overwrites the field).
+  //   Mid-chain `.loading()`/`.error()` actions additionally open NESTED boundaries with
+  //   positional semantics — see the `loadingComponent`/`errorComponent` action cases.
+  //
+  // Called directly (not via createElement) from the entry components, so the useMemo accrues to
+  // the entry instance — it runs unconditionally exactly once per entry render.
+  private readonly _MountableWithBoundaries = (
+    props: Parameters<typeof this._Mountable>[0],
+  ): Exclude<React.ReactNode, Promise<any>> => {
+    const componentVariant = this._getDestinationComponentVariant() ?? 'page'
+    const isHeadable = this.type === 'page' || this.type === 'layout'
+    const { EntryLoadingComponent, renderEntryBoundaryError } = React.useMemo(() => {
+      const fallbackLoadingComponent =
+        this._loadingComponent ??
+        {
+          page: this._pageLoadingComponent,
+          component: this._componentLoadingComponent,
+          layout: this._layoutLoadingComponent,
+        }[componentVariant] ??
+        this.DefaultLoadingComponent
+      const fallbackErrorComponent =
+        this._errorComponent ??
+        {
+          page: this._pageErrorComponent,
+          component: this._componentErrorComponent,
+          layout: this._layoutErrorComponent,
+        }[componentVariant] ??
+        this.DefaultErrorComponent
+      return {
+        EntryLoadingComponent: Point0._createBoundLoadingComponent({
+          componentVariant,
+          prevMountActions: [],
+          isHeadable,
+          fallbackLoadingComponent,
+        }),
+        renderEntryBoundaryError: this._renderBoundaryError(
+          Point0._createBoundErrorComponent({
+            componentVariant,
+            prevMountActions: [],
+            isHeadable,
+            fallbackErrorComponent,
+            ErrorClass: this._Error,
+          }),
+        ),
+      }
+    }, [])
+    const resetKey =
+      (props.location as { href?: string } | undefined)?.href ?? _ss.__POINT0_CURRENT_LOCATION__.getOrUndefined()?.href
+    return React.createElement(ErrorBoundary0, {
+      renderError: renderEntryBoundaryError,
+      resetKey,
+      children: React.createElement(React.Suspense, {
+        fallback: React.createElement(EntryLoadingComponent),
+        children: React.createElement(this._Mountable, props),
+      }),
+    })
   }
 
   // _Mountable is the render-time interpreter of the point's static `_mountActions` list.
@@ -12148,13 +12705,29 @@ export class Point0<
             layers: _nextLayers.slice(1),
           })
         }
+        // `.error()` / `.loading()` were pure inline rebinds; they now ALSO open a new
+        // ErrorBoundary/Suspense around the REST of the chain. Positional semantics: a throw or a
+        // suspense-query suspend is caught by the closest boundary declared ABOVE the
+        // failing/suspending query in the chain (queries before every `.loading()` land in the
+        // entry boundary, whose fallback already resolves to the point's last-declared components
+        // via the `_loadingComponent`/`_errorComponent` fields). Rebind BEFORE getNextProps() so
+        // the child chain inherits the new bound component.
         case 'errorComponent': {
           ErrorComponent = createBoundErrorComponent()
-          continue
+          const { _nextMountableProps } = getNextProps()
+          return React.createElement(ErrorBoundary0, {
+            renderError: this._renderBoundaryError(ErrorComponent),
+            resetKey: (location as { href?: string } | undefined)?.href,
+            children: React.createElement(this._Mountable, _nextMountableProps),
+          })
         }
         case 'loadingComponent': {
           LoadingComponent = createBoundLoadingComponent()
-          continue
+          const { _nextMountableProps } = getNextProps()
+          return React.createElement(React.Suspense, {
+            fallback: React.createElement(LoadingComponent),
+            children: React.createElement(this._Mountable, _nextMountableProps),
+          })
         }
         case 'selfProps': {
           mountState.props = { ...mountState.props, ...currentLayer.outerProps }
@@ -12551,7 +13124,7 @@ export class Point0<
     // `useScrollRestoration`), not per-page anymore.
 
     return this._applyWrappers(
-      this._Mountable({
+      this._MountableWithBoundaries({
         location,
         layers: [
           {
@@ -12592,7 +13165,7 @@ export class Point0<
     }, [props])
 
     return this._applyWrappers(
-      this._Mountable({
+      this._MountableWithBoundaries({
         layers: [
           {
             inputRaw,
@@ -12636,7 +13209,7 @@ export class Point0<
     }, [props, location])
 
     return this._applyWrappers(
-      this._Mountable({
+      this._MountableWithBoundaries({
         location,
         layers: [
           {
@@ -12752,7 +13325,7 @@ export class Point0<
     }, [props])
 
     return this._applyWrappers(
-      this._Mountable({
+      this._MountableWithBoundaries({
         layers: [
           {
             inputRaw,

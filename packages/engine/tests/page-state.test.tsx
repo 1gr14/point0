@@ -151,8 +151,8 @@ describe('page state', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #layout:
-        #page-state: status=loading, error=undefined
-        #loading: ...
+        #page-state: status=error, error=test
+        #error: test
       "
     `)
   })
@@ -301,7 +301,7 @@ describe('page state', () => {
     })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
-      #loading: ...
+      #error: test
       "
     `)
   })
@@ -347,7 +347,7 @@ describe('page state', () => {
     })
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
-      #loading: ...
+      #error: test
       "
     `)
   })
@@ -402,9 +402,9 @@ describe('page state', () => {
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
       #layout:
-        #page-state: status=loading, error=undefined
+        #page-state: status=error, error=test
         #layout-data: x=1
-        #loading: ...
+        #error: test
       "
     `)
   })

@@ -16,6 +16,8 @@ import type {
   UseQueryOptions as OriginalUseQueryOptions,
   UseInfiniteQueryResult,
   UseQueryResult,
+  UseSuspenseInfiniteQueryResult,
+  UseSuspenseQueryResult,
 } from '@tanstack/react-query'
 import type { OpenAPIV3 } from 'openapi-types'
 import type React from 'react'
@@ -1295,12 +1297,53 @@ export type UseQueryOptions<
   TData = any,
   TQueryKey extends QueryKey = QueryKey,
 > = OriginalUseQueryOptions<TQueryFnData, TError, TData, TQueryKey>
+export type ExtraQueryPoint0Options = {
+  /**
+   * Whether the server executes this query during SSR. Ignored on the client — after hydration and on client
+   * navigations the query fetches exactly as it always did.
+   *
+   * - `true` (default, same as omitting) — the server fetches the query during SSR.
+   * - `false` — the server never executes the query: the HTML ships this mountable's loading state and the client fetches
+   *   after hydration (same shape as a `.clientLoader()` query during SSR).
+   *
+   * Merged like any other query option: the later, more specific declaration wins (defaults → point-kind defaults →
+   * `.query()` options → the hook/`.with()` call site).
+   */
+  ssr?: boolean
+  /**
+   * Whether a pending query suspends into the nearest Suspense boundary (the closest positional `.loading()` of the
+   * mountable chain) instead of returning a pending result.
+   *
+   * - `'auto'` (default, same as omitting) — while the server can still wait for the query, nothing special happens: the
+   *   discover loop fetches it and its data ships inside the HTML. It suspends only when waiting is impossible — in the
+   *   final streamed render (revealed under an already-streamed boundary, or left pending because
+   *   `allowedDiscoveryRenders` cut the discover loop short) it suspends and streams into the response instead of
+   *   shipping a dead pending state. Never suspends on the client.
+   * - `'server'` — the server never blocks the response on this query: the loader starts immediately, the shell ships
+   *   with the mountable's `.loading()` fallback, and the resolved content streams into the same response (an inline
+   *   script seeds the client cache — no refetch after hydration). Never suspends on the client.
+   * - `true` — like `'server'`, and the query also suspends on the client (client navigations, fresh inputs) into the
+   *   same positional boundaries. For non-optional `data` in types use `useSuspenseQuery` instead.
+   * - `'client'` — suspends only on the client (client navigations, fresh inputs); during SSR it never suspends (the
+   *   server half of `false`: a query still pending at the final render ships the loading state and the client fetches
+   *   after hydration). The mirror of `'server'`, for completeness.
+   * - `false` — never suspends anywhere: a query still pending at the final render ships the loading state in the HTML
+   *   and the client fetches after hydration.
+   *
+   * A loader that resolves after the shell was sent cannot redirect, set cookies, or change the status/headers — and
+   * cannot feed an SsrStore/cookie value into the SSR re-render loop.
+   *
+   * Merged like any other query option, so `.queryOptions({ suspend: 'server' })` on a root, layout, or page makes the
+   * whole subtree streaming-first: the shell ships at once and every query streams in as it resolves.
+   */
+  suspend?: 'auto' | 'server' | 'client' | boolean
+}
 export type ExtraUseQueryOptions<
   TQueryFnData = any,
   TError = any,
   TData = any,
   TQueryKey extends QueryKey = QueryKey,
-> = Omit<UseQueryOptions<TQueryFnData, TError, TData, TQueryKey>, 'queryFn' | 'queryKey'>
+> = Omit<UseQueryOptions<TQueryFnData, TError, TData, TQueryKey>, 'queryFn' | 'queryKey'> & ExtraQueryPoint0Options
 type PathKeys<T> =
   T extends Record<string, unknown>
     ? {
@@ -1334,7 +1377,8 @@ export type ExtraUseInfiniteQueryOptions<
   TData = any,
   TQueryKey extends QueryKey = QueryKey,
   TPageParam = any,
-> = Omit<UseInfiniteQueryOptions<TInput, TQueryFnData, TError, TData, TQueryKey, TPageParam>, 'queryFn' | 'queryKey'>
+> = Omit<UseInfiniteQueryOptions<TInput, TQueryFnData, TError, TData, TQueryKey, TPageParam>, 'queryFn' | 'queryKey'> &
+  ExtraQueryPoint0Options
 export type PartialUseInfiniteQueryOptions<
   TInput extends InputRaw = InputRaw,
   TQueryFnData = any,
@@ -1343,6 +1387,30 @@ export type PartialUseInfiniteQueryOptions<
   TQueryKey extends QueryKey = QueryKey,
   TPageParam = any,
 > = Partial<ExtraUseInfiniteQueryOptions<TInput, TQueryFnData, TError, TData, TQueryKey, TPageParam>>
+
+// Options for the suspense hooks (`useSuspenseQuery` / `useSuspenseInfiniteQuery`). A suspense query can never be
+// disabled or placeholder-filled (it must resolve to real data — TanStack v5 semantics), and the `ssr`/`suspense`
+// behavior options are meaningless there: the hook always suspends, on both sides.
+export type ExtraUseSuspenseQueryOptions<
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+> = Omit<
+  ExtraUseQueryOptions<TQueryFnData, TError, TData, TQueryKey>,
+  'enabled' | 'placeholderData' | 'ssr' | 'suspend'
+>
+export type PartialUseSuspenseInfiniteQueryOptions<
+  TInput extends InputRaw = InputRaw,
+  TQueryFnData = any,
+  TError = any,
+  TData = any,
+  TQueryKey extends QueryKey = QueryKey,
+  TPageParam = any,
+> = Omit<
+  PartialUseInfiniteQueryOptions<TInput, TQueryFnData, TError, TData, TQueryKey, TPageParam>,
+  'enabled' | 'placeholderData' | 'ssr' | 'suspend'
+>
 
 type NarrowQueryComponentPropStatus<
   T extends { status: 'pending' | 'error' | 'success' },
@@ -1387,6 +1455,27 @@ export type UsePointQueryResult<
   : TClientLoaderOutput extends Data
     ? UseClientQueryResult<TQueryResultType, TClientLoaderOutput, TError, TStatus>
     : never
+// The suspense hooks' result: real TanStack `UseSuspenseQueryResult` — `data` is non-optional, pending suspends,
+// errors throw to the nearest ErrorBoundary (the mountable's positional `.error()`).
+export type UsePointSuspenseQueryResult<
+  TQueryResultType extends QueryResultType | UndefinedQueryResultType,
+  TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
+  TError extends ErrorPoint0,
+> = TServerLoaderOutput extends Data
+  ? // only one loader per point, so a server loader is always the sole loader here
+    TQueryResultType extends 'infiniteQuery'
+    ? UseSuspenseInfiniteQueryResult<InfiniteData<FetchServerOutput<TServerLoaderOutput>>, TError>
+    : TQueryResultType extends 'query'
+      ? UseSuspenseQueryResult<FetchServerOutput<TServerLoaderOutput>, TError>
+      : never
+  : TClientLoaderOutput extends Data
+    ? TQueryResultType extends 'infiniteQuery'
+      ? UseSuspenseInfiniteQueryResult<InfiniteData<TClientLoaderOutput>, TError>
+      : TQueryResultType extends 'query'
+        ? UseSuspenseQueryResult<TClientLoaderOutput, TError>
+        : never
+    : never
 export type UsePointQueryOptions<
   TPointType extends PointType,
   TServerInputSchema extends InputSchema | UndefinedInputSchema,
@@ -1399,7 +1488,10 @@ export type UsePointQueryOptions<
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput,
   TError extends ErrorPoint0,
 > = TQueryResultType extends 'infiniteQuery'
-  ? ExtraUseInfiniteQueryOptions<
+  ? // Partial: this is the CALL-SITE override type (`useInfiniteQuery(input, {…})`, `.with(point, input, {…})`,
+    // `.relatedQuery`) — the required infinite shape (`pageParamFromInput`/`getNextPageParam`/`initialPageParam`)
+    // was already declared on the `.infiniteQuery({…})` close and the runtime merge fills it in.
+    PartialUseInfiniteQueryOptions<
       FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
       FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
       TError,
@@ -3546,6 +3638,7 @@ export type WithQueryIfSuitable<
       TServerLoaderOutput,
       | TLiteral
       | 'useQuery'
+      | 'useSuspenseQuery'
       | 'getQueryKey'
       | 'getQueryOptions'
       | 'fetchQuery'
@@ -3568,6 +3661,7 @@ export type WithQueryIfSuitable<
         TServerLoaderOutput,
         | TLiteral
         | 'useInfiniteQuery'
+        | 'useSuspenseInfiniteQuery'
         | 'getQueryKey'
         | 'getInfiniteQueryKey'
         | 'getInfiniteQueryOptions'

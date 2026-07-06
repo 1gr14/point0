@@ -173,16 +173,20 @@ export type SsrOptions = {
   /** Toggle SSR. Defaults to `true` when an options object is provided. */
   enabled?: boolean
   /**
-   * Soft re-render budget. Once this many SSR re-renders have happened, the loop stops quietly (no error). Default
-   * `Infinity` (re-render until stable). Set to `0` or `1` to opt out of SSR-store stabilization re-renders for
-   * performance.
+   * Soft budget of DISCOVERY RENDERS — the render passes that discover queries and stabilize SSR stores/cookies before
+   * the final render (the final render is not counted; there is always exactly one). Once the budget is spent the loop
+   * stops quietly (no error) and the response streams: whatever discovery did not see suspends in the final render.
+   * Default `Infinity` (render until stable). `1` = a single discovery pass, no stabilization re-renders. `0` = skip
+   * discovery entirely: the `.onPrefetchPage` hooks and `prefetchLoadersBeforePageRender` warm-up still run, then the
+   * final render streams immediately — the earliest possible shell, at the price of HTTP-level redirects/status from
+   * anything discovery would have found (they degrade to client-side redirects).
    */
-  allowedRerendersCount?: number
+  allowedDiscoveryRenders?: number
   /**
-   * Hard re-render cap. Reaching it stops the loop AND logs a server error — the safety net for non-deterministic
-   * values (e.g. `Date.now()`) that never stabilize. Default `25`.
+   * Hard cap of discovery renders (same counting as `allowedDiscoveryRenders`). Reaching it stops the loop AND logs a
+   * server error — the safety net for non-deterministic values (e.g. `Date.now()`) that never stabilize. Default `25`.
    */
-  forbiddenRerendersCount?: number
+  forbiddenDiscoveryRenders?: number
   /**
    * Before the first SSR render, also prefetch the page's and its layouts' **loaders** (their server queries, with
    * inputs derived from the route) — not just the `.onPrefetchPage` hooks, which always run before the first render
@@ -193,13 +197,13 @@ export type SsrOptions = {
   prefetchLoadersBeforePageRender?: boolean
 }
 export type SsrOptionsResolved = {
-  allowedRerendersCount: number
-  forbiddenRerendersCount: number
+  allowedDiscoveryRenders: number
+  forbiddenDiscoveryRenders: number
   prefetchLoadersBeforePageRender: boolean
 }
 export const defaultSsrOptionsResolved: SsrOptionsResolved = {
-  allowedRerendersCount: Infinity,
-  forbiddenRerendersCount: 25,
+  allowedDiscoveryRenders: Infinity,
+  forbiddenDiscoveryRenders: 25,
   prefetchLoadersBeforePageRender: false,
 }
 const normalizeSsrEnabled = (ssr: boolean | SsrOptions | undefined): boolean | undefined => {
@@ -210,8 +214,8 @@ const normalizeSsrEnabled = (ssr: boolean | SsrOptions | undefined): boolean | u
 const pickSsrOptionsPartial = (ssr: boolean | SsrOptions | undefined): Partial<SsrOptionsResolved> => {
   if (!ssr || typeof ssr === 'boolean') return {}
   const partial: Partial<SsrOptionsResolved> = {}
-  if (ssr.allowedRerendersCount !== undefined) partial.allowedRerendersCount = ssr.allowedRerendersCount
-  if (ssr.forbiddenRerendersCount !== undefined) partial.forbiddenRerendersCount = ssr.forbiddenRerendersCount
+  if (ssr.allowedDiscoveryRenders !== undefined) partial.allowedDiscoveryRenders = ssr.allowedDiscoveryRenders
+  if (ssr.forbiddenDiscoveryRenders !== undefined) partial.forbiddenDiscoveryRenders = ssr.forbiddenDiscoveryRenders
   if (ssr.prefetchLoadersBeforePageRender !== undefined)
     partial.prefetchLoadersBeforePageRender = ssr.prefetchLoadersBeforePageRender
   return partial

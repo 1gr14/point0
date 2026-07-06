@@ -16,8 +16,8 @@ export type SsrStorePendingMap = Map<string, { value: unknown }>
  *
  * On the server `set` does NOT mutate the value immediately. It stages the value; the SSR prefetch loop applies staged
  * values between renders (`commitPending`) and re-renders until they stop changing — exactly like a React state setter
- * does not affect the current render. This is what makes `ssr.allowedRerendersCount: 0` a clean "no re-render" mode: a
- * `set()` in the final render is simply never committed, so the HTML and the transferred value stay consistent.
+ * does not affect the current render. This is what makes `ssr.allowedDiscoveryRenders: 1` a clean "no re-render" mode:
+ * a `set()` in the final render is simply never committed, so the HTML and the transferred value stay consistent.
  *
  * On the client `set` is just a React state update — every component reading the value through `use` re-renders.
  *

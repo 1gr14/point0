@@ -2,7 +2,7 @@ import type { PluginItem } from '@babel/core'
 import type { GeneratorResult } from '@babel/generator'
 import type { RoutesPretty } from '@1gr14/route0'
 import type { CompileOptions as MdxCompileOptions } from '@mdx-js/mdx'
-import { normalNodeEnvs, type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv } from '@point0/core'
+import { log, normalNodeEnvs, type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv } from '@point0/core'
 import { CompilerFile } from './file.js'
 import {
   createVirtualModuleCode,
@@ -348,7 +348,12 @@ export class Compiler {
         if (this.importer.onDeny === 'throw') {
           throw new CriticalCompilerError(error)
         } else {
-          console.error(error)
+          log({
+            level: 'error',
+            category: ['compiler'],
+            message: 'Virtual module generation failed (onDeny is not "throw" — continuing with the generated stub)',
+            error,
+          })
         }
       }
       return {

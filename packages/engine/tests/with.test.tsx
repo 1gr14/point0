@@ -719,7 +719,7 @@ describe('with', () => {
     `)
     expect(await fetchPreview(page, { y: '123' })).toMatchInlineSnapshot(`
       "
-      #loading: ...
+      #error: y: Invalid input: expected number, received undefined
       "
     `)
   })
@@ -1295,6 +1295,45 @@ describe('with', () => {
       #error: test error
       "
     `)
+  })
+
+  it('with thrown error is caught by the mountable boundary and renders `.error()` in place, the page stays alive', async () => {
+    const root = createRoot()
+
+    // Unlike the RETURNED error above (a data short-circuit that also sets the SSR status), a
+    // THROW is a render-phase error: the mountable's ErrorBoundary catches it and renders the
+    // nearest `.error` declared above — the rest of the page keeps rendering.
+    const broken = root
+      .lets('component', 'broken')
+      .error(({ error }) => <div id="broken-error">{error.message}</div>)
+      .with((): undefined => {
+        throw new Error('with boom')
+      })
+      .component(() => <div id="broken">never</div>)
+    const page = root.lets('page', 'home', '/home').page(() => (
+      <div id="page">
+        <div id="alive">alive-content</div>
+        <broken.X />
+      </div>
+    ))
+
+    const { render, fetchSsr } = await createTestThings({ ssr: true, points: [root, broken, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#broken-error')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #page:
+            #alive: alive-content
+            #broken-error: with boom
+        "
+      `)
+    })
+    // SSR contains it the same way: the page ships with `.error()` in place, no SPA fallback
+    const result = await fetchSsr(page)
+    expect(result.html).toContain('alive-content')
+    expect(result.html).toContain('with boom')
+    expect(result.html).toContain('__POINT0_DEHYDRATED_SUPER_STORE__')
   })
 
   it('with can override props by made it non-null', async () => {

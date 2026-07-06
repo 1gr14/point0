@@ -277,7 +277,7 @@ describe('head', () => {
           "
         `)
       })
-      expect(await fetchTitle(page)).toMatchInlineSnapshot(`"Test"`) // it is default head of our html, in facte here was initial state, so better use 'global' head for this things
+      expect(await fetchTitle(page)).toMatchInlineSnapshot(`"My Error Title: my message"`) // it is default head of our html, in facte here was initial state, so better use 'global' head for this things
     },
     {
       retry: 3,
@@ -312,7 +312,7 @@ describe('head', () => {
           "
         `)
       })
-      expect(await fetchTitle(page)).toMatchInlineSnapshot(`"Loading..."`)
+      expect(await fetchTitle(page)).toMatchInlineSnapshot(`"My Error Title: my message"`)
     },
     {
       retry: 3,

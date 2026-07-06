@@ -232,11 +232,11 @@ export const generalLayout = root.lets.layout('/').layout(({ children }) => {
 })
 ```
 
-Because the value is always committed, even an app capped to zero SSR re-renders
-still ships the cookie. A non-deterministic cookie value (`Date.now()`,
+Because the value is always committed, even an app capped to a single discovery
+render still ships the cookie. A non-deterministic cookie value (`Date.now()`,
 `Math.random()`) keeps changing every pass and can hit the engine's hard
-re-render cap (`forbiddenRerendersCount`, default 25), which logs an SSR error.
-Set stable values during SSR.
+discovery-render cap (`forbiddenDiscoveryRenders`, default 25), which logs an
+SSR error. Set stable values during SSR.
 
 This is the two-way counterpart of [SsrStore](ssr-store): an `SsrStore` value is
 computed on the server and sent to the client one way and is dropped if a

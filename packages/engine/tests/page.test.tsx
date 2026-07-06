@@ -43,6 +43,28 @@ describe('page', () => {
               `)
   })
 
+  it('a page without loaders is still fetchable as data (queryClientDehydratedState)', async () => {
+    // The dehydrated-state output type needs no loader: an SSR page keeps its endpoint exactly
+    // for this (client-navigation prefetch requests the page "through itself"). Pins that the
+    // loaderless `useQuery` throw does not leak into this internal path — it builds options via
+    // `_getServerQueryOptions` directly, never through the public hooks.
+    //
+    // In a real app POINT0_SSR is an injected bundle const, already set when point modules load;
+    // this harness constructs points inline, so set it around construction — `.page()` preserves
+    // a loaderless page's endpoint only when it sees SSR on.
+    process.env.POINT0_SSR = 'true'
+    try {
+      const root = createRoot()
+      const page = root.lets('page', 'home', '/').page(() => <div id="page">x=nothing</div>)
+      const { fetchQueryClientDehydratedState } = await createTestThings({ ssr: true, points: [root, page] })
+      const { response, dehydratedState } = await fetchQueryClientDehydratedState(page)
+      expect(response.status).toBe(200)
+      expect(dehydratedState.queries).toEqual([])
+    } finally {
+      delete process.env.POINT0_SSR
+    }
+  })
+
   it('page param', async () => {
     const root = createRoot()
     const page = root.lets('page', 'home', '/:x').page(({ params }) => <div id="page">x={params.x}</div>)
@@ -231,7 +253,7 @@ describe('page', () => {
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
-      #loading: ...
+      #error: test error
       "
     `)
   })
@@ -569,7 +591,7 @@ describe('page', () => {
     `)
     expect(await fetchPreview(page)).toMatchInlineSnapshot(`
       "
-      #loading: ...
+      #error: test error
       "
     `)
   })

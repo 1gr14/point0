@@ -251,10 +251,12 @@ export class Request0<
   }
 
   /**
-   * How many SSR render passes the engine has run for this request. Live during SSR (the pass currently in flight — a
-   * loader prefetched on the first pass reads `1`), the final total once the request settles (the same number the
-   * dev-only `X-Point0-Renders-Count` header reports). `0` when nothing was SSR-rendered (plain endpoint requests).
-   * Read-only from the outside: backed by `cache[REQUEST0_RENDERS_CACHE_KEY]` and written only by the engine.
+   * How many SSR DISCOVERY renders the engine has run for this request — the passes that discover queries and stabilize
+   * SSR stores/cookies. The final render (the one that becomes the response) is not counted: it always happens exactly
+   * once. Live during SSR (the pass currently in flight — a loader prefetched on the first pass reads `1`), the final
+   * total once discovery settles (the same number the dev-only `X-Point0-Discovery-Renders` header reports). `0` when
+   * nothing was SSR-rendered (plain endpoint requests) or with `ssr.allowedDiscoveryRenders: 0`. Read-only from the
+   * outside: backed by `cache[REQUEST0_RENDERS_CACHE_KEY]` and written only by the engine.
    */
   get renders(): number {
     const value = this.cache[REQUEST0_RENDERS_CACHE_KEY]

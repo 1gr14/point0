@@ -17,6 +17,9 @@ export const SLOW_TESTS = [
   'engine/tests/dev-source-maps.test.ts',
   'engine/tests/prefetch-page.test.ts',
   'engine/tests/scroll-restoration.test.ts',
+  // the in-process suspend tests share the file with its browser e2e half (dev server +
+  // Playwright), so the whole file is one slow shard
+  'engine/tests/suspend.test.tsx',
   'engine/tests/two-clients.test.ts',
   'engine/tests/publicdir.test.ts',
   'engine/tests/assets.test.tsx',

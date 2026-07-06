@@ -9,6 +9,8 @@ import type {
   Data,
   DataTransformerExtended,
   ErrorPoint0,
+  ExtraQueryPoint0Options,
+  FetchServerOutputType,
   IfAnyThenElse,
   InputParsed,
   InputRaw,
@@ -32,6 +34,7 @@ import type {
   UndefinedLoaderOutput,
   UnknownCtx,
   UnknownData,
+  UseQueryOptions,
 } from '@point0/core'
 import {
   POINT0_ERROR_CODES_MAP,
@@ -53,6 +56,7 @@ import { createHead } from '@unhead/react/server'
 import * as React from 'react'
 import type { renderToReadableStream as RenderToReadableStream } from 'react-dom/server'
 import { stringify } from 'safe-stable-stringify'
+import type { SsrTarget } from '@point0/core'
 import type { SsrOptionsResolved } from './config.js'
 import type { Engine } from './engine.js'
 
@@ -112,7 +116,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         _ss.__POINT0_QUERY_CLIENT_FROM_PARENT_RUN__.getOrUndefined() || _ss.__POINT0_QUERY_CLIENT__.config.init(),
       __POINT0_SSR_LOCATION__: undefined,
       __POINT0_SSR_REDIRECT_TASK__: undefined,
-      __POINT0_IS_SSR_IN_PROGRESS__: false,
+      __POINT0_SSR_PHASE__: 'none',
+      __POINT0_SSR_TARGET__: 'none',
       __POINT0_CURRENT_LOCATION__: new Error('Current location will exists only on ssr phase') as never,
       __POINT0_NAVIGATION_HELPERS__: new Error('Navigation helpers will exists only on ssr phase') as never,
       __POINT0_NAVIGATION_PAGE_STATE__: new Error('Navigation page state will exists only on ssr phase') as never,
@@ -737,7 +742,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         scope: PointsScope
         pointType: ReadyPointType
         pointName: PointName
-        outputType: string
+        outputType: FetchServerOutputType
         isInfiniteQuery: boolean
         input: InputRaw
         serverHash: string
@@ -809,6 +814,94 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     return undefined
   }
 
+  // Set once any discovery pass saw a `suspend: 'server' | true` query on the page — those never
+  // block the response, so it must stream.
+  private sawSuspenseMarkers = false
+
+  // Set when `allowedDiscoveryRenders` stopped the discover loop while undiscovered work could
+  // still be out there: re-render-worthy markers were on hand, or (with a budget of 0) no
+  // discovery render ran at all. Whatever hides in the unrendered branches can only surface in
+  // the FINAL render, so the response must stream — a revealed 'auto' query suspends there, and
+  // blocking would hold the whole response on it. (The cache scan below cannot see those
+  // queries: their branches never rendered yet.)
+  private discoveryCutShort = false
+
+  // Advance the SSR phase to the FINAL render (the one that becomes the response) — the
+  // `suspense` query gate suspends only in the 'render' phase (see `__POINT0_SSR_PHASE__` in
+  // @point0/core). Returns whether that final render may suspend — the HTML path uses the flag
+  // to drop the allReady barrier and stream. Decided HERE, not later, because it must read the
+  // world exactly as discovery left it: a query that could suspend in the final render is either
+  // a streamed marker discovery saw directly, hidden under another streamed one (a cascade — the
+  // ancestor was seen), or still pending in the cache when the discover loop stopped (e.g. cut
+  // short by `allowedDiscoveryRenders` — those `'auto'` queries suspend instead of shipping a
+  // dead pending state). The data-only path never calls this: with no final render nothing may
+  // suspend there, so it lives its whole life in 'discovery'.
+  markSsrRenderPhase(): { shouldStreamSuspense: boolean } {
+    const shouldStreamSuspense =
+      this.sawSuspenseMarkers || this.discoveryCutShort || this.hasPendingSuspendableQueries()
+    this.serverStorageState.__POINT0_SSR_PHASE__ = 'render'
+    return { shouldStreamSuspense }
+  }
+
+  // Any enabled server 'data' query still pending in the cache when discovery ends will suspend
+  // in the final render — unless it never suspends on the server by declaration
+  // (`suspend: false | 'client'`) or the server is not allowed to run it (`ssr: false`); client
+  // queries never suspend during SSR.
+  // Near-twin of the marker filter in `prefetchAppPagePointDeep` — deliberately NOT one shared
+  // predicate: that filter CLASSIFIES new markers for prefetch (dedups via seenQueryHashes,
+  // splits streamed vs blocking), this one PREDICTS suspension (so it also drops
+  // `suspend: false` and evaluates a function-form `enabled`). Keep the shared core — pending +
+  // enabled + server + 'data' output + `ssr: false` — in sync between the two.
+  private hasPendingSuspendableQueries(): boolean {
+    const queryClient = this.serverStorageState.__POINT0_QUERY_CLIENT__
+    // Set once SSR discovery started (prefetchAppPagePointDeep) — absent on non-SSR executions.
+    const clientPoints = this.serverStorageState.__POINT0_CLIENT_POINTS__
+    if (!clientPoints) {
+      return false
+    }
+    return queryClient
+      .getQueryCache()
+      .findAll()
+      .some((query) => {
+        if (query.state.status !== 'pending') {
+          return false
+        }
+        const options = query.options as Pick<ExtraQueryPoint0Options, 'ssr' | 'suspend'> &
+          Pick<UseQueryOptions, 'enabled'>
+        if (options.enabled === false) {
+          return false
+        }
+        if (typeof options.enabled === 'function' && !(options.enabled as (query: unknown) => boolean)(query)) {
+          return false
+        }
+        if (options.ssr === false || options.suspend === false || options.suspend === 'client') {
+          return false
+        }
+        const parsedQueryKey = Executor.parseQueryKey({
+          queryKey: query.queryKey,
+          transformer: clientPoints.transformer,
+        })
+        return !!parsedQueryKey && parsedQueryKey.isServer && parsedQueryKey.outputType === 'data'
+      })
+  }
+
+  // The onError sink of the final streamed render (see getReadableStreamWithWrapper): a render
+  // throw after the shell was sent leaves no other server-side trace. Wrapped into a coded
+  // framework error (the original travels as `cause`) so json logs carry a greppable code.
+  logStreamRenderError(error: unknown): void {
+    const ErrorClass = this.engine.server.points.manager.root._Error
+    const error0 = new ErrorClass('SSR streamed render error (a streamed Suspense boundary, or the shell itself)', {
+      code: POINT0_ERROR_CODES_MAP.SSR_STREAM_RENDER_ERROR,
+      cause: error,
+    })
+    this.engine.log({
+      level: 'error',
+      category: ['ssr'],
+      message: error0.message,
+      error: error0,
+    })
+  }
+
   async prefetchAppPagePointDeep({
     App,
     clientPoints,
@@ -822,6 +915,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     // ssrStoresRerenderCount = 0,
     redirectPolicy,
     ssrOptions,
+    target,
+    suspenseQueryPolicy = 'background',
   }: {
     App: AppComponent
     clientPoints: ClientPoints<any>
@@ -835,20 +930,36 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     // ssrStoresRerenderCount?: number
     redirectPolicy: 'continue' | 'throw'
     ssrOptions: SsrOptionsResolved
+    // What this SSR pass is FOR — exposed as `env.ssr.target`: 'html' (a page response) or
+    // 'data' (the render-less queryClientDehydratedState mode).
+    target: Exclude<SsrTarget, 'none'>
+    // What to do with a discovered `suspend: 'server' | true` query: 'background' (the HTML path)
+    // starts its fetch immediately without awaiting — the loader runs while the remaining passes
+    // and the shell proceed; 'skip' (the data-only/dehydrated-state path) does not touch it at all
+    // — there is no stream to push its result into, the client fetches it itself after hydration.
+    suspenseQueryPolicy?: 'background' | 'skip'
   }): Promise<{ rendersCount: number }> {
     if (rendersCount === 0) {
       this.serverStorageState.__POINT0_CURRENT_LOCATION__ = pageLocation
       this.serverStorageState.__POINT0_SSR_LOCATION__ = pageLocation
       this.serverStorageState.__POINT0_CLIENT_POINTS__ = clientPoints
-      this.serverStorageState.__POINT0_IS_SSR_IN_PROGRESS__ = true
+      this.serverStorageState.__POINT0_SSR_PHASE__ = 'discovery'
+      this.serverStorageState.__POINT0_SSR_TARGET__ = target
       this.serverStorageState.__POINT0_SSR_REDIRECT_TASK__ = undefined
     }
     return await this.withServerGlobalState(async () => {
+      // The budget counts DISCOVERY RENDERS (not re-renders): render number L+1 on this location
+      // runs only while L < allowedDiscoveryRenders. False is reachable only as
+      // `allowedDiscoveryRenders: 0` on the very first pass — the recursions below check the
+      // budget before recursing.
+      const discoveryRenderAllowed = locationRendersCount < ssrOptions.allowedDiscoveryRenders
+
       // Live render-pass counter on the request: while pass N is in flight `request.renders`
       // reads N (in loaders, ctx, middlewares), and once the loop ends it equals the final
-      // total — the same number the dev-only X-Point0-Renders-Count header reports. Backed
-      // by the request cache, so the whole prev/first request chain sees one counter.
-      this.request.cache[REQUEST0_RENDERS_CACHE_KEY] = rendersCount + 1
+      // total — the same number the dev-only X-Point0-Discovery-Renders header reports. Backed
+      // by the request cache, so the whole prev/first request chain sees one counter. With a
+      // zero budget no render runs, so the counter stays at the passed-in total.
+      this.request.cache[REQUEST0_RENDERS_CACHE_KEY] = discoveryRenderAllowed ? rendersCount + 1 : rendersCount
 
       // Apply any values staged by the PREVIOUS render pass before we render again. On the
       // server `set()` only stages a `nextValue`; reads (`get()`/`use()`) return the
@@ -887,8 +998,42 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         })
       }
 
-      const stream = await renderToReadableStream(React.createElement(App))
-      await stream.allReady
+      // Zero-render mode (`allowedDiscoveryRenders: 0`): skip discovery entirely — the warm-up
+      // above still ran, so the cache holds whatever the hooks / `prefetchLoadersBeforePageRender`
+      // put there. Everything else surfaces only in the FINAL render, which therefore must
+      // stream (`discoveryCutShort`) — HTTP-level redirects/status from unrendered branches
+      // degrade to their client-side equivalents, the deliberate price of the earliest shell.
+      // KEEP IN SYNC: this early exit mirrors the loop tail below (cookie flush, page
+      // dehydrated-state snapshot, discovery-renders header).
+      if (!discoveryRenderAllowed) {
+        this.discoveryCutShort = true
+        CookieStore.commitPending()
+        if (pagePoint) {
+          await this.addPrefetchPageDehydratedStateToQueryClient({
+            pagePoint,
+            pageLocation,
+            redirectTask: undefined,
+            ErrorClass: clientPoints.manager.root._Error,
+          })
+        }
+        if (!_point0_env.mode.is.production) {
+          getEffects().set.headers({
+            'X-Point0-Discovery-Renders': rendersCount.toString(),
+          })
+        }
+        return { rendersCount }
+      }
+
+      // Await only the SHELL (the promise renderToReadableStream itself returns), NOT
+      // `stream.allReady`: a discovery pass can contain honestly suspended subtrees (a
+      // `useSuspenseQuery` hook throws a paused promise here), and allReady would gate the pass
+      // on their fetches — the exact wait streaming exists to avoid. The shell milestone covers
+      // everything OUTSIDE suspended boundaries, which is exactly what a discovery pass can
+      // observe anyway (the suspended queries themselves are already registered in the cache —
+      // the hook registers BEFORE it throws). With nothing suspended the shell IS the full tree,
+      // so the classic whole-HTML flow is unchanged. The stream object itself is discarded:
+      // discovery renders are never sent anywhere.
+      await renderToReadableStream(React.createElement(App))
       const redirectTask = await this.handleRedirectTask({ clientPoints, redirectPolicy })
 
       if (redirectTask) {
@@ -918,15 +1063,25 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             // ssrStoresRerenderCount,
             redirectPolicy,
             ssrOptions,
+            target,
+            suspenseQueryPolicy,
           })
           return { rendersCount: newRendersCount }
         }
       }
 
       const queryClientState = _ss.__POINT0_QUERY_CLIENT__.get().getQueryCache().findAll()
-      const suitableMarkers = queryClientState.flatMap((query) => {
+      // Near-twin of `hasPendingSuspendableQueries` (see its comment for why the two stay
+      // separate) — keep the shared core conditions in sync.
+      const foundMarkers = queryClientState.flatMap((query) => {
         // it is exists runtime, but types in react query is wrong
         if ((query.options as any).enabled === false) {
+          return []
+        }
+        // `ssr: false` — never executed on the server, exactly like a clientLoader query: it stays
+        // pending through SSR and the client fetches it after hydration.
+        const markerOptions = query.options as Pick<ExtraQueryPoint0Options, 'ssr' | 'suspend'>
+        if (markerOptions.ssr === false) {
           return []
         }
         if (query.state.status !== 'pending') {
@@ -949,70 +1104,105 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           return []
         }
         seenQueryHashes.add(parsedQueryKey.serverHash)
-        return parsedQueryKey
+        return {
+          ...parsedQueryKey,
+          streamed: markerOptions.suspend === 'server' || markerOptions.suspend === true,
+        }
       })
+      // `suspend: 'server' | true` markers never block: they don't gate the response and don't
+      // trigger another discovery pass. Their subtree stays paused/pending for the rest of the
+      // loop, so queries hidden under them surface only in the final streamed render (the suspend
+      // path of the query gate starts those fetches itself — that is how cascades work). `'auto'`,
+      // `'client'` and `false` markers are the classic blocking participants of the discover loop
+      // (for `'client'` and `false` the suspend gate additionally never fires on the server).
+      const suitableMarkers = foundMarkers.filter((marker) => !marker.streamed)
+      const streamedMarkers = foundMarkers.filter((marker) => marker.streamed)
 
-      await Promise.all(
-        suitableMarkers.map(async (suitableMarker) => {
-          const exactPoint = this.engine.server.points.findPoint({
-            scope: suitableMarker.scope,
-            type: suitableMarker.pointType,
-            name: suitableMarker.pointName,
-          })
-          const isThisPageSelfPoint = pagePoint?.point && exactPoint?.point === pagePoint.point
-          const isThisPageLayoutPoint =
-            !isThisPageSelfPoint &&
-            pagePoint?.point &&
-            pagePoint._layouts.some((layout) => layout.point === exactPoint?.point)
-          const fixedInput = (() => {
-            if (isThisPageSelfPoint || isThisPageLayoutPoint) {
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              const { '?': _search, ...params } = suitableMarker.input as Record<string, unknown>
-              return {
-                ...params,
-                '?': pageLocation.search,
-              } as never as InputRaw
-            }
-            return suitableMarker.input
-          })()
-          if (exactPoint) {
-            // suitableMarkers are already filtered to server queries, and each point has a single
-            // loader, so the prefetch resolves to the server loader automatically.
-            if (suitableMarker.isInfiniteQuery) {
-              await exactPoint.prefetchInfiniteQuery(fixedInput, undefined)
-            } else {
-              await exactPoint.prefetchQuery(fixedInput, undefined)
-            }
-          }
-        }),
-      )
-
-      if (suitableMarkers.length > 0) {
-        const { rendersCount: newRendersCount } = await this.prefetchAppPagePointDeep({
-          App,
-          renderToReadableStream,
-          pagePoint,
-          pageLocation,
-          clientPoints,
-          seenQueryHashes,
-          seenRedirectTo,
-          rendersCount: rendersCount + 1,
-          locationRendersCount: locationRendersCount + 1,
-          // ssrStoresRerenderCount,
-          redirectPolicy,
-          ssrOptions,
+      const prefetchMarker = async (marker: (typeof foundMarkers)[number]) => {
+        const exactPoint = this.engine.server.points.findPoint({
+          scope: marker.scope,
+          type: marker.pointType,
+          name: marker.pointName,
         })
-        return { rendersCount: newRendersCount }
+        const isThisPageSelfPoint = pagePoint?.point && exactPoint?.point === pagePoint.point
+        const isThisPageLayoutPoint =
+          !isThisPageSelfPoint &&
+          pagePoint?.point &&
+          pagePoint._layouts.some((layout) => layout.point === exactPoint?.point)
+        const fixedInput = (() => {
+          if (isThisPageSelfPoint || isThisPageLayoutPoint) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { '?': _search, ...params } = marker.input as Record<string, unknown>
+            return {
+              ...params,
+              '?': pageLocation.search,
+            } as never as InputRaw
+          }
+          return marker.input
+        })()
+        if (exactPoint) {
+          // markers are already filtered to server queries, and each point has a single
+          // loader, so the prefetch resolves to the server loader automatically.
+          if (marker.isInfiniteQuery) {
+            await exactPoint.prefetchInfiniteQuery(fixedInput, undefined)
+          } else {
+            await exactPoint.prefetchQuery(fixedInput, undefined)
+          }
+        }
+      }
+
+      if (streamedMarkers.length > 0) {
+        this.sawSuspenseMarkers = true
+        if (suspenseQueryPolicy === 'background') {
+          // Start the streamed loaders NOW, in the background — in parallel with the remaining
+          // discovery passes and the shell. Not awaited: `prefetchQuery` never rejects (TanStack
+          // stores the error in the cache), so a floating promise is safe.
+          for (const marker of streamedMarkers) {
+            void prefetchMarker(marker)
+          }
+        }
+      }
+
+      await Promise.all(suitableMarkers.map(prefetchMarker))
+
+      // The just-prefetched data reaches the final render either way; the re-render is only for
+      // DISCOVERING queries hidden behind it. `allowedDiscoveryRenders` (soft, default Infinity)
+      // bounds these passes too — the next render is number `locationRendersCount + 2`, allowed
+      // while `locationRendersCount + 1 < allowedDiscoveryRenders`. Once spent we stop quietly
+      // and anything still undiscovered suspends in the final render (`suspend !== false`) or
+      // ships its loading state (`suspend: false`).
+      if (suitableMarkers.length > 0) {
+        if (locationRendersCount + 1 < ssrOptions.allowedDiscoveryRenders) {
+          const { rendersCount: newRendersCount } = await this.prefetchAppPagePointDeep({
+            App,
+            renderToReadableStream,
+            pagePoint,
+            pageLocation,
+            clientPoints,
+            seenQueryHashes,
+            seenRedirectTo,
+            rendersCount: rendersCount + 1,
+            locationRendersCount: locationRendersCount + 1,
+            // ssrStoresRerenderCount,
+            redirectPolicy,
+            ssrOptions,
+            target,
+            suspenseQueryPolicy,
+          })
+          return { rendersCount: newRendersCount }
+        }
+        this.discoveryCutShort = true
       }
 
       // No new server queries to prefetch. If a page staged an SsrStore change during
       // this render (e.g. overrode a layout default via `useEffectSsr` -> item.set()),
       // commit it and render again so ancestors pick up the new value. Two caps govern
-      // this:
-      //  - allowedRerendersCount (soft, default Infinity): once reached we stop quietly
-      //    WITHOUT committing the staged SsrStore changes — set low (0/1) to opt out of
-      //    re-rendering for performance.
-      //  - forbiddenRerendersCount (hard, default 25): reaching it stops the loop, leaves
+      // this (both count DISCOVERY RENDERS — this pass was render `locationRendersCount + 1`,
+      // the next would be `locationRendersCount + 2`):
+      //  - allowedDiscoveryRenders (soft, default Infinity): once spent we stop quietly
+      //    WITHOUT committing the staged SsrStore changes — set to 1 to opt out of
+      //    stabilization re-renders for performance (0 skips discovery entirely, see above).
+      //  - forbiddenDiscoveryRenders (hard, default 25): reaching it stops the loop, leaves
       //    the staged SsrStore changes uncommitted, AND logs an error — the safety net
       //    for non-deterministic values (e.g. Date.now()) that never stabilize.
       // Cookies drive re-renders too: on the server `get()` prefers the committed (effects)
@@ -1026,15 +1216,15 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       const ssrStoresChanged = SsrStore.hasPendingChanges()
       const cookiesChanged = CookieStore.hasPendingChanges()
       if (ssrStoresChanged || cookiesChanged) {
-        const { allowedRerendersCount, forbiddenRerendersCount } = ssrOptions
-        if (locationRendersCount >= forbiddenRerendersCount) {
+        const { allowedDiscoveryRenders, forbiddenDiscoveryRenders } = ssrOptions
+        if (locationRendersCount + 1 >= forbiddenDiscoveryRenders) {
           this.engine.log({
             level: 'error',
             category: ['ssr'],
-            message: `SSR stores/cookies did not stabilize after ${forbiddenRerendersCount} re-renders (forbiddenRerendersCount); using the last render. Check for non-deterministic SsrStore or cookie values (e.g. Date.now(), Math.random()).`,
+            message: `SSR stores/cookies did not stabilize after ${forbiddenDiscoveryRenders} discovery renders (forbiddenDiscoveryRenders); using the last render. Check for non-deterministic SsrStore or cookie values (e.g. Date.now(), Math.random()).`,
             meta: { location: pageLocation },
           })
-        } else if (locationRendersCount < allowedRerendersCount) {
+        } else if (locationRendersCount + 1 < allowedDiscoveryRenders) {
           const { rendersCount: newRendersCount } = await this.prefetchAppPagePointDeep({
             App,
             renderToReadableStream,
@@ -1048,10 +1238,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
             // ssrStoresRerenderCount: ssrStoresRerenderCount + 1,
             redirectPolicy,
             ssrOptions,
+            target,
+            suspenseQueryPolicy,
           })
           return { rendersCount: newRendersCount }
         }
-        // else: reached allowedRerendersCount (soft cap) — stop quietly, staged
+        // else: spent allowedDiscoveryRenders (soft cap) — stop quietly, staged
         // SsrStore changes are intentionally left uncommitted.
       }
 
@@ -1072,7 +1264,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       const finalRendersCount = rendersCount + 1
       if (!_point0_env.mode.is.production) {
         getEffects().set.headers({
-          'X-Point0-Renders-Count': finalRendersCount.toString(),
+          'X-Point0-Discovery-Renders': finalRendersCount.toString(),
         })
       }
 
@@ -1087,9 +1279,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
   }): Promise<DehydratedState> {
     const result = await this.withServerGlobalState(async () => {
       const dehydratedState = dehydrate(_ss.__POINT0_QUERY_CLIENT__.get(), {
-        shouldDehydrateQuery: (_query) => {
-          // This will include all queries, including failed ones
-          return true
+        // All settled queries, including failed ones — but never pending: they are filtered out
+        // below anyway, and dehydrating a pending query makes TanStack capture `query.promise`,
+        // whose rejection (a failed streamed loader) triggers an endless server-side
+        // refetch loop through the promise-chase machinery.
+        shouldDehydrateQuery: (query) => {
+          return query.state.status !== 'pending'
         },
       })
       return dehydratedState

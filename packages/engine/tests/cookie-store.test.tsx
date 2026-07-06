@@ -579,7 +579,7 @@ describe('cookie-store', () => {
   })
 
   describe('ssr render staging', () => {
-    it('commits a cookie set during SSR render — even with allowedRerendersCount: 0 (never drop a cookie)', async () => {
+    it('commits a cookie set during SSR render — even with allowedDiscoveryRenders: 1 (never drop a cookie)', async () => {
       const root = Point0.lets('root', 'root').use(CookieStore.plugin()).root()
       const theme = CookieStore.define('theme')
       const page = root.lets('page', 'home', '/').page(() => {
@@ -588,10 +588,10 @@ describe('cookie-store', () => {
         }, [])
         return <div id="page">x</div>
       })
-      // allowedRerendersCount: 0 => the SSR loop never re-renders. SsrStore changes would
-      // be dropped here, but a cookie must still be written.
+      // allowedDiscoveryRenders: 1 => a single discovery render, no stabilization re-renders.
+      // SsrStore changes would be dropped here, but a cookie must still be written.
       const { fetchSsr } = await createTestThings({
-        ssr: { allowedRerendersCount: 0 },
+        ssr: { allowedDiscoveryRenders: 1 },
         points: [root, page],
       })
       const { response, rendersCount } = await fetchSsr(page)

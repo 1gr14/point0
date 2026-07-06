@@ -1,3 +1,4 @@
+import { log } from '@point0/core'
 import { Compiler } from '../compiler.js'
 import type { CompilerOptions } from '../compiler.js'
 import { virtualModulePathRegex } from '../importer.js'
@@ -24,7 +25,12 @@ export function compilerBabelPlugin(_babel: never, options: CompilerOptions) {
         })
         return parse(result.code, parserOptions)
       } catch (e) {
-        console.error('[point0-compiler]', e)
+        log({
+          level: 'error',
+          category: ['compiler'],
+          message: 'Compiler transform failed (non-critical) — serving the file untransformed',
+          error: e,
+        })
         return parse(code, parserOptions)
       }
     },

@@ -284,6 +284,7 @@ you can fetch and prefetch it like any [query](query):
 
 ```tsx
 Stats.useQuery()
+Stats.useSuspenseQuery() // data non-optional, suspends into `.loading`
 Stats.fetchQuery()
 Stats.prefetchQuery()
 Stats.getQueryKey()
@@ -429,9 +430,9 @@ has no `.route`, `.layout`, `.provider`, or prefetch methods. `.head` is
 meaningful only for routed pages/layouts.
 
 After `.component(...)`, a loader-bearing component exposes the full query
-surface (`useQuery`, `fetchQuery`, `prefetchQuery`, `getQueryKey`,
-`invalidateQuery`, …) alongside `.X` and `.Component`. See [query](query) for
-the full method list.
+surface (`useQuery`, `useSuspenseQuery`, `fetchQuery`, `prefetchQuery`,
+`getQueryKey`, `invalidateQuery`, …) alongside `.X` and `.Component`. See
+[query](query) for the full method list.
 
 ### Components are not code-split the way pages are
 
