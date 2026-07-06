@@ -28,6 +28,7 @@ describe('with', () => {
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({
         retry: false,
+        retryOnMount: false,
         refetchOnMount: false,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
@@ -1300,9 +1301,13 @@ describe('with', () => {
   it('with thrown error is caught by the mountable boundary and renders `.error()` in place, the page stays alive', async () => {
     const root = createRoot()
 
-    // Unlike the RETURNED error above (a data short-circuit that also sets the SSR status), a
-    // THROW is a render-phase error: the mountable's ErrorBoundary catches it and renders the
-    // nearest `.error` declared above — the rest of the page keeps rendering.
+    // Unlike the RETURNED error above (a data short-circuit rendered by the bound `.error()`), a
+    // THROW is a render-phase error. On the client the mountable's ErrorBoundary catches it and
+    // renders the nearest `.error` declared above — the rest of the page keeps rendering. On the
+    // server no boundary runs (Fizz): React contains the throw at the mountable's Suspense
+    // boundary and ships its loading fallback; the client retries into `.error()` after
+    // hydration. The throw's SSR effects (status, redirect) still reach the response — see the
+    // thrown-status test below.
     const broken = root
       .lets('component', 'broken')
       .error(({ error }) => <div id="broken-error">{error.message}</div>)
@@ -1329,11 +1334,48 @@ describe('with', () => {
         "
       `)
     })
-    // SSR contains it the same way: the page ships with `.error()` in place, no SPA fallback
+    // SSR contains the throw the same way — the rest of the page ships, no SPA fallback
     const result = await fetchSsr(page)
     expect(result.html).toContain('alive-content')
-    expect(result.html).toContain('with boom')
     expect(result.html).toContain('__POINT0_DEHYDRATED_SUPER_STORE__')
+    // a statusless throw changes nothing about the response status
+    expect(result.response.status).toBe(200)
+  })
+
+  it('with thrown error status: the SSR response carries the same status a returned error does', async () => {
+    const root = createRoot()
+
+    // Throw/return parity: no error boundary runs on the server, so the discovery render's
+    // onError recovers the thrown error's `status` — the response carries it exactly like the
+    // returned-error test above. The HTML itself still ships the mountable's loading fallback
+    // (the client retries into `.error()` after hydration) — returning stays the only way to put
+    // `.error()` into the SSR HTML itself.
+    const page = root
+      .lets('page', 'home', '/home')
+      .with((): undefined => {
+        throw new ErrorPoint0('test error', { status: 401 })
+      })
+      .page(() => <div id="page">never</div>)
+
+    const { render, fetchSsr, fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#error')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /home
+          #error: test error
+        "
+      `)
+    })
+    const { response } = await fetchSsr(page)
+    expect(response.status).toBe(401)
+    // the fallback + React's client-recovery template — not `.error()` — is what the HTML holds
+    expect(await fetchPreview(page)).toMatchInlineSnapshot(`
+      "
+      template:
+      #loading: ...
+      "
+    `)
   })
 
   it('with can override props by made it non-null', async () => {

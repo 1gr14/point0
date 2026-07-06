@@ -6,6 +6,7 @@ export const root = Point0.lets
   .middleware(cors())
   .queryOptions({
     retry: false,
+    retryOnMount: false,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,

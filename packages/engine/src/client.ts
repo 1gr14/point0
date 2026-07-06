@@ -377,7 +377,17 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
       source = () => import(mod.url)
     }
     try {
-      const points = await ClientPoints.createFromSource(source, { log: this.log })
+      // `eager` — on the server the client points are ALWAYS fully loaded (the mirror of
+      // `ServerPoints.load()` in server.ts's readPoints): every page/layout module is imported up
+      // front and the pagesTree holds plain components, so no SSR render ever suspends on a
+      // React.lazy chunk. Discovery awaits only the shell — a suspended lazy would hide the page
+      // subtree from the pass, and the render-less data flow (queryClientDehydratedState) has no
+      // later render to recover: its first request would snapshot the page without its queries.
+      // Cheap on re-reads: hot mode re-imports page modules from the content-addressed store
+      // (unchanged content => same URL => module cache hit), vite serves them from its module
+      // graph. The BROWSER bundle keeps the default lazy collection — code splitting is a client
+      // concern.
+      const points = await ClientPoints.createFromSource(source, { log: this.log, eager: true })
       this.points = points as TPrepared extends true ? ClientPoints<TError> | null : undefined
       if (hot && hotHash !== undefined) {
         hot.store.markLoaded(hot.abs, hotHash)

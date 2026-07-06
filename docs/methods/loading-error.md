@@ -366,19 +366,24 @@ or query resolves to an error state, or when a [`.with`](with) returns an error
 `.error` in its place. As a **render boundary**: every mountable render (page,
 layout, component, provider) is wrapped in a React error boundary, so a throw
 from a component body, a [`.with`](with), or a [`.mapper`](mapper) is caught and
-renders the nearest `.error` above it — on the server and on the client — while
-the rest of the page stays alive. The engine's SPA fallback (serving the bare
-`index.html`) remains only for errors outside every boundary: a broken root, a
-failing wrapper.
+renders the nearest `.error` above it while the rest of the page stays alive.
+During SSR the throw is contained the same way and carries the same effects into
+the response a returned error does — its HTTP `status` applies, and a thrown
+redirect becomes the real HTTP redirect; the HTML itself ships the mountable's
+loading fallback and `.error` renders after hydration. The engine's SPA fallback
+(serving the bare `index.html`) remains only for errors outside every boundary:
+a broken root, a failing wrapper.
 
 Details of the boundary behavior:
 
-- A thrown **redirect** passes through the boundary and navigates as usual.
+- A thrown **redirect** passes through the boundary and navigates as usual —
+  during SSR it produces the real HTTP redirect.
 - The boundary **resets on navigation** — moving to another location drops the
   caught error and re-renders. It does not reset on a query refetch: query
   errors normally travel through query state (never thrown), so if your error UI
   refetches without navigating, render a fresh state from the data phase instead
   of relying on the boundary to clear.
 - Prefer signaling errors from the **data phase** anyway — return an error from
-  a [`.with`](with): it's typed, and it carries an HTTP `status` into the SSR
-  response. The render boundary is the safety net, not the API.
+  a [`.with`](with): it's typed, and it puts `.error` into the SSR HTML itself
+  (a throw ships the loading fallback there). The render boundary is the safety
+  net, not the API.

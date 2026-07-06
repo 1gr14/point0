@@ -5,6 +5,7 @@ export const root = Point0.lets('root', 'site')
   .transformer(superjson)
   .queryOptions({
     retry: false,
+    retryOnMount: false,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,

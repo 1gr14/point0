@@ -115,11 +115,22 @@ export class ClientPoints<TError extends ErrorPoint0> {
     })
   }
 
+  // `eager` loads every point module up front (`manager.load()`), so the collection — and the
+  // pagesTree/layouts built from it below — hold plain eager components with no React.lazy left.
+  // The load must happen HERE, before `createFromDefintion`: the tree captures each record's FC
+  // by value, so a later load would swap the collection records while the router keeps rendering
+  // the stale lazy instances. The engine passes `eager: true` on the server — SSR must never
+  // suspend on a page chunk (discovery awaits only the shell, and a suspended lazy hides the
+  // whole page subtree from the pass; the render-less data flow has no later render to recover).
+  // The browser keeps the default lazy collection — that is what code splitting is for.
   static async createFromSource<TError extends ErrorPoint0>(
     source: PointsDefinitionSource<any, TError>,
-    options: { log?: LogFn } = {},
+    options: { log?: LogFn; eager?: boolean } = {},
   ): Promise<ClientPoints<TError>> {
     const manager = await PointsManager.createFromSource(source, options)
+    if (options.eager) {
+      await manager.load()
+    }
     return ClientPoints.createFromDefintion(manager, options)
   }
 

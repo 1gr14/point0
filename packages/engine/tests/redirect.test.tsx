@@ -595,9 +595,142 @@ describe('redirect', () => {
           "
         `)
     })
+
+    it('with thrown redirect: a render-phase throw produces the same real HTTP redirect as a returned task', async () => {
+      const root = createRoot()
+      const routes = Routes.create({
+        page1: '/1',
+        page2: '/2',
+      })
+      let { redirect } = createNavigation({
+        routes,
+      })
+      // THROWN, not returned: the throw happens during render, where no error boundary runs on
+      // the server — the discovery render's onError recovers the task instead (throw/return
+      // parity), and `handleRedirectTask` turns it into the same HTTP redirect a returned task
+      // gets. On the client the mountable's ErrorBoundary catches the throw and its redirect
+      // passthrough renders `<Redirect>` — the same hop.
+      const page1 = root
+        .lets('page', 'page1', '/1')
+        .with((): undefined => {
+          throw redirect('page2')
+        })
+        .page(() => <div id="page1">content</div>)
+      const page2 = root.lets('page', 'page2', '/2').page(() => <div id="page2">content</div>)
+      const {
+        render,
+        fetchPreview,
+        fetchesTale,
+        fetchRecorder,
+        redirect: redirect_fixCicular,
+      } = await createTestThings({
+        ssr: true,
+        points: [root, page1, page2],
+        routes,
+      })
+      redirect = redirect_fixCicular
+      await render(page1.route(), async ({ waitContent, tale }) => {
+        await waitContent('#page2')
+        expect(await tale()).toMatchInlineSnapshot(`
+          "
+          /1
+            (Empty)
+
+          /2
+            #page2: content
+          "
+        `)
+      })
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "
+
+        "
+      `)
+
+      fetchRecorder.prune()
+      expect(await fetchPreview(page1)).toMatchInlineSnapshot(`
+        "
+        #page2: content
+        "
+      `)
+      const fetchRecords = await fetchRecorder.waitFinishedResults()
+      expect(fetchRecords.map((r) => r.response.status)).toMatchInlineSnapshot(`
+        [
+          302,
+          200,
+        ]
+      `)
+      expect(await fetchesTale()).toMatchInlineSnapshot(`
+        "
+        page.page1 (client) (page) < {}
+        page.page2 (client) (page) < {}
+        "
+      `)
+    })
   })
 
   describe('by loader', () => {
+    it('the default retryOnMount does not degrade loader redirects — the HTTP redirect still happens', async () => {
+      // No `retryOnMount: false` on this root. A loader redirect never depends on how the errored
+      // query REPORTS itself to an observer (the optimistic-pending render): the redirect travels
+      // through the fetch/prefetch layer during discovery, so the real HTTP redirect happens in
+      // both retryOnMount modes. Only rendered-error VISIBILITY (`.error()` vs loading state)
+      // differs between the modes — see the suspend tests.
+      const root = Point0.lets('root', 'root')
+        .loading(() => <div id="loading">...</div>)
+        .error(({ error }) => <div id="error">{error.message}</div>)
+        .queryOptions({
+          retry: false,
+          refetchOnMount: false,
+          refetchOnWindowFocus: false,
+          refetchOnReconnect: false,
+          refetchInterval: false,
+          refetchIntervalInBackground: false,
+        })
+        .root()
+      const page1 = root
+        .lets('page', 'page1', '/1')
+        .loader(() => {
+          throw redirect.to('/2')
+        })
+        .page(() => <div id="page1">content</div>)
+      const page2 = root.lets('page', 'page2', '/2').page(() => <div id="page2">content</div>)
+      const routes = Routes.create({
+        page1: '/1',
+        page2: '/2',
+      })
+      const { render, fetchPreview, fetchRecorder, redirect } = await createTestThings({
+        ssr: true,
+        routes,
+        points: [root, page1, page2],
+      })
+      await render(page1.route(), async ({ waitContent, tale }) => {
+        await waitContent('#page2')
+        expect(await tale()).toMatchInlineSnapshot(`
+          "
+          /1
+            #loading: ...
+
+          /2
+            (Empty)
+
+            #page2: content
+          "
+        `)
+      })
+
+      fetchRecorder.prune()
+      expect(await fetchPreview(page1)).toMatchInlineSnapshot(`
+        "
+        #page2: content
+        "
+      `)
+      // the recorder also sees the nested server loader fetch, so only pin the page request:
+      // it answered with the real HTTP redirect
+      const fetchRecords = await fetchRecorder.waitFinishedResults()
+      expect(fetchRecords[0]?.response.status).toBe(302)
+    })
+
     it('route no params', async () => {
       const root = createRoot()
       const page1 = root

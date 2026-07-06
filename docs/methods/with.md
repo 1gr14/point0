@@ -399,10 +399,12 @@ it into props in a [plugin](plugin) first.
 Throwing works too. Every mountable render is wrapped in an error boundary, so a
 `throw` inside a `.with` callback (or anywhere else in the render) is caught and
 renders the nearest `.error` declared above it in the chain — the rest of the
-page stays alive. Returning the error does the same thing with more control:
-it's typed, it short-circuits the chain as data (no boundary involved), and it
-carries an HTTP `status` into the SSR response. Prefer returning; treat a throw
-as the safety net it is.
+page stays alive. A thrown error carries the same SSR effects as a returned one:
+its HTTP `status` reaches the response, and a thrown redirect becomes the real
+HTTP redirect. Returning is still nicer: it's typed, it short-circuits the chain
+as data (no boundary involved), and it puts `.error()` into the server-rendered
+HTML itself — a throw ships the loading fallback there and the client renders
+`.error()` after hydration.
 
 ### `resolve` forms
 
@@ -463,6 +465,7 @@ it for the render — see [Plugin](plugin).
 
 An `Error` you return from `.with` is normalized through that error class and
 rendered by the error component. A thrown one lands in the same `.error` — the
-mountable's error boundary catches it — but returning is the better gate: it is
-typed, and it carries the HTTP `status` into the SSR response. See
+mountable's error boundary catches it — and carries the same HTTP `status` into
+the SSR response; returning stays the better gate simply because it is typed.
+See
 [How a thrown error reaches the error component](error-handling#how-a-thrown-error-reaches-the-error-component).

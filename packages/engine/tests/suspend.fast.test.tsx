@@ -1,11 +1,10 @@
-import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout, spyOn } from 'bun:test'
-import { Point0, useEffectSsr } from '@point0/core'
+import { describe, expect, it, setDefaultTimeout, spyOn } from 'bun:test'
+import { Routes } from '@1gr14/route0'
+import { ErrorPoint0, Point0, useEffectSsr } from '@point0/core'
 import { CookieStore } from '@point0/core/cookie-store'
+import { createNavigation } from '@point0/react-dom/router'
 import z from 'zod'
 import { createTestThings } from './utils/internal-testing.js'
-import { PlaywrightBrowser } from './utils/playwright.js'
-import type { TestProjectOneClient } from './utils/project.one-client.js'
-import { TestProjectOneClientFactory } from './utils/project.one-client.js'
 
 setDefaultTimeout(45000)
 
@@ -13,13 +12,38 @@ setDefaultTimeout(45000)
 // option, and the useSuspenseQuery/useSuspenseInfiniteQuery hooks. The shell ships immediately
 // with the mountable's `.loading()` fallback; a streamed query's content arrives in the same
 // response when its loader resolves, together with a `window.__POINT0_PUSH_QUERY__("…")` script
-// that seeds the client query cache.
+// that seeds the client query cache. This file is the IN-PROCESS half (createTestThings
+// harness); the browser/vite e2e half lives in suspend.slow.test.tsx (the slow shard; the fast/slow
+// suffix pair is a deliberate one-off — one feature split by speed).
 //
 // The tests are SERIAL on purpose (`it`, not `it.concurrent`): most of them hold a response
 // stream open on a gated loader and read it incrementally — several gated streams interleaving in
 // one process deadlock/flake. Don't "fix" them back to concurrent.
 
+// The documented recommended config: `retryOnMount: false` on the root makes an errored server
+// loader report honestly during SSR — the mountable's `.error()` (and its `status` effect)
+// reaches the response. Most tests here pin THAT mode.
 const createRoot = () =>
+  Point0.lets('root', 'root')
+    .loading(() => <div id="loading">root-loading</div>)
+    .error(({ error }) => <div id="error">{error.message}</div>)
+    .queryOptions({
+      retry: false,
+      retryOnMount: false,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchInterval: false,
+      refetchIntervalInBackground: false,
+    })
+    .root()
+
+// TanStack-default mode: `retryOnMount` NOT set (→ true). During SSR an errored query reports
+// itself as optimistically pending ("a mount will retry me"), so the server renders the LOADING
+// state, the error rides the dehydrated/pushed cache, and the client retries on mount after
+// hydration — the exact imitation of a client-side mount. The `…default retryOnMount…` tests
+// below pin THIS mode.
+const createDefaultRetryRoot = () =>
   Point0.lets('root', 'root')
     .loading(() => <div id="loading">root-loading</div>)
     .error(({ error }) => <div id="error">{error.message}</div>)
@@ -157,6 +181,83 @@ describe('suspend', () => {
     })
   }, 15000)
 
+  it('resolve over a streaming query: the callback never runs against empty data, the mapped props stream in', async () => {
+    const root = createRoot()
+    const gate = createGate()
+    let resolveSawEmptyData = false
+    const stats = root
+      .lets('component', 'stats')
+      .loader(async () => {
+        await gate.promise
+        return { y: 2 }
+      })
+      .component(({ data }) => <div id="stats">{`y=${data.y}`}</div>)
+    const page = root
+      .lets('page', 'home', '/')
+      .loading(() => <div id="page-loading">resolve-loading</div>)
+      .with(stats, undefined, { suspend: 'server' }, ({ data }) => {
+        // the resolve contract: it maps SUCCESS data — a streaming (still-pending) query must
+        // never reach it. The types already promise that; this probe pins it at RUNTIME.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (!data) {
+          resolveSawEmptyData = true
+        }
+        return { label: `label-y=${data.y}` }
+      })
+      .page(({ props }) => <div id="page">{props.label}</div>)
+    const { client } = await createTestThings({ ssr: true, points: [root, stats, page] })
+    await client.run(async () => {
+      const response = await client.fetch('http://localhost/')
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      let html = await readUntil(reader, decoder, '', 'resolve-loading')
+      expect(html).toContain('resolve-loading')
+      expect(html).not.toContain('label-y=2')
+      gate.release()
+      html = await readToEnd(reader, decoder, html)
+      expect(html).toContain('label-y=2')
+      expect(html).toContain('__POINT0_PUSH_QUERY__("')
+      expect(html).toContain('</html>')
+    })
+    expect(resolveSawEmptyData).toBe(false)
+  }, 15000)
+
+  it('resolve over a FAILED streaming query: `.error()` streams in place, the resolve callback never runs', async () => {
+    const root = createRoot()
+    const gate = createGate()
+    let resolveRan = false
+    const stats = root
+      .lets('component', 'stats')
+      .loader(async () => {
+        await gate.promise
+        return { y: 2 }
+      })
+      .component(({ data }) => <div id="stats">{`y=${data.y}`}</div>)
+    const page = root
+      .lets('page', 'home', '/')
+      .loading(() => <div id="page-loading">failing-resolve-loading</div>)
+      .with(stats, undefined, { suspend: 'server' }, ({ data }) => {
+        resolveRan = true
+        return { label: `label-y=${data.y}` }
+      })
+      .page(({ props }) => <div id="page">{props.label}</div>)
+    const { client } = await createTestThings({ ssr: true, points: [root, stats, page] })
+    await client.run(async () => {
+      const response = await client.fetch('http://localhost/')
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      let html = await readUntil(reader, decoder, '', 'failing-resolve-loading')
+      gate.reject(new Error('resolve boom'))
+      html = await readToEnd(reader, decoder, html)
+      // the page's own `.error()` (inherited from the root here) streams in place
+      expect(html).toContain('resolve boom')
+      expect(html).not.toContain('label-y=')
+      expect(html).toContain('__POINT0_PUSH_QUERY__("')
+      expect(html).toContain('</html>')
+    })
+    expect(resolveRan).toBe(false)
+  }, 15000)
+
   it('nested defer cascade: a query revealed only after the outer defer resolves still streams', async () => {
     const root = createRoot()
     const outerGate = createGate()
@@ -259,6 +360,37 @@ describe('suspend', () => {
     })
   }, 15000)
 
+  it(".relatedQuery with { suspend: 'server' }: streams like a `.with` query", async () => {
+    const root = createRoot()
+    const gate = createGate()
+    const q = root
+      .lets('query', 'rel')
+      .loader(async () => {
+        await gate.promise
+        return { x: 5 }
+      })
+      .query()
+    const page = root
+      .lets('page', 'home', '/')
+      .loading(() => <div id="page-loading">related-loading</div>)
+      .relatedQuery(q, undefined, { suspend: 'server' })
+      .page(({ data }) => <div id="page">{`x=${data.x}`}</div>)
+    const { client } = await createTestThings({ ssr: true, points: [root, q, page] })
+    await client.run(async () => {
+      const response = await client.fetch('http://localhost/')
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      let html = await readUntil(reader, decoder, '', 'related-loading')
+      expect(html).toContain('related-loading')
+      expect(html).not.toContain('x=5')
+      gate.release()
+      html = await readToEnd(reader, decoder, html)
+      expect(html).toContain('x=5')
+      expect(html).toContain('__POINT0_PUSH_QUERY__("')
+      expect(html).toContain('</html>')
+    })
+  }, 15000)
+
   it('ssr: false — the loader never runs on the server, the client is left to fetch', async () => {
     const root = createRoot()
     const q = root
@@ -284,6 +416,48 @@ describe('suspend', () => {
       "
     `)
   })
+
+  it('clientLoader query + suspend: true — never suspends during SSR (ships the loading state), suspends on the client', async () => {
+    const root = createRoot()
+    const clientLoaderCalls: string[] = []
+    const q = root
+      .lets('query', 'clientOnlyData')
+      .clientLoader(() => {
+        clientLoaderCalls.push('client')
+        return { c: 3 }
+      })
+      .query({ suspend: true })
+    const page = root
+      .lets('page', 'home', '/')
+      .loading(() => <div id="page-loading">client-loader-loading</div>)
+      .page(() => {
+        const query = q.useQuery()
+        return <div id="page">{query.data ? `c=${query.data.c}` : 'client-pending'}</div>
+      })
+    const { render, fetchSsr } = await createTestThings({ ssr: true, points: [root, q, page] })
+    // SERVER: a client loader cannot resolve during SSR, so despite `suspend: true` the query
+    // never suspends there — the page body ships with its own pending branch, whole-HTML, no
+    // stream, no push
+    const result = await fetchSsr(page)
+    expect(result.html).toContain('client-pending')
+    expect(result.html).not.toContain('c=3')
+    expect(result.html).not.toContain('client-loader-loading')
+    expect(result.html).not.toContain('__POINT0_PUSH_QUERY__("')
+    expect(clientLoaderCalls).toEqual([])
+    // CLIENT: the same query suspends into the positional boundary while it fetches
+    await render(page.route(), async ({ waitContent, tale }) => {
+      await waitContent('#page')
+      expect(await tale()).toMatchInlineSnapshot(`
+        "
+        /
+          #page-loading: client-loader-loading
+
+          #page: c=3
+        "
+      `)
+    })
+    expect(clientLoaderCalls).toEqual(['client'])
+  }, 15000)
 
   it("suspend: 'client' — never suspends during SSR (like `false` on the server): a discovered query ships its data, a hidden one ships pending", async () => {
     const root = createRoot()
@@ -324,7 +498,7 @@ describe('suspend', () => {
     // Same cut-short setup as the `suspend: false` test above — with 'auto' the hidden q2 would
     // suspend and STREAM; `'client'` is the server half of `false`, so the HTML ships whole with
     // q2's pending state and the client fetches it after hydration (the client-side suspension
-    // itself is exercised in the browser e2e matrix — see the backlog).
+    // itself is pinned by the "suspend: 'client' on client navigation" browser e2e below).
     const { fetchSsr } = await createTestThings({ ssr: { allowedDiscoveryRenders: 1 }, points: [root, q1, q2, page] })
     const result = await fetchSsr(page)
     expect(loaderCalls).toEqual(['first'])
@@ -374,6 +548,35 @@ describe('suspend', () => {
     expect(result.queryClientQueriesKeys.join('\n')).not.toContain('deferred')
     expect(await fetchesTale()).not.toContain('component.deferred')
   })
+
+  it('useSuspenseQuery in a data request: the response does not hang, the query stays out of the dehydrated state', async () => {
+    const root = createRoot()
+    const loaderCalls: string[] = []
+    const q = root
+      .lets('query', 'suspenseData')
+      .loader(() => {
+        loaderCalls.push('suspenseData')
+        return { s: 9 }
+      })
+      .query()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(() => ({ own: 1 }))
+      .loading(() => <div id="page-loading">suspense-data-loading</div>)
+      .page(({ data }) => {
+        const { data: hookData } = q.useSuspenseQuery()
+        return <div id="page">{`own=${data.own} s=${hookData.s}`}</div>
+      })
+    const { fetchQueryClientDehydratedState } = await createTestThings({ ssr: true, points: [root, q, page] })
+    // during data-path discovery the hook throws its never-resolving "paused subtree" promise;
+    // the pass awaits only the shell, and `suspenseQueryPolicy: 'skip'` never starts the loader
+    // — the response must come back instead of hanging on that promise
+    const result = await fetchQueryClientDehydratedState(page)
+    // the page's own (blocking) query is served; the suspense query was never started
+    expect(result.queryClientQueriesPreview).toContain('{"own":1}')
+    expect(result.queryClientQueriesKeys.join('\n')).not.toContain('suspenseData')
+    expect(loaderCalls).toEqual([])
+  }, 15000)
 
   it("prefetchLoadersBeforePageRender: kicks a streamed (`suspend: 'server'`) self loader without awaiting it", async () => {
     const root = createRoot()
@@ -515,6 +718,49 @@ describe('suspend', () => {
       expect(html).toContain('</html>')
       // not the bare-index SPA fallback
       expect(html).toContain('__POINT0_DEHYDRATED_SUPER_STORE__')
+    })
+  }, 15000)
+
+  it('useSuspenseInfiniteQuery: the first page streams after the shell', async () => {
+    const root = createRoot()
+    const gate = createGate()
+    const q = root
+      .lets('infiniteQuery', 'suspenseInf')
+      .input(z.object({ cursor: z.number().optional() }))
+      .loader(async ({ input }) => {
+        await gate.promise
+        const cursor = input.cursor ?? 0
+        return { items: ['s1', 's2'], nextCursor: cursor + 2 }
+      })
+      .infiniteQuery({
+        pageParamFromInput: {
+          get: ({ input, get }) => get(input, 'cursor'),
+          set: ({ input, value, set }) => set(input, 'cursor', value),
+        },
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        initialPageParam: 0,
+      })
+    const page = root
+      .lets('page', 'home', '/')
+      .loading(() => <div id="page-loading">suspense-inf-loading</div>)
+      .page(() => {
+        // data non-optional, first page guaranteed once rendered
+        const { data } = q.useSuspenseInfiniteQuery()
+        return <div id="page">{`items=${data.pages[0].items.join(',')}`}</div>
+      })
+    const { client } = await createTestThings({ ssr: true, points: [root, q, page] })
+    await client.run(async () => {
+      const response = await client.fetch('http://localhost/')
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      let html = await readUntil(reader, decoder, '', 'suspense-inf-loading')
+      expect(html).toContain('suspense-inf-loading')
+      expect(html).not.toContain('items=s1,s2')
+      gate.release()
+      html = await readToEnd(reader, decoder, html)
+      expect(html).toContain('items=s1,s2')
+      expect(html).toContain('__POINT0_PUSH_QUERY__("')
+      expect(html).toContain('</html>')
     })
   }, 15000)
 
@@ -684,6 +930,36 @@ describe('suspend', () => {
     expect(loaderCalls).toEqual(['self'])
   })
 
+  it('allowedDiscoveryRenders: 0 — a redirect in the final render shell still becomes the HTTP redirect', async () => {
+    const root = createRoot()
+    const routes = Routes.create({ page1: '/1', page2: '/2' })
+    let { redirect } = createNavigation({ routes })
+    const page1 = root
+      .lets('page', 'page1', '/1')
+      .with(() => redirect('page2'))
+      .page(() => <div id="page1">never</div>)
+    const page2 = root.lets('page', 'page2', '/2').page(() => <div id="page2">target-content</div>)
+    const {
+      fetchPreview,
+      fetchRecorder,
+      redirect: redirect_fixCicular,
+    } = await createTestThings({ ssr: { allowedDiscoveryRenders: 0 }, points: [root, page1, page2], routes })
+    redirect = redirect_fixCicular
+    fetchRecorder.prune()
+    expect(await fetchPreview(page1)).toMatchInlineSnapshot(`
+      "
+      #page2: target-content
+      "
+    `)
+    const fetchRecords = await fetchRecorder.waitFinishedResults()
+    expect(fetchRecords.map((r) => r.response.status)).toMatchInlineSnapshot(`
+      [
+        302,
+        200,
+      ]
+    `)
+  }, 15000)
+
   it("streaming-first for free: `.queryOptions({ suspend: 'server' })` on the root streams every query", async () => {
     const root = Point0.lets('root', 'root')
       .loading(() => <div id="loading">root-loading</div>)
@@ -727,7 +1003,7 @@ describe('suspend', () => {
     })
   }, 15000)
 
-  it('deferred loader error: the mountable `.error()` streams in place, the page and the response stay alive', async () => {
+  it('deferred loader error (recommended `retryOnMount: false` root): the mountable `.error()` streams in place, the page and the response stay alive', async () => {
     const root = createRoot()
     const gate = createGate()
     // the deferred query is the page's own chain query (`.loader()` + `.query()`), so the error
@@ -773,6 +1049,159 @@ describe('suspend', () => {
       expect(sealWarnings).toEqual([])
     } finally {
       warnSpy.mockRestore()
+    }
+  }, 15000)
+
+  it('failed blocking loader with the default retryOnMount: SSR ships the loading state, the error rides the dehydrated cache', async () => {
+    const root = createDefaultRetryRoot()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(async (): Promise<{ x: number }> => {
+        throw new Error('default boom')
+      })
+      .query()
+      .loading(() => <div id="page-loading">default-loading</div>)
+      .page(({ data }) => <div id="page">{`x=${data.x}`}</div>)
+    const { fetchSsr } = await createTestThings({ ssr: true, points: [root, page] })
+    const result = await fetchSsr(page)
+    // with `retryOnMount` left at the TanStack default (true), an errored query reports itself
+    // as optimistically pending ("a mount will retry me") — SSR imitates the client and renders
+    // the loading state; an errored query is not pending, so nothing streams either. Only the
+    // BODY is optimistic: the loader's error status still reaches the response through the
+    // nested-fetch status bubble-up, exactly as it always did
+    expect(result.response.status).toBe(500)
+    expect(result.preview).toContain('default-loading')
+    expect(result.preview).not.toContain('default boom')
+    expect(result.html).not.toContain('__POINT0_PUSH_QUERY__("')
+    // the error itself travels in the dehydrated cache — the client hydrates the same
+    // optimistic-pending view and retries on mount
+    expect(result.queryClientQueriesPreview).toContain('Error: default boom')
+  })
+
+  it('failed streamed loader with the default retryOnMount: the loading state streams in place, the error is pushed, the response closes', async () => {
+    const root = createDefaultRetryRoot()
+    const gate = createGate()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(async () => {
+        await gate.promise
+        return { x: 1 }
+      })
+      .query({ suspend: 'server' })
+      .loading(() => <div id="page-loading">default-failing-loading</div>)
+      .error(({ error }) => <div id="page-error">{error.message}</div>)
+      .page(({ data }) => <div id="page">{`x=${data.x}`}</div>)
+    const { client } = await createTestThings({ ssr: true, points: [root, page] })
+    await client.run(async () => {
+      const response = await client.fetch('http://localhost/')
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      let html = await readUntil(reader, decoder, '', 'default-failing-loading')
+      gate.reject(new Error('default deferred boom'))
+      html = await readToEnd(reader, decoder, html)
+      // the suspension resolves and the retry render sees the optimistic-pending report — the
+      // LOADING state streams into the boundary, never `.error()` (that belongs to the client
+      // after its on-mount retry fails); the pushed error state is what that retry reads. The
+      // cache read under the observer is what keeps this from re-suspending forever.
+      expect(html).toContain('__POINT0_PUSH_QUERY__("')
+      expect(html).not.toContain('id="page-error"')
+      expect(html).toContain('</html>')
+      expect(html).toContain('__POINT0_DEHYDRATED_SUPER_STORE__')
+    })
+  }, 15000)
+
+  it('useSuspenseQuery error with the default retryOnMount: the hook still throws to the boundary — the fallback ships, the response closes', async () => {
+    const root = createDefaultRetryRoot()
+    const gate = createGate()
+    const q = root
+      .lets('query', 'failingDefault')
+      .loader(async () => {
+        await gate.promise
+        return { s: 5 }
+      })
+      .query()
+    const page = root
+      .lets('page', 'home', '/')
+      .loading(() => <div id="page-loading">hook-default-loading</div>)
+      .error(({ error }) => <div id="page-error">{error.message}</div>)
+      .page(() => {
+        const { data } = q.useSuspenseQuery()
+        return <div id="page">{`s=${data.s}`}</div>
+      })
+    const { client } = await createTestThings({ ssr: true, points: [root, q, page] })
+    await client.run(async () => {
+      const response = await client.fetch('http://localhost/')
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      let html = await readUntil(reader, decoder, '', 'hook-default-loading')
+      gate.reject(new Error('suspense default boom'))
+      html = await readToEnd(reader, decoder, html)
+      // deliberate deviation from the option on the server: a "retry on mount" cannot happen
+      // during SSR (nothing mounts), so the hook reads the cache underneath the
+      // optimistic-pending report and throws the error to the boundary either way — the fallback
+      // stays in the HTML, the error is pushed, and the client (with the truthy default) retries
+      // on mount after hydration
+      expect(html).toContain('hook-default-loading')
+      expect(html).not.toContain('s=5')
+      expect(html).toContain('__POINT0_PUSH_QUERY__("')
+      expect(html).toContain('</html>')
+    })
+  }, 15000)
+
+  it('a streamed loader that throws a redirect post-shell: the redirect-carrying error state is pushed, the stream closes', async () => {
+    const root = createRoot()
+    const gate = createGate()
+    const routes = Routes.create({ home: '/', target: '/target' })
+    const { redirect } = createNavigation({ routes })
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(async () => {
+        await gate.promise
+        // resolves AFTER the shell: no HTTP 302 possible anymore — the redirect travels to the
+        // client inside the pushed error state, and the hydrated `.error()` data path renders
+        // `<Redirect>` for the client-side hop (designed in code; the hop itself is a hydration
+        // concern — see the browser e2e)
+        throw redirect('target')
+
+        return { x: 1 }
+      })
+      .query({ suspend: 'server' })
+      .loading(() => <div id="page-loading">redirect-stream-loading</div>)
+      .page(({ data }) => <div id="page">{`x=${data.x}`}</div>)
+    const target = root.lets('page', 'target', '/target').page(() => <div id="target">target</div>)
+    const { client } = await createTestThings({ ssr: true, points: [root, page, target], routes })
+    const warnSpy = spyOn(console, 'warn')
+    const errorSpy = spyOn(console, 'error')
+    try {
+      await client.run(async () => {
+        const response = await client.fetch('http://localhost/')
+        expect(response.status).toBe(200)
+        const reader = response.body!.getReader()
+        const decoder = new TextDecoder()
+        let html = await readUntil(reader, decoder, '', 'redirect-stream-loading')
+        gate.release()
+        html = await readToEnd(reader, decoder, html)
+        // the redirect-carrying error state is pushed for the client's cache…
+        expect(html).toContain('__POINT0_PUSH_QUERY__("')
+        expect(html).toContain('</html>')
+        // …and the server rendered no page content for the redirecting query
+        expect(html).not.toContain('x=1')
+        expect(html).not.toContain('id="target"')
+      })
+      // a post-shell redirect degrading to the client-side hop is normal operation: no sealed
+      // warning, no stream-render-error log
+      const sealWarnings = warnSpy.mock.calls
+        .flat()
+        .map(String)
+        .filter((warning) => warning.includes('has no effect'))
+      expect(sealWarnings).toEqual([])
+      const streamRenderErrorLogs = errorSpy.mock.calls.filter((call) =>
+        call.some((arg) => String(arg).includes('SSR streamed render error')),
+      )
+      expect(streamRenderErrorLogs).toEqual([])
+    } finally {
+      warnSpy.mockRestore()
+      errorSpy.mockRestore()
     }
   }, 15000)
 
@@ -850,244 +1279,120 @@ describe('suspend', () => {
     // loading fallback; the client retries on hydration and the ErrorBoundary renders `.error()`
     expect(result.html).toContain('broken-loading')
   })
-})
 
-// Shared by the e2e describes below: the pages written into the temp dev project.
-const deferLoaderMs = 1200
-
-const writeDeferPages = async (project: TestProjectOneClient) => {
-  await project.write(
-    'src/defer/home.tsx',
-    `import { root } from '../lib/root.js'
-import { Link } from '../lib/navigate.js'
-export const homePage = root.lets('page', 'home', '/').page(() => (
-  <div id="home">
-    home
-    <Link to="/defer">go-defer</Link>
-    <Link to="/suspense">go-suspense</Link>
-  </div>
-))
-`,
-  )
-  await project.write(
-    'src/defer/defer.tsx',
-    `import { root } from '../lib/root.js'
-export const statsQuery = root
-  .lets('query', 'stats')
-  .loader(async () => {
-    await new Promise((r) => setTimeout(r, ${deferLoaderMs}))
-    return { n: 42 }
-  })
-  .query()
-export const deferPage = root
-  .lets('page', 'defer', '/defer')
-  .loading(() => <div id="defer-loading">defer-loading</div>)
-  .page(() => {
-    const q = statsQuery.useQuery(undefined, { suspend: 'server' })
-    return <div id="defer-page">{q.data ? 'n=' + q.data.n : 'defer-pending'}</div>
-  })
-`,
-  )
-  await project.write(
-    'src/defer/suspense.tsx',
-    `import { root } from '../lib/root.js'
-export const hookedQuery = root
-  .lets('query', 'hooked')
-  .loader(async () => {
-    await new Promise((r) => setTimeout(r, 500))
-    return { m: 7 }
-  })
-  .query()
-export const suspensePage = root
-  .lets('page', 'suspensePage', '/suspense')
-  .loading(() => <div id="suspense-loading">suspense-loading</div>)
-  .page(() => {
-    const { data } = hookedQuery.useSuspenseQuery()
-    return <div id="suspense-page">{'m=' + data.m}</div>
-  })
-`,
-  )
-  await project.write(
-    'src/defer/fail.tsx',
-    `import { root } from '../lib/root.js'
-export const failPage = root
-  .lets('page', 'deferFail', '/defer-fail')
-  .loader(async () => {
-    await new Promise((r) => setTimeout(r, 300))
-    throw new Error('defer boom')
-  })
-  .query({ suspend: 'server' })
-  .loading(() => <div id="fail-loading">fail-loading</div>)
-  .error(({ error }) => <div id="fail-error">{error.message}</div>)
-  .page(() => <div id="fail-page">never</div>)
-`,
-  )
-}
-
-// Boot a temp dev project with the defer pages, with the retry-over-ports pattern the other
-// dev-server suites use.
-const bootDeferProject = async (
-  tpf: TestProjectOneClientFactory,
-  options: { vite?: boolean } = {},
-): Promise<TestProjectOneClient> => {
-  let tp: TestProjectOneClient | undefined
-  const tries = 3
-  for (let tryIndex = 0; tryIndex < tries; tryIndex++) {
-    tp = tpf.create(options)
+  it('a redirect thrown after the shell cannot become an HTTP redirect: the shell status stands, the stream closes, no error log', async () => {
+    const root = createRoot()
+    const gate = createGate()
+    const routes = Routes.create({ home: '/', target: '/target' })
+    const { redirect } = createNavigation({ routes })
+    const q = root
+      .lets('query', 'slow')
+      .loader(async () => {
+        await gate.promise
+        return { x: 1 }
+      })
+      .query()
+    const page = root
+      .lets('page', 'home', '/')
+      .loading(() => <div id="page-loading">redirect-loading</div>)
+      .page(() => {
+        const query = q.useQuery(undefined, { suspend: 'server' })
+        if (query.data) {
+          // Runs only in the post-shell retry render (during discovery the query is pending).
+          // Sealed effects: the throw cannot 302 anymore and is skipped SILENTLY — a post-shell
+          // redirect degrading to the client-side hop is normal operation, not a failure, so it
+          // must not be error-logged either (the client boundary's redirect passthrough hops
+          // after hydration, reading the pushed query data without a refetch).
+          throw redirect('target')
+        }
+        return <div id="page">pending</div>
+      })
+    const target = root.lets('page', 'target', '/target').page(() => <div id="target">target</div>)
+    const { client } = await createTestThings({ ssr: true, points: [root, q, page, target], routes })
+    const warnSpy = spyOn(console, 'warn')
+    const errorSpy = spyOn(console, 'error')
     try {
-      await tp.cleanup('ports')
-      await tp.init()
-      await writeDeferPages(tp)
-      tp.spawn(['bun', 'run', 'dev'])
-      await tp.waitStarted()
-      break
-    } catch (error) {
-      await tp.cleanup({ files: true, processes: true, ports: true })
-      if (tryIndex === tries - 1) {
-        throw error
-      }
+      await client.run(async () => {
+        const response = await client.fetch('http://localhost/')
+        expect(response.status).toBe(200)
+        const reader = response.body!.getReader()
+        const decoder = new TextDecoder()
+        let html = await readUntil(reader, decoder, '', 'redirect-loading')
+        expect(html).toContain('redirect-loading')
+        gate.release()
+        // the stream closes cleanly — the errored boundary keeps the fallback in the HTML and
+        // the resolved query state is still pushed for the client's retry
+        html = await readToEnd(reader, decoder, html)
+        expect(html).toContain('__POINT0_PUSH_QUERY__("')
+        expect(html).toContain('</html>')
+        expect(html).not.toContain('#target')
+      })
+      const sealWarnings = warnSpy.mock.calls
+        .flat()
+        .map(String)
+        .filter((warning) => warning.includes('has no effect'))
+      expect(sealWarnings).toEqual([])
+      const streamRenderErrorLogs = errorSpy.mock.calls.filter((call) =>
+        call.some((arg) => String(arg).includes('SSR streamed render error')),
+      )
+      expect(streamRenderErrorLogs).toEqual([])
+    } finally {
+      warnSpy.mockRestore()
+      errorSpy.mockRestore()
     }
-  }
-  // warm the dev bundler so the streaming-order assertions never race a cold compile
-  await tp!.fetchServerHtml('/defer')
-  return tp!
-}
+  }, 15000)
 
-// The streaming-over-HTTP assertion shared by the bun and vite e2e describes: the shell (with the
-// fallback) leaves the server while the deferred loader still runs; the content and the query
-// push follow in the same response.
-const expectStreamedDeferResponse = async (tp: TestProjectOneClient) => {
-  const response = await tp.fetchServer('/defer')
-  const reader = response.body!.getReader()
-  const decoder = new TextDecoder()
-  let html = await readUntil(reader, decoder, '', 'defer-loading')
-  expect(html).toContain('defer-loading')
-  expect(html).not.toContain('n=42')
-  expect(html).not.toContain('</html>')
-  html = await readToEnd(reader, decoder, html)
-  expect(html).toContain('n=42')
-  expect(html).toContain('__POINT0_PUSH_QUERY__("')
-  expect(html).toContain('</html>')
-}
-
-// The browser half of streamed SSR: a real dev server + a real Chromium. Covers what the
-// in-process harness above cannot — client hydration of the streamed query pushes (no refetch),
-// client-side navigation semantics ('server' means nothing there; the suspense hooks DO suspend),
-// the failed-stream hydration, and the lazy-point navigation UX with the universal Suspense
-// wrappers.
-describe('suspend e2e (browser)', () => {
-  const tpf = TestProjectOneClientFactory.create({
-    namespace: 'suspend',
-    portsRange: [3900, 3949],
-  })
-  let tp: TestProjectOneClient
-
-  beforeAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-    tpf.setBrowser(await PlaywrightBrowser.init())
-    tp = await bootDeferProject(tpf)
-  }, 120000)
-
-  afterAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-  })
-
-  it('streams over HTTP: the shell ships while the deferred loader still runs, the content follows in the same response', async () => {
-    await expectStreamedDeferResponse(tp)
-  })
-
-  it('push-hydration: after hydration the client has the streamed data — zero refetch, no hydration errors', async () => {
-    const page = await tp.gotoServer('/defer')
-    await page.waitContent('n=42', 10000)
-    await page.stable
-    // the pushed query state seeded the client cache, so mounting the page found the data —
-    // any request for the query point here would mean push-hydration silently failed
-    expect(page.requestsTale).not.toContain('query.stats')
-    // boundaries can mask hydration mismatches — the client logs them explicitly, catch that
-    const logsText = page.strlogs.join('\n')
-    expect(logsText).not.toContain('recoverable hydration/render error')
-    expect(logsText).not.toContain('failed to hydrate a streamed query push')
-    expect(logsText).not.toContain('Hydration')
-    await page.close()
-  })
-
-  it('client navigation to a deferred page: the option means nothing — the client fetches, no boundary fallback flash', async () => {
-    const page = await tp.gotoServer('/')
-    await page.waitContent('#home')
-    await page.original.getByRole('link', { name: 'go-defer', exact: true }).click()
-    // the client runs the query like any other: pending state first, data after the fetch
-    await page.waitContent('n=42', 10000)
-    await page.stable
-    expect(page.requestsTale).toContain('query.stats')
-    // the lazy page chunk is awaited by the navigation (prefetchPage → loadPage) BEFORE React
-    // renders the new page, so the universal Suspense wrappers never flash a loading fallback
-    // for the chunk itself — neither the page's own `.loading()` nor the root's
-    const navigationTale = page.tale
-    expect(navigationTale).not.toContain('defer-loading')
-    expect(navigationTale).not.toContain('Loading...')
-    await page.close()
-  })
-
-  it('failed deferred loader: `.error()` streams in place and the page hydrates alive (no SPA fallback)', async () => {
-    const page = await tp.gotoServer('/defer-fail')
-    await page.waitContent('defer boom', 10000)
-    await page.stable
-    // the dehydrated store shipped with the shell — this was streamed SSR, not the bare-index
-    // SPA fallback
-    const hasStore = await page.original.evaluate(() => {
-      return typeof (window as any).__POINT0_DEHYDRATED_SUPER_STORE__ === 'string'
-    })
-    expect(hasStore).toBe(true)
-    // the error state was pushed with the shell, hydration matched, and the page is alive —
-    // `.error()` still on screen after hydration and stability
-    expect(page.preview).toContain('defer boom')
-    await page.close()
-  })
-
-  it('useSuspenseQuery direct load: streams on the server and hydrates without a refetch', async () => {
-    const page = await tp.gotoServer('/suspense')
-    await page.waitContent('m=7', 10000)
-    await page.stable
-    // the pushed query state seeded the cache — the hook returns data on hydration, no request
-    expect(page.requestsTale).not.toContain('query.hooked')
-    const logsText = page.strlogs.join('\n')
-    expect(logsText).not.toContain('recoverable hydration/render error')
-    expect(logsText).not.toContain('Hydration')
-    await page.close()
-  })
-
-  it('useSuspenseQuery on client navigation: suspends into the positional `.loading()`, then renders — the client fetches itself', async () => {
-    const page = await tp.gotoServer('/')
-    await page.waitContent('#home')
-    await page.original.getByRole('link', { name: 'go-suspense', exact: true }).click()
-    // client-side suspension: the page's own positional fallback shows while the query fetches
-    // (~500ms loader — plenty for the DOM tale to capture the frame)
-    await page.waitContent('suspense-loading', 10000)
-    await page.waitContent('m=7', 10000)
-    expect(page.requestsTale).toContain('query.hooked')
-    await page.close()
-  })
-})
-
-// The vite bundler serves SSR through the same fetcher/streaming path — one smoke test proves the
-// response actually stays progressive there too (no browser needed).
-describe('suspend e2e (vite smoke)', () => {
-  const tpf = TestProjectOneClientFactory.create({
-    namespace: 'suspend-vite',
-    portsRange: [3950, 3999],
-  })
-  let tp: TestProjectOneClient
-
-  beforeAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: false })
-    tp = await bootDeferProject(tpf, { vite: true })
-  }, 120000)
-
-  afterAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: false })
-  })
-
-  it('streams over HTTP through the vite dev server', async () => {
-    await expectStreamedDeferResponse(tp)
-  })
+  it('an error thrown after the shell: the shell status stands (silent sealed skip), the failure is logged once', async () => {
+    const root = createRoot()
+    const gate = createGate()
+    const q = root
+      .lets('query', 'slow')
+      .loader(async () => {
+        await gate.promise
+        return { x: 1 }
+      })
+      .query()
+    const page = root
+      .lets('page', 'home', '/')
+      .loading(() => <div id="page-loading">late-status-loading</div>)
+      .page(() => {
+        const query = q.useQuery(undefined, { suspend: 'server' })
+        if (query.data) {
+          // Post-shell retry render: the 401 can no longer reach the response (headers left with
+          // the shell) — the sealed skip is SILENT, matching what the bound `.error()` component
+          // does for a returned error post-shell; the throw itself is still a real render
+          // failure and gets the one SSR_STREAM_RENDER_ERROR log.
+          throw new ErrorPoint0('late boom', { status: 401 })
+        }
+        return <div id="page">pending</div>
+      })
+    const { client } = await createTestThings({ ssr: true, points: [root, q, page] })
+    const warnSpy = spyOn(console, 'warn')
+    const errorSpy = spyOn(console, 'error')
+    try {
+      await client.run(async () => {
+        const response = await client.fetch('http://localhost/')
+        expect(response.status).toBe(200)
+        const reader = response.body!.getReader()
+        const decoder = new TextDecoder()
+        let html = await readUntil(reader, decoder, '', 'late-status-loading')
+        gate.release()
+        html = await readToEnd(reader, decoder, html)
+        expect(html).toContain('</html>')
+      })
+      const sealWarnings = warnSpy.mock.calls
+        .flat()
+        .map(String)
+        .filter((warning) => warning.includes('has no effect'))
+      expect(sealWarnings).toEqual([])
+      // one console.error CALL (a call's args match the message twice: the text + the error object)
+      const streamRenderErrorLogs = errorSpy.mock.calls.filter((call) =>
+        call.some((arg) => String(arg).includes('SSR streamed render error')),
+      )
+      expect(streamRenderErrorLogs.length).toBe(1)
+    } finally {
+      warnSpy.mockRestore()
+      errorSpy.mockRestore()
+    }
+  }, 15000)
 })

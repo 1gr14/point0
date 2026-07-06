@@ -4,10 +4,10 @@ How streamed SSR works inside: the `ssr` / `suspend` query options, the
 `useSuspenseQuery` / `useSuspenseInfiniteQuery` hooks, the universal
 Suspense/ErrorBoundary wrappers, and the platform landmines that shaped every
 non-obvious decision. Lives in the `ssr-defer` worktree
-(`~/cc/worktrees/point0/ssr-defer`, branch `ssr-defer` off `main` @ v0.1.12) as
-uncommitted changes. User-facing docs:
-[docs/core/ssr.md](../../docs/core/ssr.md) ("The `ssr` and `suspend` query
-options" section). Remaining work:
+(`~/cc/worktrees/point0/ssr-defer`, branch `ssr-defer` off `main` @ v0.1.12;
+base commit d717d655 carries the feature, later work sits uncommitted on top).
+User-facing docs: [docs/core/ssr.md](../../docs/core/ssr.md) ("The `ssr` and
+`suspend` query options" section). Remaining work:
 [dev/backlog/suspend.md](../backlog/suspend.md); planned refactors:
 [dev/backlog/refactoring.md](../backlog/refactoring.md).
 
@@ -122,6 +122,21 @@ then per side:
   ships its loading state).
 - CLIENT: only an explicit `suspend: true | 'client'`.
 
+Then — before throwing — it reads the CACHE under the observer: if the
+underlying query's `state.status === 'error'`, it returns without suspending.
+The observer's `isPending` cannot be trusted for this: with `retryOnMount`
+truthy (the TanStack default) TanStack reports an ERRORED query as
+optimistically pending to a FRESH observer, and a suspended component never
+commits, so every Suspense retry sees another fresh observer — trusting the
+report loops forever (suspend → ensure-refetch → reject → resolve → retry →
+optimistic pending → …; gotcha #4, caught by the browser e2e). Skipping the
+suspend lets the component commit and the error arrive as STATE. On the client
+TanStack's own `retryOnMount` refetch then runs as a normal state transition. On
+the SERVER this same read is what makes the un-forced `retryOnMount` safe (see
+"Failed loaders and retryOnMount" in docs/core/ssr.md): the truthy default
+renders the loading state for an errored query, an explicit `false` makes the
+observer report honestly and the gate is not even reached.
+
 Then it throws `ensureQueryData(...).catch(() => undefined)`:
 
 - `ensureQueryData` (not a bare wait on the in-flight fetch) is what makes
@@ -136,12 +151,17 @@ Then it throws `ensureQueryData(...).catch(() => undefined)`:
 the regular hooks build, run `useQuery`/`useInfiniteQuery`, then): success →
 return (data real, matching the non-optional type); error → THROW to the
 boundary (TanStack semantics; on the server a render throw ships the fallback
-and the client retries → ErrorBoundary → `.error()`); pending → client: throw
-ensure; server render phase: throw ensure (or a descriptive render Error when
-the loader cannot run there — `ssr: false` merged from defaults, or a client
-loader — a never-resolving throw would hang the open response); server
-discovery: throw `new Promise(() => undefined)` — never resolves, nothing awaits
-it, the executor kicks the fetch from the cache marker.
+and the client retries → ErrorBoundary → `.error()`); pending → FIRST the same
+cache-under-the-observer check as the option gate, but with suspense semantics:
+a cache-errored query THROWS its cached error to the boundary (kills the same
+optimistic-pending client loop, and makes the post-hydration retry of a failed
+streamed suspense query read the PUSHED error state with zero refetch — pinned
+by the `/suspense-fail` browser e2e); then pending → client: throw ensure;
+server render phase: throw ensure (or a descriptive render Error when the loader
+cannot run there — `ssr: false` merged from defaults, or a client loader — a
+never-resolving throw would hang the open response); server discovery: throw
+`new Promise(() => undefined)` — never resolves, nothing awaits it, the executor
+kicks the fetch from the cache marker.
 
 ### Executor (engine)
 
@@ -201,11 +221,26 @@ it, the executor kicks the fetch from the cache marker.
   ensure-based suspensions resolve, so allReady completes).
 - The final render wraps the app in `<div data-point0 style="display:contents">`
   (self-identifying via the `data-point0` attribute) — see gotcha #1.
+- **Shell-redirect check**: after the shell settles (and the optional allReady
+  wait), `getReadableStreamWithWrapper` reads `__POINT0_SSR_REDIRECT_TASK__` —
+  an UNHANDLED task means a redirect rendered into the final render's shell,
+  reachable only when discovery never saw it (zero / cut-short
+  `allowedDiscoveryRenders`; a discovered redirect was already handled by
+  `handleRedirectTask`). Nothing has been sent at that point (the pull-based
+  response stream has not started), so under the `'throw'` redirectPolicy (the
+  HTML path always uses it) the task is marked handled and thrown — the
+  fetcher's catch answers with the real 30x. `'continue'` callers get no throw.
+  A redirect a streamed subtree renders POST-shell is not covered — the client
+  hops after hydration.
 - Manual pull pump instead of `pipeThrough` — see gotcha #2.
-- `onError` on `renderToReadableStream` → `executor.logStreamRenderError`
-  (post-shell render throws, including a suspense hook throwing its query error;
-  failed option-gate loaders never reach it — their errors flow through the
-  pointQueryError event pipeline).
+- `onError` on `renderToReadableStream` first recovers the throw's SSR effects
+  (`executor.applyRenderThrowSsrEffects` — see "Throw/return parity" below),
+  then logs through `executor.logStreamRenderError` — UNLESS the throw carries a
+  redirect (control flow, not a failure: no error log; during discovery it
+  already became the HTTP redirect, post-shell the client boundary hops after
+  hydration). Covers post-shell render throws, including a suspense hook
+  throwing its query error; failed option-gate loaders never reach it — their
+  errors flow through the pointQueryError event pipeline.
 - Effects seal: on the first streamed chunk (streaming mode only)
   `executor.effects.seal(...)`. Sealed effects are FROZEN: a later
   `effects.set.status/headers/cookies` is DROPPED (mutating the snapshot would
@@ -282,19 +317,51 @@ it, the executor kicks the fetch from the cache marker.
   wrapper; `hydrateRoot` has `onRecoverableError` logging (boundaries can mask
   hydration mismatches).
 
+### Throw/return parity for render-phase throws (status, redirect)
+
+Fizz does NOT run error boundaries on the server: a render-phase throw (a
+mapper, a `.with` resolve/with-fn, a component body) inside a mountable's
+Suspense boundary ships the `.loading()` fallback + React's client-recovery
+template, and the CLIENT retries into the ErrorBoundary → positional `.error()`
+after hydration; a throw outside every boundary rejects the render promise (SPA
+fallback — and the fetcher's catch already turns a rejected RedirectTask into
+the HTTP redirect). So the throw's SSR effects are recovered at the Fizz
+`onError` sink instead: `executor.applyRenderThrowSsrEffects(error)` — wired
+into EVERY SSR render (each discovery pass in `prefetchAppPagePointDeep`, plus
+the final render in `getReadableStreamWithWrapper`). Classification mirrors
+`_renderBoundaryError`: a `RedirectTask` (or an error0 carrying `.redirect`)
+registers `__POINT0_SSR_REDIRECT_TASK__` — the same holder a rendered
+`<Redirect>` fills via the wouter ssrContext proxy — and `handleRedirectTask`
+right after the discovery pass turns it into the real HTTP redirect (`'throw'`
+policy → fetcher catch → 302/30x; `'continue'` policy → data-path recursion);
+otherwise an error0 `status` is applied via `effects.set.status` exactly like
+the bound `.error()` component does for a RETURNED error. Sealed effects
+(post-shell) skip BOTH silently — same rule as the bound error component's
+sealed skip: a post-shell throw degrading to client-side recovery is normal
+operation (the resolved query data is still pushed, so the client retry reads
+the cache). Discovery passes get no error log from this (onError replaces
+React's default console.error there); a real render failure is logged once, by
+the final render's sink. The remaining observable difference from RETURNING an
+error is deliberate and documented: only the data path puts `.error()` into the
+SSR HTML itself — a throw ships the fallback there.
+
 ### Error semantics for a failed streamed loader
 
 Fizz on Bun hangs forever on a rejected suspense thenable (gotcha #3), so "abort
 the boundary and let the client retry" is unshippable for the option gate.
-Instead — and it is better UX anyway: the thrown thenable always resolves; the
-Suspense retry re-render reads the ERROR state from the cache and streams the
-mountable's `.error()` in place; the error state is pushed to the client (public
-projection in prod) so hydration matches and TanStack's normal client options
-decide about retrying. The mountable `.error()` renders only for CHAIN queries
-(`.query()` close, `.with`, `.relatedQuery`); a `useQuery` hook called manually
-inside a component body leaves error rendering to that component's own code —
-same as on the client. The SUSPENSE HOOKS differ deliberately (TanStack
-semantics): they THROW the query error — on the server the boundary keeps its
+Instead: the thrown thenable always resolves; the Suspense retry re-render reads
+the world from the cache and streams the mode's honest rendering in place — what
+that IS follows `retryOnMount` (see "Failed loaders and retryOnMount" in
+docs/core/ssr.md): with the root-recommended `retryOnMount: false` the observer
+reports the error and the mountable's `.error()` streams; with the TanStack
+default the optimistic-pending report streams the LOADING state and the client
+retries on mount. Either way the error state is pushed to the client (public
+projection in prod) so hydration matches. The mountable `.error()` renders only
+for CHAIN queries (`.query()` close, `.with`, `.relatedQuery`); a `useQuery`
+hook called manually inside a component body leaves error rendering to that
+component's own code — same as on the client. The SUSPENSE HOOKS differ
+deliberately (TanStack semantics, and `retryOnMount`-independent on the server —
+nothing can mount there): they THROW the query error — the boundary keeps its
 fallback in the HTML and the CLIENT retries after hydration (ErrorBoundary →
 positional `.error()`); the pushed error state means the retry reads the cache,
 no refetch.
@@ -326,10 +393,29 @@ no refetch.
   `React.lazy` boundary sits ABOVE its `_MountableWithBoundaries` wrapper (the
   wrapper exists only once the chunk resolved), so the entry Suspense cannot
   catch its own point's chunk load anyway — a cold chunk rendered outside the
-  awaited path would land in the parent layout's boundary. On the server nothing
-  is ever lazy: server points are eager-loaded at startup and the page's client
-  module is resolved (`loadPage`) before any SSR render. Covered by the
+  awaited path would land in the parent layout's boundary. Covered by the
   client-navigation e2e test (no fallback flash in the tale).
+- **On the server nothing is ever lazy — ENFORCED, not incidental.** The engine
+  loads the client points eagerly
+  (`ClientPoints.createFromSource(source, { eager: true })` in
+  `client.readPoints`, the mirror of `ServerPoints.load()`) — every page/layout
+  module is imported up front, and the pagesTree/layouts built AFTER the load
+  hold plain components, no `React.lazy` wrappers. Order matters: `toPagesTree`
+  captures each record's `FC` by value, so a later
+  `manager.load()`/`setReadyPoint` would swap collection records while the
+  router keeps rendering the stale lazy instances (this bit us — see below).
+  Shell-await discovery made this load-bearing: a suspended lazy resolves the
+  shell WITH the boundary pending, the pass sees no query markers under it, and
+  the loop stops blind. The HTML flow self-heals (the final render's
+  `allReady`/render-phase gate runs the revealed queries), but the render-less
+  data flow (`queryClientDehydratedState`) has no later render: pre-eager, the
+  FIRST data request per dev process snapshotted the page WITHOUT its queries
+  (`prefetch-page-rehydrate.test.ts` failed attempt 1 deterministically; its
+  `retry: 2` masked it — main was fine because the old discovery awaited
+  `stream.allReady`, which waits out lazy chunks). Cost: hot mode re-imports
+  page modules from the content-addressed store (unchanged content ⇒ same URL ⇒
+  cache hit), vite serves them from its module graph; the browser bundle keeps
+  the lazy collection — code splitting is a client concern.
 
 ## The five platform gotchas (React 19.2 Fizz + Bun 1.3.14 + TanStack 5.101)
 
@@ -358,16 +444,26 @@ pure-React/pure-TanStack repros (and, for #5, a stack trace through
    whose consumer then renders error state streams fine.) Hence
    `throw ensure().catch(() => undefined)` — the thenable must always resolve.
 4. **TanStack: `retryOnMount` truthy + ERRORED query + fresh observer ⇒
-   optimistic `pending`** ("a mount will retry me") — but nothing ever mounts
-   during SSR. For a failed streamed query this produced an endless suspend →
-   `ensureQueryData` refetch → reject → ping loop (~2ms per cycle, response
-   never closes). Fix: `_getServerQueryOptions` (finite + infinite) forces
-   `retryOnMount: false` on the server, next to the other forced-deterministic
-   options — which is also why SSR renders the true `.error()` (and error
-   `.head()` title) for ANY errored loader instead of an optimistic loading
-   state. Related: **dehydrating a pending query captures `query.promise`**
-   (TanStack promise-chase); both dehydrate sites exclude pending queries via
-   `shouldDehydrateQuery`.
+   optimistic `pending`** ("a mount will retry me") — and neither SSR nor a
+   suspended subtree ever mounts anything: nothing mounts on the server at all,
+   and a suspended component never commits, so every Suspense retry sees a fresh
+   observer. For a failed suspended query (server-streamed AND client
+   `suspend: true | 'client'` / suspense hooks alike) that produced an endless
+   suspend → `ensureQueryData` refetch → reject → ping loop (~2ms per cycle,
+   response never closes). Fix: both suspension paths read the CACHE under the
+   observer before throwing — an errored query never suspends via the option
+   (the error arrives as state) and THROWS its cached error from the suspense
+   hooks (boundary semantics). See "The suspension paths". `retryOnMount` itself
+   is NOT forced anywhere: on the server it rides through from the merge and
+   decides only how an errored query REPORTS itself (the TanStack-default truthy
+   → optimistic pending → SSR renders the loading state and the client retries
+   on mount; an explicit `false` → honest error → `.error()` + its `head()` +
+   `status` reach the response — the documented root recommendation, set in
+   every example root). Loader redirects and the failed loader's HTTP status are
+   mode-independent (they travel through the data phase / nested-fetch status
+   bubble-up, not the render). Related: **dehydrating a pending query captures
+   `query.promise`** (TanStack promise-chase); both dehydrate sites exclude
+   pending queries via `shouldDehydrateQuery`.
 5. **TanStack v5 still honors a truthy legacy `suspense` OPTION inside
    `useBaseQuery`** (the v4 escape hatch survives in
    `react-query/src/suspense.ts` — `shouldSuspend` + `fetchOptimistic`). A
@@ -389,88 +485,129 @@ Core: `types.ts` (ExtraQueryPoint0Options — `ssr?: boolean` +
 type allowlist `WithQueryIfSuitable` includes the suspense hooks), `env.ts` +
 `internals.ts` (`__POINT0_SSR_PHASE__` tri-state), `point0.ts`
 (`_maybeSuspendQueryByOption`; `_suspenseHookResult` + `useSuspenseQuery` /
-`useSuspenseInfiniteQuery`; the runtime bind list in
-`_assignNicePointMethodsToComponent` includes the suspense hooks;
-`_MountableWithBoundaries`; positional wrapper actions; `_renderBoundaryError`;
-`_getMergedSsrSuspendQueryOptions`; `_prefetchPage` skip/kick/await handling;
-server `retryOnMount: false`; the `suspense: undefined` neutralizer in the four
-option builders; loaderless `useQuery` / `useInfiniteQuery` throw
-`No loader found on point …` (a coded framework error, `POINT0_POINT_NO_LOADER`,
-on every query surface) — the old silent `{ data: {} }` stub is gone; the
-nested-fetch status bubble-up and the bound `.error()` component's page-status
-write skip sealed effects), `error-boundary.ts` (new), `error.ts` (new codes
-`POINT0_POINT_NO_LOADER` + `POINT0_SSR_STREAM_RENDER_ERROR`), `query-client.ts`
-(push receiver typed as `DataTransformerExtended`; a failed push hydration logs
-via the core logger; pending excluded from dehydrate), `effects.ts` (seal;
-sealed effects are FROZEN — writes are dropped, idempotent late writes stay
-silent, changing ones warn via the core logger, category `['ssr']`; public
-`sealed` / `sealedReason` getters), `cookie-store.ts` (post-shell staging warns
-via the logger instead of dropping silently, idempotent-quiet; reads
-`env.ssr.active`), `env.ts` (public `env.ssr` discriminated union —
-`active`/`phase`/`target`; `__POINT0_SSR_TARGET__` item; `env.side.is.ssr`
-REMOVED — the SSR axis moved out of `side`). Engine: `executor.ts` (shell-await
-discovery, marker split by `suspend`, kick, `suspenseQueryPolicy`,
-discovery-renders budget + zero-render guard + `discoveryCutShort`, `target`
-param stored with `phase: 'discovery'`, `markSsrRenderPhase` returning
-`shouldStreamSuspense` + cache scan, `logStreamRenderError` — wraps the render
-throw into a coded `POINT0_SSR_STREAM_RENDER_ERROR` error with the original as
-`cause`, pending excluded from dehydrate, the dev `X-Point0-Discovery-Renders`
-header — renamed from `X-Point0-Renders-Count`), `render.ts` (auto
-waitForAllReady, `data-point0` wrapper div, manual pump, per-flush push
-collector, prefix receiver stub, onError, effects seal, `target: 'html'`),
-`fetcher.ts` (`waitForAllReady: 'auto'`, data path
-`suspenseQueryPolicy: 'skip'`), `client.ts` (type widening + passthrough; the
-deep-prefetch wrapper takes a required `target` its callers pass — the fetcher's
-data branch passes 'data'). React-dom: `mount.ts` (wrapper div, receiver
-install, onRecoverableError logging via the core logger). Compiler: `file.ts`
-(folds `env.ssr.active/phase/target` to constants on the client — replaces the
-old `env.side.is.ssr` fold). Tests: `packages/engine/tests/suspend.test.tsx`
+`useSuspenseInfiniteQuery`; both suspension paths read the CACHE under the
+observer — an errored query never suspends via the option and throws its cached
+error from the suspense hooks (the optimistic-pending loop fix, gotcha #4); the
+runtime bind list in `_assignNicePointMethodsToComponent` includes the suspense
+hooks; `_MountableWithBoundaries`; positional wrapper actions;
+`_renderBoundaryError`; `_getMergedSsrSuspendQueryOptions`; `_prefetchPage`
+skip/kick/await handling; `retryOnMount` NOT forced on the server — it rides
+through the merge and decides how an errored query reports itself during SSR
+(loading state by default, `.error()` under the recommended explicit `false`;
+every example root sets `retryOnMount: false`); the `suspense: undefined`
+neutralizer in the four option builders; loaderless `useQuery` /
+`useInfiniteQuery` throw `No loader found on point …` (a coded framework error,
+`POINT0_POINT_NO_LOADER`, on every query surface) — the old silent
+`{ data: {} }` stub is gone; the nested-fetch status bubble-up and the bound
+`.error()` component's page-status write skip sealed effects),
+`error-boundary.ts` (new), `error.ts` (new codes `POINT0_POINT_NO_LOADER` +
+`POINT0_SSR_STREAM_RENDER_ERROR`), `query-client.ts` (push receiver typed as
+`DataTransformerExtended`; a failed push hydration logs via the core logger;
+pending excluded from dehydrate), `effects.ts` (seal; sealed effects are FROZEN
+— writes are dropped, idempotent late writes stay silent, changing ones warn via
+the core logger, category `['ssr']`; public `sealed` / `sealedReason` getters),
+`cookie-store.ts` (post-shell staging warns via the logger instead of dropping
+silently, idempotent-quiet; reads `env.ssr.active`), `env.ts` (public `env.ssr`
+discriminated union — `active`/`phase`/`target`; `__POINT0_SSR_TARGET__` item;
+`env.side.is.ssr` REMOVED — the SSR axis moved out of `side`). Engine:
+`executor.ts` (shell-await discovery, marker split by `suspend`, kick,
+`suspenseQueryPolicy`, discovery-renders budget + zero-render guard +
+`discoveryCutShort`, `target` param stored with `phase: 'discovery'`,
+`markSsrRenderPhase` returning `shouldStreamSuspense` + cache scan,
+`logStreamRenderError` — wraps the render throw into a coded
+`POINT0_SSR_STREAM_RENDER_ERROR` error with the original as `cause`,
+`applyRenderThrowSsrEffects` — throw/return parity, wired as the discovery
+renders' onError and called first by the final render's onError, pending
+excluded from dehydrate, the dev `X-Point0-Discovery-Renders` header — renamed
+from `X-Point0-Renders-Count`), `render.ts` (auto waitForAllReady, `data-point0`
+wrapper div, manual pump, per-flush push collector, prefix receiver stub,
+onError — effects recovery first, no error log for redirect throws, the
+shell-redirect check — an unhandled redirect task after the shell settles is
+thrown under the `'throw'` redirectPolicy (zero/cut-short discovery shell
+redirects still 30x), effects seal, `target: 'html'`), `fetcher.ts`
+(`waitForAllReady: 'auto'`, data path `suspenseQueryPolicy: 'skip'`),
+`client.ts` (type widening + passthrough; the deep-prefetch wrapper takes a
+required `target` its callers pass — the fetcher's data branch passes 'data';
+`readPoints` loads the client points EAGERLY —
+`createFromSource(…, { eager: true })`, see "On the server nothing is ever lazy"
+above). Core also: `client-points.ts` (the `eager` option on `createFromSource`
+— `manager.load()` BEFORE `createFromDefintion`, so the pagesTree/layouts
+capture eager FCs). React-dom: `mount.ts` (wrapper div, receiver install,
+onRecoverableError logging via the core logger). Compiler: `file.ts` (folds
+`env.ssr.active/phase/target` to constants on the client — replaces the old
+`env.side.is.ssr` fold). Tests: `packages/engine/tests/suspend.fast.test.tsx`
 (see Tests below), `utils/html-view.ts` (display:contents skip), 6 test files
 with updated error-path snapshots, `scripts/slow-tests.ts` (the suspend file is
 a slow shard), `packages/core/tests/env.test.ts` (the `env.ssr` union),
 `packages/core/tests/effects.test.ts` (sealed idempotency),
 `packages/core/tests/point0-no-loader-guard.test.ts` (new — the loaderless throw
 on every query surface), `packages/compiler/tests/file.test.tsx` (`env.ssr`
-folds), `packages/engine/tests/with.test.tsx` (a throw inside `.with` renders
-`.error()` in place). Docs/example: `docs/core/ssr.md`, `docs/core/env.md`
+folds), `packages/engine/tests/with.test.tsx` (a throw inside `.with` is
+contained server-side + the thrown-status parity test),
+`packages/engine/tests/redirect.test.tsx` ("by with": thrown render-phase
+redirect → real HTTP 302). Docs/example: `docs/core/ssr.md`, `docs/core/env.md`
 (`env.ssr` section), `docs/points/query.md` + `infinite-query.md` + `page.md` +
 `component.md` (suspense hooks + `ssr`/`suspend` options in the method
 surfaces), `docs/methods/loading-error.md` (fallbacks-above-loaders habit;
-`.error` IS a render boundary now), `docs/methods/with.md` + `mapper.md` +
-`docs/core/error-handling.md` (throwing is caught by the mountable boundary),
-`docs/methods/stage-methods.md` (`ssr`/`suspend` on the `*QueryOptions`
-setters), `docs/engine/compiler.md` (env.ssr folding),
-`docs/intro/full-overview.md` (streaming woven into the SSR story; env.ssr;
-redirect-throw note), `examples/basic/src/pages/defer-demo.tsx` (live demo,
-`/defer-demo`, generated + type-checked, fallbacks declared above the loader).
+`.error` IS a render boundary now; throw/return parity), `docs/methods/with.md`
+
+- `mapper.md` + `docs/core/error-handling.md` (throwing is caught by the
+  mountable boundary and carries the same SSR effects — returning still puts
+  `.error()` into the SSR HTML itself), `docs/methods/stage-methods.md`
+  (`ssr`/`suspend` on the `*QueryOptions` setters), `docs/engine/compiler.md`
+  (env.ssr folding), `docs/intro/full-overview.md` (streaming woven into the SSR
+  story; env.ssr; thrown redirect is a full equal),
+  `examples/basic/src/pages/defer-demo.tsx` (live demo, `/defer-demo`,
+  generated + type-checked, fallbacks declared above the loader).
 
 ## Tests
 
-`cd packages/engine && bun test tests/suspend.test.tsx` — one SLOW file
-(`scripts/slow-tests.ts`: runs in its own process locally, its own CI shard),
-three describes:
+Two files since the retryOnMount session: `tests/suspend.fast.test.tsx` — the
+IN-PROCESS half (fast, runs with `testf`), and `tests/suspend.slow.test.tsx` —
+the browser + vite half, the SLOW file (`scripts/slow-tests.ts`: its own process
+locally, its own CI shard). Both roots pin the RECOMMENDED `retryOnMount: false`
+config (as do the e2e template roots and every example root); the
+`…default retryOnMount…` tests use a dedicated default-mode root.
 
-- `suspend` — in-process harness (`createTestThings`): shell-before-resolve
-  (incremental stream reads with a gated loader), `.with()` streaming, nested
-  cascade (inner query invisible to discovery, fetched by the suspend path),
-  infinite streaming (per-call `{ suspend: 'server' }` — partial call-site
-  options), `ssr: false` (loader never runs), call-site override, data endpoint
-  skips streamed/false, `prefetchLoadersBeforePageRender` (kicks streamed
-  without awaiting, never runs `ssr: false`), `useSuspenseQuery` streams + its
-  error path (fallback ships, error pushed, response closes),
-  `allowedDiscoveryRenders` budget cut → 'auto' streams / `suspend: false` ships
-  pending, `allowedDiscoveryRenders: 0` → zero-render shell +
-  data-endpoint-serves-warm-up, root-level
-  `.queryOptions({ suspend: 'server' })` streaming-first, failed streamed loader
-  streams `.error()` + push + stream closes, render throw contained (no SPA
-  fallback). The shell-before-resolve and failed-loader tests also spy on
-  `console.warn` and assert NO sealed-effects warning: the engine's own
-  post-shell bookkeeping (nested-fetch status bubble-up, the bound `.error()`
-  component's page-status write) must stay silent — the warning is reserved for
-  user code. The cookie test asserts the reverse: a streamed subtree staging a
-  `CookieStore` cookie post-shell DOES warn (the staged write can never be
-  committed). Tests are SERIAL (`it`, not `it.concurrent`) — concurrent gated
-  streams in one process interleave badly; a comment in the file guards this.
+- `suspend` (suspend.fast.test.tsx) — in-process harness (`createTestThings`):
+  shell-before-resolve (incremental stream reads with a gated loader), `.with()`
+  streaming, resolve over a streaming query (the callback never runs against
+  empty data; over a FAILED one it never runs at all — `.error()` streams),
+  nested cascade (inner query invisible to discovery, fetched by the suspend
+  path), infinite streaming (per-call `{ suspend: 'server' }` — partial
+  call-site options), `.relatedQuery` streaming, `ssr: false` (loader never
+  runs), clientLoader + `suspend: true` (never suspends during SSR — ships the
+  loading state; the client render suspends into the positional boundary),
+  call-site override, data endpoint skips streamed/false, `useSuspenseQuery` in
+  a data request (no hang, the loader never starts, absent from the snapshot),
+  `prefetchLoadersBeforePageRender` (kicks streamed without awaiting, never runs
+  `ssr: false`), `useSuspenseQuery` streams + its error path (fallback ships,
+  error pushed, response closes), `useSuspenseInfiniteQuery` streams the first
+  page, `allowedDiscoveryRenders` budget cut → 'auto' streams / `suspend: false`
+  ships pending, `allowedDiscoveryRenders: 0` → zero-render shell +
+  data-endpoint-serves-warm-up + a shell redirect still answers the real HTTP
+  redirect, root-level `.queryOptions({ suspend: 'server' })` streaming-first,
+  failed streamed loader streams `.error()` + push + stream closes (the
+  recommended `retryOnMount: false` mode), the retryOnMount DEFAULT mode (failed
+  blocking loader → SSR ships the loading state, the error status still lands
+  via the bubble-up, the error rides the dehydrated cache; failed streamed
+  loader → the loading state streams, error pushed, response closes;
+  `useSuspenseQuery` over a failed loader → still throws to the boundary — the
+  deliberate server deviation), a streamed loader throwing a redirect post-shell
+  (pushed, stream closes, no error log), render throw contained (no SPA
+  fallback), post-shell thrown redirect (shell status stands, stream closes, no
+  error log — the sealed skip is silent), post-shell thrown error with status
+  (silent sealed skip + exactly one SSR_STREAM_RENDER_ERROR log). The redirect
+  suite additionally pins that a loader redirect answers the real HTTP redirect
+  in BOTH retryOnMount modes (redirect.test.tsx, "by loader"). The
+  shell-before-resolve and failed-loader tests also spy on `console.warn` and
+  assert NO sealed-effects warning: the engine's own post-shell bookkeeping
+  (nested-fetch status bubble-up, the bound `.error()` component's page-status
+  write) must stay silent — the warning is reserved for user code. The cookie
+  test asserts the reverse: a streamed subtree staging a `CookieStore` cookie
+  post-shell DOES warn (the staged write can never be committed). Tests are
+  SERIAL (`it`, not `it.concurrent`) — concurrent gated streams in one process
+  interleave badly; a comment in the file guards this.
 - `suspend e2e (browser)` — temp dev project (bun bundler, ports 3900-3949)
   - real Chromium via the shared Playwright utils: streaming over HTTP (shell
     before the loader resolves, same response), push-hydration (zero refetch of
@@ -479,7 +616,17 @@ three describes:
     flash in the tale), failed stream hydrates alive (`.error()` on screen,
     store present — no SPA fallback), `useSuspenseQuery` direct load (streams +
     zero refetch) and client navigation (suspends into the positional
-    `.loading()`, then renders).
+    `.loading()`, then renders), `suspend: 'client'` and `suspend: true` client
+    navigations (suspend into the positional `.loading()`), the `suspend: true`
+    error path (error arrives as query STATE — the boundary never renders),
+    `useSuspenseInfiniteQuery` client navigation (suspends) + `fetchNextPage`
+    (does NOT suspend — the fallback never reappears),
+    `ssr: false + suspend: true` direct load (the server ships the loading
+    state, the post-hydration fetch never flashes the fallback, exactly one
+    request), `useSuspenseQuery` over a failed stream (hydration throws the
+    PUSHED error to the boundary — `.error()` renders, zero refetch, no loop),
+    and a streamed loader redirect post-shell (the client hydrates the pushed
+    redirect and hops to the target).
 - `suspend e2e (vite smoke)` — the same streaming-over-HTTP assertion through
   the vite dev server (ports 3950-3999).
 

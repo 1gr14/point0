@@ -297,9 +297,11 @@ own `.error` overrides that inherited `.pageError`.
 > route to `.error` as data. And every mountable render is additionally wrapped
 > in a real React error boundary, so an error thrown _while rendering_ (the
 > component body, a `.mapper`) also lands in the nearest `.error` and the rest
-> of the page stays alive; the boundary resets on navigation. Prefer signaling
-> from the data phase anyway — a returned error is typed and sets the SSR
-> `status`; the render boundary is the safety net.
+> of the page stays alive; the boundary resets on navigation. A render throw
+> carries the same SSR effects as a returned error — its `status` reaches the
+> response, a thrown redirect becomes the real HTTP redirect. Prefer signaling
+> from the data phase anyway — a returned error is typed and puts `.error` into
+> the SSR HTML itself; the render boundary is the safety net.
 
 [`.with`](with) is the other path — returning (not throwing) an `Error` from a
 `.with` renders the error component too, and that's how you build an auth gate

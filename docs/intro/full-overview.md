@@ -2352,9 +2352,9 @@ export const redirectUnauthorizedPlugin = Point0.lets
   .with(({ props: { me } }) => {
     if (!me) {
       // returning is the idiomatic way — this is sort of a react component, and in
-      // render code we prefer returning over throwing. (A thrown redirect works too:
-      // every mountable is wrapped in an error boundary and a redirect passes through
-      // it — but keep that as the escape hatch, not the pattern.)
+      // render code we prefer returning over throwing. (A thrown redirect is a full
+      // equal: every mountable is wrapped in an error boundary, the redirect passes
+      // through it, and under SSR it produces the same real HTTP redirect.)
       return redirect('login')
       // return <Redirect route="login" /> is also ok
     }

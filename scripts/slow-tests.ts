@@ -17,9 +17,11 @@ export const SLOW_TESTS = [
   'engine/tests/dev-source-maps.test.ts',
   'engine/tests/prefetch-page.test.ts',
   'engine/tests/scroll-restoration.test.ts',
-  // the in-process suspend tests share the file with its browser e2e half (dev server +
-  // Playwright), so the whole file is one slow shard
-  'engine/tests/suspend.test.tsx',
+  // only the e2e half of the suspend coverage (dev server + Playwright + vite smoke) is slow;
+  // the in-process half (suspend.fast.test.tsx) runs with the fast set. The fast/slow suffix
+  // pair is a deliberate one-off: one feature split by speed — everywhere else a file is a
+  // distinct feature and carries no suffix.
+  'engine/tests/suspend.slow.test.tsx',
   'engine/tests/two-clients.test.ts',
   'engine/tests/publicdir.test.ts',
   'engine/tests/assets.test.tsx',

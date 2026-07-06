@@ -12,6 +12,7 @@ export const root = Point0.lets
   .prefetchPageOnLinkHover(false)
   .queryOptions({
     retry: false,
+    retryOnMount: false,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,

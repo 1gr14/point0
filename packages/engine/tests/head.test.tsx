@@ -8,6 +8,7 @@ describe('head', () => {
     .error(({ error }) => <div id="error">{error.message}</div>)
     .queryOptions({
       retry: false,
+      retryOnMount: false,
       refetchOnMount: false,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,

@@ -885,6 +885,33 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       })
   }
 
+  // Throw/return parity for SSR effects. A render-phase throw (a mapper, a `.with` resolve, a
+  // component body) never reaches an error boundary on the server — Fizz does not run them; the
+  // nearest Suspense boundary ships its fallback and the CLIENT retries into the boundary. So
+  // the throw's SSR effects are recovered here, from the onError of every SSR render (each
+  // discovery pass and the final render): a redirect-carrying throw registers the same task a
+  // rendered `<Redirect>` does — during discovery `handleRedirectTask` right after the pass
+  // turns it into the real HTTP redirect; a status-carrying error applies its `status` exactly
+  // like the bound `.error()` component does for a RETURNED error. Sealed effects (the streamed
+  // shell already left) skip both silently, per the sealed-effects rules — the client-side
+  // boundary still redirects/renders `.error()` after hydration, which is all that can still
+  // happen. Returns the redirect task so the final render's sink can skip the error log for
+  // redirect throws (control flow, not a failure).
+  applyRenderThrowSsrEffects(error: unknown): { redirectTask: RedirectTask | undefined } {
+    const ErrorClass = this.engine.server.points.manager.root._Error
+    const error0 = RedirectTask.is(error) ? undefined : ErrorClass.from(error)
+    const redirectTask = RedirectTask.is(error) ? error : error0?.redirect
+    if (this.effects.sealed) {
+      return { redirectTask }
+    }
+    if (redirectTask) {
+      this.serverStorageState.__POINT0_SSR_REDIRECT_TASK__ = { task: redirectTask, handled: false }
+    } else if (error0?.status) {
+      this.effects.set.status(error0.status)
+    }
+    return { redirectTask }
+  }
+
   // The onError sink of the final streamed render (see getReadableStreamWithWrapper): a render
   // throw after the shell was sent leaves no other server-side trace. Wrapped into a coded
   // framework error (the original travels as `cause`) so json logs carry a greppable code.
@@ -1001,8 +1028,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       // Zero-render mode (`allowedDiscoveryRenders: 0`): skip discovery entirely — the warm-up
       // above still ran, so the cache holds whatever the hooks / `prefetchLoadersBeforePageRender`
       // put there. Everything else surfaces only in the FINAL render, which therefore must
-      // stream (`discoveryCutShort`) — HTTP-level redirects/status from unrendered branches
-      // degrade to their client-side equivalents, the deliberate price of the earliest shell.
+      // stream (`discoveryCutShort`). A redirect that renders into that final render's SHELL
+      // still becomes the real HTTP redirect (getReadableStreamWithWrapper checks the task after
+      // the shell settles — nothing has been sent yet); only what resolves POST-shell degrades
+      // to its client-side equivalent, the deliberate price of the earliest shell.
       // KEEP IN SYNC: this early exit mirrors the loop tail below (cookie flush, page
       // dehydrated-state snapshot, discovery-renders header).
       if (!discoveryRenderAllowed) {
@@ -1033,7 +1062,18 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       // the hook registers BEFORE it throws). With nothing suspended the shell IS the full tree,
       // so the classic whole-HTML flow is unchanged. The stream object itself is discarded:
       // discovery renders are never sent anywhere.
-      await renderToReadableStream(React.createElement(App))
+      //
+      // onError recovers the SSR effects of render-phase THROWS (see applyRenderThrowSsrEffects)
+      // — a thrown redirect registers the task `handleRedirectTask` below picks up, a thrown
+      // error's `status` reaches the response like a returned one. It also replaces React's
+      // default console.error for boundary-contained throws; a real failure is logged once, by
+      // the FINAL render's sink (logStreamRenderError). Shell throws (outside every boundary)
+      // still reject this await and travel the usual SPA-fallback path.
+      await renderToReadableStream(React.createElement(App), {
+        onError: (error: unknown) => {
+          this.applyRenderThrowSsrEffects(error)
+        },
+      })
       const redirectTask = await this.handleRedirectTask({ clientPoints, redirectPolicy })
 
       if (redirectTask) {

@@ -86,11 +86,12 @@ it doesn't decide loading or error (that's [`.with`](with) and
 
 A mapper that throws IS caught: the mapper runs inside the render (in a
 `useMemo`), and every mountable render is wrapped in an error boundary — the
-throw renders the nearest [`.error`](loading-error) above it, on the server and
-on the client, while the rest of the page stays alive. Still, prefer keeping the
-mapper total: signal errors from the data phase by returning one from a
-[`.with`](with) — that path is typed and carries an HTTP `status` into the SSR
-response; the render boundary is the safety net.
+throw renders the nearest [`.error`](loading-error) above it while the rest of
+the page stays alive, and during SSR its HTTP `status` (or a thrown redirect)
+still reaches the response. Still, prefer keeping the mapper total: signal
+errors from the data phase by returning one from a [`.with`](with) — that path
+is typed and puts `.error` into the SSR HTML itself; the render boundary is the
+safety net.
 
 ## `data` shadows `queries[0].data`
 

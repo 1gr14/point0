@@ -105,12 +105,16 @@ unlock something concrete for you, the likely first step is letting a
 current model isn't enough.
 
 Every mountable render (page, layout, component, provider) is wrapped in an
-error boundary and a Suspense boundary. A throw inside a mountable's render — on
-the server or on the client — renders **that mountable's `.error()`** in place,
-and the rest of the page stays alive. The engine's SPA fallback (serving the
-bare `index.html` with the error attached) still exists, but only for errors
-outside every boundary — a broken root, a failing wrapper. Redirects keep
-working: a thrown redirect passes through the boundary and navigates as usual.
+error boundary and a Suspense boundary. A throw inside a mountable's render
+renders **that mountable's `.error()`** in place, and the rest of the page stays
+alive. On the server the throw carries the same effects into the response a
+RETURNED error does — its HTTP `status` applies, and a thrown redirect becomes
+the real HTTP redirect; the HTML itself ships the mountable's `.loading()`
+fallback for that spot and `.error()` renders after hydration (returning an
+error from the data phase is what puts `.error()` into the SSR HTML itself). The
+engine's SPA fallback (serving the bare `index.html` with the error attached)
+still exists, but only for errors outside every boundary — a broken root, a
+failing wrapper.
 
 > **Security:** server-only code (loader bodies, secrets, DB calls) is cut from
 > the client bundle — its body and the imports it uses are removed at compile
@@ -217,6 +221,12 @@ suspend into the nearest Suspense boundary (the closest positional
   render ships the loading state in the HTML and the client fetches after
   hydration.
 
+Suspension is for **pending** queries only. A failing query never throws through
+the option — on both sides the error arrives as query **state**: the chain
+renders the positional `.error()`, a manual hook reads `query.error` itself.
+(Only the [suspense hooks](#usesuspensequery--usesuspenseinfinitequery) throw
+errors to the boundary — TanStack semantics.)
+
 ```tsx
 export const statsComponent = root.lets
   .component()
@@ -259,17 +269,58 @@ them anymore. Point0 warns at runtime when it tries anyway:
 
 - It cannot **redirect**, set **cookies**, or change the **status/headers** —
   the response is already streaming. This covers both the `set.*` helpers and a
-  `CookieStore` write from a streamed subtree rendering after the shell.
+  `CookieStore` write from a streamed subtree rendering after the shell. A
+  redirect **thrown** from a streamed subtree's render degrades the same way: no
+  HTTP redirect anymore — the client boundary performs the hop after hydration
+  (silently: that degradation is normal operation, not a failure).
 - It cannot feed an [SsrStore](ssr-store) or cookie value into the SSR re-render
   loop — the loop is over by the time it resolves.
-- If it **throws**, the mountable's `.error()` streams into the response in
-  place of the content, and the error state travels to the client cache with the
-  same public/private projection the dehydrated store uses — after hydration the
-  client shows the same `.error()` (and retries per its normal query options).
-  The rest of the page is unaffected; the server logs the failure through the
-  usual query-error events.
+- If it **throws**, what streams in place of the content follows
+  [`retryOnMount`](#failed-loaders-and-retryonmount): with `retryOnMount: false`
+  the mountable's `.error()`, with the default the loading state (the client
+  retries on mount). Either way the error state travels to the client cache with
+  the same public/private projection the dehydrated store uses, the rest of the
+  page is unaffected, and the server logs the failure through the usual
+  query-error events.
 - A `.head()` that depends on streamed data ships the loading-state head in the
   shell; the client corrects it after hydration.
+
+### Failed loaders and `retryOnMount`
+
+What SSR renders for a query whose loader **failed** follows TanStack's
+`retryOnMount` — the same option that drives a client-side mount, streamed or
+not:
+
+- **Default (`retryOnMount` unset → `true`).** An errored query reports itself
+  as "about to be retried on mount", so the server renders the **loading
+  state**. The error itself still travels to the client cache (same
+  public/private projection as the dehydrated store), the client hydrates the
+  identical loading view and retries the query on mount — the exact imitation of
+  a client-side mount.
+- **`retryOnMount: false`.** An errored query reports honestly, so the server
+  renders the mountable's **`.error()`** (and its error `.head()`), and the
+  error's `status` reaches the response. The client hydrates the same error view
+  and does not refetch.
+
+Two things do NOT depend on this switch: a loader **redirect** produces the real
+HTTP redirect either way (it travels through the data phase, not the render),
+and a failed loader's HTTP **status** reaches the response either way — the
+switch only decides what the HTML shows.
+
+Set it once on the root — the recommended setup for SSR apps, and what every
+example uses:
+
+```tsx
+export const root = Point0.lets('root', 'app')
+  .queryOptions({ retryOnMount: false })
+  .root()
+```
+
+One deliberate exception: the suspense hooks. A "retry on mount" cannot happen
+during SSR (nothing mounts), so on the server `useSuspenseQuery` /
+`useSuspenseInfiniteQuery` throw a failed query's error to the boundary
+regardless of `retryOnMount` — the fallback ships and the client retries after
+hydration; the client half keeps native TanStack behavior.
 
 ### Point level vs query level
 
@@ -393,10 +444,12 @@ consistent.
 `0` is the earliest-shell mode: **no discovery render at all**. The
 `.onPrefetchPage` hooks and the `prefetchLoadersBeforePageRender` warm-up still
 run, then the final render streams immediately — every query it reveals behaves
-as under a spent budget (suspend-and-stream or client fetch). The price:
-anything only discovery would have found cannot touch the HTTP response anymore
-— redirects from those branches degrade to client-side redirects, and their
-status/cookie writes are too late (you get the
+as under a spent budget (suspend-and-stream or client fetch). A redirect that
+renders **into the shell** of that final render (a root layout gate, a `.with`
+redirect) still becomes the real HTTP redirect — nothing has been sent when the
+shell settles, so the engine answers with the 30x response. The price concerns
+what only resolves **after** the shell: redirects from streamed subtrees degrade
+to client-side redirects, and late status/cookie writes are lost (you get the
 [late-loader warnings](#what-a-streamed-loader-cant-do)). The
 [data endpoint](#the-dehydrated-state-endpoint) stays useful at `0`: it serves
 whatever the warm-up prefetched, so a client-navigation prefetch behaves exactly

@@ -9390,13 +9390,18 @@ export class Point0<
       retryOnMount: redirect ? false : megedQueryOptions.retryOnMount,
       ...(_point0_env.side.is.server
         ? {
+            // Forced on the server for render determinism: nothing ever mounts, refocuses or
+            // reconnects during an SSR pass, and a query must not go stale or get collected
+            // mid-request. `retryOnMount` is deliberately NOT in this list (the merged value
+            // above rides through): on the server it is a RENDER-time switch — it decides how an
+            // ERRORED query reports itself to a fresh observer. Truthy (the TanStack default) →
+            // the optimistic `pending` report → SSR renders the loading state and the client
+            // retries on mount after hydration, exactly like a client-side mount would; an
+            // explicit `false` → the honest error report → the mountable's `.error()` (and its
+            // `status`/redirect effects) reaches the SSR response. The suspension gates read the
+            // CACHE underneath the observer, so the optimistic report cannot loop a streamed
+            // query (see `_maybeSuspendQueryByOption` / `_suspenseHookResult`).
             retry: false,
-            // Also forced on the server: with `retryOnMount` left truthy, a fresh observer over an
-            // ERRORED query reports an optimistic `pending` result ("a mount will retry me") — but
-            // nothing ever mounts during SSR. For a failed streamed suspense query that turns the
-            // Suspense retry into an endless suspend → refetch → reject loop and the streamed
-            // response never closes. The client keeps its own `retryOnMount` behavior.
-            retryOnMount: false,
             refetchOnMount: false,
             refetchOnWindowFocus: false,
             refetchOnReconnect: false,
@@ -9709,13 +9714,10 @@ export class Point0<
       retryOnMount: redirect ? false : megedQueryOptions.retryOnMount,
       ...(_point0_env.side.is.server
         ? {
+            // see _getServerQueryOptions — the same determinism set; `retryOnMount` deliberately
+            // rides through from the merge (it decides how an ERRORED query reports itself
+            // during SSR: loading state by default, `.error()` under an explicit `false`).
             retry: false,
-            // Also forced on the server: with `retryOnMount` left truthy, a fresh observer over an
-            // ERRORED query reports an optimistic `pending` result ("a mount will retry me") — but
-            // nothing ever mounts during SSR. For a failed streamed suspense query that turns the
-            // Suspense retry into an endless suspend → refetch → reject loop and the streamed
-            // response never closes. The client keeps its own `retryOnMount` behavior.
-            retryOnMount: false,
             refetchOnMount: false,
             refetchOnWindowFocus: false,
             refetchOnReconnect: false,
@@ -9983,14 +9985,27 @@ export class Point0<
     if (enabled === false) {
       return
     }
-    if (typeof enabled === 'function') {
-      const query = _ss.__POINT0_QUERY_CLIENT__
-        .get()
-        .getQueryCache()
-        .find({ queryKey: mergedQueryOptions.queryKey, exact: true })
-      if (query && !(enabled as (query: unknown) => boolean)(query)) {
-        return
-      }
+    const cachedQuery = _ss.__POINT0_QUERY_CLIENT__
+      .get()
+      .getQueryCache()
+      .find({ queryKey: mergedQueryOptions.queryKey, exact: true })
+    if (typeof enabled === 'function' && cachedQuery && !(enabled as (query: unknown) => boolean)(cachedQuery)) {
+      return
+    }
+    // `isPending` is the OBSERVER's report, and TanStack reports an ERRORED query as
+    // optimistically pending to a FRESH observer when `retryOnMount` is truthy ("a mount will
+    // retry me" — gotcha #4). A suspended component never commits, so every Suspense retry
+    // creates another fresh observer — trusting the report loops forever: suspend →
+    // ensure-refetch → reject → resolve → retry render → optimistic pending → suspend… Read the
+    // CACHE underneath instead: an errored query never suspends here — the component commits and
+    // the error arrives as STATE (the option gate never turns a query error into a boundary
+    // throw). On the client TanStack's own `retryOnMount` refetch (if any) then runs as a normal
+    // state transition. On the SERVER the same read is what makes the un-forced `retryOnMount`
+    // safe: with the truthy default the optimistic report renders the loading state (never a
+    // re-suspend), with an explicit `false` the observer reports the error honestly and this
+    // gate is not even reached.
+    if (cachedQuery?.state.status === 'error') {
+      return
     }
     throw ensure().catch(() => undefined)
   }
@@ -10019,7 +10034,7 @@ export class Point0<
     loaderSide,
   }: {
     result: TResult
-    mergedQueryOptions: { ssr?: boolean }
+    mergedQueryOptions: { ssr?: boolean; queryKey: QueryKey }
     ensure: () => Promise<unknown>
     loaderSide: 'server' | 'client'
   }): TResult {
@@ -10028,6 +10043,24 @@ export class Point0<
     }
     if (result.status !== 'pending') {
       return result
+    }
+    // `result.status` is the OBSERVER's report, and TanStack reports an ERRORED query as
+    // optimistically pending to a FRESH observer when `retryOnMount` is truthy — and a suspended
+    // component never commits, so every Suspense retry creates another fresh observer. Trusting
+    // the report would refetch → reject → retry forever. Read the CACHE underneath: an errored
+    // query THROWS its error (TanStack suspense semantics — the boundary renders the positional
+    // `.error()`). This is also what makes the post-hydration retry of a failed streamed
+    // suspense query read the PUSHED error state without a refetch. Note the deliberate
+    // deviation on the server: `retryOnMount` is not forced there and a truthy value makes the
+    // observer report an errored query as pending — but a "retry on mount" cannot happen during
+    // SSR (nothing mounts), so the suspense hooks ignore the optimism and throw the cached error
+    // either way; the CLIENT half keeps native TanStack behavior.
+    const cachedQuery = _ss.__POINT0_QUERY_CLIENT__
+      .get()
+      .getQueryCache()
+      .find({ queryKey: mergedQueryOptions.queryKey, exact: true })
+    if (cachedQuery?.state.status === 'error') {
+      throw cachedQuery.state.error
     }
     if (_point0_env.side.is.server) {
       if (_ss.__POINT0_SSR_PHASE__.get() === 'render') {

@@ -1330,6 +1330,10 @@ export type ExtraQueryPoint0Options = {
    * - `false` — never suspends anywhere: a query still pending at the final render ships the loading state in the HTML
    *   and the client fetches after hydration.
    *
+   * Suspension is for PENDING queries only. A failing query never throws through this option — on both sides the error
+   * arrives as query state (the chain renders the positional `.error()`, a manual hook reads `query.error` itself);
+   * only the dedicated suspense hooks throw errors to the boundary.
+   *
    * A loader that resolves after the shell was sent cannot redirect, set cookies, or change the status/headers — and
    * cannot feed an SsrStore/cookie value into the SSR re-render loop.
    *

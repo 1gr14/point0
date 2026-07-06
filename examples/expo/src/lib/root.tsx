@@ -11,6 +11,7 @@ export const root = Point0.lets('root', 'root')
   .transformer(superjson)
   .queryOptions({
     retry: false,
+    retryOnMount: false,
     refetchOnWindowFocus: false,
   })
   .error(({ error }) => {

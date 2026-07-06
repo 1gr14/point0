@@ -369,6 +369,7 @@ export async function getReadableStreamWithWrapper({
   clientBundlePath,
   clientPoints,
   executor,
+  redirectPolicy,
 }: {
   App: AppComponent
   suffix?: string
@@ -378,6 +379,7 @@ export async function getReadableStreamWithWrapper({
   renderer?: ReadableStreamRenderer
   clientPoints: ClientPoints<any>
   executor: Executor
+  redirectPolicy?: 'continue' | 'throw'
 }) {
   const encoder = new TextEncoder()
 
@@ -402,13 +404,37 @@ export async function getReadableStreamWithWrapper({
         // place, with the failure logged through the query-error event pipeline. Providing onError
         // also replaces React's default console.error for shell errors — those still reject the
         // render promise and travel the usual SPA-fallback path.
+        //
+        // The throw's SSR effects are recovered first (throw/return parity — a thrown error's
+        // `status` reaches the response while the effects are unsealed; sealed ones skip
+        // silently). A redirect-carrying throw is control flow, not a failure: no error log —
+        // during discovery it already became the real HTTP redirect, post-shell the client
+        // boundary hops after hydration.
         onError: (error: unknown) => {
-          executor.logStreamRenderError(error)
+          const { redirectTask } = executor.applyRenderThrowSsrEffects(error)
+          if (!redirectTask) {
+            executor.logStreamRenderError(error)
+          }
         },
       },
     )
     if (waitForAllReady) {
       await reactStream.allReady
+    }
+
+    // A redirect rendered INTO the final render's shell can still become the real HTTP redirect:
+    // nothing has been sent yet — the pull-based response stream below hasn't even started.
+    // Reachable only when discovery never saw the redirect (a zero / cut-short
+    // `allowedDiscoveryRenders` budget — a discovered one was already handled by
+    // `handleRedirectTask`). Same contract as during discovery: mark handled, throw, the
+    // fetcher's catch answers with the 30x response. Only under the `'throw'` policy — the HTML
+    // path always uses it; `'continue'` callers own their recursion and get no throw from here.
+    // A redirect a streamed subtree renders POST-shell is not covered: the client hops after
+    // hydration.
+    const redirectTaskHolder = _ss.__POINT0_SSR_REDIRECT_TASK__.get()
+    if (redirectPolicy === 'throw' && redirectTaskHolder && !redirectTaskHolder.handled) {
+      redirectTaskHolder.handled = true
+      throw redirectTaskHolder.task
     }
 
     // Snapshot AFTER render started, in the same state scope. The tiny receiver ahead of the
@@ -536,6 +562,7 @@ export async function renderReadableStream({
   domRootElementId,
   modulePreloads,
   executor,
+  redirectPolicy,
 }: {
   App: AppComponent
   envVars?: Record<string, string | number | boolean | undefined>
@@ -548,6 +575,7 @@ export async function renderReadableStream({
   domRootElementId?: string
   modulePreloads?: string[]
   executor: Executor
+  redirectPolicy?: 'continue' | 'throw'
 }): Promise<ReadableStream> {
   const { prefix, suffix } = await overrideDocumentHtml({
     originalIndexHtml,
@@ -566,6 +594,7 @@ export async function renderReadableStream({
     clientBundlePath,
     executor,
     clientPoints,
+    redirectPolicy,
   })
 }
 
@@ -621,5 +650,6 @@ export async function renderAppAsReadableStream({
     executor,
     clientPoints,
     waitForAllReady: resolvedWaitForAllReady,
+    redirectPolicy,
   })
 }
