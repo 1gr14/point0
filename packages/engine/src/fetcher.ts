@@ -895,7 +895,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               response,
             }
           }
-          const indexHtml = await client.getOriginalIndexHtmlWithEnvs(request.original.url)
+          const indexHtml = await client.getDocumentShellHtml(request.original.url)
           const response = new Response(indexHtml, {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
           })
@@ -907,7 +907,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           }
         }
       } else if (client.indexHtml) {
-        const indexHtml = await client.getOriginalIndexHtmlWithEnvs(request.original.url)
+        const indexHtml = await client.getDocumentShellHtml(request.original.url)
         const response = new Response(indexHtml, {
           headers: { 'Content-Type': 'text/html; charset=utf-8' },
           status: !point && client.points ? 404 : 200,

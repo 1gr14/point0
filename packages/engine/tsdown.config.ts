@@ -7,6 +7,7 @@ export default defineConfig({
     'src/client.ts',
     'src/client.bun-build-fix.ts',
     'src/config.ts',
+    'src/document.ts',
     'src/engine.ts',
     'src/executor.ts',
     'src/fake-client.ts',

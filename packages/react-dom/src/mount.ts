@@ -1,6 +1,6 @@
 import { ClientPoints, installPushedQueriesReceiver, log, superstore } from '@point0/core'
 import type { PointsDefinition, PointsManager } from '@point0/core'
-import * as React from 'react'
+import type * as React from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 
@@ -41,18 +41,12 @@ export function mount(
   // hydrates the streamed boundary content (no refetch, no flicker).
   installPushedQueriesReceiver(clientPoints.transformer)
 
-  // Must mirror the server render exactly (see getReadableStreamWithWrapper in @point0/engine): a
-  // `display: contents` host div around the app — no box, zero layout impact, self-identifying via
-  // `data-point0`. It exists so a streamed Suspense boundary is never the ROOT of React's markup,
-  // which would make the server withhold the whole streamed response until the boundary resolves.
-  const wrappedElement = React.createElement('div', { 'data-point0': '', style: { display: 'contents' } }, element)
-
   // First invocation: create the root once.
   //    - If SSR markup exists, hydrate.
   //    - If not, do a client-side mount.
   if (!reactRoot) {
     if (domRootElement.hasChildNodes()) {
-      reactRoot = hydrateRoot(domRootElement, wrappedElement, {
+      reactRoot = hydrateRoot(domRootElement, element, {
         // Every mountable is wrapped in an ErrorBoundary now, so a hydration mismatch can be
         // silently masked by a boundary re-render — keep an explicit client-side trace of it.
         onRecoverableError: (error, errorInfo) => {
@@ -67,12 +61,12 @@ export function mount(
       })
     } else {
       reactRoot = createRoot(domRootElement)
-      reactRoot.render(wrappedElement)
+      reactRoot.render(element)
     }
   } else {
     // Subsequent invocations (e.g., HMR updates):
     // Don’t recreate the root; just render the new element tree.
     // With React Fast Refresh, this preserves hook state when component boundaries match.
-    reactRoot.render(wrappedElement)
+    reactRoot.render(element)
   }
 }

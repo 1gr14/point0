@@ -12,7 +12,7 @@ stay assertive instead of hedging.
   never that an un-whitelisted secret is _absent_. Add a negative assertion: set
   a secret env var, leave it out of `client.env.vars`, build, and assert its
   value appears in neither the client bundle nor the served HTML. (Server
-  injects only the resolved whitelist via `render.ts addEnvVarsToDocumentHtml`;
+  injects only the resolved whitelist via `render.ts buildEnvVarsScriptBody`;
   the client `getEnvVars` reads only `__POINT0_ENV_VARS__` /
   `__POINT0_ENV_CONSTS__`.)
 

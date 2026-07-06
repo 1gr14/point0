@@ -7,285 +7,89 @@ import {
   superstore,
 } from '@point0/core'
 import type { AppComponent, ClientPoints, PagePoint } from '@point0/core'
-import { transformHtmlTemplate } from '@unhead/react/server'
+import { createHead } from '@unhead/react/server'
 import { uneval } from 'devalue'
 import { createElement } from 'react'
+import type { ReactNode } from 'react'
 import { renderToReadableStream } from 'react-dom/server'
-import type { ReactDOMServerReadableStream, RenderToReadableStreamOptions } from 'react-dom/server'
+import { capoTagWeight } from 'unhead/server'
+import { resolveTags } from 'unhead/utils'
 import type { SsrOptionsResolved } from './config.js'
+import { buildDocumentElement, parseDocumentTemplate } from './document.js'
 import type { Executor } from './executor.js'
-import { renderModulePreloadLinks } from './preload-manifest.js'
-
-export type StaticRenderer = (reactNode: React.ReactNode) => string
-export type ReadableStreamRenderer = (
-  reactNode: React.ReactNode,
-  options?: RenderToReadableStreamOptions,
-) => Promise<ReactDOMServerReadableStream>
-
-export function renderDocumentHtmlSuffix(props?: { clientBundlePath?: string }) {
-  const { clientBundlePath } = props ?? {}
-  return `</div>${
-    clientBundlePath
-      ? `
-<script src="${clientBundlePath}" defer></script>`
-      : ''
-  }
-</body>
-</html>`
-}
-
-export type DocumentHtmlResult<TContent extends string | undefined> = {
-  prefix: string
-  content: TContent
-  suffix: string
-  html: string
-}
-
-export function fillRootElement({
-  html,
-  content,
-  domRootElementId = 'root',
-  position = 'append',
-}: {
-  html: string
-  content: string
-  domRootElementId?: string
-  position?: 'append' | 'prepend'
-}) {
-  // Match <div ... id="root" ...> ... </div> without eating siblings
-  const pattern = new RegExp(
-    `<div\\b([^>]*?)\\bid=["']${domRootElementId}["']([^>]*)>(.*?)</div>`,
-    'is', // i = case-insensitive, s = dotAll (so . matches newlines)
-  )
-  const replacement = (_: string, before: string, after: string, inner: string) => {
-    const newInner = position === 'prepend' ? `${content}${inner}` : `${inner}${content}`
-    return `<div${before.trimEnd()} id="${domRootElementId}"${after}>${newInner}</div>`
-  }
-
-  return html.replace(pattern, replacement)
-}
-
-function prependBodyElement({ html, content }: { html: string; content: string }) {
-  // Match the <body> tag and capture its existing content
-  const pattern = /<body\b[^>]*>([\s\S]*?)<\/body>/i
-
-  const replacement = (match: string, inner: string) => {
-    const newContent = `${content}${inner}` // prepend payload to the beginning of <body>
-    return match.replace(inner, newContent)
-  }
-
-  return html.replace(pattern, replacement)
-}
-
-function prependHeadElement({
-  html,
-  content,
-  afterScriptId,
-}: {
-  html: string
-  content: string
-  afterScriptId?: string
-}): string {
-  // Match the <head> tag and capture its existing content
-  const pattern = /<head\b[^>]*>([\s\S]*?)<\/head>/i
-
-  const replacement = (match: string, inner: string) => {
-    if (afterScriptId) {
-      const escapedId = afterScriptId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      const targetScriptPattern = new RegExp(
-        `<script\\b[^>]*\\bid=["']${escapedId}["'][^>]*>([\\s\\S]*?)<\\/script>`,
-        'i',
-      )
-      const targetMatch = inner.match(targetScriptPattern)
-      if (targetMatch) {
-        const targetTag = targetMatch[0]
-        const newInner = inner.replace(targetTag, `${targetTag}${content}`)
-        return match.replace(inner, newInner)
-      }
-    }
-    const newContent = `${content}${inner}` // prepend payload to the beginning of <head>
-    return match.replace(inner, newContent)
-  }
-
-  return html.replace(pattern, replacement)
-}
-
-/** Insert `content` at the END of `<head>` (right before `</head>`) — the opposite of {@link prependHeadElement}. */
-function appendHeadElement({ html, content }: { html: string; content: string }): string {
-  return html.replace(/<\/head>/i, `${content}</head>`)
-}
+import { readableStreamToString } from './utils.js'
 
 /**
- * Force `<meta charset="utf-8">` to be the FIRST child of `<head>`, deduping any charset declaration the template or
- * Unhead already produced. The transport `; charset=utf-8` response header is the primary, authoritative fix; this is
- * defense in depth for when a proxy/CDN strips that header. Per the WHATWG "prescan a byte stream" algorithm the
- * browser only scans the first 1024 bytes for a `<meta charset>` — and the dehydrated super-store script (~200 KB on a
- * real page) used to sit at the very top of `<head>`, pushing the template's charset meta far past that window and
- * leaving the browser to guess (→ intermittent UTF-8-as-Windows-1252 mojibake). Engine-owned so an app template can't
- * drop it. Run LAST among the head injections so the meta wins the first position over the env / preload / store
- * elements.
+ * The render pipeline: React owns the WHOLE document. The `index.html` template is parsed once into a React-renderable
+ * tree (see ./document.ts), the app subtree renders inside the template's root element, and one
+ * `renderToReadableStream` call emits `<!DOCTYPE html>` through `</html>` — the shell flushes immediately and each
+ * resolved Suspense boundary follows as its own chunk. Because the markup root is `<html>` (never a Suspense boundary),
+ * streaming needs no host-element wrapper around the app, and every head/body mutation is a structural React element
+ * instead of string splicing.
  */
-function ensureHeadCharsetFirst({ html }: { html: string }): string {
-  const headPattern = /(<head\b[^>]*>)([\s\S]*?)(<\/head>)/i
-  return html.replace(headPattern, (_match, open: string, inner: string, close: string) => {
-    const withoutCharset = inner
-      .replace(/<meta\b[^>]*\bcharset\b[^>]*>/gi, '')
-      .replace(/<meta\b[^>]*\bhttp-equiv=["']?content-type["']?[^>]*>/gi, '')
-    return `${open}<meta charset="utf-8">${withoutCharset}${close}`
-  })
-}
+
+export const ENV_CONSTS_SCRIPT_ID = '__POINT0_ENV_CONSTS__'
+export const ENV_VARS_SCRIPT_ID = '__POINT0_ENV_VARS__'
+export const DEHYDRATED_SUPER_STORE_SCRIPT_ID = '__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__'
 
 /**
- * Extracts all script tags from HTML while preserving their order and location Returns an object with scripts from head
- * and body separately
+ * Engine-owned scripts a template may already carry (a built `dist/client/index.html` has the baked env-consts script
+ * for static hosting) — the document render replaces them with fresh serve-time versions instead of duplicating.
  */
-function extractScripts(html: string): {
-  headScripts: Array<{ tag: string; placeholder: string }>
-  bodyScripts: Array<{ tag: string; placeholder: string }>
-  htmlWithPlaceholders: string
-} {
-  const headScripts: Array<{ tag: string; placeholder: string }> = []
-  const bodyScripts: Array<{ tag: string; placeholder: string }> = []
+const ENGINE_OWNED_HEAD_SCRIPT_IDS = [
+  ENV_CONSTS_SCRIPT_ID,
+  ENV_VARS_SCRIPT_ID,
+  DEHYDRATED_SUPER_STORE_SCRIPT_ID,
+] as const
 
-  // Extract scripts from head - handles both <script>...</script> and <script ... />
-  html = html.replace(/<head\b[^>]*>([\s\S]*?)<\/head>/i, (headMatch, headContent) => {
-    const headWithPlaceholders = headContent.replace(
-      /<script\b[^>]*(?:\/>|>[\s\S]*?<\/script>)/gi,
-      (scriptTag: string) => {
-        const placeholder = `<!-- __POINT0_SCRIPT_HEAD_${headScripts.length}__ -->`
-        headScripts.push({ tag: scriptTag, placeholder })
-        return placeholder
-      },
-    )
-    return headMatch.replace(headContent, headWithPlaceholders)
-  })
+type EnvValues = Record<string, string | number | boolean | undefined>
 
-  // Extract scripts from body - handles both <script>...</script> and <script ... />
-  html = html.replace(/<body\b[^>]*>([\s\S]*?)<\/body>/i, (bodyMatch, bodyContent) => {
-    const bodyWithPlaceholders = bodyContent.replace(
-      /<script\b[^>]*(?:\/>|>[\s\S]*?<\/script>)/gi,
-      (scriptTag: string) => {
-        const placeholder = `<!-- __POINT0_SCRIPT_BODY_${bodyScripts.length}__ -->`
-        bodyScripts.push({ tag: scriptTag, placeholder })
-        return placeholder
-      },
-    )
-    return bodyMatch.replace(bodyContent, bodyWithPlaceholders)
-  })
-
-  return { headScripts, bodyScripts, htmlWithPlaceholders: html }
-}
-
-/**
- * Restores original scripts to their placeholders in the HTML
- */
-function restoreScripts(
-  html: string,
-  headScripts: Array<{ tag: string; placeholder: string }>,
-  bodyScripts: Array<{ tag: string; placeholder: string }>,
-): string {
-  // Restore scripts in reverse order to avoid issues if placeholders contain similar text
-  // Restore head scripts
-  for (let i = headScripts.length - 1; i >= 0; i--) {
-    const { tag, placeholder } = headScripts[i]
-    html = html.replace(placeholder, tag)
-  }
-
-  // Restore body scripts
-  for (let i = bodyScripts.length - 1; i >= 0; i--) {
-    const { tag, placeholder } = bodyScripts[i]
-    html = html.replace(placeholder, tag)
-  }
-
-  return html
-}
-
-export function addEnvToDocumentHtml({
-  html,
-  envVars,
-  envConsts,
-}: {
-  html: string
-  envVars?: Record<string, string | number | boolean | undefined>
-  envConsts?: Record<string, string | number | boolean | undefined>
-}): string {
-  const htmlWithConsts = addEnvConstsToDocumentHtml({ html, envConsts })
-  return addEnvVarsToDocumentHtml({ html: htmlWithConsts, envVars })
-}
-
-function toJsonCompatibleEnv(
-  env?: Record<string, string | number | boolean | undefined>,
-): Record<string, string | number | boolean> {
+function toJsonCompatibleEnv(env?: EnvValues): Record<string, string | number | boolean> {
   return JSON.parse(JSON.stringify(env ?? {})) as Record<string, string | number | boolean>
 }
 
-function upsertHeadScript({
-  html,
-  id,
-  scriptBody,
-  afterScriptId,
-}: {
-  html: string
-  id: string
-  scriptBody: string
-  afterScriptId?: string
-}): string {
-  const pattern = new RegExp(`<script\\s+id=["']${id}["'][^>]*>[\\s\\S]*?<\\/script>`, 'i')
-  const scriptTag = `<script id="${id}" type="text/javascript">
-${scriptBody}
-</script>`
-  if (pattern.test(html)) {
-    return html.replace(pattern, scriptTag)
-  }
-  return prependHeadElement({
-    afterScriptId,
-    content: scriptTag,
-    html,
-  })
-}
-
-export function addEnvVarsToDocumentHtml({
-  html,
-  envVars,
-}: {
-  html: string
-  envVars?: Record<string, string | number | boolean | undefined>
-}): string {
-  const jsonCompatibleEnvVars = toJsonCompatibleEnv(envVars)
-  return upsertHeadScript({
-    id: '__POINT0_ENV_VARS__',
-    html,
-    afterScriptId: '__POINT0_ENV_CONSTS__',
-    scriptBody: `const __POINT0_ENV_VARS__ = ${uneval(jsonCompatibleEnvVars)};
-window.__POINT0_ENV_VARS__ = __POINT0_ENV_VARS__;
-window.__POINT0_ENV_EXTEND_FN__({ ...__POINT0_ENV_VARS__, ...(window.__POINT0_ENV_CONSTS__ || {}) });`,
-  })
-}
-
-export function addEnvConstsToDocumentHtml({
-  html,
-  envConsts,
-}: {
-  html: string
-  envConsts?: Record<string, string | number | boolean | undefined>
-}): string {
-  const jsonCompatibleEnvConsts = toJsonCompatibleEnv(envConsts)
-  return upsertHeadScript({
-    id: '__POINT0_ENV_CONSTS__',
-    html,
-    scriptBody: `const __POINT0_ENV_CONSTS__ = ${uneval(jsonCompatibleEnvConsts)};
-window.__POINT0_ENV_CONSTS__ = __POINT0_ENV_CONSTS__;
+/**
+ * The env-consts script body: defines `window.__POINT0_ENV_CONSTS__` and the `__POINT0_ENV_EXTEND_FN__` helper that
+ * folds env values into `window.process.env` (what `@point0/core`'s env module reads on the client). Also used by the
+ * build step that bakes build-time consts into the emitted `dist/client/index.html` for static hosting.
+ */
+export function buildEnvConstsScriptBody(envConsts?: EnvValues): string {
+  return `const ${ENV_CONSTS_SCRIPT_ID} = ${uneval(toJsonCompatibleEnv(envConsts))};
+window.${ENV_CONSTS_SCRIPT_ID} = ${ENV_CONSTS_SCRIPT_ID};
 window.__POINT0_ENV_EXTEND_FN__ = function(values) {
   window.process = window.process || {};
   window.process.env = { ...(window.process.env || {}), ...values };
 }
-window.__POINT0_ENV_EXTEND_FN__(__POINT0_ENV_CONSTS__);`,
-  })
+window.__POINT0_ENV_EXTEND_FN__(${ENV_CONSTS_SCRIPT_ID});`
 }
 
-// window.import = window.import || {};
-// window.import.meta = window.import.meta || {};
-// window.import.meta.env = { ...(window.import.meta.env || {}), ...values };
+/** The env-vars script body — runtime values; consts win on key conflicts, so they are spread last. */
+export function buildEnvVarsScriptBody(envVars?: EnvValues): string {
+  return `const ${ENV_VARS_SCRIPT_ID} = ${uneval(toJsonCompatibleEnv(envVars))};
+window.${ENV_VARS_SCRIPT_ID} = ${ENV_VARS_SCRIPT_ID};
+window.__POINT0_ENV_EXTEND_FN__({ ...${ENV_VARS_SCRIPT_ID}, ...(window.${ENV_CONSTS_SCRIPT_ID} || {}) });`
+}
+
+/**
+ * The two env scripts as React elements for the top of `<head>`. Consts come first — they define
+ * `__POINT0_ENV_EXTEND_FN__`, which the vars script calls. React keeps inline scripts in authored order (it only floats
+ * metadata tags above them), and the entry bundle is a module/deferred script, so env values are always installed
+ * before any app code runs.
+ */
+function envScriptElements({ envVars, envConsts }: { envVars?: EnvValues; envConsts?: EnvValues }): ReactNode[] {
+  return [
+    createElement('script', {
+      id: ENV_CONSTS_SCRIPT_ID,
+      key: 'p0-env-consts',
+      dangerouslySetInnerHTML: { __html: buildEnvConstsScriptBody(envConsts) },
+    }),
+    createElement('script', {
+      id: ENV_VARS_SCRIPT_ID,
+      key: 'p0-env-vars',
+      dangerouslySetInnerHTML: { __html: buildEnvVarsScriptBody(envVars) },
+    }),
+  ]
+}
 
 /**
  * Inject the client build identity into a document: `window.__POINT0_CLIENT_BUILD_VERSION__` (read by `@point0/core`'s
@@ -293,9 +97,10 @@ window.__POINT0_ENV_EXTEND_FN__(__POINT0_ENV_CONSTS__);`,
  * plus, when the entry chunk is known, a reload-once guard for the initial load.
  *
  * Injected ONLY into the BUILT `dist` index.html (see `EngineClient.buildByBun` / `buildByVite`) — and from there it
- * reaches every serving mode for free: the static SPA serves that html directly, and the SSR document is assembled from
- * it (`overrideDocumentHtml` preserves existing scripts). Dev never gets it — nothing is bundled, so there is no build
- * to be stale against.
+ * reaches every serving mode for free: the static SPA serves that html directly, and the SSR document is assembled
+ * from it (the parsed template's head scripts render verbatim, see ./document.ts). Dev never gets it — nothing is
+ * bundled, so there is no build to be stale against. Like the env-consts bake, this is a FILE edit done with
+ * HTMLRewriter (upsert: any existing copies of the two scripts are dropped, fresh ones are prepended to `<head>`).
  *
  * The guard covers the case the navigation-level stale handling cannot: a cached/stale document whose ENTRY script is
  * gone after a redeploy — the app never boots, so no navigation code runs. A capture-phase `error` listener (resource
@@ -303,7 +108,9 @@ window.__POINT0_ENV_EXTEND_FN__(__POINT0_ENV_CONSTS__);`,
  * per build version (sessionStorage-guarded; when storage is unavailable it does nothing rather than risk a reload
  * loop). Third-party scripts failing never trigger it — only the exact entry path.
  */
-export function addClientBuildToDocumentHtml({
+export const CLIENT_BUILD_VERSION_SCRIPT_ID = '__POINT0_CLIENT_BUILD_VERSION__'
+export const STALE_ENTRY_GUARD_SCRIPT_ID = '__POINT0_STALE_ENTRY_GUARD__'
+export async function addClientBuildToDocumentHtml({
   html,
   buildVersion,
   entryPublicPath,
@@ -311,18 +118,10 @@ export function addClientBuildToDocumentHtml({
   html: string
   buildVersion: string
   entryPublicPath: string | null
-}): string {
-  let result = upsertHeadScript({
-    id: '__POINT0_CLIENT_BUILD_VERSION__',
-    html,
-    scriptBody: `window.__POINT0_CLIENT_BUILD_VERSION__ = ${JSON.stringify(buildVersion)};`,
-  })
-  if (entryPublicPath) {
-    result = upsertHeadScript({
-      id: '__POINT0_STALE_ENTRY_GUARD__',
-      html: result,
-      afterScriptId: '__POINT0_CLIENT_BUILD_VERSION__',
-      scriptBody: `(function () {
+}): Promise<string> {
+  const versionScript = `<script id="${CLIENT_BUILD_VERSION_SCRIPT_ID}">window.${CLIENT_BUILD_VERSION_SCRIPT_ID} = ${JSON.stringify(buildVersion)};</script>`
+  const guardScript = entryPublicPath
+    ? `<script id="${STALE_ENTRY_GUARD_SCRIPT_ID}">(function () {
   var entry = ${JSON.stringify(entryPublicPath)};
   var key = '__POINT0_STALE_ENTRY_RELOAD__:' + ${JSON.stringify(buildVersion)};
   window.addEventListener('error', function (event) {
@@ -337,144 +136,206 @@ export function addClientBuildToDocumentHtml({
     } catch (e) { return; }
     location.reload();
   }, true);
-})();`,
+})();</script>`
+    : ''
+  return await new HTMLRewriter()
+    .on(`script[id="${CLIENT_BUILD_VERSION_SCRIPT_ID}"]`, {
+      element(el) {
+        el.remove()
+      },
     })
-  }
-  return result
+    .on(`script[id="${STALE_ENTRY_GUARD_SCRIPT_ID}"]`, {
+      element(el) {
+        el.remove()
+      },
+    })
+    .on('head', {
+      element(el) {
+        el.prepend(`${versionScript}${guardScript}`, { html: true })
+      },
+    })
+    .transform(new Response(html))
+    .text()
 }
 
-export async function overrideDocumentHtml<TContent extends string | undefined = undefined>({
+/**
+ * Renders the document WITHOUT the app — the SPA shell: the template plus env scripts, with an empty root element.
+ * Serves the `ssr: false` clients and the fallback when an SSR render throws. Same pipeline as the SSR document (one
+ * mechanism, no string splicing), just with a fresh unhead instance holding only the template's own head input.
+ */
+export async function renderDocumentShellHtml({
   originalIndexHtml,
-  content,
-  executor,
   envVars,
   envConsts,
-  domRootElementId,
-  clientBundlePath,
-  modulePreloads,
+  domRootElementId = 'root',
 }: {
   originalIndexHtml: string
-  content?: TContent
-  executor: Executor
-  envVars?: Record<string, string | number | boolean | undefined>
-  envConsts?: Record<string, string | number | boolean | undefined>
+  envVars?: EnvValues
+  envConsts?: EnvValues
   domRootElementId?: string
-  clientBundlePath?: string
-  modulePreloads?: string[]
-}): Promise<DocumentHtmlResult<TContent>> {
-  let html = originalIndexHtml
-
-  // Extract existing scripts to preserve their order
-  const { headScripts, bodyScripts, htmlWithPlaceholders } = extractScripts(html)
-
-  // Transform HTML with Unhead (this may reorder scripts, but we'll restore original order)
-  html = await transformHtmlTemplate(executor.serverStorageState.__POINT0_UNHEAD_SERVER_HEAD__, htmlWithPlaceholders)
-
-  // Restore original scripts in their original positions
-  html = restoreScripts(html, headScripts, bodyScripts)
-  if (clientBundlePath) {
-    html = prependBodyElement({
-      content: `<script src="${clientBundlePath}" defer></script>`,
-      html,
-    })
-  }
-  html = fillRootElement({
-    content: content ? `<!-- __TARGET_START__ -->${content}<!-- __TARGET_END__ -->` : '<!-- __TARGET__ -->',
-    html,
+}): Promise<string> {
+  const template = await parseDocumentTemplate(originalIndexHtml)
+  const head = createHead()
+  head.push(template.headInput, { _index: 0 })
+  const documentElement = buildDocumentElement({
+    template,
+    resolvedHeadTags: resolveTags(head, { tagWeight: capoTagWeight }),
+    app: undefined,
     domRootElementId,
+    headStart: envScriptElements({ envVars, envConsts }),
+    omitHeadScriptIds: ENGINE_OWNED_HEAD_SCRIPT_IDS,
   })
-  html = addEnvToDocumentHtml({ html, envVars, envConsts })
-  if (modulePreloads && modulePreloads.length > 0) {
-    // Per-request preload hints: turn the entry's import waterfall (and, later, the matched page's lazy chunk) into one
-    // parallel fetch straight from the document. Prepended to <head> so the browser sees them before the entry script.
-    html = prependHeadElement({ content: renderModulePreloadLinks(modulePreloads), html })
-  }
-  // The dehydrated super-store (~200 KB on a real page) only needs to be defined before the body bootstrap module runs,
-  // so it goes at the END of <head> rather than the top — keeping the charset meta, title and preload links inside the
-  // early-parse / 1024-byte-prescan window instead of behind a huge script.
-  html = appendHeadElement({
-    content: '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
-    html,
-  })
-  // Last, so the charset meta wins the first <head> position over everything injected above (store, preloads, env).
-  html = ensureHeadCharsetFirst({ html })
-
-  if (html.includes('<!-- __TARGET__ -->')) {
-    const [prefix, suffix] = html.split('<!-- __TARGET__ -->')
-    return { prefix, content: undefined as TContent, suffix, html: `${prefix}${suffix}` }
-  } else if (html.includes('<!-- __TARGET_START__ -->') && html.includes('<!-- __TARGET_END__ -->')) {
-    const prefix = html.split('<!-- __TARGET_START__ -->')[0]
-    const suffix = html.split('<!-- __TARGET_END__ -->')[1]
-    const content = html
-      .replace(prefix, '')
-      .replace(suffix, '')
-      .replace('<!-- __TARGET_START__ -->', '')
-      .replace('<!-- __TARGET_END__ -->', '')
-    return { prefix, content: content as TContent, suffix, html: `${prefix}${content}${suffix}` }
-  } else {
-    throw new Error('<!-- __TARGET__ --> not found')
-  }
+  const stream = await renderToReadableStream(documentElement)
+  await stream.allReady
+  return await readableStreamToString(stream)
 }
 
-export async function getReadableStreamWithWrapper({
+export async function renderAppAsReadableStream({
   App,
-  prefix,
-  suffix,
-  renderer = renderToReadableStream,
-  waitForAllReady,
-  clientBundlePath,
-  clientPoints,
   executor,
+  pagePoint,
+  pageLocation,
+  clientPoints,
   redirectPolicy,
+  waitForAllReady,
+  ssrOptions,
+  envVars,
+  envConsts,
+  originalIndexHtml,
+  domRootElementId = 'root',
+  modulePreloads,
 }: {
   App: AppComponent
-  suffix?: string
-  prefix?: string
-  waitForAllReady?: boolean
-  clientBundlePath?: string
-  renderer?: ReadableStreamRenderer
-  clientPoints: ClientPoints<any>
   executor: Executor
-  redirectPolicy?: 'continue' | 'throw'
-}) {
+  pagePoint: PagePoint | undefined
+  pageLocation: AnyLocation
+  clientPoints: ClientPoints<any>
+  envVars?: EnvValues
+  envConsts?: EnvValues
+  originalIndexHtml: string
+  domRootElementId?: string
+  modulePreloads?: string[]
+  redirectPolicy: 'continue' | 'throw'
+  waitForAllReady?: boolean | 'auto'
+  ssrOptions: SsrOptionsResolved
+}): Promise<ReadableStream> {
+  await executor.prefetchAppPagePointDeep({
+    App,
+    renderToReadableStream,
+    clientPoints,
+    pagePoint,
+    pageLocation,
+    redirectPolicy,
+    ssrOptions,
+    target: 'html',
+  })
+  // Discovery is over — from here the suspense query gates may suspend (final render). The same
+  // boundary call decides whether the final render may suspend, from what discovery saw + what
+  // is still pending in the cache.
+  const { shouldStreamSuspense } = executor.markSsrRenderPhase()
+  // 'auto': hold the response for the full tree (the classic whole-HTML behavior) unless the
+  // final render may suspend — then stream: the shell ships at once and each suspended Suspense
+  // boundary follows in the same response as it resolves. An explicit boolean (e.g.
+  // renderAsString) is respected as-is: `true` degrades streaming to blocking.
+  const resolvedWaitForAllReady = waitForAllReady === 'auto' ? !shouldStreamSuspense : (waitForAllReady ?? false)
+  const template = await parseDocumentTemplate(originalIndexHtml)
+
   const encoder = new TextEncoder()
 
-  // one scope for both render and pack ensures consistency
+  // one scope for both render and store/push serialization ensures consistency
   return await executor.withServerGlobalState(async () => {
-    // Kick off the render first; any randoms used during render happen now.
-    //
-    // The app is wrapped in a `display: contents` host div (no box, zero layout impact,
-    // self-identifying via `data-point0`; `mount()` renders the same wrapper on the client so
-    // hydration matches). Without it, when the FIRST markup-producing mountable suspends (a
-    // streamed suspense query), the pending Suspense boundary is the ROOT of React's output — and
-    // Fizz then withholds the entire response until the boundary resolves (a root-level boundary
-    // may still contribute preamble/head content, so React cannot commit the shell). A host
-    // element around the tree pins the host context and streaming works.
-    const reactStream = await renderer(
-      createElement('div', { 'data-point0': '', style: { display: 'contents' } }, createElement(App)),
-      {
-        ...(clientBundlePath ? { bootstrapModules: [clientBundlePath] } : {}),
-        // Render errors that happen after the shell was sent (a throw inside a streamed Suspense
-        // boundary) have no other server-side trace — log them. Failed streamed LOADERS never
-        // reach this callback: their suspension resolves and the mountable's `.error()` streams in
-        // place, with the failure logged through the query-error event pipeline. Providing onError
-        // also replaces React's default console.error for shell errors — those still reject the
-        // render promise and travel the usual SPA-fallback path.
-        //
-        // The throw's SSR effects are recovered first (throw/return parity — a thrown error's
-        // `status` reaches the response while the effects are unsealed; sealed ones skip
-        // silently). A redirect-carrying throw is control flow, not a failure: no error log —
-        // during discovery it already became the real HTTP redirect, post-shell the client
-        // boundary hops after hydration.
-        onError: (error: unknown) => {
-          const { redirectTask } = executor.applyRenderThrowSsrEffects(error)
-          if (!redirectTask) {
-            executor.logStreamRenderError(error)
+    // The request's unhead instance already carries every `.head()` entry the discovery renders pushed. The template's
+    // own head content joins as the LOWEST-priority entry (page values win; unhead dedupes/merges — this is
+    // `transformHtmlTemplate`'s extraction semantics, minus scripts, which never go through unhead). Resolved BEFORE
+    // the final render, exactly like the old string pipeline: `.head()` pushes from the final render itself are
+    // ignored on the server.
+    const serverHead = executor.serverStorageState.__POINT0_UNHEAD_SERVER_HEAD__
+    serverHead.push(template.headInput, { _index: 0 })
+    const resolvedHeadTags = resolveTags(serverHead, { tagWeight: capoTagWeight })
+
+    const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
+
+    // "Sent" = what the client receives inside the dehydrated store. When the page carries a dehydrated-state snapshot
+    // query, the client's hydrated cache is exactly its INNER queries (taken at end of discovery, pending-filtered) —
+    // a query that settled after that snapshot is in the raw server cache but NOT in the store, so it must be pushed.
+    // Without a snapshot query the store dehydrates the raw cache, so everything non-pending counts as sent. Captured
+    // at the SAME instant the store script serializes (it renders inside the shell) — the store and the push pump must
+    // agree on one moment, or a query settling between the two would be silently lost from both.
+    const sentQueryHashes = new Set<string>()
+    let sentQueryHashesCaptured = false
+    const captureSentQueryHashes = () => {
+      if (sentQueryHashesCaptured) {
+        return
+      }
+      sentQueryHashesCaptured = true
+      const dehydratedStateQueries = queryClient.getQueryCache().getAll().filter(isQueryClientDehydratedStateQuery)
+      if (dehydratedStateQueries.length > 0) {
+        for (const query of dehydratedStateQueries) {
+          sentQueryHashes.add(query.queryHash)
+          const innerDehydratedState = getDehydratedStateFromQueryClientDehydratedStateQuery(query)
+          for (const innerQuery of innerDehydratedState?.queries ?? []) {
+            sentQueryHashes.add(innerQuery.queryHash)
           }
+        }
+      } else {
+        for (const query of queryClient.getQueryCache().getAll()) {
+          if (query.state.status !== 'pending') {
+            sentQueryHashes.add(query.queryHash)
+          }
+        }
+      }
+    }
+
+    // The dehydrated super-store script, rendered as the LAST head element (see buildDocumentElement's order
+    // rationale). It serializes at shell-render time — inside the same server-global-state scope, after discovery, so
+    // it sees exactly the state the old string pipeline snapshotted. The tiny receiver ahead of the store buffers
+    // streamed query pushes until `mount()` installs the real handler — inline push <script>s can execute both before
+    // and after the bundle loads.
+    const StoreScript = () => {
+      captureSentQueryHashes()
+      return createElement('script', {
+        id: DEHYDRATED_SUPER_STORE_SCRIPT_ID,
+        dangerouslySetInnerHTML: {
+          __html: `window.__POINT0_PUSH_QUERY_BUFFER__ = [];
+window.__POINT0_PUSH_QUERY__ = function (pushedQuery) { window.__POINT0_PUSH_QUERY_BUFFER__.push(pushedQuery) };
+window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientPoints.transformer))};`,
         },
+      })
+    }
+
+    const documentElement = buildDocumentElement({
+      template,
+      resolvedHeadTags,
+      app: createElement(App),
+      domRootElementId,
+      headStart: envScriptElements({ envVars, envConsts }),
+      headEnd: [createElement(StoreScript, { key: 'p0-store' })],
+      modulePreloads,
+      omitHeadScriptIds: ENGINE_OWNED_HEAD_SCRIPT_IDS,
+    })
+
+    // Kick off the render; any randoms used during render happen now.
+    const reactStream = await renderToReadableStream(documentElement, {
+      // Render errors that happen after the shell was sent (a throw inside a streamed Suspense
+      // boundary) have no other server-side trace — log them. Failed streamed LOADERS never
+      // reach this callback: their suspension resolves and the mountable's `.error()` streams in
+      // place, with the failure logged through the query-error event pipeline. Providing onError
+      // also replaces React's default console.error for shell errors — those still reject the
+      // render promise and travel the usual SPA-fallback path.
+      //
+      // The throw's SSR effects are recovered first (throw/return parity — a thrown error's
+      // `status` reaches the response while the effects are unsealed; sealed ones skip
+      // silently). A redirect-carrying throw is control flow, not a failure: no error log —
+      // during discovery it already became the real HTTP redirect, post-shell the client
+      // boundary hops after hydration.
+      onError: (error: unknown) => {
+        const { redirectTask } = executor.applyRenderThrowSsrEffects(error)
+        if (!redirectTask) {
+          executor.logStreamRenderError(error)
+        }
       },
-    )
-    if (waitForAllReady) {
+    })
+    if (resolvedWaitForAllReady) {
       await reactStream.allReady
     }
 
@@ -493,53 +354,18 @@ export async function getReadableStreamWithWrapper({
       throw redirectTaskHolder.task
     }
 
-    // Snapshot AFTER render started, in the same state scope. The tiny receiver ahead of the
-    // dehydrated store buffers streamed query pushes (see below) until `mount()` installs the
-    // real handler — inline push <script>s can execute both before and after the bundle loads.
-    const compiledPrefix = (prefix ?? '').replace(
-      '<!-- __POINT0_DEHYDRATED_SUPER_STORE__ -->',
-      `<script id="__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__">
-         window.__POINT0_PUSH_QUERY_BUFFER__ = [];
-         window.__POINT0_PUSH_QUERY__ = function (pushedQuery) { window.__POINT0_PUSH_QUERY_BUFFER__.push(pushedQuery) };
-         window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientPoints.transformer))};
-       </script>`,
-    )
-
-    // Streamed query push-hydration. The dehydrated store in the prefix was snapshotted before any
-    // streamed query resolved, so their data is NOT in it — without this the client would silently
-    // refetch after hydration and flash the streamed content. Every React flush after the shell is
-    // a resolved Suspense boundary; prepending the newly settled query states to that same chunk
-    // guarantees the data <script> executes (in document order) before React's reveal script and
-    // before the revealed content hydrates — the client's useQuery finds the data in cache.
-    // "Sent" = what the client actually receives from the prefix. When the page carries a
-    // dehydrated-state snapshot query, the client's hydrated cache is exactly its INNER queries
-    // (taken at end of discovery, pending-filtered) — a query that settled after that snapshot is
-    // in the raw server cache but NOT in the prefix, so it must be pushed. Without a snapshot
-    // query the prefix dehydrates the raw cache, so everything non-pending counts as sent.
-    const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
-    const sentQueryHashes = new Set<string>()
-    const dehydratedStateQueries = queryClient.getQueryCache().getAll().filter(isQueryClientDehydratedStateQuery)
-    if (dehydratedStateQueries.length > 0) {
-      for (const query of dehydratedStateQueries) {
-        sentQueryHashes.add(query.queryHash)
-        const innerDehydratedState = getDehydratedStateFromQueryClientDehydratedStateQuery(query)
-        for (const innerQuery of innerDehydratedState?.queries ?? []) {
-          sentQueryHashes.add(innerQuery.queryHash)
-        }
-      }
-    } else {
-      for (const query of queryClient.getQueryCache().getAll()) {
-        if (query.state.status !== 'pending') {
-          sentQueryHashes.add(query.queryHash)
-        }
-      }
-    }
-    // Both success AND error states are pushed: a failed streamed loader streams the mountable's
-    // `.error()` in place, so the client cache must hold the same error state — otherwise the
-    // hydrated boundary would mismatch (server shows `.error()`, client cache says pending).
-    // Errors travel through the same projection the prefix uses (public in production).
+    // Streamed query push-hydration. The dehydrated store in the shell was snapshotted before any streamed query
+    // resolved, so their data is NOT in it — without this the client would silently refetch after hydration and flash
+    // the streamed content. Every React flush after the shell is a resolved Suspense boundary; prepending the newly
+    // settled query states to that same chunk guarantees the data <script> executes (in document order) before
+    // React's reveal script and before the revealed content hydrates — the client's useQuery finds the data in cache.
+    // Both success AND error states are pushed: a failed streamed loader streams the mountable's `.error()` in place,
+    // so the client cache must hold the same error state — otherwise the hydrated boundary would mismatch (server
+    // shows `.error()`, client cache says pending). Errors travel through the same projection the store uses (public
+    // in production).
     const ErrorClass = clientPoints.manager.root._Error
     const collectNewlySettledQueryScripts = (): string | undefined => {
+      captureSentQueryHashes()
       const scripts: string[] = []
       for (const query of queryClient.getQueryCache().getAll()) {
         if (query.state.status === 'pending' || sentQueryHashes.has(query.queryHash)) {
@@ -569,7 +395,7 @@ export async function getReadableStreamWithWrapper({
     // the effects so late writes warn instead of disappearing silently (`Effects.sealed` itself
     // is the idempotency guard — re-sealing would only rewrite the same reason).
     const sealEffectsOnFirstChunk = () => {
-      if (waitForAllReady || executor.effects.sealed) {
+      if (resolvedWaitForAllReady || executor.effects.sealed) {
         return
       }
       executor.effects.seal(
@@ -582,130 +408,41 @@ export async function getReadableStreamWithWrapper({
     // which silently turns streamed SSR back into whole-page SSR. Reading the React stream with
     // its own reader (what a plain consumer does) keeps the progressive flushes — shell first,
     // each resolved Suspense boundary as its own chunk.
+    //
+    // Push scripts are PREPENDED to every chunk except the first: the first chunk is the shell and
+    // opens with `<!DOCTYPE html>` — nothing may precede it (and the store script inside it already
+    // carries everything settled up to that point).
     const reactStreamReader = reactStream.getReader()
+    let firstChunkSent = false
     return new ReadableStream<Uint8Array>({
-      start(controller) {
-        if (compiledPrefix) controller.enqueue(encoder.encode(compiledPrefix))
-      },
       async pull(controller) {
         const { done, value } = await reactStreamReader.read()
         if (done) {
-          if (suffix) controller.enqueue(encoder.encode(suffix))
+          // A query can settle without producing another React flush (e.g. a blocking render that
+          // arrived as one chunk) — drain the leftovers before closing. The HTML parser moves
+          // trailing scripts into <body>, and the buffer stub captures them pre-hydration.
+          const pushScripts = collectNewlySettledQueryScripts()
+          if (pushScripts) {
+            controller.enqueue(encoder.encode(pushScripts))
+          }
           controller.close()
           return
         }
-        sealEffectsOnFirstChunk()
+        if (!firstChunkSent) {
+          firstChunkSent = true
+          sealEffectsOnFirstChunk()
+          controller.enqueue(value)
+          return
+        }
         const pushScripts = collectNewlySettledQueryScripts()
-        if (pushScripts) controller.enqueue(encoder.encode(pushScripts))
+        if (pushScripts) {
+          controller.enqueue(encoder.encode(pushScripts))
+        }
         controller.enqueue(value)
       },
       cancel(reason) {
         void reactStreamReader.cancel(reason)
       },
     })
-  })
-}
-
-export async function renderReadableStream({
-  App,
-  envVars,
-  envConsts,
-  clientBundlePath,
-  clientPoints,
-  renderer = renderToReadableStream,
-  waitForAllReady,
-  originalIndexHtml,
-  domRootElementId,
-  modulePreloads,
-  executor,
-  redirectPolicy,
-}: {
-  App: AppComponent
-  envVars?: Record<string, string | number | boolean | undefined>
-  envConsts?: Record<string, string | number | boolean | undefined>
-  clientPoints: ClientPoints<any>
-  renderer?: ReadableStreamRenderer
-  waitForAllReady?: boolean
-  clientBundlePath?: string
-  originalIndexHtml: string
-  domRootElementId?: string
-  modulePreloads?: string[]
-  executor: Executor
-  redirectPolicy?: 'continue' | 'throw'
-}): Promise<ReadableStream> {
-  const { prefix, suffix } = await overrideDocumentHtml({
-    originalIndexHtml,
-    executor,
-    envVars,
-    envConsts,
-    domRootElementId,
-    modulePreloads,
-  })
-  return await getReadableStreamWithWrapper({
-    App,
-    prefix,
-    suffix,
-    renderer,
-    waitForAllReady,
-    clientBundlePath,
-    executor,
-    clientPoints,
-    redirectPolicy,
-  })
-}
-
-export async function renderAppAsReadableStream({
-  App,
-  executor,
-  pagePoint,
-  pageLocation,
-  clientPoints,
-  redirectPolicy,
-  waitForAllReady,
-  ssrOptions,
-  ...props
-}: {
-  App: AppComponent
-  executor: Executor
-  pagePoint: PagePoint | undefined
-  pageLocation: AnyLocation
-  clientPoints: ClientPoints<any>
-  envVars?: Record<string, string | number | boolean | undefined>
-  envConsts?: Record<string, string | number | boolean | undefined>
-  renderer?: ReadableStreamRenderer
-  clientBundlePath?: string
-  originalIndexHtml: string
-  domRootElementId?: string
-  modulePreloads?: string[]
-  redirectPolicy: 'continue' | 'throw'
-  waitForAllReady?: boolean | 'auto'
-  ssrOptions: SsrOptionsResolved
-}): Promise<ReadableStream> {
-  await executor.prefetchAppPagePointDeep({
-    App,
-    renderToReadableStream,
-    clientPoints,
-    pagePoint,
-    pageLocation,
-    redirectPolicy,
-    ssrOptions,
-    target: 'html',
-  })
-  // Discovery is over — from here the suspense query gates may suspend (final render). The same
-  // boundary call decides whether the final render may suspend, from what discovery saw + what
-  // is still pending in the cache.
-  const { shouldStreamSuspense } = executor.markSsrRenderPhase()
-  // 'auto': hold the response for the full tree (the classic whole-HTML behavior) unless the
-  // final render may suspend — then stream: the shell ships at once and each suspended Suspense
-  // boundary follows in the same response as it resolves. An explicit boolean (e.g.
-  // renderAsString) is respected as-is: `true` degrades streaming to blocking.
-  const resolvedWaitForAllReady = waitForAllReady === 'auto' ? !shouldStreamSuspense : waitForAllReady
-  return await renderReadableStream({
-    ...props,
-    App,
-    executor,
-    clientPoints,
-    waitForAllReady: resolvedWaitForAllReady,
-    redirectPolicy,
   })
 }

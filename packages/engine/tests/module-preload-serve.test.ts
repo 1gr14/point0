@@ -115,7 +115,7 @@ describe('preload', () => {
         expect(homeHtml).toContain('<div id="probe">HOME PAGE')
         const expectedHome = [...new Set([...manifest.entryPreload, ...manifest.byPoint['home']!])]
         for (const chunk of expectedHome) {
-          expect(homeHtml).toContain(`<link rel="modulepreload" crossorigin href="${chunk}">`)
+          expect(homeHtml).toContain(`<link rel="modulepreload" crossorigin="" href="${chunk}"/>`)
         }
         for (const chunk of otherOnly) {
           expect(homeHtml).not.toContain(`href="${chunk}"`)
@@ -127,7 +127,7 @@ describe('preload', () => {
         expect(otherHtml).toContain('OTHER PAGE ONLY HERE')
         const expectedOther = [...new Set([...manifest.entryPreload, ...manifest.byPoint['other']!])]
         for (const chunk of expectedOther) {
-          expect(otherHtml).toContain(`<link rel="modulepreload" crossorigin href="${chunk}">`)
+          expect(otherHtml).toContain(`<link rel="modulepreload" crossorigin="" href="${chunk}"/>`)
         }
         expect((otherHtml.match(/rel="modulepreload"/g) ?? []).length).toBe(expectedOther.length)
 

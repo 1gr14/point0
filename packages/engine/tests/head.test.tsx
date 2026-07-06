@@ -416,8 +416,8 @@ describe('head', () => {
       const html = await response.text()
       // (b) defense in depth: the charset meta is the FIRST <head> child (inside the 1024-byte prescan window), ahead
       //     of the dehydrated super-store script that used to push it past it → UTF-8-as-Windows-1252 mojibake.
-      expect(html).toMatch(/<head\b[^>]*>\s*<meta\s+charset="utf-8">/i)
-      const charsetIndex = html.search(/<meta\s+charset="utf-8">/i)
+      expect(html).toMatch(/<head\b[^>]*>\s*<meta\s+charset="utf-8"\/>/i)
+      const charsetIndex = html.search(/<meta\s+charset="utf-8"\/>/i)
       expect(charsetIndex).toBeLessThan(1024)
       expect(html.indexOf('__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__')).toBeGreaterThan(charsetIndex)
       // exactly one charset meta — the engine dedups whatever the template declared.

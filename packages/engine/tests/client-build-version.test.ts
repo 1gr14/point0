@@ -58,23 +58,27 @@ describe('computeClientBuildVersionFromOutputs', () => {
 describe('addClientBuildToDocumentHtml', () => {
   const html = '<!doctype html><html><head><title>t</title></head><body><div id="root"></div></body></html>'
 
-  it('injects the version global and the entry reload-once guard', () => {
-    const result = addClientBuildToDocumentHtml({ html, buildVersion: 'v123', entryPublicPath: '/chunk-entry.js' })
+  it('injects the version global and the entry reload-once guard', async () => {
+    const result = await addClientBuildToDocumentHtml({
+      html,
+      buildVersion: 'v123',
+      entryPublicPath: '/chunk-entry.js',
+    })
     expect(result).toContain('window.__POINT0_CLIENT_BUILD_VERSION__ = "v123"')
     expect(result).toContain('id="__POINT0_STALE_ENTRY_GUARD__"')
     expect(result).toContain('"/chunk-entry.js"')
     expect(result).toContain('\'__POINT0_STALE_ENTRY_RELOAD__:\' + "v123"')
   })
 
-  it('skips the guard when the entry chunk is unknown', () => {
-    const result = addClientBuildToDocumentHtml({ html, buildVersion: 'v123', entryPublicPath: null })
+  it('skips the guard when the entry chunk is unknown', async () => {
+    const result = await addClientBuildToDocumentHtml({ html, buildVersion: 'v123', entryPublicPath: null })
     expect(result).toContain('window.__POINT0_CLIENT_BUILD_VERSION__ = "v123"')
     expect(result).not.toContain('__POINT0_STALE_ENTRY_GUARD__')
   })
 
-  it('is idempotent — a re-injection replaces, not duplicates', () => {
-    const once = addClientBuildToDocumentHtml({ html, buildVersion: 'v1', entryPublicPath: '/e.js' })
-    const twice = addClientBuildToDocumentHtml({ html: once, buildVersion: 'v2', entryPublicPath: '/e.js' })
+  it('is idempotent — a re-injection replaces, not duplicates', async () => {
+    const once = await addClientBuildToDocumentHtml({ html, buildVersion: 'v1', entryPublicPath: '/e.js' })
+    const twice = await addClientBuildToDocumentHtml({ html: once, buildVersion: 'v2', entryPublicPath: '/e.js' })
     expect(twice.match(/__POINT0_CLIENT_BUILD_VERSION__ = /g)?.length).toBe(1)
     expect(twice).toContain('"v2"')
     expect(twice).not.toContain('"v1"')

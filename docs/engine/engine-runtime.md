@@ -390,6 +390,19 @@ The shell: a mount target and the client entry script.
 <script type="module" src="./index.client.tsx"></script>
 ```
 
+`index.html` is the authoring format, not the response: the engine parses it
+once and React renders the whole document — `<html>` through `</html>` — on
+every request (SSR and SPA alike). Titles, metas and links from the template
+merge with per-page [`.head()`](../core/head) values (the page wins), while
+`<script>` and `<noscript>` tags never join that merge — they render exactly
+where you put them, in order. The app renders inside your `#root` element
+([`domRootElementId`](engine-config)); everything else in `<body>` ships
+verbatim. The engine guarantees `<meta charset="utf-8">` is the first thing in
+`<head>` (deduping whatever charset the template declares). Two normalizations
+to know about: HTML comments from the template don't reach the browser, and
+attributes render in React's form (`<script defer>` becomes `defer=""`,
+`crossorigin` becomes `crossorigin=""` — byte-different, spec-identical).
+
 > With Vite the shell is `index.client.html` instead, and `index.server.ts` /
 > `index.client.tsx` use `import.meta.hot` for dispose + accept. See
 > [bun-vs-vite](bun-vs-vite) and [example-vite](example-vite).

@@ -55,9 +55,10 @@ import {
 } from './preload-manifest.js'
 import {
   addClientBuildToDocumentHtml,
-  addEnvConstsToDocumentHtml,
-  addEnvToDocumentHtml,
+  buildEnvConstsScriptBody,
+  ENV_CONSTS_SCRIPT_ID,
   renderAppAsReadableStream,
+  renderDocumentShellHtml,
 } from './render.js'
 import { type ServerHotStore } from './server-hot-store.js'
 import { chainBundledSourceMaps } from './sourcemap-chain.js'
@@ -1013,10 +1014,18 @@ try {
     return this.distIndexHtmlContent
   }
 
-  async getOriginalIndexHtmlWithEnvs(url: string): Promise<string> {
-    const html = await this.getOriginalIndexHtml(url)
-    const htmlWithEnvs = addEnvToDocumentHtml({ html, envVars: this.envVars, envConsts: this.envConsts })
-    return htmlWithEnvs
+  /**
+   * The SPA shell: the document rendered WITHOUT the app — the template plus env scripts, empty root element. Serves
+   * `ssr: false` clients and the fallback when an SSR render throws; same React document pipeline as SSR.
+   */
+  async getDocumentShellHtml(url: string): Promise<string> {
+    const originalIndexHtml = await this.getOriginalIndexHtml(url)
+    return await renderDocumentShellHtml({
+      originalIndexHtml,
+      envVars: this.envVars,
+      envConsts: this.envConsts,
+      domRootElementId: this.domRootElementId,
+    })
   }
 
   async getAppComponentForce(): Promise<AppComponent> {
@@ -1062,16 +1071,19 @@ try {
     }
     const dir = nodePath.dirname(indexHtml)
     const entries: string[] = []
-    const scriptSrcRegex = /<script[^>]*\bsrc=["']([^"']+)["']/gi
-    let match: RegExpExecArray | null
-    while ((match = scriptSrcRegex.exec(html)) !== null) {
-      const src = match[1]
-      if (!src || /^(https?:)?\/\//.test(src) || src.startsWith('data:')) {
-        continue
-      }
-      // src is "./index.client.tsx" or "/index.client.tsx"; both resolve next to the html in the canonical layout.
-      entries.push(nodePath.resolve(dir, src.replace(/^\//, '')))
-    }
+    await new HTMLRewriter()
+      .on('script[src]', {
+        element(el) {
+          const src = el.getAttribute('src')
+          if (!src || /^(https?:)?\/\//.test(src) || src.startsWith('data:')) {
+            return
+          }
+          // src is "./index.client.tsx" or "/index.client.tsx"; both resolve next to the html in the canonical layout.
+          entries.push(nodePath.resolve(dir, src.replace(/^\//, '')))
+        },
+      })
+      .transform(new Response(html))
+      .text()
     return entries
   }
 
@@ -1365,10 +1377,23 @@ try {
       return
     }
     const distIndexHtmlContent = await Bun.file(indexHtmlDistPath).text()
-    const distIndexHtmlWithConsts = addEnvConstsToDocumentHtml({
-      html: distIndexHtmlContent,
-      envConsts,
-    })
+    // Upsert via HTMLRewriter: drop any existing consts script, prepend a fresh one to <head>. This is a FILE edit
+    // (the emitted dist/client/index.html is the artifact for static hosting/Capacitor, served without the engine),
+    // so it stays an HTML rewrite rather than a React render — the bundler's output must survive byte-for-byte.
+    const scriptTag = `<script id="${ENV_CONSTS_SCRIPT_ID}">${buildEnvConstsScriptBody(envConsts)}</script>`
+    const distIndexHtmlWithConsts = await new HTMLRewriter()
+      .on(`script[id="${ENV_CONSTS_SCRIPT_ID}"]`, {
+        element(el) {
+          el.remove()
+        },
+      })
+      .on('head', {
+        element(el) {
+          el.prepend(scriptTag, { html: true })
+        },
+      })
+      .transform(new Response(distIndexHtmlContent))
+      .text()
     if (distIndexHtmlWithConsts !== distIndexHtmlContent) {
       await Bun.write(indexHtmlDistPath, distIndexHtmlWithConsts)
     }
@@ -1402,7 +1427,7 @@ try {
       const indexHtmlDistPath = nodePath.join(outdir, nodePath.basename(indexHtml))
       if (await Bun.file(indexHtmlDistPath).exists()) {
         const distIndexHtmlContent = await Bun.file(indexHtmlDistPath).text()
-        const distIndexHtmlWithBuild = addClientBuildToDocumentHtml({
+        const distIndexHtmlWithBuild = await addClientBuildToDocumentHtml({
           html: distIndexHtmlContent,
           buildVersion,
           entryPublicPath: graph.entryFile,

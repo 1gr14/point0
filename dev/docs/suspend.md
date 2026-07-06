@@ -3,11 +3,12 @@
 How streamed SSR works inside: the `ssr` / `suspend` query options, the
 `useSuspenseQuery` / `useSuspenseInfiniteQuery` hooks, the universal
 Suspense/ErrorBoundary wrappers, and the platform landmines that shaped every
-non-obvious decision. Lives in the `ssr-defer` worktree
-(`~/cc/worktrees/point0/ssr-defer`, branch `ssr-defer` off `main` @ v0.1.12;
-base commit d717d655 carries the feature, later work sits uncommitted on top).
-User-facing docs: [docs/core/ssr.md](../../docs/core/ssr.md) ("The `ssr` and
-`suspend` query options" section). Remaining work:
+non-obvious decision. Built on the `ssr-defer` branch (off `main` @ v0.1.12,
+base commit d717d655; later batches landed on `ssr-batch`); the follow-up
+`streaming-document` branch moved the response to a full-document React render
+(engine `document.ts`). User-facing docs:
+[docs/core/ssr.md](../../docs/core/ssr.md) ("The `ssr` and `suspend` query
+options" section). Remaining work:
 [dev/backlog/suspend.md](../backlog/suspend.md); planned refactors:
 [dev/backlog/refactoring.md](../backlog/refactoring.md).
 
@@ -219,11 +220,14 @@ kicks the fetch from the cache marker.
   final render may suspend. An explicit boolean is respected: `renderAsString`
   with `true` degrades streaming to blocking (right for SSG-ish flows;
   ensure-based suspensions resolve, so allReady completes).
-- The final render wraps the app in `<div data-point0 style="display:contents">`
-  (self-identifying via the `data-point0` attribute) — see gotcha #1.
+- React renders the WHOLE document: the `index.html` template is parsed into a
+  React tree (engine `document.ts`, Bun `HTMLRewriter`) and the app renders
+  inside the template's root element — so the markup root is `<html>`, a
+  suspended boundary is never the root, and streaming needs no wrapper element
+  (see gotcha #1 for the historical hack this replaced).
 - **Shell-redirect check**: after the shell settles (and the optional allReady
-  wait), `getReadableStreamWithWrapper` reads `__POINT0_SSR_REDIRECT_TASK__` —
-  an UNHANDLED task means a redirect rendered into the final render's shell,
+  wait), `renderAppAsReadableStream` reads `__POINT0_SSR_REDIRECT_TASK__` — an
+  UNHANDLED task means a redirect rendered into the final render's shell,
   reachable only when discovery never saw it (zero / cut-short
   `allowedDiscoveryRenders`; a discovered redirect was already handled by
   `handleRedirectTask`). Nothing has been sent at that point (the pull-based
@@ -232,7 +236,9 @@ kicks the fetch from the cache marker.
   fetcher's catch answers with the real 30x. `'continue'` callers get no throw.
   A redirect a streamed subtree renders POST-shell is not covered — the client
   hops after hydration.
-- Manual pull pump instead of `pipeThrough` — see gotcha #2.
+- Manual pull pump instead of `pipeThrough` — see gotcha #2. Push scripts are
+  PREPENDED to every chunk except the first: the first chunk is the shell and
+  opens with `<!DOCTYPE html>`.
 - `onError` on `renderToReadableStream` first recovers the throw's SSR effects
   (`executor.applyRenderThrowSsrEffects` — see "Throw/return parity" below),
   then logs through `executor.logStreamRenderError` — UNLESS the throw carries a
@@ -264,18 +270,23 @@ kicks the fetch from the cache marker.
 
 ### Push-hydration protocol
 
-- Server: per React flush, the pump prepends
+- Server: per React flush (except the first — that's the shell, it opens with
+  `<!DOCTYPE html>`), the pump prepends
   `<script>window.__POINT0_PUSH_QUERY__("<transformer-serialized payload>")</script>`
   for every newly settled (success OR error) query not already delivered by the
-  prefix. Inline scripts execute in document order, so the data lands before
-  React's reveal script and before that boundary hydrates. "Already delivered"
-  is computed from what the prefix actually carries: the hashes inside the
-  page's dehydrated-state snapshot query (taken at end of discovery,
-  pending-filtered) — a query settling between that snapshot and the shell is
-  correctly pushed. Internal `queryClientDehydratedState` snapshot queries are
-  never pushed. Error states are serialized with
-  `serializeErrorsInDehydratedState` (public projection in production).
-- Prefix bootstrap (same script tag as the dehydrated store): a buffering stub
+  shell's dehydrated store. Inline scripts execute in document order, so the
+  data lands before React's reveal script and before that boundary hydrates.
+  "Already delivered" is computed from what the store actually carries: the
+  hashes inside the page's dehydrated-state snapshot query (taken at end of
+  discovery, pending-filtered) — a query settling between that snapshot and the
+  shell is correctly pushed. The sent-set is captured at the SAME instant the
+  store script serializes (the store renders as the last `<head>` element,
+  inside the shell), so the store and the pump agree on one moment; on stream
+  end any leftovers drain as trailing scripts before close. Internal
+  `queryClientDehydratedState` snapshot queries are never pushed. Error states
+  are serialized with `serializeErrorsInDehydratedState` (public projection in
+  production).
+- Shell bootstrap (same script tag as the dehydrated store): a buffering stub
   `window.__POINT0_PUSH_QUERY__` + `__POINT0_PUSH_QUERY_BUFFER__`.
 - Client: `installPushedQueriesReceiver` (core query-client.ts, called by
   `mount()` after `superstore.prepare`, before `hydrateRoot`) replaces the stub,
@@ -313,9 +324,9 @@ kicks the fetch from the cache marker.
   instead of killing the page; the SPA fallback remains only for errors outside
   every boundary (shell errors still reject the renderer promise → fetcher
   catch).
-- Client parity: `mount()` renders the same `data-point0` + `display: contents`
-  wrapper; `hydrateRoot` has `onRecoverableError` logging (boundaries can mask
-  hydration mismatches).
+- Client: `mount()` hydrates the app element directly into `#root` (the server
+  renders the document around it, so no wrapper parity is needed); `hydrateRoot`
+  has `onRecoverableError` logging (boundaries can mask hydration mismatches).
 
 ### Throw/return parity for render-phase throws (status, redirect)
 
@@ -328,7 +339,7 @@ fallback — and the fetcher's catch already turns a rejected RedirectTask into
 the HTTP redirect). So the throw's SSR effects are recovered at the Fizz
 `onError` sink instead: `executor.applyRenderThrowSsrEffects(error)` — wired
 into EVERY SSR render (each discovery pass in `prefetchAppPagePointDeep`, plus
-the final render in `getReadableStreamWithWrapper`). Classification mirrors
+the final render in `renderAppAsReadableStream`). Classification mirrors
 `_renderBoundaryError`: a `RedirectTask` (or an error0 carrying `.redirect`)
 registers `__POINT0_SSR_REDIRECT_TASK__` — the same holder a rendered
 `<Redirect>` fills via the wouter ssrContext proxy — and `handleRedirectTask`
@@ -439,12 +450,13 @@ pure-React/pure-TanStack repros (and, for #5, a stack trace through
    no DOM), Fizz withholds every byte until the boundary resolves, then emits
    completed boundaries in-order — streaming silently becomes blocking. Root
    cause: a root-level boundary may still contribute preamble/head content, so
-   the shell cannot commit. Both the bun and browser builds behave this way.
-   Fix: the engine renders the app inside
-   `<div data-point0 style="display:contents">` (no box, zero layout impact) and
-   `mount()` mirrors it for hydration parity. Test-util follow-up: `HtmlView`
-   skips `display:contents` elements in previews (they generate no box —
-   previews model the visual tree).
+   the shell cannot commit. Both the bun and browser builds behave this way. Fix
+   (current): React renders the WHOLE document — the markup root is `<html>` and
+   the app sits inside `<body> > #root`, so a suspending boundary is never the
+   root by construction. (Historical fix, now removed: a
+   `<div data-point0 style="display:contents">` wrapper around the app, mirrored
+   in `mount()` for hydration parity, plus a `display:contents` skip in
+   `HtmlView` previews.)
 2. **`reactStream.pipeThrough(new TransformStream(...))` buffers everything on
    Bun** — zero bytes delivered until the render completes; streaming silently
    reverts to whole-page. Fix: manual pull pump — `getReader()` + a fresh
@@ -530,26 +542,26 @@ discriminated union — `active`/`phase`/`target`; `__POINT0_SSR_TARGET__` item;
 `applyRenderThrowSsrEffects` — throw/return parity, wired as the discovery
 renders' onError and called first by the final render's onError, pending
 excluded from dehydrate, the dev `X-Point0-Discovery-Renders` header — renamed
-from `X-Point0-Renders-Count`), `render.ts` (auto waitForAllReady, `data-point0`
-wrapper div, manual pump, per-flush push collector, prefix receiver stub,
-onError — effects recovery first, no error log for redirect throws, the
-shell-redirect check — an unhandled redirect task after the shell settles is
-thrown under the `'throw'` redirectPolicy (zero/cut-short discovery shell
-redirects still 30x), effects seal, `target: 'html'`), `fetcher.ts`
-(`waitForAllReady: 'auto'`, data path `suspenseQueryPolicy: 'skip'`),
-`client.ts` (type widening + passthrough; the deep-prefetch wrapper takes a
-required `target` its callers pass — the fetcher's data branch passes 'data';
-`readPoints` loads the client points EAGERLY —
+from `X-Point0-Renders-Count`), `render.ts` (auto waitForAllReady, full-document
+React render — the template parsed by `document.ts`, manual pump, per-flush push
+collector, shell receiver stub, onError — effects recovery first, no error log
+for redirect throws, the shell-redirect check — an unhandled redirect task after
+the shell settles is thrown under the `'throw'` redirectPolicy (zero/cut-short
+discovery shell redirects still 30x), effects seal, `target: 'html'`),
+`fetcher.ts` (`waitForAllReady: 'auto'`, data path
+`suspenseQueryPolicy: 'skip'`), `client.ts` (type widening + passthrough; the
+deep-prefetch wrapper takes a required `target` its callers pass — the fetcher's
+data branch passes 'data'; `readPoints` loads the client points EAGERLY —
 `createFromSource(…, { eager: true })`, see "On the server nothing is ever lazy"
 above). Core also: `client-points.ts` (the `eager` option on `createFromSource`
 — `manager.load()` BEFORE `createFromDefintion`, so the pagesTree/layouts
-capture eager FCs). React-dom: `mount.ts` (wrapper div, receiver install,
-onRecoverableError logging via the core logger). Compiler: `file.ts` (folds
+capture eager FCs). React-dom: `mount.ts` (receiver install, onRecoverableError
+logging via the core logger). Compiler: `file.ts` (folds
 `env.ssr.active/phase/target` to constants on the client — replaces the old
 `env.side.is.ssr` fold). Tests: `packages/engine/tests/suspend.fast.test.tsx`
-(see Tests below), `utils/html-view.ts` (display:contents skip), 6 test files
-with updated error-path snapshots, `scripts/slow-tests.ts` (the suspend file is
-a slow shard), `packages/core/tests/env.test.ts` (the `env.ssr` union),
+(see Tests below), 6 test files with updated error-path snapshots,
+`scripts/slow-tests.ts` (the suspend file is a slow shard),
+`packages/core/tests/env.test.ts` (the `env.ssr` union),
 `packages/core/tests/effects.test.ts` (sealed idempotency),
 `packages/core/tests/point0-no-loader-guard.test.ts` (new — the loaderless throw
 on every query surface), `packages/compiler/tests/file.test.tsx` (`env.ssr`
@@ -646,6 +658,7 @@ config (as do the e2e template roots and every example root); the
 Loaders that resolve after the shell cannot redirect / set cookies / change
 status or headers (runtime warning via sealed effects), cannot feed
 SsrStore/cookie SSR re-render loops, and a data-dependent `.head()` ships the
-loading-state head in the shell (client corrects after hydration). HTML
-realities Sergei accepted: Suspense comment markers (`<!--$-->` etc.) and the
-one `data-point0` `display:contents` wrapper div inside `#root`.
+loading-state head in the shell (client corrects after hydration). The one HTML
+reality that remains: Suspense comment markers (`<!--$-->` etc.) — the
+`data-point0` `display:contents` wrapper div is gone since React renders the
+whole document (engine `document.ts` + `render.ts`).

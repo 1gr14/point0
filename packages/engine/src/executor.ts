@@ -912,7 +912,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     return { redirectTask }
   }
 
-  // The onError sink of the final streamed render (see getReadableStreamWithWrapper): a render
+  // The onError sink of the final streamed render (see renderAppAsReadableStream): a render
   // throw after the shell was sent leaves no other server-side trace. Wrapped into a coded
   // framework error (the original travels as `cause`) so json logs carry a greppable code.
   logStreamRenderError(error: unknown): void {

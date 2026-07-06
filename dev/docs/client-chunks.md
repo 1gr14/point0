@@ -49,19 +49,20 @@ check resolves to "unknown" and nothing reacts.
   chunk graph). Writes the json and stamps the dist index.html. Wrapped in
   try/warn — a resilience feature never fails an otherwise-good build.
 - `packages/engine/src/render.ts` → `addClientBuildToDocumentHtml` — injects two
-  head scripts via the existing `upsertHeadScript` machinery (idempotent,
-  same-id replace): the version global, and the ENTRY reload-once guard — a
-  capture-phase `error` listener (resource load errors don't bubble but do
-  capture) that reloads the document when THE entry script path fails to load,
-  once per version via sessionStorage; when storage is unavailable it does
-  nothing rather than risk a loop. It covers the case navigation-level handling
-  can't: a cached document whose entry is gone — the app never boots, so no
-  navigation code runs. Third-party script failures never match (exact entry
-  pathname only).
+  head scripts via an `HTMLRewriter` file transform (idempotent upsert: existing
+  copies are dropped by id, fresh ones prepended to `<head>`): the version
+  global, and the ENTRY reload-once guard — a capture-phase `error` listener
+  (resource load errors don't bubble but do capture) that reloads the document
+  when THE entry script path fails to load, once per version via sessionStorage;
+  when storage is unavailable it does nothing rather than risk a loop. It covers
+  the case navigation-level handling can't: a cached document whose entry is
+  gone — the app never boots, so no navigation code runs. Third-party script
+  failures never match (exact entry pathname only).
 - **The dist index.html is the single carrier.** The static SPA serves it
-  directly; the SSR document is assembled FROM it (`overrideDocumentHtml`
-  extracts and restores existing scripts), so one build-time injection covers
-  SPA + SSR + both bundlers. Nothing is injected at render time.
+  directly; the SSR document is assembled FROM it (the parsed template's head
+  scripts render verbatim — see engine `document.ts`), so one build-time
+  injection covers SPA + SSR + both bundlers. Nothing is injected at render
+  time.
 - Runtime read-back: `EngineClient.getClientBuildVersion()` — lazy, cached,
   gated by `_point0_env.build.was` (same gate as the preload manifest, so a
   stale `dist` from an earlier build never leaks into dev serving).

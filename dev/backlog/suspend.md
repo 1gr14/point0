@@ -10,8 +10,11 @@ file only carries what is left.
 
 - [ ] **Run the игрич site and start0 against this branch** via
       `bun install-point0.js`. The wrappers are universal — every page of every
-      app gets the entry boundaries and the wrapper div; eyeball layouts for
-      broken `#root > *`-style selectors and general weirdness.
+      app gets the entry boundaries; eyeball layouts for general weirdness. (The
+      `data-point0` wrapper div is gone — React renders the whole document, so
+      `#root > *` selectors are not a concern anymore. First pass done
+      2026-07-06 on the streaming-document worktree: both apps' `test:e2e:build`
+      green.)
 
 - [ ] **Verify streaming survives production proxies.** Railway/edge + gzip can
       buffer responses: locally the stream is progressive, in prod it may arrive

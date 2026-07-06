@@ -131,9 +131,10 @@ entry-closure-only and never fails the build.
 [`EngineClient.renderAsReadableStream`](../../packages/engine/src/client.ts)
 resolves `resolvePreloadsForPoint(manifest, pagePoint.name)` (entry closure +
 that page's extras, deduped, entry excluded) and threads it as `modulePreloads`
-through
-`renderAppAsReadableStream → renderReadableStream → overrideDocumentHtml`, which
-prepends the `<link rel="modulepreload" crossorigin>` tags to `<head>`.
+into `renderAppAsReadableStream`, where `buildDocumentElement` (engine
+`document.ts`) renders the `<link rel="modulepreload" crossorigin="">` elements
+into `<head>` right after the engine's env scripts (React floats metadata links
+above inline scripts anyway, so they sit before the entry script either way).
 
 ### Gating — production-build-only, with a kill switch
 
