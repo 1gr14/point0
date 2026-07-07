@@ -64,15 +64,16 @@ them.
 
 Each point with an endpoint becomes one `path` → `method` → operation:
 
-- A **query** → `POST /_point0/<scope>/query/<kebab-name>`
+- A **query** → `GET`/`POST` `/_point0/<scope>/query/<kebab-name>` — the input
+  is a JSON-encoded `?input=` query parameter on GET, a body on POST
 - A **mutation** → `POST /_point0/<scope>/mutation/<kebab-name>`
 - An **action** → its declared method and route, e.g. `PUT /api/ideas/:id`
 - A **page/layout** → `GET` at its route — but only when it's an endpoint (SSR
   on, or it has a server `.loader`); see [page or endpoint](page).
 
 Scope, type, and name are all kebab-cased in the path, so a query named
-`recentIdeas` in the `root` scope is served at
-`POST /_point0/root/query/recent-ideas`. A point with no endpoint (a
+`recentIdeas` in the `root` scope is served at `GET`/`POST`
+`/_point0/root/query/recent-ideas`. A point with no endpoint (a
 client-loader-only query, a loader-less page) is skipped entirely. Route params
 are converted to OpenAPI syntax — `:id` becomes `{id}`, so an action on
 `/api/ideas/:id` shows up at `/api/ideas/{id}`.

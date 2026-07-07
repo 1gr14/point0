@@ -145,8 +145,32 @@ describe('openapi', () => {
         "openapi": "3.0.0",
         "paths": {
           "/_point0/root/query/query1": {
-            "post": {
+            "get": {
               "operationId": "query1Query",
+              "parameters": [
+                {
+                  "description": "Transform the response body by transformer or not",
+                  "in": "header",
+                  "name": "X-Point0-Transform",
+                  "required": false,
+                  "schema": {
+                    "enum": [
+                      "true",
+                      "false",
+                    ],
+                    "type": "string",
+                  },
+                },
+              ],
+              "responses": {
+                "200": {
+                  "description": "Successful response",
+                },
+              },
+              "summary": "root:query:query1",
+            },
+            "post": {
+              "operationId": "query1QueryPost",
               "parameters": [
                 {
                   "description": "Transform the response body by transformer or not",
@@ -531,6 +555,63 @@ describe('openapi', () => {
       additionalProperties: false,
     })
     expect(requestBody?.content?.['application/json']).toBeUndefined()
+  })
+
+  it('documents a query endpoint under both GET (?input=) and POST (body), with or without input', async () => {
+    const root = Point0.lets('root', 'root')
+      .transformer(superjson)
+      .middleware(
+        openapi({
+          cache: false,
+          route: '/openapi.json',
+          filter: 'all',
+          info: {
+            title: 'Test API',
+            version: '1.0.0',
+          },
+        }),
+      )
+      .schemaHelper(zodSchemaHelper())
+      .root()
+
+    const withInput = root
+      .lets('query', 'withInput')
+      .input(z.object({ id: z.string().min(1) }))
+      .loader(({ input }) => ({ id: input.id }))
+      .query()
+
+    const noInput = root
+      .lets('query', 'noInput')
+      .loader(() => ({ ok: true }))
+      .query()
+
+    const { fetch } = await createTestThings({ points: [root, withInput, noInput], ssr: true })
+    const response = await fetch('http://localhost:3000/openapi.json')
+    expect(response.status).toBe(200)
+    const json = await response.json()
+
+    // Input-bearing query: GET carries the input in the ?input= query param; POST carries it in the JSON body.
+    const withInputPath = json.paths?.['/_point0/root/query/with-input']
+    expect(withInputPath?.get?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          in: 'query',
+          name: 'input',
+          content: { 'application/json': { schema: expect.any(Object) } },
+        }),
+      ]),
+    )
+    expect(withInputPath?.get?.requestBody).toBeUndefined()
+    expect(withInputPath?.post?.requestBody?.content?.['application/json']?.schema).toBeDefined()
+    expect(withInputPath?.post?.parameters ?? []).not.toContainEqual(
+      expect.objectContaining({ in: 'query', name: 'input' }),
+    )
+
+    // No-input query: still documented under both methods; neither carries input.
+    const noInputPath = json.paths?.['/_point0/root/query/no-input']
+    expect(noInputPath?.get).toBeDefined()
+    expect(noInputPath?.post).toBeDefined()
+    expect(noInputPath?.post?.requestBody).toBeUndefined()
   })
 
   it('sets request body required to false when all body items are optional', async () => {

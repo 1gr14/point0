@@ -2765,9 +2765,11 @@ export const ideaEditPage = root
 
 I also want to point out that our simple `mutation`, `query`, `infiniteQuery`,
 unlike trpc, don't send everything to a single endpoint — they have stable URLs
-too. Both queries and mutations send POST requests with the input in the body to
-their stable kebab-cased URLs of the form
-`/_point0/<scope>/<type>/<name-in-kebab-case>` — for example,
+too. Reads (`query`, `infiniteQuery`) are `GET` — input JSON-encoded in a
+`?input=` query parameter so a CDN can cache them — and also answer to `POST`
+(the client's fallback for a binary or over-long input); `mutation`, a write, is
+a `POST` with the input in the body. Both hit their stable kebab-cased URLs of
+the form `/_point0/<scope>/<type>/<name-in-kebab-case>` — for example,
 `/_point0/root/query/query-name-kebab-cased` and
 `/_point0/root/mutation/mutation-name-kebab-cased`. And because of this we can
 get the full picture of our endpoints in an OpenAPI schema.

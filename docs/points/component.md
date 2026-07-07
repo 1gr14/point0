@@ -263,8 +263,8 @@ A component is a [mountable](mountable), not automatically an HTTP endpoint —
 but it becomes one when it has a server loader:
 
 - **With a `.loader()`** → the loader needs a URL, so the component gets a real
-  endpoint at `POST /_point0/<scope>/component/<kebab-name>`. During SSR its
-  data is fetched on the server and dehydrated into the cache; during SPA
+  endpoint at `GET`/`POST` `/_point0/<scope>/component/<kebab-name>`. During SSR
+  its data is fetched on the server and dehydrated into the cache; during SPA
   navigation it's fetched on the client.
 - **With only a `.clientLoader()`** → the component has **no endpoint**.
   `.clientLoader` is **client-only** — **cut from the server bundle**: its body
@@ -274,8 +274,10 @@ but it becomes one when it has a server loader:
 - **With no loader** → no endpoint, no SSR fetch, no loading flash. A pure
   client-only mountable.
 
-The component endpoint uses `POST` (like a query/mutation/provider), not the
-`GET` that pages and layouts use for their dehydrated-state endpoint.
+Like a [query](query), the component endpoint is a read: a `GET` with its input
+JSON-encoded in the `?input=` search param, so a CDN can cache it (a binary or
+over-long input falls back to a `POST` body). Pages and layouts are `GET` too,
+but carry their input as route params instead.
 
 ## A component with a loader is also a query
 

@@ -70,7 +70,7 @@ describe('Analyzer', () => {
         makePoint({
           id: 'point.endpoint',
           route: undefined,
-          endpoint: { method: 'GET', route: Route0.create('/api/items') as never },
+          endpoint: { method: 'GET', route: Route0.create('/api/items') as never, methods: ['GET'] },
         }),
       ],
     })
@@ -84,6 +84,49 @@ describe('Analyzer', () => {
     expect(byEndpointUrl?.id).toBe('point.endpoint')
     expect(byParent?.id).toBe('point.page')
     expect(byLayout?.id).toBe('point.page')
+  })
+
+  it('filters endpointMethod against every method the endpoint answers to', () => {
+    const analyzer = Analyzer.create({
+      engine: {
+        file: '/tmp/engine.ts',
+        import: async () => ({}) as never,
+        server: undefined,
+        clients: undefined,
+      },
+      points: [
+        makePoint({
+          id: 'point.query',
+          type: 'query',
+          route: undefined,
+          endpoint: {
+            method: 'GET',
+            route: Route0.create('/_point0/app/query/items') as never,
+            methods: ['GET', 'POST'],
+          },
+        }),
+        makePoint({
+          id: 'point.mutation',
+          type: 'mutation',
+          route: undefined,
+          endpoint: {
+            method: 'POST',
+            route: Route0.create('/_point0/app/mutation/save') as never,
+            methods: ['POST'],
+          },
+        }),
+      ],
+    })
+
+    // A query answers to both GET and POST, so it matches whichever you filter by; a mutation matches POST only.
+    expect(
+      analyzer
+        .listPoints({ filter: { endpointMethod: 'POST' } })
+        .points.map((p) => p.id)
+        .sort(),
+    ).toEqual(['point.mutation', 'point.query'])
+    expect(analyzer.listPoints({ filter: { endpointMethod: 'GET' } }).points.map((p) => p.id)).toEqual(['point.query'])
+    expect(analyzer.listPoints({ filter: { endpointMethod: 'PUT' } }).points).toHaveLength(0)
   })
 
   it('supports tags filter as string and array', () => {

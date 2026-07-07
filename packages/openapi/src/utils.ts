@@ -1,4 +1,4 @@
-import { toCamelCase } from '@point0/core'
+import { POINT0_QUERY_GET_INPUT_SEARCH_PARAM, toCamelCase } from '@point0/core'
 import type { InputSchema, ReadyPoint, RecordValidationSchema, ResponseContentType, SchemaHelper } from '@point0/core'
 import {
   extractJsonSchemaBySchemasHelpers,
@@ -371,7 +371,24 @@ const getOpenapiSchemaFromPoint = (
   const bodyHasFileOrBlob = jsonSchemas.body ? jsonSchemas.bodyHasFileOrBlob : jsonSchemas.inputHasFileOrBlob
   const bodyAllItemsOptional = jsonSchemas.body ? jsonSchemas.bodyAllItemsOptional : jsonSchemas.inputAllItemsOptional
   const bodyContentType = bodyHasFileOrBlob ? 'multipart/form-data' : 'application/json'
-  const operationSchema: OpenAPIV3.OperationObject = {
+  // The two ways OpenAPI can carry the input schema: a request body (POST and actions), or a JSON-encoded `?input=`
+  // query parameter (a query endpoint's GET). Built once here, attached per operation below.
+  const requestBody: OpenAPIV3.RequestBodyObject | undefined = bodySchema
+    ? { required: !bodyAllItemsOptional, content: { [bodyContentType]: { schema: bodySchema } } }
+    : undefined
+  const inputQueryParameter: OpenAPIV3.ParameterObject | undefined = bodySchema
+    ? {
+        in: 'query',
+        name: POINT0_QUERY_GET_INPUT_SEARCH_PARAM,
+        required: !bodyAllItemsOptional,
+        content: { 'application/json': { schema: bodySchema } },
+        description: 'Query input, JSON-encoded in the URL',
+      }
+    : undefined
+
+  // The method-agnostic operation: metadata, responses, and the shared parameters. The input carrier (query param or
+  // request body) is added per method below.
+  const baseOperation: OpenAPIV3.OperationObject = {
     ...(normalizedPoint._openapiSchema ?? {}),
     parameters,
     responses: jsonSchemas.response ?? {
@@ -380,35 +397,48 @@ const getOpenapiSchemaFromPoint = (
       },
     },
   }
-  if (bodySchema) {
-    operationSchema.requestBody = {
-      required: !bodyAllItemsOptional,
-      content: {
-        [bodyContentType]: {
-          schema: bodySchema,
-        },
+  if (normalizedPoint.type !== 'action' && !baseOperation.summary) {
+    baseOperation.summary = normalizedPoint.toString()
+  }
+  if (!baseOperation.operationId) {
+    if (normalizedPoint.type === 'action') {
+      if (normalizedPoint.name !== `${normalizedPoint.method} ${normalizedPoint.route?.definition}`) {
+        baseOperation.operationId = normalizedPoint.name
+      }
+    } else {
+      baseOperation.operationId = toCamelCase(normalizedPoint.name + '_' + normalizedPoint.type)
+    }
+  }
+
+  // A query endpoint always answers to BOTH methods, input or not: GET with the input (if any) in the `?input=` param
+  // (cacheable), and POST with the input (if any) in the body — the client's fallback for binary or over-long input.
+  // Document both so a Scalar/Swagger user can pick either — e.g. just fill a JSON body instead of hand-encoding the URL.
+  if (normalizedPoint._canHaveQueryEndpoint()) {
+    const getOperation: OpenAPIV3.OperationObject = { ...baseOperation }
+    if (inputQueryParameter) {
+      getOperation.parameters = [...parameters, inputQueryParameter]
+    }
+    const postOperation: OpenAPIV3.OperationObject = { ...baseOperation }
+    if (requestBody) {
+      postOperation.requestBody = requestBody
+    }
+    if (baseOperation.operationId) {
+      postOperation.operationId = `${baseOperation.operationId}Post`
+    }
+    return {
+      [path]: {
+        get: getOperation,
+        post: postOperation,
       },
     }
   }
-  if (normalizedPoint.type !== 'action') {
-    if (!operationSchema.summary) {
-      operationSchema.summary = normalizedPoint.toString()
-    }
+
+  // Every other endpoint: one operation under its declared method, with the input in the request body.
+  const operation: OpenAPIV3.OperationObject = { ...baseOperation }
+  if (requestBody) {
+    operation.requestBody = requestBody
   }
-  if (!operationSchema.operationId) {
-    if (normalizedPoint.type === 'action') {
-      if (normalizedPoint.name !== `${normalizedPoint.method} ${normalizedPoint.route?.definition}`) {
-        operationSchema.operationId = normalizedPoint.name
-      }
-    } else {
-      operationSchema.operationId = toCamelCase(normalizedPoint.name + '_' + normalizedPoint.type)
-    }
-  }
-  return {
-    [path]: {
-      [method]: operationSchema,
-    },
-  }
+  return { [path]: { [method]: operation } }
 }
 
 const getModelsSchemasFromPoints = (points: Array<ReadyPoint | { point: ReadyPoint }>): Record<string, InputSchema> => {

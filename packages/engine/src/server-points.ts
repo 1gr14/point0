@@ -116,12 +116,17 @@ export class ServerPoints<TError extends ErrorPoint0> {
       if (!endpoint) {
         continue
       }
-      this.indexEndpoint({
-        point,
-        method: endpoint.method,
-        route: endpoint.route,
-        routesByMethod,
-      })
+      // A query endpoint answers to both GET (input in the URL, cacheable) and POST (the client's fallback for a
+      // binary or over-long input); every other endpoint answers to its single method. `endpoint.methods` is
+      // precomputed at endpoint generation, so the router here stays a plain per-method registration.
+      for (const method of endpoint.methods) {
+        this.indexEndpoint({
+          point,
+          method,
+          route: endpoint.route,
+          routesByMethod,
+        })
+      }
     }
     for (const [method, routes] of routesByMethod.entries()) {
       this.endpointsRoutesByMethods.set(method, Routes.create(routes))

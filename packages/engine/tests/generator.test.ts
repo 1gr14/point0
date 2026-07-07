@@ -1309,6 +1309,7 @@ const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
                 route: undefined,
                 endpoint: {
                   method: 'GET',
+                  methods: ['GET'],
                   route: Route0.create('/myaction'),
                 },
                 pos: {

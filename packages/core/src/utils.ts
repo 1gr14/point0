@@ -136,6 +136,14 @@ export const getWindowScrollPositionSetterBySelector = (selector: string) => {
   return getWindowScrollPositionSetterByElementGetter(() => document.querySelector(selector))
 }
 
+/**
+ * Search-param name that carries a query endpoint's input on a GET request. Query-family reads (query, infiniteQuery,
+ * and the queries behind component and provider loaders) default to GET so a CDN can cache them; the input rides in the
+ * URL as `?<this>=<json>` — the exact transformer-serialized JSON a POST would put in the body, moved to the URL.
+ * Shared between the client that writes it (core) and the server that reads it (engine), so the two never drift.
+ */
+export const POINT0_QUERY_GET_INPUT_SEARCH_PARAM = 'input'
+
 export const isContainsBinary = (value: unknown): boolean => {
   if (value instanceof File || value instanceof Blob) {
     return true

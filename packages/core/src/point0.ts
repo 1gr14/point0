@@ -291,6 +291,7 @@ import {
   mergeQueryOptions,
   parseMutationKey,
   parseQueryKey,
+  POINT0_QUERY_GET_INPUT_SEARCH_PARAM,
   resolveQuery,
   sanitizeForLog,
   setByPath,
@@ -1340,10 +1341,13 @@ export class Point0<
         if (isAction) {
           throw new Error(`Method is required for action point ${this.toStringWithLocation()}`)
         }
-        if (isPage || isLayout) {
-          return 'GET'
+        // Reads default to GET so a CDN can cache them: pages/layouts (input in the route) and the query family —
+        // query, infiniteQuery, and the queries behind component/provider loaders (input in the ?input= search param,
+        // see _getFetchServerOptions). Only mutations, which write, stay POST.
+        if (letsReadyPointType === 'mutation') {
+          return 'POST'
         }
-        return 'POST'
+        return 'GET'
       })()
       const route = (() => {
         if (isAction) {
@@ -1372,6 +1376,7 @@ export class Point0<
       return {
         method,
         route,
+        methods: Point0._canHaveQueryEndpoint(letsReadyPointType) ? ['GET', 'POST'] : [method],
       }
     })()
 
@@ -8146,6 +8151,36 @@ export class Point0<
     return this._isMountablePoint() && this.type === 'loadedStage'
   }
 
+  private static _canHaveQueryEndpoint(type: PointType): boolean {
+    return type === 'query' || type === 'infiniteQuery' || type === 'component' || type === 'provider'
+  }
+  private _canHaveQueryEndpointCache: boolean | undefined
+  /**
+   * Whether this point's kind can carry a "query endpoint" — a read whose input has no route slot: query,
+   * infiniteQuery, and the queries behind component and provider loaders. Such endpoints default to GET and carry their
+   * input in the URL as a `?input=<json>` search param (see {@link _getFetchServerOptions}); the server registers them
+   * under GET and POST (their `_endpoint.methods`) so a binary/over-long input can fall back to a POST body.
+   * Pages/layouts are GET too but encode input as route params/search; mutations are POST. Constant per point —
+   * computed once and memoized.
+   */
+  _canHaveQueryEndpoint(): boolean {
+    return (this._canHaveQueryEndpointCache ??= Point0._canHaveQueryEndpoint(this.type))
+  }
+
+  private _queryMaxUrlLength: number | undefined
+  /**
+   * The GET-URL length cap for query endpoints: the `POINT0_QUERY_GET_MAX_URL_LENGTH` env override when it's a positive
+   * number, else a conservative 2000 — enough to survive proxy/CDN request-line and header caps (nginx's 8k default,
+   * common CDN limits). A query input whose GET URL would overflow this rides in a POST body instead. Resolved once and
+   * memoized; only ever runs on the client, since server-side query fetches always POST.
+   */
+  private _getQueryMaxUrlLength(): number {
+    return (this._queryMaxUrlLength ??= (() => {
+      const override = Number(_point0_env.vars.POINT0_QUERY_GET_MAX_URL_LENGTH)
+      return Number.isFinite(override) && override > 0 ? override : 2000
+    })())
+  }
+
   _isRoot(): boolean {
     return this.name === this.scope && this.type === 'root'
   }
@@ -8765,16 +8800,9 @@ export class Point0<
     const isAction = this.type === 'action'
     const isPage = this.type === 'page'
     const isLayout = this.type === 'layout'
+    const isQueryEndpoint = this._canHaveQueryEndpoint()
     const route = this._endpoint.route
-    const url = new URL(
-      isAction
-        ? route.get({ ...((input as any).params ?? {}), '?': (input as any).search ?? {} })
-        : isPage || isLayout
-          ? route.get(input as never) // pages and layouts strictly have only params and search
-          : route.get(), // queries can not have nor params, nor search
-      serverUrl,
-    )
-    const method = this._endpoint.method
+    const endpointMethod = this._endpoint.method
 
     const fromScope = _ss.__POINT0_CLIENT_POINTS__.getOrUndefined()?.manager.scope ?? _getFakeClient()?.scope
     const baseHeaders = mergeHeaders(baseFetchOptions.headers, _fetchOptions?.headers)
@@ -8787,30 +8815,13 @@ export class Point0<
       ...(transform ? { 'X-Point0-Transform': 'true' } : {}),
     })
 
-    const body = (() => {
-      if (isPage || isLayout) {
-        return undefined
-      }
-      if (isAction) {
-        if (!(input as any).body) {
-          return (input as any).body
-        }
-        if ((input as any).body instanceof FormData) {
-          return (input as any).body
-        }
-        const currentHeadersContentType = headers.get('Content-Type')
-        if (
-          currentHeadersContentType &&
-          !currentHeadersContentType.includes('application/json') &&
-          !currentHeadersContentType.includes('multipart/form-data')
-        ) {
-          return (input as any).body
-        }
-      }
-      // const shouldAddMultipartFormDataHeaderToFetchOptions = this._asFormData ?? isContainsBinary(input)
-      const isFormData = isContainsBinary(input)
-      const bodySrc: Record<string, unknown> = isAction ? (input as any).body : input
-      const bodyTransformed = (transform ? this._getTransformer().serialize(bodySrc) : bodySrc) as
+    // Encode a source object into a request body: FormData when it carries binary (File/Blob), otherwise a JSON string.
+    // Shared by mutations, the action body, and a query endpoint's POST fallback. Sets Content-Type for the JSON case.
+    const buildBody = (
+      src: Record<string, unknown> | undefined,
+      isBinary: boolean = isContainsBinary(src),
+    ): BodyInit | undefined => {
+      const bodyTransformed = (transform ? this._getTransformer().serialize(src) : src) as
         | Record<string, unknown>
         | undefined
       if (bodyTransformed === undefined) {
@@ -8818,7 +8829,7 @@ export class Point0<
           `Transformer returned undefined for input ${JSON.stringify(input)} on point ${this.toStringWithLocation()}`,
         )
       }
-      if (isFormData) {
+      if (isBinary) {
         const formData = new FormData()
         const flattened = flat.serialize(bodyTransformed)
         for (const [key, value] of Object.entries(flattened)) {
@@ -8833,9 +8844,75 @@ export class Point0<
           }
         }
         return formData
-      } else {
-        headers.set('Content-Type', 'application/json')
-        return JSON.stringify(bodyTransformed)
+      }
+      headers.set('Content-Type', 'application/json')
+      return JSON.stringify(bodyTransformed)
+    }
+
+    const { method, url, body } = ((): { method: WideRequestMethod; url: URL; body: BodyInit | undefined } => {
+      // Pages and layouts: the input IS the route — params and search — and never a body.
+      if (isPage || isLayout) {
+        return { method: endpointMethod, url: new URL(route.get(input as never), serverUrl), body: undefined }
+      }
+      // Actions: the user-declared method, with the body taken from `input.body` per the action's config.
+      if (isAction) {
+        const rawBody = (input as any).body
+        const body = ((): BodyInit | undefined => {
+          if (!rawBody || rawBody instanceof FormData) {
+            return rawBody
+          }
+          const currentHeadersContentType = headers.get('Content-Type')
+          if (
+            currentHeadersContentType &&
+            !currentHeadersContentType.includes('application/json') &&
+            !currentHeadersContentType.includes('multipart/form-data')
+          ) {
+            return rawBody
+          }
+          return buildBody(rawBody)
+        })()
+        return {
+          method: endpointMethod,
+          url: new URL(route.get({ ...((input as any).params ?? {}), '?': (input as any).search ?? {} }), serverUrl),
+          body,
+        }
+      }
+      // Query endpoints (query / infiniteQuery / component / provider): GET with the input JSON-encoded in the
+      // ?input= search param so a CDN can cache the read. This is a client-only optimization — a server-side fetch
+      // (SSR, server-to-server) never reaches a CDN, so it skips the URL encoding and POSTs the body directly. On the
+      // client, fall back to a POST body when the input carries binary (can't ride in a URL) or the URL would overflow
+      // proxy/CDN limits — the endpoint answers to both methods.
+      if (isQueryEndpoint) {
+        const isBinary = isContainsBinary(input)
+        if (_point0_env.side.is.client && !isBinary) {
+          const transformed = (transform ? this._getTransformer().serialize(input) : input) as
+            | Record<string, unknown>
+            | undefined
+          if (transformed === undefined) {
+            throw new Error(
+              `Transformer returned undefined for input ${JSON.stringify(input)} on point ${this.toStringWithLocation()}`,
+            )
+          }
+          const inputJson = JSON.stringify(transformed)
+          const search =
+            inputJson && inputJson !== '{}' ? { [POINT0_QUERY_GET_INPUT_SEARCH_PARAM]: inputJson } : undefined
+          const getUrl = new URL(route.get(search ? { '?': search } : undefined), serverUrl)
+          // Over the memoized, env-overridable URL length cap → POST fallback.
+          if (getUrl.toString().length <= this._getQueryMaxUrlLength()) {
+            return { method: 'GET', url: getUrl, body: undefined }
+          }
+        }
+        return {
+          method: 'POST',
+          url: new URL(route.get(), serverUrl),
+          body: buildBody(input as Record<string, unknown>, isBinary),
+        }
+      }
+      // Mutations: POST the input as a body.
+      return {
+        method: endpointMethod,
+        url: new URL(route.get(), serverUrl),
+        body: buildBody(input as Record<string, unknown>),
       }
     })()
 

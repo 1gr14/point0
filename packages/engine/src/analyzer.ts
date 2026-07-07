@@ -23,7 +23,7 @@ export type AnalyzerMetaPoint = {
   tags: string[]
   description: string | undefined
   route: AnyRoute | undefined
-  endpoint: { method: string; route: AnyRoute } | undefined
+  endpoint: { method: string; route: AnyRoute; methods: string[] } | undefined
   pos: CompilerPointParsedPos | undefined
   import: (() => Promise<AnyNiceReadyPoint>) | undefined
   valid: boolean
@@ -109,7 +109,12 @@ export const analyzerPointsFilterSchemaShape = {
     .string()
     .optional()
     .describe('Exact URL (full or just path) match against point.route using analyzer route matching.'),
-  endpointMethod: z.string().optional().describe('Exact endpoint HTTP method match.'),
+  endpointMethod: z
+    .string()
+    .optional()
+    .describe(
+      'Match points whose endpoint answers to this HTTP method (a query endpoint answers to both GET and POST).',
+    ),
   endpointRoute: z.string().optional().describe('Exact endpoint route definition match.'),
   endpointUrl: z
     .string()
@@ -247,7 +252,7 @@ export class Analyzer {
               return false
             }
           }
-          if (filter.endpointMethod && point.endpoint?.method !== filter.endpointMethod) {
+          if (filter.endpointMethod && !point.endpoint?.methods.includes(filter.endpointMethod)) {
             return false
           }
           if (filter.endpointRoute && point.endpoint?.route.definition !== filter.endpointRoute) {

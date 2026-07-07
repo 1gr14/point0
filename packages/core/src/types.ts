@@ -688,8 +688,15 @@ export type RequestableReadyPoint<
 // action
 
 export type EndpointDefinition = {
+  /** The endpoint's primary method — what the client uses by default and OpenAPI documents as canonical. */
   method: WideRequestMethod
   route: AnyRoute
+  /**
+   * Every method the server routes this endpoint under. `[method]` for most points; a query endpoint answers to both
+   * `GET` (input in the URL, cacheable) and `POST` (the client's fallback for a binary or over-long input), so it's
+   * `['GET', 'POST']`. Precomputed at endpoint generation so routing never recomputes it.
+   */
+  methods: WideRequestMethod[]
 }
 
 type ActionInputRawBySchemaKey<

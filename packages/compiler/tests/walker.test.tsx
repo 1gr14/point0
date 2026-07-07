@@ -581,7 +581,7 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
         expect(simplified[1]).toMatchObject({
           type: 'query',
           name: 'query1',
-          endpoint: { method: 'POST', route: '/_point0/root/query/query1' },
+          endpoint: { method: 'GET', route: '/_point0/root/query/query1', methods: ['GET', 'POST'] },
         })
         expect(simplified[2]).toMatchObject({
           type: 'query',
@@ -591,7 +591,7 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
         expect(simplified[3]).toMatchObject({
           type: 'mutation',
           name: 'mutation1',
-          endpoint: { method: 'POST', route: '/_point0/root/mutation/mutation1' },
+          endpoint: { method: 'POST', route: '/_point0/root/mutation/mutation1', methods: ['POST'] },
         })
         expect(simplified[4]).toMatchObject({
           type: 'mutation',
@@ -601,7 +601,7 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
         expect(simplified[5]).toMatchObject({
           type: 'infiniteQuery',
           name: 'infiniteQuery1',
-          endpoint: { method: 'POST', route: '/_point0/root/infiniteQuery/infiniteQuery1' },
+          endpoint: { method: 'GET', route: '/_point0/root/infiniteQuery/infiniteQuery1', methods: ['GET', 'POST'] },
         })
         expect(simplified[6]).toMatchObject({
           type: 'infiniteQuery',
@@ -611,7 +611,7 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
         expect(simplified[7]).toMatchObject({
           type: 'provider',
           name: 'provider1',
-          endpoint: { method: 'POST', route: '/_point0/root/provider/provider1' },
+          endpoint: { method: 'GET', route: '/_point0/root/provider/provider1', methods: ['GET', 'POST'] },
         })
         expect(simplified[8]).toMatchObject({
           type: 'provider',
@@ -621,7 +621,7 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
         expect(simplified[9]).toMatchObject({
           type: 'layout',
           name: 'layout1',
-          endpoint: { method: 'GET', route: '/_point0/root/layout/layout1/api/:x/zxc/:x' },
+          endpoint: { method: 'GET', route: '/_point0/root/layout/layout1/api/:x/zxc/:x', methods: ['GET'] },
         })
         expect(simplified[10]).toMatchObject({
           type: 'layout',
@@ -631,7 +631,7 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
         expect(simplified[11]).toMatchObject({
           type: 'component',
           name: 'component1',
-          endpoint: { method: 'POST', route: '/_point0/root/component/component1' },
+          endpoint: { method: 'GET', route: '/_point0/root/component/component1', methods: ['GET', 'POST'] },
         })
         expect(simplified[12]).toMatchObject({
           type: 'component',
@@ -641,7 +641,7 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
         expect(simplified[13]).toMatchObject({
           type: 'page',
           name: 'page1',
-          endpoint: { method: 'GET', route: '/_point0/root/page/page1/api/:x/zxc/:x/abc/:y' },
+          endpoint: { method: 'GET', route: '/_point0/root/page/page1/api/:x/zxc/:x/abc/:y', methods: ['GET'] },
         })
         // pages always has endpoint, becouse they can be called to get queryClientDehydratedState
         expect(simplified[14]).toMatchObject({

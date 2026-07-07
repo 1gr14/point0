@@ -185,10 +185,13 @@ returns:
 
 From a single URL or name the agent gets the point's `id`, its source `pos`
 (file + line, to jump straight to the definition), whether it server-renders
-(`ssr`), its `endpoint` (HTTP method + route) if it has one, and the
-`parents`/`layouts` it sits inside. A query or mutation comes back with its
-`endpoint` (`{ "method": "POST", "route": "/_point0/root/mutation/sign-in" }`)
-instead of a page `route`.
+(`ssr`), its `endpoint` — the primary HTTP `method`, the full set of `methods`
+it answers to, and the route — if it has one, and the `parents`/`layouts` it
+sits inside. A query or mutation comes back with its `endpoint`
+(`{ "method": "POST", "methods": ["POST"], "route": "/_point0/root/mutation/sign-in" }`)
+instead of a page `route`. A query is a `GET` that also answers to `POST` (so
+`"methods": ["GET", "POST"]`) — the client falls back to a POST body for a
+binary or over-long input.
 
 No match is **not an error**: the text comes back as `"null"` and
 `structuredContent` is absent.
@@ -268,24 +271,24 @@ lazy: errors surface on the first tool call, not at connect.
 
 ### Filters (shared by `list_points` + `get_point`)
 
-| Filter           | Type                 | Matches                                                              |
-| ---------------- | -------------------- | -------------------------------------------------------------------- |
-| `id`             | `string`             | exact point id                                                       |
-| `ids`            | `string[]`           | id is in the list                                                    |
-| `tags`           | `string \| string[]` | string = any tag equals it; array = **all** required                 |
-| `scope`          | `string`             | exact scope                                                          |
-| `type`           | `string`             | exact type — `page` / `layout` / `query` / `mutation` / `action` / … |
-| `name`           | `string`             | exact name                                                           |
-| `route`          | `string`             | exact route definition                                               |
-| `url`            | `string`             | full URL or path, matched against `point.route` via Route0           |
-| `endpointMethod` | `string`             | exact endpoint HTTP method                                           |
-| `endpointRoute`  | `string`             | exact endpoint route definition                                      |
-| `endpointUrl`    | `string`             | full URL or path, matched against the endpoint route                 |
-| `valid`          | `boolean`            | point validity                                                       |
-| `ssr`            | `boolean`            | SSR flag                                                             |
-| `file`           | `string`             | exact source file path (`point.pos.file`)                            |
-| `parentId`       | `string`             | one of the point's parents has this id                               |
-| `layoutId`       | `string`             | one of the point's layouts has this id                               |
+| Filter           | Type                 | Matches                                                                    |
+| ---------------- | -------------------- | -------------------------------------------------------------------------- |
+| `id`             | `string`             | exact point id                                                             |
+| `ids`            | `string[]`           | id is in the list                                                          |
+| `tags`           | `string \| string[]` | string = any tag equals it; array = **all** required                       |
+| `scope`          | `string`             | exact scope                                                                |
+| `type`           | `string`             | exact type — `page` / `layout` / `query` / `mutation` / `action` / …       |
+| `name`           | `string`             | exact name                                                                 |
+| `route`          | `string`             | exact route definition                                                     |
+| `url`            | `string`             | full URL or path, matched against `point.route` via Route0                 |
+| `endpointMethod` | `string`             | an HTTP method the endpoint answers to (a query matches both GET and POST) |
+| `endpointRoute`  | `string`             | exact endpoint route definition                                            |
+| `endpointUrl`    | `string`             | full URL or path, matched against the endpoint route                       |
+| `valid`          | `boolean`            | point validity                                                             |
+| `ssr`            | `boolean`            | SSR flag                                                                   |
+| `file`           | `string`             | exact source file path (`point.pos.file`)                                  |
+| `parentId`       | `string`             | one of the point's parents has this id                                     |
+| `layoutId`       | `string`             | one of the point's layouts has this id                                     |
 
 `fields` selects which point fields come back. Selectable: `id`, `scope`,
 `type`, `name`, `tags`, `description`, `route`, `endpoint`, `pos`, `valid`,

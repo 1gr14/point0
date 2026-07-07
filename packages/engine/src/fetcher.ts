@@ -4,6 +4,7 @@ import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type Known
 import { ASSET_URL_PREFIX, assetNameRegex, resolveAssetsCacheDir } from '@point0/compiler'
 import {
   POINT0_ERROR_CODES_MAP,
+  POINT0_QUERY_GET_INPUT_SEARCH_PARAM,
   _getSsItemsWithRestErrors,
   _point0_env,
   _ss,
@@ -166,65 +167,87 @@ export class Fetcher<TError extends ErrorPoint0> {
     const isAction = point.type === 'action'
     const isPage = point.type === 'page'
     const isLayout = point.type === 'layout'
+    // A query endpoint reached over GET carries its input in the ?input= search param (JSON), not the body — the
+    // client only POSTs it as a body on the binary/over-long fallback. So we skip the body read for a GET query
+    // endpoint and pick the input up from the URL below.
+    const isQueryInputFromSearch = point._canHaveQueryEndpoint() && request.method === 'GET'
     const shouldReadBody = isAction
       ? point._serverExecuteActions.some((action) => action.type === 'body')
-      : !isPage && !isLayout
+      : !isPage && !isLayout && !isQueryInputFromSearch
+    // Parse a JSON input carrier (a request body, a FormData field value, or the ?input= search param) and throw our
+    // coded 400 on malformed JSON — the sender gets a clear error instead of a silently-empty input. Shared by every
+    // input parse site below so body and search fail the same way.
+    const parseInputJson = (raw: string): unknown => {
+      try {
+        return JSON.parse(raw)
+      } catch (error) {
+        throw new point._Error('Failed to parse the request input as JSON', {
+          status: 400,
+          code: POINT0_ERROR_CODES_MAP.INPUT_PARSE_FAILED,
+          cause: error,
+        })
+      }
+    }
     const body = await (async () => {
       if (!shouldReadBody) {
         return {}
       }
-      try {
-        if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
-          const formData =
-            request.rawBody !== undefined
-              ? (() => {
-                  if (request.rawBody instanceof FormData) {
-                    return request.rawBody
-                  }
-                  throw new Error('For multipart/form-data, request.rawBody must be FormData')
-                })()
-              : await request.original.formData()
-          if (request.rawBody === undefined) {
-            request.rawBody = formData
-          }
-          const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
-            acc[key] = typeof value === 'string' ? (transform ? JSON.parse(value) : value) : value
-            return acc
-          }, {})
-          const unflattened = flat.deserialize(parsed)
-          return unflattened
-        }
-        const rawBody = request.rawBody !== undefined ? request.rawBody : await request.original.text()
+      if (request.original.headers.get('Content-Type')?.includes('multipart/form-data')) {
+        const formData =
+          request.rawBody !== undefined
+            ? (() => {
+                if (request.rawBody instanceof FormData) {
+                  return request.rawBody
+                }
+                throw new Error('For multipart/form-data, request.rawBody must be FormData')
+              })()
+            : await request.original.formData()
         if (request.rawBody === undefined) {
-          request.rawBody = rawBody
+          request.rawBody = formData
         }
-        if (typeof rawBody !== 'string') {
-          return rawBody
-        }
-        if (!rawBody.trim()) {
-          return {}
-        }
-        return JSON.parse(rawBody)
-      } catch (error) {
-        this.server.log({
-          level: 'error',
-          category: ['server'],
-          message: 'Failed to parse the request body as JSON — treating it as an empty body',
-          error,
-        })
+        const parsed = [...formData.entries()].reduce<Record<string, unknown>>((acc, [key, value]) => {
+          acc[key] = typeof value === 'string' ? (transform ? parseInputJson(value) : value) : value
+          return acc
+        }, {})
+        return flat.deserialize(parsed)
+      }
+      const rawBody = request.rawBody !== undefined ? request.rawBody : await request.original.text()
+      if (request.rawBody === undefined) {
+        request.rawBody = rawBody
+      }
+      if (typeof rawBody !== 'string') {
+        return rawBody
+      }
+      if (!rawBody.trim()) {
         return {}
       }
+      return parseInputJson(rawBody)
     })()
-    const bodyParsed = transform
-      ? this.getTransformer({ scope: point.scope, point, transform }).deserialize(body)
-      : body
+    const transformer = this.getTransformer({ scope: point.scope, point, transform })
+    const bodyParsed = transform ? transformer.deserialize(body) : body
     if (isAction) {
       return { body: bodyParsed, search: location.search, params: location.params, input: {} }
     }
     if (isPage || isLayout) {
       return { body: {}, search: location.search, params: location.params, input: {} }
     }
-    return { body: {}, search: {}, params: {}, input: bodyParsed }
+    // Query endpoint (query / infiniteQuery / component / provider) or mutation. A GET query endpoint took its input
+    // from the ?input= search param above (JSON, same bytes a POST would put in the body); everything else read it
+    // from the body.
+    const inputRaw = ((): unknown => {
+      if (!isQueryInputFromSearch) {
+        return body
+      }
+      const rawSearchInput = (location.search as Record<string, unknown> | undefined)?.[
+        POINT0_QUERY_GET_INPUT_SEARCH_PARAM
+      ]
+      if (rawSearchInput === undefined || rawSearchInput === '') {
+        return {}
+      }
+      return parseInputJson(typeof rawSearchInput === 'string' ? rawSearchInput : String(rawSearchInput))
+    })()
+    const inputParsed = isQueryInputFromSearch ? (transform ? transformer.deserialize(inputRaw) : inputRaw) : bodyParsed
+    return { body: {}, search: {}, params: {}, input: inputParsed }
   }
 
   getPointInputFromEndpointRequest = async ({
@@ -818,10 +841,11 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
     } catch (error) {
       const error0 = ErrorClass.from(error)
+      // Respect a coded error's own status — e.g. a 400 from a malformed input (POINT0_INPUT_PARSE_FAILED) — and fall
+      // back to 500 only for an unexpected error that carries none (toJsonErrorResponse applies `error0.status ?? 500`).
       const response = this.toJsonErrorResponse({
         ErrorClass,
         error: error0,
-        status: 500,
         transformer,
       })
       return {

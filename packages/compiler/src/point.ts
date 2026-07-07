@@ -34,7 +34,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   valid: TValid extends true ? true : false
   parsed: boolean
   basePath: AnyRoute | undefined
-  endpoint: undefined | { method: string; route: AnyRoute }
+  endpoint: undefined | { method: string; route: AnyRoute; methods: string[] }
   tags: string[]
   description: string | undefined
 
@@ -708,7 +708,9 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       isBasePoint0: this.isBasePoint0,
       parents: this.parents.map((p) => p.extraSimplify()),
       selfMethods: this.selfMethods.map((m) => ({ name: m.name, index: m.index })),
-      endpoint: this.endpoint ? { method: this.endpoint.method, route: this.endpoint.route.definition } : undefined,
+      endpoint: this.endpoint
+        ? { method: this.endpoint.method, route: this.endpoint.route.definition, methods: this.endpoint.methods }
+        : undefined,
       chainMethods: this.chainMethods.map((m) => ({
         name: m.name,
         index: m.index,
@@ -770,7 +772,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
           : { route: undefined, errors: [new Error('Scope not found. Looks like point not attached to any scope.')] }
         this.route = route
         if (method && route) {
-          this.endpoint = { method, route }
+          // An action answers only to its declared method (mirror of core's `_endpoint.methods`).
+          this.endpoint = { method, route, methods: [method] }
           if (policy === 'short') {
             this.name = `${method.toUpperCase()} ${route.definition}`
           }
@@ -795,8 +798,19 @@ export class CompilerPoint<TValid extends boolean = boolean> {
             !this.route?.definition || this.route.definition === '/'
               ? endpointRouteBase
               : endpointRouteBase.extend(this.route.definition)
-          const endpointMethod = this.type === 'page' || this.type === 'layout' ? 'GET' : 'POST'
-          this.endpoint = { method: endpointMethod, route: endpointRoute }
+          // Reads are GET so a CDN can cache them (pages/layouts, and the query family — query/infiniteQuery and the
+          // queries behind component/provider loaders); only mutations, which write, stay POST. Must mirror the core
+          // default in point0.ts.
+          const endpointMethod = this.type === 'mutation' ? 'POST' : 'GET'
+          // A query endpoint answers to both GET (input in the URL) and POST (the fallback for a binary or over-long
+          // input); everything else answers to its single method. Mirrors core's `_endpoint.methods`.
+          const isQueryEndpoint =
+            this.type === 'query' ||
+            this.type === 'infiniteQuery' ||
+            this.type === 'component' ||
+            this.type === 'provider'
+          const endpointMethods = isQueryEndpoint ? ['GET', 'POST'] : [endpointMethod]
+          this.endpoint = { method: endpointMethod, route: endpointRoute, methods: endpointMethods }
         }
       }
 
@@ -1371,7 +1385,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
 export type CompilerPointSimplified = {
   file: string
   route: string | undefined
-  endpoint: { method: string; route: string } | undefined
+  endpoint: { method: string; route: string; methods: string[] } | undefined
   valid: boolean
   type: ReadyPointType
   name: PointName

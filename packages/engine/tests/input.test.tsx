@@ -783,4 +783,34 @@ describe('input', () => {
       })
       .mutation()
   })
+
+  it('a malformed query input fails with a 400 and our parse-error code — on GET (?input=) and POST (body)', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const items = root
+      .lets('query', 'items')
+      .input(z.object({ id: z.string() }))
+      .loader(({ input }) => ({ id: input.id }))
+      .query()
+    const { engine } = await createTestThings({ ssr: true, points: [root, items] })
+
+    // GET: the input rides in the ?input= param — a non-JSON value fails to parse before it reaches the schema.
+    const getResponse = await engine.fetch(
+      new Request('http://localhost:3000/_point0/root/query/items?input=not-json', {
+        headers: { Accept: 'application/json' },
+      }),
+    )
+    expect(getResponse.status).toBe(400)
+    expect(await getResponse.text()).toContain('POINT0_INPUT_PARSE_FAILED')
+
+    // POST: the input rides in the body — a non-JSON body fails the same way (the endpoint answers to both methods).
+    const postResponse = await engine.fetch(
+      new Request('http://localhost:3000/_point0/root/query/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: 'not-json',
+      }),
+    )
+    expect(postResponse.status).toBe(400)
+    expect(await postResponse.text()).toContain('POINT0_INPUT_PARSE_FAILED')
+  })
 })

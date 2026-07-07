@@ -1270,6 +1270,7 @@ export class FilesGenerator {
       if (point.endpoint) {
         lines.push(`      endpoint: {`)
         lines.push(`        method: ${literal(point.endpoint.method)},`)
+        lines.push(`        methods: [${point.endpoint.methods.map((method) => literal(method)).join(', ')}],`)
         lines.push(`        route: Route0.create(${literal(point.endpoint.route.definition)}),`)
         lines.push(`      },`)
       } else {

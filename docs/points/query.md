@@ -60,10 +60,13 @@ The closing `.query(...)` is **not cut from either bundle** — kept in both
 ## A real endpoint
 
 A query with a server loader is served over HTTP at an auto-generated path —
-roughly `POST /_point0/<scope>/query/<kebab-name>` — and shows up in the
-generated [OpenAPI](openapi) spec. It's a **POST with the input in the body**
-(never a GET with search params). You never write the path; calling `fetchQuery`
-/ `useQuery` routes to it for you.
+roughly `GET /_point0/<scope>/query/<kebab-name>` — and shows up in the
+generated [OpenAPI](openapi) spec. It's a **GET with the input JSON-encoded in
+the `?input=` search param**, so a read is safe, idempotent, and a CDN can cache
+it. An input that carries a `File`/`Blob`, or that grows long enough to overflow
+the URL, falls back to a `POST` body automatically — the endpoint answers to
+both. You never write the path; calling `fetchQuery` / `useQuery` routes to it
+for you.
 
 A query whose only loader is a `.clientLoader` runs in the browser and has **no
 endpoint** (and no OpenAPI entry) — it's a client-side query that still gets the

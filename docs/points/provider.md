@@ -265,11 +265,12 @@ A [component](component) is **not** a provider — it has no `.useValue()` /
 ## Endpoint behavior
 
 A provider becomes an HTTP [endpoint](query) **only if it has a server
-`.loader()`** — then it gets a path
-(`POST /_point0/<scope>/provider/<kebab-name>`) so children can fetch its data.
-A provider with no loader (a pure computed or props-driven value) issues no
-request and has no endpoint. An auth gate belongs in a [`.with`](with) wrapper,
-not in `.ctx` alone (`.ctx` runs only when the point has a loader).
+`.loader()`** — then it gets a path (`GET`/`POST`
+`/_point0/<scope>/provider/<kebab-name>`, a read like a [query](query)) so
+children can fetch its data. A provider with no loader (a pure computed or
+props-driven value) issues no request and has no endpoint. An auth gate belongs
+in a [`.with`](with) wrapper, not in `.ctx` alone (`.ctx` runs only when the
+point has a loader).
 
 ## Reference
 
