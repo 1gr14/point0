@@ -117,7 +117,7 @@ to send:
 ```tsx
 .middleware(async ({ next }) => {
   const result = await next()
-  // result.variant.type: 'page' | 'endpoint' | 'middleware' | 'error' | 'options' | 'publicdir'
+  // result.variant.type: 'page' | 'endpoint' | 'middleware' | 'error' | 'options' | 'publicdir' | 'asset'
   if (result.variant.type === 'page') {
     return new Response('overriden page response', { status: 200 })
   }
@@ -294,9 +294,11 @@ its imports removed), so it never ships to the browser and is a no-op there.
 .middleware(cors({ origin: true, credentials: true }))
 .middleware(basicAuth({ users: { admin: 'adminpassword' } }))
 .middleware(openapi({ route: '/openapi.json', scalar: '/scalar' }))
+.middleware(compress())
+.middleware(cacheControl())
 ```
 
-- **`cors`** (`@point0/cors`) — sets CORS headers and answers preflight
+- **[`cors`](cors)** (`@point0/cors`) — sets CORS headers and answers preflight
   `OPTIONS`. Accepts-all by default; configure `origin`, `methods`,
   `allowedHeaders`, `credentials`, `maxAge`, `preflight`.
 - **[`basicAuth`](basic-auth)** (`@point0/basic-auth`) — HTTP Basic auth gate.
@@ -306,6 +308,11 @@ its imports removed), so it never ships to the browser and is a no-op there.
   JSON (and optional Scalar / Swagger UIs) on `GET` of the configured routes.
   Its options and the separate per-point `.openapi()` method live on the
   [openapi](openapi) page.
+- **[`compress`](compress)** (`@point0/compress`) — streaming brotli/gzip
+  compression at the origin, negotiated per `Accept-Encoding`.
+- **[`cacheControl`](cache-control)** (`@point0/cache-control`) — a correct
+  `Cache-Control` per response variant: immutable hashed assets, no-store SSR
+  HTML.
 
 ## Reference
 
@@ -329,5 +336,8 @@ its imports removed), so it never ships to the browser and is a no-op there.
 ### Result variants from `next()`
 
 `result.variant.type` is one of: `'page'`, `'endpoint'`, `'middleware'`,
-`'error'`, `'options'`, `'publicdir'`. Each result also has `response`,
-`request`, `scope`, and `error` (`undefined` when there was no error).
+`'error'`, `'options'`, `'publicdir'`, `'asset'`. Each result also has
+`response`, `request`, `scope`, and `error` (`undefined` when there was no
+error). `'asset'` vs `'publicdir'` is the static-file split by URL contract —
+content-hashed build files vs stable names — see
+[request.variant](request#requestvariant).

@@ -337,11 +337,25 @@ export interface RequestCache {
   [key: string]: unknown
 }
 
-export type RequestVariantType = 'publicdir' | 'endpoint' | 'page' | 'error' | 'unknown'
+export type RequestVariantType = 'publicdir' | 'asset' | 'endpoint' | 'page' | 'error' | 'unknown'
 
 export type RequestVariantPublicdir<TPublicdir = unknown> = {
   type: 'publicdir'
   publicdir: TPublicdir
+  response: Response
+}
+
+/**
+ * A statically served file whose URL carries a content hash, so its bytes can never change under that URL: a bundler
+ * chunk of the built client (`/chunk-<hash>.js`, including the entry — every emitted name is content-hashed) or the
+ * asset pipeline's `/_point0/assets/<hash>.<ext>`. Split from `publicdir` (stable names, mutable content — favicons,
+ * `robots.txt`, `index.html`) exactly because the two demand opposite caching: an `asset` is safe to cache forever, a
+ * `publicdir` file is not. `publicdir` is the engine's `Publicdir` instance that served the file, or `undefined` for
+ * dev-served pipeline assets.
+ */
+export type RequestVariantAsset<TPublicdir = unknown> = {
+  type: 'asset'
+  publicdir: TPublicdir | undefined
   response: Response
 }
 
@@ -371,6 +385,7 @@ export type RequestVariantError<TError> = {
 
 export type AnyRequestVariant<TError, TClient = unknown, TPublicdir = unknown> =
   | RequestVariantPublicdir<TPublicdir>
+  | RequestVariantAsset<TPublicdir>
   | RequestVariantEndpoint
   | RequestVariantPage<TClient>
   | RequestVariantError<TError>
@@ -381,12 +396,14 @@ export type RequestVariant<TType extends RequestVariantType, TError, TClient = u
     ? AnyRequestVariant<TError, TClient, TPublicdir>
     : TType extends 'publicdir'
       ? RequestVariantPublicdir<TPublicdir>
-      : TType extends 'endpoint'
-        ? RequestVariantEndpoint
-        : TType extends 'page'
-          ? RequestVariantPage<TClient>
-          : TType extends 'unknown'
-            ? RequestVariantUnknown
-            : TType extends 'error'
-              ? RequestVariantError<TError>
-              : never
+      : TType extends 'asset'
+        ? RequestVariantAsset<TPublicdir>
+        : TType extends 'endpoint'
+          ? RequestVariantEndpoint
+          : TType extends 'page'
+            ? RequestVariantPage<TClient>
+            : TType extends 'unknown'
+              ? RequestVariantUnknown
+              : TType extends 'error'
+                ? RequestVariantError<TError>
+                : never

@@ -38,6 +38,7 @@ import { Effects } from '@point0/core/effects'
 import { buildClientBuildHeaderValue, POINT0_CLIENT_BUILD_HEADER, RedirectTask } from '@point0/core/navigation'
 import { Request0 } from '@point0/core/request0'
 import type {
+  RequestVariantAsset,
   RequestVariantEndpoint,
   RequestVariantError,
   RequestVariantPage,
@@ -309,14 +310,14 @@ export class Fetcher<TError extends ErrorPoint0> {
           const staticResponse = await publicdir.fetch({ request })
           if (staticResponse) {
             const scope = publicdir.scope
-            const variant: RequestVariantPublicdir<Publicdir<true, TError> | undefined> = {
-              type: 'publicdir',
-              publicdir,
-              response: staticResponse,
-            }
-            request.variant = variant
-            return {
-              variant,
+            // Content-hashed names — the built client's emitted files (chunks including the entry) and the asset
+            // pipeline's `/_point0/assets/*` — are the `asset` variant: their URL can never serve different bytes.
+            // Stable-name files (favicons, `robots.txt`, `index.html`, …) stay `publicdir`.
+            const pathname = request.location.pathname
+            const isAsset =
+              pathname.startsWith(ASSET_URL_PREFIX) ||
+              ((await publicdir.client?.isClientBuildAssetPath(pathname)) ?? false)
+            const general = {
               transform,
               scope,
               request,
@@ -332,6 +333,22 @@ export class Fetcher<TError extends ErrorPoint0> {
                 points: this.server.points as NiceServerPoints,
               },
             }
+            if (isAsset) {
+              const variant: RequestVariantAsset<Publicdir<true, TError> | undefined> = {
+                type: 'asset',
+                publicdir,
+                response: staticResponse,
+              }
+              request.variant = variant
+              return { ...general, variant }
+            }
+            const variant: RequestVariantPublicdir<Publicdir<true, TError> | undefined> = {
+              type: 'publicdir',
+              publicdir,
+              response: staticResponse,
+            }
+            request.variant = variant
+            return { ...general, variant }
           }
         }
       }
@@ -379,8 +396,9 @@ export class Fetcher<TError extends ErrorPoint0> {
       if (!this.server.itWasBuilt) {
         const assetResponse = await Fetcher.fetchDevAsset({ request })
         if (assetResponse) {
-          const variant: RequestVariantPublicdir<undefined> = {
-            type: 'publicdir',
+          // The dev asset pipeline is content-addressed by construction, so these are always the `asset` variant.
+          const variant: RequestVariantAsset<undefined> = {
+            type: 'asset',
             publicdir: undefined,
             response: assetResponse,
           }
@@ -1048,6 +1066,16 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
+      if (prepareFetchResult.variant.type === 'asset') {
+        return {
+          request: prepareFetchResult.request,
+          scope: prepareFetchResult.scope,
+          response: prepareFetchResult.variant.response,
+          variant: prepareFetchResult.variant,
+          error: undefined,
+        }
+      }
+
       if (prepareFetchResult.variant.type === 'endpoint') {
         const fetchEndpointResult = await this.fetchEndpoint({
           point: prepareFetchResult.variant.point,
@@ -1385,6 +1413,9 @@ type PrepareFetchResultGeneral<TError extends ErrorPoint0> = {
 type PrepareFetchResult<TError extends ErrorPoint0> =
   | (PrepareFetchResultGeneral<TError> & {
       variant: RequestVariantPublicdir<Publicdir<true, TError> | undefined>
+    })
+  | (PrepareFetchResultGeneral<TError> & {
+      variant: RequestVariantAsset<Publicdir<true, TError> | undefined>
     })
   | (PrepareFetchResultGeneral<TError> & {
       variant: RequestVariantEndpoint

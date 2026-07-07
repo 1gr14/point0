@@ -5,7 +5,7 @@ any prose.
 
 ## What & where
 
-- **`docs/`** holds the user-facing documentation — **63 markdown pages** across
+- **`docs/`** holds the user-facing documentation — **66 markdown pages** across
   7 categories. Each page is `docs/<category>/<slug>.md`.
 - **The slug is the filename, and it is GLOBALLY UNIQUE.** The category is only
   navigation decoration — it is **not** in the URL. The path on the site is
@@ -41,7 +41,8 @@ any prose.
 - **engine:** `engine-config`, `engine-runtime`, `cli`, `dev`, `build`,
   `compiler`, `generator`, `mcp-project`, `mcp-docs`, `importer`, `publicdir`,
   `testing`, `deploy`, `bun-vs-vite`.
-- **extra:** `ssr-store`, `cookie-store`, `basic-auth`, `cors`.
+- **extra:** `ssr-store`, `cookie-store`, `basic-auth`, `cors`, `cache-control`,
+  `compress`.
 - **examples:** `example-basic` (canonical), `example-vite`,
   `example-better-auth`, `example-capacitor`, `example-expo`.
 

@@ -30,9 +30,9 @@ and echoes the requested headers back. The shipped `expo` example uses it
 because the Expo app and the API server live on different origins.
 
 `cors()` is **cut from the client bundle — its body and the imports it uses are
-removed, so it never ships to the browser.** Middleware is server-only; the
-package also has an explicit client branch that just calls `next()`, so even
-where the call survives on the client it's a no-op.
+removed, so it never ships to the browser.** `.middleware(...)` arguments are
+server-only, and the compiler prunes the then-unused `@point0/cors` import with
+them.
 
 ## Mounting it
 
@@ -155,14 +155,14 @@ Every option is optional; `cors()` with no argument is the permissive default.
 
 ### Behavior at a glance
 
-| Aspect               | Behavior                                                                                                                                |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Side                 | cut from the client bundle — body and its imports removed, never ships to the browser (server-only; a no-op on the client via `next()`) |
-| Default origin       | reflects the request `Origin`; `*` only when there's no `Origin` header                                                                 |
-| Credentials + origin | an allowed origin is echoed literally, never `*` (spec requirement)                                                                     |
-| String origin match  | host-only by default; add a protocol to require a protocol match                                                                        |
-| Preflight `OPTIONS`  | answered with `204` when `preflight: true`; passed through otherwise                                                                    |
-| `Vary`               | set to `Origin` for a reflected origin, `*` for a wildcard                                                                              |
+| Aspect               | Behavior                                                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Side                 | cut from the client bundle — the `.middleware(...)` argument and its imports are removed, so it never ships to the browser |
+| Default origin       | reflects the request `Origin`; `*` only when there's no `Origin` header                                                    |
+| Credentials + origin | an allowed origin is echoed literally, never `*` (spec requirement)                                                        |
+| String origin match  | host-only by default; add a protocol to require a protocol match                                                           |
+| Preflight `OPTIONS`  | answered with `204` when `preflight: true`; passed through otherwise                                                       |
+| `Vary`               | set to `Origin` for a reflected origin, `*` for a wildcard                                                                 |
 
 If you also expose [OpenAPI](openapi) docs from a separate origin, the same
 `cors()` on the root covers those routes too.

@@ -2,6 +2,8 @@ import { authServer } from '@/lib/auth/server'
 import { AppError } from '@/lib/error'
 import { ErrorComponent } from '@/ui/error'
 import { basicAuth } from '@point0/basic-auth'
+import { cacheControl } from '@point0/cache-control'
+import { compress } from '@point0/compress'
 import { Point0 } from '@point0/core'
 import { zodSchemaHelper } from '@point0/core/schema/zod'
 import { openapi } from '@point0/openapi'
@@ -49,6 +51,8 @@ export const root = Point0.lets
     )
   })
   .error(({ error }) => <ErrorComponent error={error} />)
+  .middleware(compress())
+  .middleware(cacheControl())
   .middleware('/api/auth/*', async ({ request }) => await authServer.handler(request.original))
   .middleware(
     openapi({

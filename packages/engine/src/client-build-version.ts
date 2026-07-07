@@ -1,5 +1,5 @@
 import type { PointsScope } from '@point0/core'
-import { toPublicPath } from './utils.js'
+import { collectClientBuildHashedFiles } from './client-build-assets.js'
 
 /**
  * Client build version — the build-side half of point0's deploy invalidation (the client-side half lives in
@@ -12,6 +12,9 @@ import { toPublicPath } from './utils.js'
  * - The CLIENT fetches it (never cached — the fetch itself is `cache: 'no-store'`) when a page chunk fails to load, to
  *   confirm whether a newer build was deployed.
  * - The SERVER reads it at serve time to echo the version on every response (the `X-Point0-Client-Build` handshake).
+ *
+ * Kept to a single field so the browser-polled file stays tiny; the content-hashed file list the version is derived
+ * from lives separately, server-only, in `build-assets.json` (see `client-build-assets.ts`).
  */
 export type ClientBuildVersionFile = {
   /**
@@ -43,25 +46,9 @@ export const computeClientBuildVersion = (publicPaths: string[]): string => {
 }
 
 /**
- * Whether an emitted file identifies the build — i.e. carries a content hash in its name. Excluded: `.html` (stable
- * names, mutable content), sourcemaps (never navigated to; excluding them keeps the version stable across
- * sourcemap-mode changes), and the per-client `_point0/<scope>/` metadata files (`preload-manifest.json`, the version
- * file itself — stable names, mutable content). `_point0/assets/*` stays IN: those are the compiler's content-addressed
- * asset bytes (unscoped — shared, content-addressed).
- */
-const identifiesBuild = (publicPath: string): boolean => {
-  if (publicPath.endsWith('.html') || publicPath.endsWith('.map')) {
-    return false
-  }
-  if (publicPath.startsWith('/_point0/') && !publicPath.startsWith('/_point0/assets/')) {
-    return false
-  }
-  return true
-}
-
-/**
  * Compute the build version from the emitted output files of a client build (Bun.build outputs or Rollup fileNames —
- * absolute, cwd-relative, or outdir-relative; normalized to public paths).
+ * absolute, cwd-relative, or outdir-relative; normalized to public paths). The version is the hash of the same
+ * content-hashed file set persisted to `build-assets.json`.
  */
 export const computeClientBuildVersionFromOutputs = ({
   outputFiles,
@@ -69,4 +56,4 @@ export const computeClientBuildVersionFromOutputs = ({
 }: {
   outputFiles: string[]
   outdir: string
-}): string => computeClientBuildVersion(outputFiles.map((file) => toPublicPath(file, outdir)).filter(identifiesBuild))
+}): string => computeClientBuildVersion(collectClientBuildHashedFiles({ outputFiles, outdir }))

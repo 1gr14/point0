@@ -1,4 +1,6 @@
 import { basicAuth } from '@point0/basic-auth'
+import { cacheControl } from '@point0/cache-control'
+import { compress } from '@point0/compress'
 import { ClientOnly, Point0 } from '@point0/core'
 import { zodSchemaHelper } from '@point0/core/schema/zod'
 import { openapi } from '@point0/openapi'
@@ -61,6 +63,8 @@ export const root = Point0.lets
       </div>
     )
   })
+  .middleware(compress())
+  .middleware(cacheControl())
   .middleware(
     openapi({
       route: '/openapi.json',

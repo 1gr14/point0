@@ -383,12 +383,22 @@ fresh `state` but the **same** `cache`.
 `request.variant` is how the engine classified this request. It starts
 `{ type: 'unknown' }` and the engine sets it as the request is routed, so early
 middleware may still see `'unknown'`. The discriminant is
-`'publicdir' | 'endpoint' | 'page' | 'error' | 'unknown'`:
+`'publicdir' | 'asset' | 'endpoint' | 'page' | 'error' | 'unknown'`:
 
 ```tsx
 request.variant.type // => 'page' | 'endpoint' | ...
 'point' in request.variant ? request.variant.point?.id : undefined // => 'root:page:home'
 ```
+
+Static files split into two variants by what their URL promises. `'asset'` is a
+file whose name carries a content hash — a bundler chunk of the built client
+(including the entry) or the asset pipeline's `/_point0/assets/<hash>.<ext>` —
+so the same URL can never serve different bytes and it is safe to cache forever
+(the [cache-control](cache-control) middleware leans on exactly this).
+`'publicdir'` is every other statically served file — stable names, mutable
+content (favicons, `robots.txt`, `index.html`). The classification is exact, not
+guessed from file names: the build persists the list of content-hashed outputs
+into `_point0/<scope>/build-assets.json` and the server checks against it.
 
 ### `request.renders`
 

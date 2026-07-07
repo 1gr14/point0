@@ -26,8 +26,20 @@ const skipBuild = process.argv.includes('--skip-build')
 const PORT = 4873
 const REGISTRY = `http://localhost:${PORT}`
 
-// The packages to serve locally (all 9, incl create-app + docs — locally they can all be used).
-const PACKAGES = ['core', 'compiler', 'engine', 'react-dom', 'cors', 'openapi', 'basic-auth', 'create-app', 'docs']
+// The packages to serve locally (all 11, incl create-app + docs — locally they can all be used).
+const PACKAGES = [
+  'core',
+  'compiler',
+  'engine',
+  'react-dom',
+  'cors',
+  'cache-control',
+  'compress',
+  'openapi',
+  'basic-auth',
+  'create-app',
+  'docs',
+]
 
 const workDir = join(tmpdir(), 'point0-local-registry')
 const storageDir = join(workDir, 'storage')

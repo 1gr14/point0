@@ -34,6 +34,7 @@ import type { RedirectTask } from './navigation.js'
 import type { Point0 } from './point0.js'
 import type {
   Request0,
+  RequestVariantAsset,
   RequestVariantEndpoint,
   RequestVariantPage,
   RequestVariantPublicdir,
@@ -2024,6 +2025,12 @@ export type FetcherFetchDetailedResultPublicdir<
 > = FetcherFetchDetailedResultGeneral<TError> & {
   variant: RequestVariantPublicdir<TPublicdir>
 }
+export type FetcherFetchDetailedResultAsset<
+  TError extends ErrorPoint0,
+  TPublicdir = unknown,
+> = FetcherFetchDetailedResultGeneral<TError> & {
+  variant: RequestVariantAsset<TPublicdir>
+}
 export type FetcherFetchDetailedResultOptions<TError extends ErrorPoint0> =
   FetcherFetchDetailedResultGeneral<TError> & {
     variant: { type: 'options' }
@@ -2034,6 +2041,7 @@ export type FetcherFetchDetailedResultNoMiddleware<TError extends ErrorPoint0> =
   | FetcherFetchDetailedResultPage<TError>
   | FetcherFetchDetailedResultError<TError>
   | FetcherFetchDetailedResultPublicdir<TError>
+  | FetcherFetchDetailedResultAsset<TError>
   | FetcherFetchDetailedResultOptions<TError>
 export type FetcherFetchDetailedResult<TError extends ErrorPoint0> =
   | FetcherFetchDetailedResultNoMiddleware<TError>
@@ -2053,9 +2061,11 @@ export type FetcherFetchDetailedResultSpecific<
           ? FetcherFetchDetailedResultError<TError>
           : TVariant extends 'publicdir'
             ? FetcherFetchDetailedResultPublicdir<TError>
-            : TVariant extends 'options'
-              ? FetcherFetchDetailedResultOptions<TError>
-              : never
+            : TVariant extends 'asset'
+              ? FetcherFetchDetailedResultAsset<TError>
+              : TVariant extends 'options'
+                ? FetcherFetchDetailedResultOptions<TError>
+                : never
 
 export type MiddlewareNextFn<TError extends ErrorPoint0> = () => Promise<FetcherFetchDetailedResult<TError>>
 export type MiddlewareFnOptions<

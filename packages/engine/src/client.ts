@@ -36,10 +36,15 @@ import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './dev-s
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import {
-  computeClientBuildVersionFromOutputs,
+  computeClientBuildVersion,
   getClientBuildVersionPathSegments,
   type ClientBuildVersionFile,
 } from './client-build-version.js'
+import {
+  collectClientBuildHashedFiles,
+  getClientBuildAssetsPathSegments,
+  type ClientBuildAssetsFile,
+} from './client-build-assets.js'
 import {
   buildPreloadManifest,
   chunkGraphFromBunMetafile,
@@ -1420,10 +1425,17 @@ try {
     graph: ChunkGraph
   }): Promise<void> {
     try {
-      const buildVersion = computeClientBuildVersionFromOutputs({ outputFiles, outdir })
+      const files = collectClientBuildHashedFiles({ outputFiles, outdir })
+      const buildVersion = computeClientBuildVersion(files)
+      // Two files from one collection: the browser-polled version file stays a single tiny field, while the
+      // content-hashed file list (used server-side to classify the `asset` variant) lives separately, server-only.
       await Bun.write(
         nodePath.join(outdir, ...getClientBuildVersionPathSegments(this.scope)),
         JSON.stringify({ buildVersion } satisfies ClientBuildVersionFile, null, 2),
+      )
+      await Bun.write(
+        nodePath.join(outdir, ...getClientBuildAssetsPathSegments(this.scope)),
+        JSON.stringify({ files } satisfies ClientBuildAssetsFile, null, 2),
       )
       const indexHtmlDistPath = nodePath.join(outdir, nodePath.basename(indexHtml))
       if (await Bun.file(indexHtmlDistPath).exists()) {
@@ -1448,24 +1460,24 @@ try {
   }
 
   /**
-   * Cached read of the build-time client build version. `undefined` = not yet read, `null` = absent (dev / pre-feature
-   * build).
+   * Cached read of the build-time build-version file. `undefined` = not yet read, `null` = absent (dev / pre-feature
+   * build / unparsable).
    */
-  private _clientBuildVersion: string | null | undefined = undefined
+  private _clientBuildVersionFile: ClientBuildVersionFile | null | undefined = undefined
 
   /**
-   * Lazily read the client build version emitted at build time. PRODUCTION-BUILD-ONLY (same gate as the preload
+   * Lazily read the build-version file emitted at build time. PRODUCTION-BUILD-ONLY (same gate as the preload
    * manifest): in dev nothing is bundled and a stale `dist` version from an earlier `point0 build` must never leak into
    * dev serving. Cached; `null` when missing.
    */
-  async getClientBuildVersion(): Promise<string | null> {
+  private async readClientBuildVersionFile(): Promise<ClientBuildVersionFile | null> {
     if (!_point0_env.build.was) {
       return null
     }
-    if (this._clientBuildVersion !== undefined) {
-      return this._clientBuildVersion
+    if (this._clientBuildVersionFile !== undefined) {
+      return this._clientBuildVersionFile
     }
-    this._clientBuildVersion = null
+    this._clientBuildVersionFile = null
     try {
       const outdir = this.getBuildPaths().outdir
       if (outdir) {
@@ -1473,14 +1485,59 @@ try {
         if (await file.exists()) {
           const parsed = JSON.parse(await file.text()) as ClientBuildVersionFile
           if (typeof parsed.buildVersion === 'string' && parsed.buildVersion.length > 0) {
-            this._clientBuildVersion = parsed.buildVersion
+            this._clientBuildVersionFile = parsed
           }
         }
       }
     } catch {
-      this._clientBuildVersion = null
+      this._clientBuildVersionFile = null
     }
-    return this._clientBuildVersion
+    return this._clientBuildVersionFile
+  }
+
+  /** The build-time client build version (see {@link readClientBuildVersionFile}); `null` when missing. */
+  async getClientBuildVersion(): Promise<string | null> {
+    const file = await this.readClientBuildVersionFile()
+    return file?.buildVersion ?? null
+  }
+
+  /** Cached Set of the build-assets file's `files`. `undefined` = not yet read, `null` = file absent/unparsable. */
+  private _clientBuildAssetPaths: Set<string> | null | undefined = undefined
+
+  /**
+   * Whether a public pathname is one of this client build's content-hashed emitted files (a bundler chunk including the
+   * entry, or an `_point0/assets/*` byte) — the exact `files` set persisted into `build-assets.json` at build time. The
+   * fetcher uses it to classify a publicdir-served file into the `asset` request variant (immutable URL) vs plain
+   * `publicdir` (stable name). Read once and cached. PRODUCTION-BUILD-ONLY (same gate as the version file): always
+   * `false` in dev (nothing is bundled), and for a dist built before the assets file existed.
+   */
+  async isClientBuildAssetPath(pathname: string): Promise<boolean> {
+    if (this._clientBuildAssetPaths === undefined) {
+      this._clientBuildAssetPaths = await this.readClientBuildAssetPaths()
+    }
+    return this._clientBuildAssetPaths?.has(pathname) ?? false
+  }
+
+  /** Lazily read the build-assets file into a Set. Same prod-only gate and resilience as the version file. */
+  private async readClientBuildAssetPaths(): Promise<Set<string> | null> {
+    if (!_point0_env.build.was) {
+      return null
+    }
+    try {
+      const outdir = this.getBuildPaths().outdir
+      if (outdir) {
+        const file = Bun.file(nodePath.join(outdir, ...getClientBuildAssetsPathSegments(this.scope)))
+        if (await file.exists()) {
+          const parsed = JSON.parse(await file.text()) as ClientBuildAssetsFile
+          if (Array.isArray(parsed.files)) {
+            return new Set(parsed.files)
+          }
+        }
+      }
+    } catch {
+      return null
+    }
+    return null
   }
 
   async cleanClient(): Promise<boolean> {

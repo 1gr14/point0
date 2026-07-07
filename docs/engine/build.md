@@ -30,6 +30,7 @@ dist/
   client/_point0/assets/…    # hashed asset bytes, served at /_point0/assets/<hash>
   client/_point0/<scope>/preload-manifest.json   # per-page module preload manifest
   client/_point0/<scope>/build-version.json  # the build identity ([deploy](deploy) invalidation)
+  client/_point0/<scope>/build-assets.json   # content-hashed file list (server-only; asset caching)
 ```
 
 ## Generate runs first, always

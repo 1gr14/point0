@@ -169,19 +169,15 @@ whenever the file index is rebuilt.
 Note: the publicdir cache is an **in-memory server cache only**. The responses
 themselves carry no HTTP cache headers (`Cache-Control` / `ETag` / `max-age`).
 
-For browser/CDN caching, add headers in a root [middleware](middleware): inspect
-the result of `next()`, and when it served a static file
-(`result.variant.type === 'publicdir'`) attach the headers before returning it.
+For browser/CDN caching, mount the [`cacheControl()` middleware](cache-control)
+on your root. It leans on the engine's own classification of static files: a
+served file whose name carries a content hash (a build chunk,
+`/_point0/assets/*`) is the `asset` [request variant](request#requestvariant)
+and caches forever; a stable-name file is `publicdir` and gets a short
+revalidate. Both values are configurable per variant:
 
 ```ts
-// inside Engine.create({ server: { ... } }) — a root middleware
-.middleware(async ({ next }) => {
-  const result = await next()
-  if (result.variant.type === 'publicdir') {
-    result.response.headers.set('Cache-Control', 'public, max-age=31536000, immutable')
-  }
-  return result
-})
+.middleware(cacheControl({ publicdir: 'public, max-age=86400' }))
 ```
 
 ## How it differs from imported assets

@@ -54,6 +54,7 @@ dist/
   client/                              # the browser bundle, served at /
     _point0/assets/<hash>.png           # asset bytes (only copy)
     _point0/<scope>/build-version.json  # the build identity (deploy invalidation)
+    _point0/<scope>/build-assets.json   # content-hashed file list (server-only; asset caching)
     **.js
   server/
     index.server.js                    # the production server entry — run this
