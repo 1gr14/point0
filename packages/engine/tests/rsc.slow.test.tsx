@@ -118,6 +118,64 @@ export const warmPage = root.lets('page', 'warmPage', '/warm')
   })
 `,
   )
+  // three deferred server subtrees at different speeds — each streams into the shell independently and
+  // displays as it lands. DEFER_SERVER_MARKER lives in a server component → must be stripped from the
+  // client bundle like any server component.
+  await project.write(
+    'src/rsc/defer.tsx',
+    `import { defer } from '@point0/core'
+import { root } from '../lib/root.js'
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+const Fast = async () => {
+  await sleep(150)
+  return <div id="d-fast">FAST_DEFER</div>
+}
+const Med = async () => {
+  await sleep(700)
+  return <div id="d-med">MED_DEFER</div>
+}
+const Slow = async () => {
+  await sleep(1400)
+  return <div id="d-slow">DEFER_SERVER_MARKER</div>
+}
+
+export const deferPage = root.lets('page', 'deferPage', '/defer')
+  .rscDepth(1)
+  .loader(async () => ({
+    fast: defer(<Fast />, <span id="d-fast-fb">fast-loading</span>),
+    med: defer(<Med />, <span id="d-med-fb">med-loading</span>),
+    slow: defer(<Slow />, <span id="d-slow-fb">slow-loading</span>),
+  }))
+  .page(({ data }) => (
+    <main id="defer-page">
+      {data.fast}
+      {data.med}
+      {data.slow}
+    </main>
+  ))
+`,
+  )
+  // a server component that WRAPS an island — proves a nested island still hydrates and stays
+  // interactive (the SSR hydration limitation is about defer holes, not about nesting in server markup).
+  await project.write(
+    'src/rsc/nested.tsx',
+    `import { root } from '../lib/root.js'
+import { RscCta } from './cta.js'
+
+const ServerWrap = async () => (
+  <div id="server-wrap">
+    NESTED_SERVER_MARKER
+    <RscCta />
+  </div>
+)
+
+export const nestedPage = root.lets('page', 'nestedPage', '/nested-island')
+  .loader(async () => <ServerWrap />)
+  .page(({ data }) => <main id="nested-page">{data}</main>)
+`,
+  )
 }
 
 const bootRscProject = async (
@@ -228,6 +286,45 @@ const expectRscClientNavigationFlow = async (tp: TestProjectOneClient) => {
   await page.close()
 }
 
+// Deferred holes: all three server subtrees stream into the shell (fast/med/slow) and DISPLAY as they
+// land, with ZERO client refetch and clean hydration (their code never shipped — rendered on the
+// server). Progressive out-of-order ordering is pinned by the in-process suite (rsc.fast); this proves
+// the browser sees every block and the page hydrates without a mismatch or a refetch.
+const expectRscDeferFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/defer')
+  await page.waitContent('FAST_DEFER', 15000)
+  await page.waitContent('MED_DEFER', 15000)
+  await page.waitContent('DEFER_SERVER_MARKER', 15000)
+  await page.stable
+  // the deferred content arrived over the SSR stream + push — the client did NOT refetch the loader
+  expect(page.requestsTale).not.toContain('page.defer-page (data)')
+  // clean hydration — no mismatch, no RSC decode error
+  const logsText = page.strlogs.join('\n')
+  expect(logsText).not.toContain('recoverable hydration/render error')
+  expect(logsText).not.toContain('Hydration')
+  expect(logsText).not.toContain('RSC:')
+  await page.close()
+}
+
+// An island NESTED inside a server component (plain RSC, no defer) hydrates and stays interactive —
+// nesting is irrelevant, only defer holes have the hydration limitation.
+const expectRscNestedIslandFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/nested-island')
+  // the server component rendered its markup on the server…
+  await page.waitContent('NESTED_SERVER_MARKER', 15000)
+  // …and the island wrapped inside it hydrated with its initial state
+  await page.waitContent('clicks=0', 15000)
+  await page.stable
+  const logsText = page.strlogs.join('\n')
+  expect(logsText).not.toContain('recoverable hydration/render error')
+  expect(logsText).not.toContain('Hydration')
+  expect(logsText).not.toContain('RSC:')
+  // the nested island is ALIVE — clicking works (what a defer hole can't do, plain RSC can)
+  await page.original.click('#cta')
+  await page.waitContent('clicks=1', 10000)
+  await page.close()
+}
+
 // Strip guarantees: server code never in the client bundle, clientOnly render never in the server
 // bundle.
 const expectRscStripGuarantees = async (tp: TestProjectOneClient) => {
@@ -243,6 +340,9 @@ const expectRscStripGuarantees = async (tp: TestProjectOneClient) => {
   expect(distServer).not.toContain('LONELY_CLIENT_MARKER')
   // the interactive island's code is in the client bundle (it renders in the browser)
   expect(distClient).toContain('clicks=')
+  // a DEFERRED server component is stripped from the client just like any server component
+  expect(distServer).toContain('DEFER_SERVER_MARKER')
+  expect(distClient).not.toContain('DEFER_SERVER_MARKER')
 }
 
 // A component point in its own file becomes its own chunk, listed in the preload manifest.
@@ -328,6 +428,14 @@ describe('rsc e2e (browser, dev)', () => {
   it('client navigation: the loader is fetched over the wire, elements decode, the island lives', async () => {
     await expectRscClientNavigationFlow(tp)
   })
+
+  it('deferred holes: three server subtrees stream into the shell, display, and hydrate with no refetch', async () => {
+    await expectRscDeferFlow(tp)
+  })
+
+  it('an island nested inside a server component hydrates and is interactive (nesting is not the limitation)', async () => {
+    await expectRscNestedIslandFlow(tp)
+  })
 })
 
 describe('rsc e2e (build)', () => {
@@ -399,6 +507,14 @@ describe('rsc e2e (browser, vite dev)', () => {
 
   it('client navigation: the loader is fetched over the wire, elements decode, the island lives', async () => {
     await expectRscClientNavigationFlow(tp)
+  })
+
+  it('deferred holes: three server subtrees stream into the shell, display, and hydrate with no refetch', async () => {
+    await expectRscDeferFlow(tp)
+  })
+
+  it('an island nested inside a server component hydrates and is interactive (nesting is not the limitation)', async () => {
+    await expectRscNestedIslandFlow(tp)
   })
 })
 

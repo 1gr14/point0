@@ -1,6 +1,7 @@
 import {
   ClientPoints,
   installPushedQueriesReceiver,
+  installPushedRscReceiver,
   log,
   markClientHydrationFinished,
   rscComponentsRegistry,
@@ -47,6 +48,11 @@ export function mount(
   // drain what already arrived — before hydrateRoot, so pushed data is in the cache when React
   // hydrates the streamed boundary content (no refetch, no flicker).
   installPushedQueriesReceiver(clientPoints.transformer)
+  // Streamed RSC-hole fills (see `defer`): its own channel. The buffered fills (holes whose content
+  // arrived before hydration) MUST land before hydrateRoot — a hole still suspended at hydration would
+  // leave its server-revealed content INERT (React abandons a revealed boundary whose client child
+  // suspends). `finishMount` awaits them alongside the chunk drain below.
+  const rscBufferedFillsReady = installPushedRscReceiver(clientPoints.transformer)
 
   const finishMount = (): void => {
     // First invocation: create the root once.
@@ -84,6 +90,7 @@ export function mount(
 
   // RSC: decoding the dehydrated store may have started component-point chunk imports — mount only with the chunks
   // warm, so hydration renders exactly the tree the server did (the server HTML stays visible meanwhile). Resolves
-  // in a microtask when nothing is pending — the overwhelmingly common case.
-  void rscComponentsRegistry.drainPending().then(finishMount)
+  // in a microtask when nothing is pending — the overwhelmingly common case. The RSC buffered fills join the barrier
+  // so a deferred hole delivered before hydration is filled (its subtree, islands and all) when React hydrates.
+  void Promise.all([rscComponentsRegistry.drainPending(), rscBufferedFillsReady]).then(finishMount)
 }

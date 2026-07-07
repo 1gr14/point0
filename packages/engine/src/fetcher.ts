@@ -1295,6 +1295,10 @@ export class Fetcher<TError extends ErrorPoint0> {
         __POINT0_EFFECTS__: prepareFetchResult.effects,
         // in case of recursive server response we want preserve query client to keep state
         __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: _ss.__POINT0_QUERY_CLIENT__.getOrUndefined(),
+        // …and the deferred-hole registry (see `defer`): a page/layer loader's data is fetched in this
+        // nested run, but its holes must land in the OUTER render's per-request registry so the render
+        // pump streams and drains them. Absent outside an SSR render (a plain data fetch) → undefined.
+        __POINT0_RSC_HOLES__: _ss.__POINT0_RSC_HOLES__.getOrUndefined(),
       },
       'Value "%s" not exists in middleware call, this value accessible only in loader, ctx, components etc',
     )

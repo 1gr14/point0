@@ -45,6 +45,7 @@ import {
   isQueryClientDehydratedStateQuery,
   normalizeRscOutput,
   parseQueryKey,
+  RscHoleRegistry,
 } from '@point0/core'
 import { CookieStore } from '@point0/core/cookie-store'
 import { Effects } from '@point0/core/effects'
@@ -111,6 +112,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       __POINT0_SERVER_PORT__: engine.server.port,
       __POINT0_EFFECTS__: effects,
       __POINT0_CLIENT_POINTS__: undefined,
+      // Inherit the parent run's hole registry (see `defer`): a page loader's data is fetched in a
+      // NESTED executor, but its holes must land in the SAME per-request registry the outer render's
+      // pump drains. Mirrors how `__POINT0_QUERY_CLIENT__` is preserved across recursive server runs.
+      __POINT0_RSC_HOLES__: _ss.__POINT0_RSC_HOLES__.getOrUndefined(),
       // in case of recursive server response we want preserve query client to keep state
       __POINT0_QUERY_CLIENT_FROM_PARENT_RUN__: undefined,
       __POINT0_QUERY_CLIENT__:
@@ -665,6 +670,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                   const data = (await normalizeRscOutput(result[1] ?? {}, {
                     depth: point.point._rscDepth ?? 0,
                     label: point.toString(),
+                    holes: _ss.__POINT0_RSC_HOLES__.getOrUndefined(),
                   })) as Data
                   layers.forEach((layer) => {
                     layer.data = data
@@ -687,6 +693,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                   const data = (await normalizeRscOutput(result ?? {}, {
                     depth: point.point._rscDepth ?? 0,
                     label: point.toString(),
+                    holes: _ss.__POINT0_RSC_HOLES__.getOrUndefined(),
                   })) as Data
                   layers.forEach((layer) => {
                     layer.data = data
@@ -849,9 +856,26 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
   // suspend there, so it lives its whole life in 'discovery'.
   markSsrRenderPhase(): { shouldStreamSuspense: boolean } {
     const shouldStreamSuspense =
-      this.sawSuspenseMarkers || this.discoveryCutShort || this.hasPendingSuspendableQueries()
+      this.sawSuspenseMarkers || this.discoveryCutShort || this.hasPendingSuspendableQueries() || this.hasPendingHoles()
     this.serverStorageState.__POINT0_SSR_PHASE__ = 'render'
     return { shouldStreamSuspense }
+  }
+
+  // A deferred RSC hole (see `defer`) still pending when discovery ends will suspend behind its
+  // Suspense boundary in the final render — so the response must STREAM, not block on allReady
+  // waiting for the very subtree the hole was meant to defer. A hole that already settled renders
+  // inline and needs no streaming (mirrors `hasPendingSuspendableQueries` checking pending only).
+  private hasPendingHoles(): boolean {
+    const holes = this.serverStorageState.__POINT0_RSC_HOLES__
+    if (!holes) {
+      return false
+    }
+    for (const entry of holes.entries.values()) {
+      if (!entry.settled) {
+        return true
+      }
+    }
+    return false
   }
 
   // Any enabled server 'data' query still pending in the cache when discovery ends will suspend
@@ -981,6 +1005,9 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       this.serverStorageState.__POINT0_CURRENT_LOCATION__ = pageLocation
       this.serverStorageState.__POINT0_SSR_LOCATION__ = pageLocation
       this.serverStorageState.__POINT0_CLIENT_POINTS__ = clientPoints
+      // Fresh per-request registry for deferred RSC holes (see `defer`) — the render pump drains its
+      // resolved subtrees into the streamed response, so it must outlive discovery like the client points.
+      this.serverStorageState.__POINT0_RSC_HOLES__ = new RscHoleRegistry()
       this.serverStorageState.__POINT0_SSR_PHASE__ = 'discovery'
       this.serverStorageState.__POINT0_SSR_TARGET__ = target
       this.serverStorageState.__POINT0_SSR_REDIRECT_TASK__ = undefined

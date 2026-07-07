@@ -7,7 +7,7 @@ import { _point0_env } from './env.js'
 // import { getClientPoints } from './helpers.js'
 import { getClientPoints } from './helpers.js'
 import { RedirectTask } from './redirect.js'
-import { rscComponentsRegistry, rscDataHasElements } from './rsc.js'
+import { rscComponentsRegistry, rscDataHasElements, rscHolesRegistry } from './rsc.js'
 import { superstore } from './super-store.js'
 import type { QueryKey } from './types.js'
 import { parseQueryKey } from './utils.js'
@@ -248,9 +248,68 @@ export const installPushedQueriesReceiver = (transformer: DataTransformerExtende
   }
 }
 
+/**
+ * Install the client side of streamed RSC-hole push-hydration (see `defer`). The server streams an inline
+ * `<script>window.__POINT0_PUSH_RSC__(…)</script>` as each deferred subtree resolves; a bootstrap in the HTML prefix
+ * buffers calls that execute before the bundle loads. `mount()` calls this after `superstore.prepare` — it replaces the
+ * buffering stub with the real receiver and drains whatever arrived early, so a hole fills before or as React hydrates
+ * its boundary (no refetch, no flicker). The subtree rides the RSC-wrapped transformer, so parsing decodes its elements
+ * (and starts any island chunk imports) exactly like a query push; the fill lands only with those chunks warm.
+ */
+export const installPushedRscReceiver = (transformer: DataTransformerExtended): Promise<void> => {
+  if (typeof window === 'undefined') {
+    return Promise.resolve()
+  }
+  const w = window as unknown as {
+    __POINT0_PUSH_RSC__?: (serialized: string) => void
+    __POINT0_PUSH_RSC_BUFFER__?: string[]
+  }
+  const receive = (serialized: string): Promise<void> => {
+    const logFailure = (error: unknown): void => {
+      log({ level: 'error', category: ['ssr'], message: 'Failed to hydrate a streamed RSC hole push', error })
+    }
+    try {
+      const payload = transformer.parse(serialized) as { id: string; data?: unknown; error?: unknown }
+      const applyFill = (): void => {
+        if (payload.error !== undefined) {
+          const ErrorClass = getClientPoints().manager.root._Error
+          rscHolesRegistry.fill(payload.id, { error: ErrorClass.from(payload.error) })
+        } else {
+          rscHolesRegistry.fill(payload.id, { node: payload.data })
+        }
+      }
+      const applyFillSafe = (): void => {
+        try {
+          applyFill()
+        } catch (error) {
+          logFailure(error)
+        }
+      }
+      // decode may have started island chunk imports in the pushed subtree — fill with those chunks
+      // warm, so a subtree revealed on the client never re-suspends on an island already in its data.
+      return rscComponentsRegistry.drainPending().then(applyFillSafe, applyFillSafe)
+    } catch (error) {
+      logFailure(error)
+      return Promise.resolve()
+    }
+  }
+  const buffered = w.__POINT0_PUSH_RSC_BUFFER__ ?? []
+  w.__POINT0_PUSH_RSC__ = (serialized: string) => void receive(serialized)
+  w.__POINT0_PUSH_RSC_BUFFER__ = []
+  // The buffered pushes arrived BEFORE hydration; `mount()` awaits the returned promise before
+  // hydrateRoot so these holes are FILLED when React hydrates their boundaries. A hole still
+  // suspended at hydration would leave the server-streamed content INERT — React abandons a
+  // server-revealed boundary whose client child suspends (and re-renders never re-enter it, unlike a
+  // query whose observer notifies). Post-hydration pushes stream in fire-and-forget.
+  return Promise.all(buffered.map((serialized) => receive(serialized))).then(() => undefined)
+}
+
 // Errors in the dehydrated state travel to the browser: public projection in production,
 // private in dev (the developer is the audience there).
-const serializeStateError = (ErrorClass: ClassLikeError0<ErrorPoint0>, error: unknown): Record<string, unknown> => {
+export const serializeStateError = (
+  ErrorClass: ClassLikeError0<ErrorPoint0>,
+  error: unknown,
+): Record<string, unknown> => {
   const error0 = ErrorClass.from(error)
   return _point0_env.mode.is.production ? ErrorClass.serializePublic(error0) : ErrorClass.serializePrivate(error0)
 }

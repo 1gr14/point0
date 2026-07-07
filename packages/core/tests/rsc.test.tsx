@@ -3,10 +3,13 @@ import * as React from 'react'
 import {
   RSC_MARKER_KEY,
   RscComponentsRegistry,
+  RscHoleRegistry,
   decodeRscData,
+  defer,
   encodeRscData,
   normalizeRscOutput,
   rscDataHasElements,
+  rscHolesRegistry,
 } from '../src/rsc.js'
 import { Point0 } from '../src/point0.js'
 
@@ -144,6 +147,28 @@ describe('rsc normalize', () => {
     const encoded = encodeRscData(out) as Record<string, { t: { c: string } }>
     expect(encoded[RSC_MARKER_KEY]!.t).toEqual({ c: 'cta' })
   })
+
+  it('an island nested inside an unfolded server component survives as a live reference', async () => {
+    // The nesting is irrelevant to the client: a server component unfolds to markup, the island
+    // inside stays a `{ c: name }` reference — so it hydrates like any top-level island (the SSR
+    // hydration limitation is about `defer` holes, not about nesting).
+    const root = Point0.lets('root', 'root').root()
+    const Cta = root.lets('component', 'cta').component(() => <button>go</button>)
+    const ServerWrap = async () => (
+      <div id="wrap">
+        <b>server</b>
+        <Cta />
+      </div>
+    )
+    const out = (await normalizeRscOutput(<ServerWrap />, opts)) as React.ReactElement
+    // the server component unfolded to its <div>; the island inside is still a live component point
+    expect(out.type).toBe('div')
+    const children = (out.props as { children: React.ReactElement[] }).children
+    expect(children.some((child) => child.type === Cta)).toBe(true)
+    // …and it encodes as a component-point reference, next to the plain host markup
+    const encoded = encodeRscData(out) as { __p0e: { p: { children: Array<{ __p0e: { t: unknown } }> } } }
+    expect(encoded.__p0e.p.children.map((child) => child.__p0e.t)).toContainEqual({ c: 'cta' })
+  })
 })
 
 describe('rsc registry', () => {
@@ -184,5 +209,83 @@ describe('rsc registry', () => {
     release(() => null)
     await registry.drainPending()
     expect(() => (Resolved as (props: object) => React.ReactNode)({})).not.toThrow()
+  })
+})
+
+describe('rsc defer / holes', () => {
+  it('registers a hole and stands a Suspense boundary in its place — the subtree is NOT awaited', async () => {
+    const holes = new RscHoleRegistry()
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const Slow = async () => {
+      await gate
+      return <b>slow</b>
+    }
+    const out = (await normalizeRscOutput(
+      { hero: defer(<Slow />, <span>loading</span>) },
+      { depth: 1, label: 'p', holes },
+    )) as { hero: React.ReactElement }
+    // resolves immediately: the slow subtree is deferred, not awaited
+    expect(out.hero.type).toBe(React.Suspense)
+    expect((out.hero.props as { fallback: React.ReactElement }).fallback.type).toBe('span')
+    const [entry] = [...holes.entries.values()]
+    expect(entry!.settled).toBe(false)
+    expect(holes.takeResolved()).toHaveLength(0)
+    // the Suspense child encodes to a hole node { t: 2, id }
+    const encoded = encodeRscData(out) as {
+      hero: { __p0e: { t: number; p: { children: { __p0e: { t: number; id: string } } } } }
+    }
+    expect(encoded.hero.__p0e.t).toBe(1)
+    expect(encoded.hero.__p0e.p.children.__p0e.t).toBe(2)
+    expect(encoded.hero.__p0e.p.children.__p0e.id).toBe(entry!.id)
+    // once the subtree resolves it drains as a resolved hole carrying the normalized node
+    release()
+    await entry!.throwable
+    expect(entry!.settled).toBe(true)
+    const resolved = holes.takeResolved()
+    expect(resolved).toHaveLength(1)
+    expect((resolved[0]!.result as { node: React.ReactElement }).node.type).toBe('b')
+    // takeResolved marks delivered — a second drain is empty
+    expect(holes.takeResolved()).toHaveLength(0)
+  })
+
+  it('a hole node decodes to a slot that suspends until filled, then renders the fill (either order)', () => {
+    // fill AFTER decode
+    const afterDecode = decodeRscData({ x: { [RSC_MARKER_KEY]: { t: 2, id: 'hAfter' } } }) as { x: React.ReactElement }
+    const SlotAfter = afterDecode.x.type as (props: object) => React.ReactNode
+    expect(() => SlotAfter({})).toThrow() // pending → throws its thenable
+    rscHolesRegistry.fill('hAfter', { node: <b>filled</b> })
+    expect((SlotAfter({}) as React.ReactElement).type).toBe('b')
+
+    // fill BEFORE decode (the buffered-push order)
+    rscHolesRegistry.fill('hBefore', { node: <i>early</i> })
+    const beforeDecode = decodeRscData({ x: { [RSC_MARKER_KEY]: { t: 2, id: 'hBefore' } } }) as {
+      x: React.ReactElement
+    }
+    const SlotBefore = beforeDecode.x.type as (props: object) => React.ReactNode
+    expect((SlotBefore({}) as React.ReactElement).type).toBe('i')
+  })
+
+  it('a hole filled with an error re-throws it at render (nearest boundary)', () => {
+    const decoded = decodeRscData({ y: { [RSC_MARKER_KEY]: { t: 2, id: 'hErr' } } }) as { y: React.ReactElement }
+    const Slot = decoded.y.type as (props: object) => React.ReactNode
+    rscHolesRegistry.fill('hErr', { error: new Error('boom') })
+    expect(() => Slot({})).toThrow('boom')
+  })
+
+  it('a deferred subtree deeper than rscDepth errors like an element', async () => {
+    const holes = new RscHoleRegistry()
+    await expect(normalizeRscOutput({ hero: defer(<b />) }, { depth: 0, label: 'p', holes })).rejects.toThrow(
+      /rscDepth/,
+    )
+  })
+
+  it('without a holes registry, defer degrades to awaiting the subtree inline', async () => {
+    const Slow = async () => <b>inline</b>
+    const out = (await normalizeRscOutput({ hero: defer(<Slow />, <span>l</span>) }, { depth: 1, label: 'p' })) as {
+      hero: React.ReactElement
+    }
+    // no Suspense boundary — the subtree is inlined, the fallback dropped
+    expect(out.hero.type).toBe('b')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { ClientOnly, Point0 } from '@point0/core'
+import { ClientOnly, defer, Point0 } from '@point0/core'
 import * as React from 'react'
 import superjson from 'superjson'
 import { createTestThings } from './utils/internal-testing.js'
@@ -669,6 +669,231 @@ describe('rsc', () => {
       expect(html).toContain('rscCtaStreamed')
     })
   }, 15000)
+
+  it('defer: a slow server subtree streams as a hole — shell ships the fallback, the fill pushes over __POINT0_PUSH_RSC__', async () => {
+    const root = createRoot()
+    const gate = createGate()
+    const Cta = root.lets('component', 'rscCtaHole').component(() => <div id="cta-h">go!</div>)
+    const SlowHero = async () => {
+      await gate.promise
+      return (
+        <div id="hero-h">
+          <b>H!</b>
+          <Cta />
+        </div>
+      )
+    }
+    const page = root
+      .lets('page', 'home', '/')
+      .rscDepth(1)
+      .loader(async () => ({
+        hero: defer(<SlowHero />, <div id="hero-fallback">hero-loading</div>),
+      }))
+      .page(({ data }) => (
+        <div id="page">
+          <div id="static">static-content</div>
+          {data.hero}
+        </div>
+      ))
+
+    const { client } = await createTestThings({ ssr: true, points: [root, Cta, page] })
+    await (client as { run: <T>(fn: () => Promise<T>) => Promise<T> }).run(async () => {
+      const response = await (client as unknown as { fetch: (url: string) => Promise<Response> }).fetch(
+        'http://localhost/',
+      )
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      // the shell ships at once: static content + the hole's fallback, no deferred content, response still open
+      let html = await readUntil(reader, decoder, '', 'hero-loading')
+      expect(html).toContain('static-content')
+      expect(html).toContain('hero-loading')
+      expect(html).not.toContain('id="hero-h"')
+      expect(html).not.toContain('id="cta-h"')
+      expect(html).not.toContain('</html>')
+      // release the deferred server component → its markup (and its island) stream into the same response
+      gate.release()
+      html = await readToEnd(reader, decoder, html)
+      expect(html).toContain('id="hero-h"')
+      expect(html).toContain('id="cta-h"')
+      // the fill lands on the RSC push channel, carrying the ENCODED island reference (wire marker)
+      expect(html).toContain('__POINT0_PUSH_RSC__(')
+      expect(html).toContain('__p0e')
+      expect(html).toContain('rscCtaHole')
+      expect(html).toContain('</html>')
+    })
+  }, 15000)
+
+  it('THREE deferred server subtrees at different speeds all stream into one response, out of order', async () => {
+    const root = createRoot()
+    const g1 = createGate()
+    const g2 = createGate()
+    const g3 = createGate()
+    const A = async () => {
+      await g1.promise
+      return <b id="A">A_CONTENT</b>
+    }
+    const B = async () => {
+      await g2.promise
+      return <b id="B">B_CONTENT</b>
+    }
+    const C = async () => {
+      await g3.promise
+      return <b id="C">C_CONTENT</b>
+    }
+    const page = root
+      .lets('page', 'home', '/')
+      .rscDepth(1)
+      .loader(async () => ({
+        a: defer(<A />, <span id="fa">a-loading</span>),
+        b: defer(<B />, <span id="fb">b-loading</span>),
+        c: defer(<C />, <span id="fc">c-loading</span>),
+      }))
+      .page(({ data }) => (
+        <div id="page">
+          {data.a}
+          {data.b}
+          {data.c}
+        </div>
+      ))
+    const { client } = await createTestThings({ ssr: true, points: [root, page] })
+    const c = client as unknown as {
+      run: <T>(fn: () => Promise<T>) => Promise<T>
+      fetch: (url: string) => Promise<Response>
+    }
+    await c.run(async () => {
+      const response = await c.fetch('http://localhost/')
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      // shell: all three fallbacks, no content yet, response still open
+      let html = await readUntil(reader, decoder, '', 'c-loading')
+      expect(html).toContain('a-loading')
+      expect(html).toContain('b-loading')
+      expect(html).toContain('c-loading')
+      expect(html).not.toContain('A_CONTENT')
+      expect(html).not.toContain('B_CONTENT')
+      expect(html).not.toContain('C_CONTENT')
+      expect(html).not.toContain('</html>')
+      // resolve OUT OF ORDER — b, then c, then a — each streams in on its own, none waits for the others
+      g2.release()
+      html = await readUntil(reader, decoder, html, 'B_CONTENT')
+      expect(html).toContain('B_CONTENT')
+      expect(html).not.toContain('A_CONTENT')
+      expect(html).not.toContain('C_CONTENT')
+      g3.release()
+      html = await readUntil(reader, decoder, html, 'C_CONTENT')
+      expect(html).toContain('C_CONTENT')
+      expect(html).not.toContain('A_CONTENT')
+      g1.release()
+      html = await readToEnd(reader, decoder, html)
+      // all three rendered, each pushed EXACTLY once, one response, stream closed — zero extra requests
+      expect(html).toContain('A_CONTENT')
+      expect(html).toContain('B_CONTENT')
+      expect(html).toContain('C_CONTENT')
+      expect((html.match(/__POINT0_PUSH_RSC__\(/g) ?? []).length).toBe(3)
+      expect(html).toContain('</html>')
+    })
+  }, 20000)
+
+  it('a deferred server subtree that THROWS never hangs the stream — it closes and the error is pushed', async () => {
+    const root = createRoot()
+    const gate = createGate()
+    const Boom = async () => {
+      await gate.promise
+      throw new Error('boom-in-defer')
+    }
+    const page = root
+      .lets('page', 'home', '/')
+      .rscDepth(1)
+      .loader(async () => ({ x: defer(<Boom />, <span id="boom-fb">boom-loading</span>) }))
+      .page(({ data }) => <div id="page">{data.x}</div>)
+    const { client } = await createTestThings({ ssr: true, points: [root, page] })
+    const c = client as unknown as {
+      run: <T>(fn: () => Promise<T>) => Promise<T>
+      fetch: (url: string) => Promise<Response>
+    }
+    await c.run(async () => {
+      const response = await c.fetch('http://localhost/')
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      let html = await readUntil(reader, decoder, '', 'boom-loading')
+      expect(html).toContain('boom-loading')
+      expect(html).not.toContain('</html>')
+      gate.release()
+      html = await readToEnd(reader, decoder, html)
+      // the thrown subtree's promise never rejects (a rejected Suspense thenable hangs Fizz on Bun) —
+      // the stream still closes, and the failure is delivered so the client hole slot throws to its boundary
+      expect(html).toContain('</html>')
+      expect(html).toContain('__POINT0_PUSH_RSC__(')
+    })
+  }, 15000)
+
+  it('defer without a fallback streams a blank hole, then the content (the fallback is optional)', async () => {
+    const root = createRoot()
+    const gate = createGate()
+    const Slow = async () => {
+      await gate.promise
+      return <b id="nofb">no-fallback-content</b>
+    }
+    const page = root
+      .lets('page', 'home', '/')
+      .rscDepth(1)
+      .loader(async () => ({ x: defer(<Slow />) }))
+      .page(({ data }) => (
+        <div id="page">
+          <span id="anchor">anchor</span>
+          {data.x}
+        </div>
+      ))
+    const { client } = await createTestThings({ ssr: true, points: [root, page] })
+    const c = client as unknown as {
+      run: <T>(fn: () => Promise<T>) => Promise<T>
+      fetch: (url: string) => Promise<Response>
+    }
+    await c.run(async () => {
+      const response = await c.fetch('http://localhost/')
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      // the shell ships (anchor present) with nothing where the hole is — no fallback declared
+      let html = await readUntil(reader, decoder, '', 'anchor')
+      expect(html).toContain('anchor')
+      expect(html).not.toContain('no-fallback-content')
+      gate.release()
+      html = await readToEnd(reader, decoder, html)
+      expect(html).toContain('no-fallback-content')
+      expect(html).toContain('__POINT0_PUSH_RSC__(')
+    })
+  }, 15000)
+
+  it('a mutation loader returns a defer()-ed server component — it renders server-side and lands as data.element', async () => {
+    // A mutation response is a single body, not an SSR stream — there is no hole registry, so `defer`
+    // degrades gracefully: the server component is awaited inline and travels as `data.receipt` like
+    // any RSC element. Proves the "elements as data" contract holds through mutations, defer and all.
+    const root = createRoot()
+    const Receipt = async ({ id }: { id: number }) => <b id="receipt">receipt-{id}</b>
+    const publish = root
+      .lets('mutation', 'publish')
+      .rscDepth(1)
+      .loader(async () => ({ ok: true, receipt: defer(<Receipt id={42} />, <span>pending</span>) }))
+      .mutation()
+    const page = root.lets('page', 'home', '/').page(() => {
+      const mutation = publish.useMutation()
+      return (
+        <div id="page">
+          <button id="mutate" onClick={() => mutation.mutate()}>
+            go
+          </button>
+          {mutation.data?.receipt ?? <span id="no-receipt">nothing yet</span>}
+        </div>
+      )
+    })
+    const { render } = await createTestThings({ ssr: true, points: [root, publish, page] })
+    await render(page.route(), async ({ waitContent, click, tale }) => {
+      await waitContent('#no-receipt')
+      await click('#mutate')
+      await waitContent('#receipt')
+      expect(await tale()).toContain('receipt-42')
+    })
+  })
 
   it('custom transformer types survive inside reference props (superjson Date)', async () => {
     const root = Point0.lets('root', 'root')

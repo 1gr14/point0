@@ -253,6 +253,70 @@ Element-containing query data opts out of TanStack's deep merge automatically �
 Point0's default [`structuralSharing`](query-client) hands such payloads back
 fresh, so a refetch never tries to merge two element trees.
 
+## Deferred subtrees: `defer`
+
+A server component blocks the payload: the normalize pass awaits every async
+server component before anything ships, so one slow `<Analytics />` holds back
+the whole loader output — the SSR shell and the client-fetch response alike.
+
+`defer` streams it instead. Wrap a slow subtree and the loader returns at once:
+a _hole_ ships in its place under a `Suspense` boundary (showing the fallback),
+the shell streams immediately, and the resolved subtree is pushed into the
+**same** response as it settles — the RSC analog of a [`suspend: 'server'`](ssr)
+query.
+
+```tsx
+import { defer } from '@point0/core'
+
+.rscDepth(1)
+.loader(async () => ({
+  stats: await getStats(), // fast — ships in the shell
+  analytics: defer(<Analytics />, <ChartSkeleton />), // slow — streams in
+}))
+.page(({ data }) => (
+  <>
+    <StatsCard stats={data.stats} />
+    {data.analytics}
+  </>
+))
+```
+
+`<Analytics />` is an ordinary (async) server component — its code never ships,
+only its rendered host elements do, streamed after the shell. The second
+argument is the fallback shown until it lands. The field is typed as the element
+it stands for, so `{data.analytics}` renders like any other RSC output. Islands
+inside a deferred subtree work too: their references travel in the pushed fill
+and hydrate as usual.
+
+Deferral needs a streaming response — a page/document SSR render. In a
+non-streaming context (a data-only fetch, SSG) `defer` degrades gracefully: the
+subtree is awaited inline like a plain server component, the fallback dropped —
+the same content, just without progressive delivery.
+
+Two ways to stream a slow subtree, then:
+
+- a query marked [`suspend: 'server'`](ssr) — when the slow part has its own
+  loader/data and you want the result in the query cache;
+- **`defer`** — when the slow part is just markup a server component renders,
+  with no query of its own.
+
+Both ship the shell first and stream the rest into one response, with zero
+client refetch.
+
+**`defer` is for server markup.** The streamed subtree displays as it lands, but
+it is not re-hydrated on the initial load: the browser completes a
+server-revealed boundary from the stream, so an **interactive component point
+inside a deferred subtree renders but its handlers are not wired** on first
+paint. Keep interactive parts at the top level of the loader output (they
+hydrate normally), or stream them with a component point's
+[`suspend: 'server'`](ssr) query — which is the division of labor anyway:
+`defer` for server markup, `suspend` for interactive, data-bearing islands.
+
+**Scope today: the initial server-rendered load.** On a client-side navigation
+or a mutation, a deferred subtree still arrives with the rest of the response —
+correct, just not progressive. Progressive streaming for client fetches (and,
+with it, live islands _inside_ a deferred subtree) is on the roadmap.
+
 ## Elements, or plain data?
 
 Sending plain data and composing in the render stays the default — the page
@@ -299,11 +363,13 @@ Elements encode into plain JSON markers inside the regular payload:
 }
 ```
 
-`t` is the host tag (`0` = Fragment, `1` = Suspense, `{ c: name }` = component
-point), `k` the key, `p` the props. User data keys that collide with `__p0e` are
-`$`-escaped and restored on decode. Because the codec wraps your
-[transformer](transformer), custom types keep working **inside element props** —
-a `Date` in `<Hero since={date} />` round-trips like any other `Date`.
+`t` is the host tag (`0` = Fragment, `1` = Suspense, `2` = a deferred hole whose
+`id` names the fill streamed over `__POINT0_PUSH_RSC__` — see
+[`defer`](#deferred-subtrees-defer), `{ c: name }` = component point), `k` the
+key, `p` the props. User data keys that collide with `__p0e` are `$`-escaped and
+restored on decode. Because the codec wraps your [transformer](transformer),
+custom types keep working **inside element props** — a `Date` in
+`<Hero since={date} />` round-trips like any other `Date`.
 
 Decoding is one-way by design: the server encodes elements into responses, the
 SSR-embedded state, and streamed pushes, but **never decodes elements from

@@ -14,6 +14,7 @@ import type {
 import { __POINT0_QUERY_CLIENT__ } from './query-client.js'
 import type { RedirectTask } from './redirect.js'
 import type { Request0 } from './request0.js'
+import type { RscHoleRegistry } from './rsc.js'
 import type { SsrStorePendingMap } from './ssr-store.js'
 import type { SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './super-store.js'
 import { superstore } from './super-store.js'
@@ -60,6 +61,11 @@ export const _ss = {
   __POINT0_EFFECTS__: superstore.define<Effects>('__POINT0_EFFECTS__', initUndefined, 'serverOnlyStorage'),
   __POINT0_CLIENT_POINTS__: superstore.define<ClientPoints<any> | undefined>(
     '__POINT0_CLIENT_POINTS__',
+    initUndefined,
+    'clientServerIsolated',
+  ),
+  __POINT0_RSC_HOLES__: superstore.define<RscHoleRegistry | undefined>(
+    '__POINT0_RSC_HOLES__',
     initUndefined,
     'clientServerIsolated',
   ),

@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { ClientOnly, getClientPoints } from './helpers.js'
+import { superstore } from './super-store.js'
 import type { DataTransformerExtended } from './types.js'
 
 /**
@@ -43,15 +44,26 @@ const RSC_ESCAPED_KEY_REGEX = /^__p0e\$*$/
  * ClientPoints without `eager`, test harnesses, future serialization of decoded trees).
  */
 const RSC_REF_BRAND = '__POINT0_RSC_REF__'
+/**
+ * Brand on a deferred-hole slot component (the server pending slot and the client fill slot alike), carrying the hole
+ * id. Like {@link RSC_REF_BRAND} it keeps the codec TOTAL: a hole slot encodes back to its `{ t: 2, id }` wire node, so
+ * decoding then re-encoding a tree with holes is a no-op. See {@link defer} and {@link RscHoleRegistry}.
+ */
+const RSC_HOLE_BRAND = '__POINT0_RSC_HOLE__'
 
-/** Wire node type: a host tag, `0` = Fragment, `1` = Suspense, or a component-point reference `{ c: name }`. */
-export type RscNodeType = string | 0 | 1 | { c: string }
+/**
+ * Wire node type: a host tag, `0` = Fragment, `1` = Suspense, `2` = a deferred hole (its `id` names the fill pushed
+ * over `__POINT0_PUSH_RSC__`), or a component-point reference `{ c: name }`.
+ */
+export type RscNodeType = string | 0 | 1 | 2 | { c: string }
 export type RscNode = {
   t: RscNodeType
   /** The element key, when set. */
   k?: string
   /** Props (children included), values encoded recursively. Omitted when empty. */
   p?: Record<string, unknown>
+  /** Hole id, set only for a hole node (`t: 2`); its fill arrives via `__POINT0_PUSH_RSC__`. */
+  id?: string
 }
 
 const REACT_FRAGMENT = Symbol.for('react.fragment')
@@ -88,6 +100,14 @@ const getRscRefName = (type: unknown): string | undefined => {
   return typeof name === 'string' ? name : undefined
 }
 
+const getRscHoleName = (type: unknown): string | undefined => {
+  if (typeof type !== 'function') {
+    return undefined
+  }
+  const id = (type as unknown as Record<string, unknown>)[RSC_HOLE_BRAND]
+  return typeof id === 'string' ? id : undefined
+}
+
 const getFunctionName = (fn: unknown): string => {
   return (fn as { displayName?: string; name?: string }).displayName || (fn as { name?: string }).name || 'anonymous'
 }
@@ -122,6 +142,45 @@ const rscError = (path: string[], message: string): Error => {
   return new Error(`RSC${at}: ${message}`)
 }
 
+// defer — deferred holes (progressive in-tree streaming)
+
+const RSC_DEFER_BRAND = '__POINT0_RSC_DEFER__'
+
+/** A subtree wrapped by {@link defer}: its element streams as a hole instead of being awaited inline. */
+type DeferredSubtree = {
+  readonly [RSC_DEFER_BRAND]: true
+  readonly element: React.ReactElement
+  readonly fallback: React.ReactNode
+}
+
+/**
+ * Defer a slow server subtree so the loader payload never waits for it. Instead of awaiting the element inline,
+ * `normalizeRscOutput` ships a HOLE in its place under a `Suspense` boundary (showing `fallback`), streams the shell
+ * immediately, and pushes the resolved subtree into the same response as it settles — `__POINT0_PUSH_RSC__`, the RSC
+ * analog of the streamed-query push. The client fills the hole in place and the boundary reveals: no refetch, no
+ * flicker, hydration matching by construction.
+ *
+ * ```tsx
+ * .loader(async () => ({
+ *   stats: await getStats(),                             // fast — ships in the shell
+ *   analytics: defer(<Analytics />, <ChartSkeleton />),  // slow — streams in later
+ * }))
+ * ```
+ *
+ * Only meaningful inside a server loader whose response can stream (a page/document SSR render). Outside a streaming
+ * context (data-only fetches, SSG) it degrades gracefully — the subtree is awaited inline like a plain server component
+ * and the fallback is dropped: the same content, just without progressive delivery.
+ *
+ * Typed as the element it stands for: after normalize the field IS a live element (a `Suspense` boundary), so it
+ * renders like any other RSC loader output. The deferral marker is an internal detail — only ever unwrapped by
+ * normalize.
+ */
+export const defer = (element: React.ReactElement, fallback?: React.ReactNode): React.ReactElement =>
+  ({ [RSC_DEFER_BRAND]: true, element, fallback }) as unknown as React.ReactElement
+
+const isDeferred = (value: unknown): value is DeferredSubtree =>
+  typeof value === 'object' && value !== null && (value as Record<string, unknown>)[RSC_DEFER_BRAND] === true
+
 // normalize (server, right after the loader)
 
 export type NormalizeRscOutputOptions = {
@@ -129,6 +188,65 @@ export type NormalizeRscOutputOptions = {
   depth: number
   /** Point description for error messages, e.g. `page "home"`. */
   label: string
+  /**
+   * Per-request hole registry for {@link defer}. Present only in a streaming SSR pass; when absent (data-only, SSG, unit
+   * tests) a deferred subtree is awaited inline and the hole machinery is skipped.
+   */
+  holes?: RscHoleRegistry
+}
+
+type RscHoleResult = { node: unknown } | { error: unknown }
+
+/** A single deferred hole minted this request. The render pump drains {@link RscHoleRegistry.takeResolved} of these. */
+export type RscHoleEntry = {
+  id: string
+  settled: boolean
+  delivered: boolean
+  /** The never-rejecting settle promise the SSR hole slot suspends on. */
+  throwable: Promise<void>
+  result?: RscHoleResult
+}
+
+/**
+ * Per-request server-side registry of deferred holes (see {@link defer}). `register` mints an id, kicks off the
+ * subtree's normalization WITHOUT awaiting it, and returns an entry the SSR hole slot suspends on. The entry's
+ * throwable never rejects — a failed subtree settles to an error the slot re-throws at render (a rejected Suspense
+ * thenable hangs Fizz on Bun) — so the render pump can push resolved subtrees (or errors) into the streamed response as
+ * they land.
+ */
+export class RscHoleRegistry {
+  private counter = 0
+  /** All holes minted this request, by id — the render pump drains resolved ones. */
+  readonly entries = new Map<string, RscHoleEntry>()
+
+  register(normalize: () => Promise<unknown>): RscHoleEntry {
+    const id = `h${this.counter++}`
+    const entry: RscHoleEntry = { id, settled: false, delivered: false, throwable: Promise.resolve() }
+    entry.throwable = normalize().then(
+      (node) => {
+        entry.settled = true
+        entry.result = { node }
+      },
+      (error: unknown) => {
+        entry.settled = true
+        entry.result = { error }
+      },
+    )
+    this.entries.set(id, entry)
+    return entry
+  }
+
+  /** Resolved holes not yet delivered — the pump serializes and pushes these, then they are marked delivered. */
+  takeResolved(): RscHoleEntry[] {
+    const out: RscHoleEntry[] = []
+    for (const entry of this.entries.values()) {
+      if (entry.settled && !entry.delivered) {
+        entry.delivered = true
+        out.push(entry)
+      }
+    }
+    return out
+  }
 }
 
 /**
@@ -136,6 +254,9 @@ export type NormalizeRscOutputOptions = {
  * the whole normalize pass for element-free outputs — the overwhelmingly common case.
  */
 export const rscDataHasElements = (value: unknown): boolean => {
+  if (isDeferred(value)) {
+    return true
+  }
   if (React.isValidElement(value)) {
     return true
   }
@@ -187,6 +308,16 @@ const normalizeData = async (
   path: string[],
   options: NormalizeRscOutputOptions,
 ): Promise<unknown> => {
+  if (isDeferred(value)) {
+    if (budget < 0) {
+      const requiredDepth = path.filter((part) => !part.startsWith('[') && !part.startsWith('<')).length
+      throw rscError(
+        path,
+        `${options.label} returned a deferred subtree deeper than its rscDepth allows. Raise it with .rscDepth(${requiredDepth}) on the point (0 allows it as the whole output, 1 allows it in first-level fields, …).`,
+      )
+    }
+    return await normalizeHole(value, path, options)
+  }
   if (React.isValidElement(value)) {
     if (budget < 0) {
       const requiredDepth = path.filter((part) => !part.startsWith('[') && !part.startsWith('<')).length
@@ -296,6 +427,55 @@ const normalizeElement = async (
   }
   return normalized
 }
+
+/**
+ * Turn a {@link defer}'d subtree into a hole: register the subtree's (un-awaited) normalization in the per-request hole
+ * registry, and stand a `Suspense` boundary in its place with a hole slot as the child. SSR renders the fallback and
+ * streams the boundary out of order when the subtree lands; the wire encodes the slot as a `{ t: 2, id }` hole node.
+ * Without a registry (no streaming context) the subtree is awaited inline — the same content, no progressive delivery.
+ */
+const normalizeHole = async (
+  deferred: DeferredSubtree,
+  path: string[],
+  options: NormalizeRscOutputOptions,
+): Promise<unknown> => {
+  const holes = options.holes
+  if (!holes) {
+    return await normalizeData(deferred.element, Infinity, [...path, 'defer'], options)
+  }
+  const fallback =
+    deferred.fallback === undefined
+      ? undefined
+      : ((await normalizeData(deferred.fallback, Infinity, [...path, 'defer.fallback'], options)) as React.ReactNode)
+  const entry = holes.register(() => normalizeData(deferred.element, Infinity, [...path, 'defer'], options))
+  const holeSlot = makeServerHoleSlot(entry)
+  return React.createElement(React.Suspense, fallback === undefined ? null : { fallback }, holeSlot)
+}
+
+/**
+ * The server-side hole slot component: suspends on the entry's never-rejecting settle promise (Fizz streams the
+ * boundary out of order), renders the resolved subtree once it lands, and re-throws a rejected subtree's error at
+ * render (reaching the nearest error boundary — the pushed error state lets the client match). Branded so
+ * `encodeElement` emits `{ t: 2 }`. Used both when normalize builds the tree AND when SSR decode re-resolves a hole
+ * (the loader data round-trips the transformer, so the top render decodes the hole back — see {@link resolveHoleSlot}).
+ */
+const serverHoleComponent = (entry: RscHoleEntry): React.ComponentType => {
+  const Hole = (): React.ReactNode => {
+    if (entry.settled) {
+      const result = entry.result
+      if (result && 'error' in result) {
+        throw result.error
+      }
+      return (result?.node ?? null) as React.ReactNode
+    }
+    throw entry.throwable
+  }
+  Hole.displayName = `RscHole(${entry.id})`
+  ;(Hole as unknown as Record<string, unknown>)[RSC_HOLE_BRAND] = entry.id
+  return Hole
+}
+
+const makeServerHoleSlot = (entry: RscHoleEntry): React.ReactElement => React.createElement(serverHoleComponent(entry))
 
 const keepElement = async (
   element: React.ReactElement,
@@ -437,6 +617,15 @@ const encodeElement = (element: React.ReactElement): RscNode => {
   while (typeof type === 'object' && type && $$typeofOf(type) === REACT_MEMO) {
     type = (type as { type: unknown }).type
   }
+  const holeId = getRscHoleName(type)
+  if (holeId !== undefined) {
+    // a deferred hole slot — carries no props/children on the wire; its fill arrives over `__POINT0_PUSH_RSC__`
+    const holeNode: RscNode = { t: 2, id: holeId }
+    if (element.key != null) {
+      holeNode.k = element.key
+    }
+    return holeNode
+  }
   const node: RscNode = { t: '' }
   if (typeof type === 'string') {
     node.t = type
@@ -547,6 +736,77 @@ export class RscComponentsRegistry {
  */
 export const rscComponentsRegistry = new RscComponentsRegistry()
 
+type RscClientHole = {
+  filled: boolean
+  hasError: boolean
+  node?: unknown
+  error?: unknown
+  promise: Promise<void>
+  wake: () => void
+}
+
+/**
+ * Per-bundle client registry for deferred holes (see {@link defer}). A decoded hole node (`t: 2`) resolves to a slot
+ * component that suspends until its fill arrives over `__POINT0_PUSH_RSC__` (the receiver `mount()` installs), then
+ * renders the decoded subtree. A fill can arrive before OR after its slot is decoded (both orders happen with streamed
+ * inline scripts), so fill and slot get-or-create the same entry.
+ *
+ * The server already streamed the subtree's markup into the boundary (Fizz), so it DISPLAYS regardless of the fill; the
+ * fill drives hydration and later client re-renders. A hole whose fill lands before hydration (buffered — `mount()`
+ * awaits those) hydrates its content; one revealed only after hydration displays but is not re-hydrated (React keeps
+ * the server-completed boundary), so INTERACTIVE islands inside a deferred subtree are a documented limitation — put
+ * interactive parts at the top level or stream them with `suspend: 'server'`. See docs/core/rsc.md.
+ */
+export class RscHolesRegistry {
+  private slots = new Map<string, RscClientHole>()
+
+  private ensure(id: string): RscClientHole {
+    let slot = this.slots.get(id)
+    if (!slot) {
+      let wake!: () => void
+      const promise = new Promise<void>((resolve) => {
+        wake = resolve
+      })
+      slot = { filled: false, hasError: false, promise, wake }
+      this.slots.set(id, slot)
+    }
+    return slot
+  }
+
+  /** Decode side: a component that throws until the hole is filled, then renders its subtree (or re-throws its error). */
+  slotComponent(id: string): React.ComponentType<any> {
+    const slot = this.ensure(id)
+    const Hole = (): React.ReactNode => {
+      if (slot.filled) {
+        if (slot.hasError) {
+          throw slot.error
+        }
+        return slot.node as React.ReactNode
+      }
+      throw slot.promise
+    }
+    Hole.displayName = `RscHole(${id})`
+    ;(Hole as unknown as Record<string, unknown>)[RSC_HOLE_BRAND] = id
+    return Hole
+  }
+
+  /** Push side: fill a hole with its decoded subtree (or error) and wake the suspended boundary. */
+  fill(id: string, result: { node: unknown } | { error: unknown }): void {
+    const slot = this.ensure(id)
+    if ('error' in result) {
+      slot.error = result.error
+      slot.hasError = true
+    } else {
+      slot.node = result.node
+    }
+    slot.filled = true
+    slot.wake()
+  }
+}
+
+/** The bundle-wide hole registry — `mount()` feeds it via the `__POINT0_PUSH_RSC__` receiver. */
+export const rscHolesRegistry = new RscHolesRegistry()
+
 /**
  * Rebuild live React elements from wire markers. Component-point references resolve from the live points collection
  * (the server has every component statically; the client's lazy records start their chunk imports immediately);
@@ -607,7 +867,9 @@ const decodeElement = (node: RscNode): React.ReactElement => {
         ? React.Fragment
         : node.t === 1
           ? React.Suspense
-          : resolveRef(node.t.c)
+          : node.t === 2
+            ? resolveHoleSlot(node.id as string)
+            : resolveRef(node.t.c)
   return createElementSpreadingChildren(type, props)
 }
 
@@ -645,6 +907,29 @@ const resolveRef = (name: string): React.ComponentType<any> => {
   throw new Error(
     `RSC: cannot resolve component point "${name}" from a server payload — it is not in the points collection. Re-run point0 generate, and make sure the component point is exported from a source file.`,
   )
+}
+
+/**
+ * Resolve a decoded hole (`t: 2`) to a slot. The loader data round-trips the transformer even server-side (a page/layer
+ * loader is fetched in a nested run and its response is deserialized by the outer render), so the outer SSR render
+ * decodes the hole back — and must resolve it against the still-live per-request server registry so the boundary
+ * STREAMS from the resolving subtree (Fizz reveals it), not waits for a client push that only happens in the browser.
+ * On the client there is no server registry, so the slot waits for its `__POINT0_PUSH_RSC__` fill.
+ */
+const resolveHoleSlot = (id: string): React.ComponentType<any> => {
+  const serverEntry = getServerHoleRegistryOrUndefined()?.entries.get(id)
+  if (serverEntry) {
+    return serverHoleComponent(serverEntry)
+  }
+  return rscHolesRegistry.slotComponent(id)
+}
+
+const getServerHoleRegistryOrUndefined = (): RscHoleRegistry | undefined => {
+  try {
+    return superstore.getItem<RscHoleRegistry | undefined>('__POINT0_RSC_HOLES__')?.getOrUndefined()
+  } catch {
+    return undefined
+  }
 }
 
 const findComponentPointRecord = (name: string): { point?: unknown } | undefined => {

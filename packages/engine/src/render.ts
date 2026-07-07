@@ -5,6 +5,7 @@ import {
   getDehydratedStateFromQueryClientDehydratedStateQuery,
   isQueryClientDehydratedStateQuery,
   serializeErrorsInDehydratedState,
+  serializeStateError,
   superstore,
 } from '@point0/core'
 import type { AppComponent, ClientPoints, PagePoint } from '@point0/core'
@@ -316,6 +317,8 @@ export async function renderAppAsReadableStream({
         dangerouslySetInnerHTML: {
           __html: `window.__POINT0_PUSH_QUERY_BUFFER__ = [];
 window.__POINT0_PUSH_QUERY__ = function (pushedQuery) { window.__POINT0_PUSH_QUERY_BUFFER__.push(pushedQuery) };
+window.__POINT0_PUSH_RSC_BUFFER__ = [];
+window.__POINT0_PUSH_RSC__ = function (pushedRsc) { window.__POINT0_PUSH_RSC_BUFFER__.push(pushedRsc) };
 window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientPoints.transformer))};`,
         },
       })
@@ -408,6 +411,31 @@ window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientP
       return scripts.length > 0 ? scripts.join('') : undefined
     }
 
+    // Deferred RSC holes (see `defer`): as each subtree resolves it is pushed into the same response — the exact analog
+    // of the query push above, on its own `__POINT0_PUSH_RSC__` channel. Prepended to the chunk that reveals the hole's
+    // Suspense boundary, so the fill lands in the client hole registry before React reveals the content and hydration
+    // matches. `undefined` when the page never used `defer` (no registry, or nothing resolved since the last flush).
+    const holeRegistry = _ss.__POINT0_RSC_HOLES__.get()
+    const collectNewlyResolvedHoleScripts = (): string | undefined => {
+      if (!holeRegistry) {
+        return undefined
+      }
+      const scripts: string[] = []
+      for (const entry of holeRegistry.takeResolved()) {
+        const result = entry.result
+        // A failed subtree pushes its error (public projection in prod, like a query error) so the client hole slot
+        // throws it to the nearest boundary — matching the server, which streamed the fallback + a client retry.
+        const payload =
+          result && 'error' in result
+            ? { id: entry.id, error: serializeStateError(ErrorClass, result.error) }
+            : { id: entry.id, data: result?.node }
+        scripts.push(
+          `<script>window.__POINT0_PUSH_RSC__(${uneval(clientPoints.transformer.stringify(payload))})</script>`,
+        )
+      }
+      return scripts.length > 0 ? scripts.join('') : undefined
+    }
+
     // In streaming mode, the first flushed chunk is the shell leaving the process — from that
     // moment a still-running loader can no longer redirect or change cookies/headers/status. Seal
     // the effects so late writes warn instead of disappearing silently (`Effects.sealed` itself
@@ -436,12 +464,16 @@ window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientP
       async pull(controller) {
         const { done, value } = await reactStreamReader.read()
         if (done) {
-          // A query can settle without producing another React flush (e.g. a blocking render that
-          // arrived as one chunk) — drain the leftovers before closing. The HTML parser moves
-          // trailing scripts into <body>, and the buffer stub captures them pre-hydration.
+          // A query or hole can settle without producing another React flush (e.g. a blocking render
+          // that arrived as one chunk) — drain the leftovers before closing. The HTML parser moves
+          // trailing scripts into <body>, and the buffer stubs capture them pre-hydration.
           const pushScripts = collectNewlySettledQueryScripts()
           if (pushScripts) {
             controller.enqueue(encoder.encode(pushScripts))
+          }
+          const holeScripts = collectNewlyResolvedHoleScripts()
+          if (holeScripts) {
+            controller.enqueue(encoder.encode(holeScripts))
           }
           controller.close()
           return
@@ -455,6 +487,10 @@ window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientP
         const pushScripts = collectNewlySettledQueryScripts()
         if (pushScripts) {
           controller.enqueue(encoder.encode(pushScripts))
+        }
+        const holeScripts = collectNewlyResolvedHoleScripts()
+        if (holeScripts) {
+          controller.enqueue(encoder.encode(holeScripts))
         }
         controller.enqueue(value)
       },
