@@ -963,9 +963,9 @@ describe('rsc', () => {
     // WITH the capability header → NDJSON. The response advertises the stream; line 1 carries the hole with no inlined
     // content; a later line carries the resolved slow subtree.
     const streamed = await engine.fetch(
-      new Request('http://localhost:3000/api/thing', { headers: { [POINT0_STREAM_HEADER]: '1' } }),
+      new Request('http://localhost:3000/api/thing', { headers: { [POINT0_STREAM_HEADER]: 'true' } }),
     )
-    expect(streamed.headers.get(POINT0_STREAM_HEADER)).toBe('1')
+    expect(streamed.headers.get(POINT0_STREAM_HEADER)).toBe('true')
     const lines = (await streamed.text()).split('\n').filter((line) => line.length > 0)
     expect(lines.length).toBeGreaterThanOrEqual(2)
     expect(JSON.stringify(transformer.parse(lines[0]!))).toContain('"t":2')
@@ -1053,12 +1053,12 @@ describe('rsc', () => {
         headers: {
           'x-point0-output-type': 'queryClientDehydratedState',
           'x-point0-transform': 'true',
-          [POINT0_STREAM_HEADER]: '1',
+          [POINT0_STREAM_HEADER]: 'true',
           Accept: 'application/json',
         },
       }),
     )
-    expect(res.headers.get(POINT0_STREAM_HEADER)).toBe('1')
+    expect(res.headers.get(POINT0_STREAM_HEADER)).toBe('true')
     const lines = (await res.text()).split('\n').filter((line) => line.length > 0)
     expect(lines.length).toBeGreaterThanOrEqual(2)
     // Line 1 — the dehydrated query state carries a `{ t: 2 }` hole, no inlined slow content.

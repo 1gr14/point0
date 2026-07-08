@@ -184,7 +184,7 @@ export class BasicAuth {
     this.removeOld()
 
     const ip = request.from.ip || undefined
-    const parsedAuth = this.parseAuthorizationHeader(request.headers.authorization)
+    const parsedAuth = this.parseAuthorizationHeader(request.original.headers.get('authorization') ?? undefined)
     if (!parsedAuth) {
       return await this.unauthorized({ request, ip, username: undefined })
     }

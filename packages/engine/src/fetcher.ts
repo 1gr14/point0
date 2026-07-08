@@ -291,10 +291,11 @@ export class Fetcher<TError extends ErrorPoint0> {
       isFromServer,
       prev: prevRequest,
     })
-    const transform = request.headers['x-point0-transform'] === 'true'
-    if (request.headers['x-point0-client-request-id']) {
+    const transform = request.original.headers.get('x-point0-transform') === 'true'
+    const clientRequestId = request.original.headers.get('x-point0-client-request-id')
+    if (clientRequestId) {
       effects.set.headers('x-point0-request-id', request.id)
-      effects.set.headers('x-point0-client-request-id', request.headers['x-point0-client-request-id'])
+      effects.set.headers('x-point0-client-request-id', clientRequestId)
     }
     try {
       const redirectToDifferentDevClientIfNotThatPort = (scope: string): Response | undefined => {
@@ -386,7 +387,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       })
 
       if (endpoint) {
-        const outputTypeRaw = request.headers['x-point0-output-type'] as
+        const outputTypeRaw = (request.original.headers.get('x-point0-output-type') ?? undefined) as
           | 'html'
           | 'data'
           | 'queryClientDehydratedState'
@@ -531,7 +532,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         return undefined
       })()
 
-      const accept = request.headers['accept']
+      const accept = request.original.headers.get('accept')
       const isMayBePage = !accept || accept.includes('text/html')
 
       if (foundSuitableClient && isMayBePage) {
@@ -662,7 +663,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       // Whether the caller can read a streamed (NDJSON) body for deferred holes (see `defer`). A point0 client advertises
       // it on every data-carrying fetch; a server-to-server SSR nested fetch and any foreign client never do, so they
       // keep the single-JSON body where a hole degraded to inline.
-      const clientWantsStream = !!request.headers[POINT0_STREAM_HEADER]
+      const clientWantsStream = request.original.headers.get(POINT0_STREAM_HEADER) === 'true'
       if (outputType === 'html') {
         if (point.type !== 'page') {
           throw new ErrorClass(`Point type "${point.type}" is not supported for html output type`, {
@@ -778,7 +779,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               emit: rscHoleEmit,
             }),
             {
-              headers: { 'Content-Type': 'application/x-ndjson', [POINT0_STREAM_HEADER]: '1' },
+              headers: { 'Content-Type': 'application/x-ndjson', [POINT0_STREAM_HEADER]: 'true' },
             },
           )
           return {
@@ -814,7 +815,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         ErrorClass,
       })
 
-      if (executeResult.redirect && request.headers['x-point0-client-request-id']) {
+      if (executeResult.redirect && request.original.headers.get('x-point0-client-request-id')) {
         // it is page redirect, not repsonse redirect
         // if request was sent from point0 cleint we send in with usual response 200 and special header (in this block), but will recoginze as error in query itself
         // if it was requested via foreign client, then it is unexpected and we return response as error (in next block: if (executeResult.error) ...)
@@ -852,7 +853,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (executeResult.output instanceof Response) {
-        if (request.headers['x-point0-client-request-id']) {
+        if (request.original.headers.get('x-point0-client-request-id')) {
           executeResult.output.headers.set('X-Point0-Not-Json-Data', 'true')
         }
         return {
@@ -893,7 +894,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             emit: rscHoleEmit,
           }),
           {
-            headers: { 'Content-Type': 'application/x-ndjson', [POINT0_STREAM_HEADER]: '1' },
+            headers: { 'Content-Type': 'application/x-ndjson', [POINT0_STREAM_HEADER]: 'true' },
             status: executeResult.effects.status ?? 200,
           },
         )

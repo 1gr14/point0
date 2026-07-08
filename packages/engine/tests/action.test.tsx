@@ -56,6 +56,21 @@ describe('action', () => {
     })
   })
 
+  it('validates a .cookies() input — the lazy request.cookies path', async () => {
+    // The executor materializes request.cookies only inside the `cookies` action branch; a point that declares a
+    // .cookies() input must still get its parsed cookies. (Mirrors the .headers() coverage above.)
+    const root = createRoot()
+    const action = root
+      .lets('action', 'ck', 'POST', '/api/ck')
+      .cookies(z.object({ sid: z.string().min(1) }))
+      .loader(({ cookies }) => ({ cookies }))
+      .action()
+
+    const { loadPoint } = await createTestThings({ ssr: true, points: [root, action] })
+    const result = await loadPoint(action, undefined, { headers: { cookie: 'sid=abc123' } })
+    expect(result).toEqual({ cookies: { sid: 'abc123' } })
+  })
+
   it('short notation', async () => {
     const root = createRoot()
     const action = root

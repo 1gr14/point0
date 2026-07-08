@@ -217,16 +217,12 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
     body,
     params,
     search,
-    headers,
-    cookies,
   }: {
     point: TPoint
     input: InputRaw
     body: InputRaw
     params: InputRaw
     search: InputRaw
-    headers: InputRaw
-    cookies: InputRaw
   }): Promise<{ success: true; error: undefined } | { success: false; error: unknown }> {
     for (const serverExecuteAction of point._serverExecuteActions) {
       if (serverExecuteAction.type === 'input') {
@@ -254,13 +250,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         }
       }
       if (serverExecuteAction.type === 'headers') {
-        const result = await this.parseInputSafeAsync(serverExecuteAction, headers)
+        // Materialize the (lazy, memoized) headers object ONLY when a point actually validates headers — the framework
+        // never forces `request.headers` for every request; that build is reserved for app code that reads it.
+        const result = await this.parseInputSafeAsync(serverExecuteAction, this.request.headers)
         if (!result.success) {
           return { success: false, error: result.error }
         }
       }
       if (serverExecuteAction.type === 'cookies') {
-        const result = await this.parseInputSafeAsync(serverExecuteAction, cookies)
+        // Same as headers above: build the lazy `request.cookies` only when a point actually validates cookies.
+        const result = await this.parseInputSafeAsync(serverExecuteAction, this.request.cookies)
         if (!result.success) {
           return { success: false, error: result.error }
         }
@@ -354,8 +353,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       }
       return { search: {}, params: {}, body: {}, input: inputProvided }
     })()
-    const headers = this.request.headers
-    const cookies = this.request.cookies
     return await this.withServerGlobalState(async () => {
       const { inputError } = await (async () => {
         if (!point) {
@@ -368,8 +365,6 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           body,
           params,
           search,
-          headers,
-          cookies,
         })
         if (!result.success) {
           return { inputError: result.error }
@@ -542,7 +537,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               break
             }
             case 'headers': {
-              const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, headers)
+              const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, this.request.headers)
               if (!safeParseResult.success) {
                 return triggerSchemaParseError(safeParseResult)
               }
@@ -555,7 +550,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               break
             }
             case 'cookies': {
-              const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, cookies)
+              const safeParseResult = await this.parseInputSafeAsync(serverExecuteAction, this.request.cookies)
               if (!safeParseResult.success) {
                 return triggerSchemaParseError(safeParseResult)
               }

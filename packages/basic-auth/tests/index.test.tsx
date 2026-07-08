@@ -4,15 +4,19 @@ import { basicAuth, BasicAuth, getBasicAuthHeader } from '../src/index.js'
 import { Point0 } from '@point0/core'
 import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
 
-const getRequest = ({ authHeader, ip = '127.0.0.1' }: { authHeader?: string; ip?: string | null }): Request0 =>
-  ({
-    headers: {
-      authorization: authHeader,
-    },
+const getRequest = ({ authHeader, ip = '127.0.0.1' }: { authHeader?: string; ip?: string | null }): Request0 => {
+  // Mirror the production Request0 shape: headers live on the raw `original` request, `request.headers` derives from it.
+  const headers = new Headers()
+  if (authHeader !== undefined) {
+    headers.set('authorization', authHeader)
+  }
+  return {
+    original: new Request('http://localhost/', { headers }),
     from: {
       ip,
     },
-  }) as unknown as Request0
+  } as unknown as Request0
+}
 
 describe('basic-auth', () => {
   test('allows valid credentials', async () => {

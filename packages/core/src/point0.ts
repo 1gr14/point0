@@ -8875,7 +8875,7 @@ export class Point0<
       // Advertise that this fetch can read a streamed (NDJSON) body, so a loader/mutation `defer()` streams its holes
       // in (see `defer`). Client-only: a server-to-server SSR nested fetch must keep getting a single JSON body (the
       // outer render's pump drains its holes). Needs the transformer to decode the streamed subtrees, so gated on it.
-      ...(_point0_env.side.is.client && transform ? { [POINT0_STREAM_HEADER]: '1' } : {}),
+      ...(_point0_env.side.is.client && transform ? { [POINT0_STREAM_HEADER]: 'true' } : {}),
     })
 
     // Encode a source object into a request body: FormData when it carries binary (File/Blob), otherwise a JSON string.
@@ -9183,7 +9183,7 @@ export class Point0<
       // fresh client render that leaves an island inside a hole interactive. A response never advertised as streamed (a
       // foreign endpoint, a hole-free payload, a server-to-server SSR fetch) takes the single-body path below unchanged.
       let data: unknown
-      if (res.ok && res.headers.get(POINT0_STREAM_HEADER) && res.body) {
+      if (res.ok && res.headers.get(POINT0_STREAM_HEADER) === 'true' && res.body) {
         const streamed = await readStreamedRscFetch(this._getTransformerWithRsc(), res.body)
         void streamed.done
         data = streamed.data
