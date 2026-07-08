@@ -1096,6 +1096,36 @@ export const page = base.lets('page', 'child', '/')
       )
 
       it.concurrent(
+        'a .ssr() with no argument or a non-literal argument never crashes the shake — untrusted source is not trusted to carry an arg',
+        helper({ ssr: true }, async ({ files: [file], walker }) => {
+          // `.ssr()` (no arg) and `.ssr(dynamicSsr)` (a non-boolean-literal) are not valid per the public types, but the
+          // compiler reads raw source and must never read `.arguments[0]` as if it were always there. The client shake
+          // exercises both `.at(0)` sites at once: it resolves `ssrEnabled` (getSsrEnabledFromCallArg) and rewrites the
+          // arg (reduceSsrArgToEnabled). It must not throw, and SSR stays the inherited default (no known `enabled`).
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+const dynamicSsr = true
+export const noArg = root.lets('page', 'noarg', '/no')
+.ssr()
+.page(() => <div>Hello</div>)
+export const nonLiteral = root.lets('page', 'nonliteral', '/dyn')
+.ssr(dynamicSsr)
+.page(() => <div>Hello</div>)
+        `)
+          const result = walker.collectPointsFromFile({ file: file.path })
+          expect(result.errors).toHaveLength(0)
+          const pages = result.points.filter((p) => p.type === 'page')
+          expect(pages).toHaveLength(2)
+          for (const point of pages) {
+            // Does not throw — the regression guard for the `.at(0)` access on a missing/non-literal arg.
+            point.shakeMethods({ side: 'client', scope: 'root' })
+            // No statically-known `enabled`, so SSR stays the inherited scope default (true).
+            expect(point.chainMethods.filter((m) => m.point === point).every((m) => m.ssrEnabled)).toBe(true)
+          }
+        }),
+      )
+
+      it.concurrent(
         'correcttly prune rest for client',
         helper({ ssr: true }, async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'

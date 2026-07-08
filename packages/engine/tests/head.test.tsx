@@ -278,7 +278,7 @@ describe('head', () => {
           "
         `)
       })
-      expect(await fetchTitle(page)).toMatchInlineSnapshot(`"My Error Title: my message"`) // it is default head of our html, in facte here was initial state, so better use 'global' head for this things
+      expect(await fetchTitle(page)).toMatchInlineSnapshot(`"My Error Title: my message"`) // the full-document render resolves the head after discovery incl. the error state, so the fetched title is the page's `.head()` error value, not the template default
     },
     {
       retry: 3,

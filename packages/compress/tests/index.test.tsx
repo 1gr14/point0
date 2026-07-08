@@ -305,6 +305,28 @@ describe('compress', () => {
     expect(notModified.headers.get('content-encoding')).toBeNull()
   })
 
+  it('leaves a 206 partial-content response raw — compressing it would break the Content-Range byte offsets', async () => {
+    const partial = await run({
+      response: new Response(BODY.slice(0, 100), {
+        status: 206,
+        headers: { 'content-type': 'text/html', 'content-range': 'bytes 0-99/3500', 'accept-ranges': 'bytes' },
+      }),
+      options: { minBytes: 0 },
+    })
+    expect(partial.status).toBe(206)
+    expect(partial.headers.get('content-encoding')).toBeNull()
+    expect(partial.headers.get('content-range')).toBe('bytes 0-99/3500')
+  })
+
+  it('stops advertising byte ranges once the body is re-encoded (drops Accept-Ranges)', async () => {
+    const response = await run({
+      response: new Response(BODY, { headers: { 'content-type': 'text/html', 'accept-ranges': 'bytes' } }),
+      options: { minBytes: 0 },
+    })
+    expect(response.headers.get('content-encoding')).toBe('br')
+    expect(response.headers.get('accept-ranges')).toBeNull()
+  })
+
   it('compresses the page HTML through the real middleware chain', async () => {
     const root = Point0.lets('root', 'root')
       .middleware(compress({ minBytes: 0 }))

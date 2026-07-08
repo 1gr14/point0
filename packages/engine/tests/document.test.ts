@@ -80,10 +80,23 @@ describe('parseDocumentTemplate', () => {
         children: [{ type: 'text', text: 'console.log("inline head script", 1 < 2)' }],
       },
     ])
-    expect(template.bodyNodes).toEqual([
+    // Body elements are the root + the module script…
+    expect(template.bodyNodes.filter((n) => n.type === 'element')).toEqual([
       { type: 'element', tag: 'div', attrs: { id: 'root' }, children: [] },
       { type: 'element', tag: 'script', attrs: { type: 'module', src: './index.client.tsx' }, children: [] },
     ])
+    // …and the whitespace-only text between them is KEPT (rendered verbatim like a browser), not dropped.
+    expect(template.bodyNodes.some((n) => n.type === 'text' && n.text.trim() === '' && n.text.length > 0)).toBe(true)
+  })
+
+  it('keeps word-separating whitespace between inline elements in the body', async () => {
+    // The full-document render must not swallow a space between inline content authored directly in <body>:
+    // `<a>x</a> <a>y</a>` has to stay `x y`, not collapse to `xy`.
+    const template = await parseDocumentTemplate(
+      `<html><head></head><body><div id="root"></div> <a>x</a> <a>y</a></body></html>`,
+    )
+    const texts = template.bodyNodes.filter((n) => n.type === 'text').map((n) => (n as { text: string }).text)
+    expect(texts).toContain(' ')
   })
 
   it('decodes entities in text and attributes, keeps script text verbatim', async () => {
@@ -95,6 +108,21 @@ describe('parseDocumentTemplate', () => {
     expect(template.headPassthrough[0].children).toEqual([{ type: 'text', text: '1 &amp;&amp; 2' }])
     const root = template.bodyNodes[0]
     expect(root.type === 'element' && root.children).toEqual([{ type: 'text', text: 'hi & bye' }])
+  })
+
+  it('decodes an entity even when the text node is large enough to stream in multiple chunks', async () => {
+    // HTMLRewriter streams text in arbitrary chunks and may split INSIDE an entity; decoding must run once on the merged
+    // text, never per chunk (per-chunk decode would leave a straddling `&amp;` un-decoded). A long entity-dense text
+    // node exercises the merge-then-decode path at a size past a single small chunk.
+    const filler = 'x &amp; y '.repeat(2000)
+    const template = await parseDocumentTemplate(
+      `<html><head><title>t</title></head><body><div id="root">${filler}end &amp; done</div></body></html>`,
+    )
+    const root = template.bodyNodes[0]
+    const text = root.type === 'element' && root.children[0]?.type === 'text' ? root.children[0].text : ''
+    expect(text).not.toContain('&amp;') // no un-decoded entity survived a chunk split
+    expect(text.startsWith('x & y ')).toBe(true)
+    expect(text.endsWith('end & done')).toBe(true)
   })
 
   it('returns the cached object for the same string', async () => {
@@ -160,6 +188,16 @@ describe('buildDocumentElement', () => {
     expect(renderDocument({ html: `<html><head></head><body><div id="other"></div></body></html>` })).rejects.toThrow(
       'Root element #root not found',
     )
+  })
+
+  it('throws when the root element id appears more than once', async () => {
+    // duplicate ids would render the app into every match and break hydration — fail loud instead of double-rendering
+    expect(
+      renderDocument({
+        html: `<html><head></head><body><div id="root"></div><div id="root"></div></body></html>`,
+        app: createElement('span', null, 'x'),
+      }),
+    ).rejects.toThrow('appears more than once')
   })
 
   it('replaces engine-owned template scripts instead of duplicating (omitHeadScriptIds upsert)', async () => {

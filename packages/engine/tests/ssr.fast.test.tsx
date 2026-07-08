@@ -233,4 +233,29 @@ describe('per-point .ssr() (off-only) and the .clientOnly() split', () => {
       /needs SSR/,
     )
   })
+
+  it('silently downgrades a dehydrated-state prefetch policy when SSR is turned off AFTER it', () => {
+    // The reverse order of the throw above: policy first (valid while SSR is on), then `.ssr(false)`. There is no
+    // dehydrated state without SSR, so the policy is quietly downgraded to its SSR-free equivalent instead of throwing —
+    // pageDehydratedState -> serverQuery, pageDehydratedStateAndClientQuery -> serverAndClientQuery — on both the
+    // link-hover and navigate policy slots (prefetchPagePolicy sets both). Force the SSR default on so the policy is
+    // accepted at set time (this file's ambient default is off).
+    const prev = process.env.POINT0_SSR_ENABLED_DEFAULT
+    process.env.POINT0_SSR_ENABLED_DEFAULT = 'true'
+    try {
+      const one = root().lets('page', 'dg1', '/dg1').prefetchPagePolicy('pageDehydratedState').ssr(false)
+      expect((one as any)._polhPolicy).toBe('serverQuery')
+      expect((one as any)._ponPolicy).toBe('serverQuery')
+
+      const two = root().lets('page', 'dg2', '/dg2').prefetchPagePolicy('pageDehydratedStateAndClientQuery').ssr(false)
+      expect((two as any)._polhPolicy).toBe('serverAndClientQuery')
+      expect((two as any)._ponPolicy).toBe('serverAndClientQuery')
+    } finally {
+      if (prev === undefined) {
+        delete process.env.POINT0_SSR_ENABLED_DEFAULT
+      } else {
+        process.env.POINT0_SSR_ENABLED_DEFAULT = prev
+      }
+    }
+  })
 })

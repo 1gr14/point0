@@ -10,9 +10,15 @@ import {
   normalizeRscOutput,
   rscDataHasElements,
   rscHolesRegistry,
+  wrapTransformerWithRsc,
 } from '../src/rsc.js'
 import { Point0 } from '../src/point0.js'
-import { ErrorPoint0 } from '../src/error.js'
+import { ClientPoints } from '../src/client-points.js'
+import { ClientOnly } from '../src/helpers.js'
+import { readStreamedRscFetch } from '../src/query-client.js'
+import { blankDataTransformerExtended } from '../src/utils.js'
+import { superstore } from '../src/super-store.js'
+import { ErrorPoint0, POINT0_ERROR_CODES_MAP } from '../src/error.js'
 
 const roundtrip = (value: unknown): unknown => decodeRscData(JSON.parse(JSON.stringify(encodeRscData(value))))
 
@@ -75,6 +81,26 @@ describe('rsc codec', () => {
     expect(rscDataHasElements({ a: [{ b: 'x' }] })).toBe(false)
     expect(rscDataHasElements(<i />)).toBe(true)
   })
+
+  it('transform:false still round-trips an element: the client decodes what the server RSC-encoded', () => {
+    // The server encodes its output through the RSC-wrapped transformer regardless of `transform` (fetcher.ts:653,880);
+    // under transform:false the inner transformer is blank. The client must mirror that — before the fix it returned the
+    // raw res.json() here, so an element came back as a `{ __p0e: … }` object React can't render. Now it decodes through
+    // the point's blank-RSC transformer (`_getBlankTransformerWithRsc`), keeping both sides symmetric.
+    const output = { hero: <b id="h">hi</b>, n: 1 }
+    const serverBody = wrapTransformerWithRsc(blankDataTransformerExtended).stringify(output)
+    const json = JSON.parse(serverBody!) as { hero: unknown; n: number }
+    // the raw json (pre-fix path) still carries an encoded marker, not a React element
+    expect(React.isValidElement(json.hero)).toBe(false)
+    // the fix: decode through the point's blank-RSC transformer
+    const point = Point0.lets('root', 'tf-false').root()
+    const decoded = (point as unknown as { _getBlankTransformerWithRsc: () => typeof blankDataTransformerExtended })
+      ._getBlankTransformerWithRsc()
+      .deserialize(json) as { hero: unknown; n: number }
+    expect(React.isValidElement(decoded.hero)).toBe(true)
+    expect((decoded.hero as React.ReactElement).type).toBe('b')
+    expect(decoded.n).toBe(1)
+  })
 })
 
 describe('rsc normalize', () => {
@@ -135,6 +161,24 @@ describe('rsc normalize', () => {
     const root = Point0.lets('root', 'root').root()
     const page = root.lets('page', 'home', '/').page(() => <div />)
     await expect(normalizeRscOutput(<page.X />, opts)).rejects.toThrow(/component points/)
+  })
+
+  it('rejects <ClientOnly> in loader data — the loader never runs in the browser', async () => {
+    await expect(normalizeRscOutput(<ClientOnly />, opts)).rejects.toThrow(/ClientOnly/)
+  })
+
+  it('unwraps React.memo — the inner component unfolds on the server', async () => {
+    const Memoized = React.memo(() => <b>memo</b>)
+    const out = (await normalizeRscOutput(<Memoized />, opts)) as React.ReactElement
+    expect(out.type).toBe('b')
+    expect((out.props as { children: string }).children).toBe('memo')
+  })
+
+  it('unfolds a forwardRef component server-side (its ref arg is dropped)', async () => {
+    const Fwd = React.forwardRef<HTMLElement>((_props, _ref) => <i>fwd</i>)
+    const out = (await normalizeRscOutput(<Fwd />, opts)) as React.ReactElement
+    expect(out.type).toBe('i')
+    expect((out.props as { children: string }).children).toBe('fwd')
   })
 
   it('keeps component points live as references and normalizes their props', async () => {
@@ -343,6 +387,62 @@ describe('rsc defer / holes', () => {
     rscHolesRegistry.failIfPending('hFilled', new Error('too-late'))
     const Filled = rscHolesRegistry.slotComponent('hFilled') as (props: object) => React.ReactNode
     expect((Filled({}) as React.ReactElement).type).toBe('b')
+  })
+
+  it('a NESTED hole orphaned by a mid-stream client-fetch drop is failed (coded), not left spinning forever', async () => {
+    // readStreamedRscFetch must track the holes to fail-on-drop LIVE, not as a one-shot line-1 snapshot: a nested
+    // defer() is decoded into a client slot only when its PARENT fill line lands, so a one-shot snapshot misses it and,
+    // if the stream drops before its own fill arrives, it would suspend forever. This reproduces exactly that: line 1
+    // introduces top-level hole A, A's fill (line 2) carries a NESTED hole B, then the stream closes before B's fill.
+    const root = Point0.lets('root', 'nested-drop').root()
+    const clientPoints = ClientPoints.createFromDefintion([root])
+    const A = 'nd-parent'
+    const B = 'nd-child'
+    // The wire shape the client parses: a hole node is `{ __p0e: { t: 2, id } }`.
+    const line1 = JSON.stringify({ hero: { [RSC_MARKER_KEY]: { t: 2, id: A } } })
+    const line2 = JSON.stringify({ id: A, data: { [RSC_MARKER_KEY]: { t: 2, id: B } } })
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const enc = new TextEncoder()
+        controller.enqueue(enc.encode(line1 + '\n'))
+        controller.enqueue(enc.encode(line2 + '\n'))
+        controller.close() // DROP — B's own fill never arrives
+      },
+    })
+    const transformer = {
+      parse: (s: string) => decodeRscData(JSON.parse(s)),
+      stringify: (v: unknown) => JSON.stringify(v),
+      serialize: (v: unknown) => v,
+      deserialize: (v: unknown) => v,
+    } as unknown as Parameters<typeof readStreamedRscFetch>[0]
+
+    await superstore.runWithServerStorageState(
+      {
+        __POINT0_FAKE_CLIENT__: {
+          id: 't',
+          scope: 'root',
+          runtime: 'browser',
+          fetch: (async () => new Response()) as never,
+          points: clientPoints as never,
+        },
+      },
+      async () => {
+        const { done } = await readStreamedRscFetch(transformer, body)
+        await done
+        // B was pending and NOT in the line-1 snapshot — only the live tracking fails it with the coded error.
+        const SlotB = rscHolesRegistry.slotComponent(B) as (props: object) => React.ReactNode
+        let thrown: unknown
+        try {
+          void SlotB({})
+        } catch (error) {
+          thrown = error
+        }
+        expect(thrown).toBeInstanceOf(ErrorPoint0)
+        expect((thrown as ErrorPoint0).code).toBe(POINT0_ERROR_CODES_MAP.RSC_STREAM_INCOMPLETE)
+        // the parent A was delivered (its fill applied) — a delivered hole is never clobbered by the drop failsafe
+        expect(rscHolesRegistry.pendingIds().has(A)).toBe(false)
+      },
+    )
   })
 
   it('a deferred subtree deeper than rscDepth errors like an element', async () => {

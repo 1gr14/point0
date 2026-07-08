@@ -104,6 +104,28 @@ describe('rsc', () => {
     `)
   })
 
+  it('inherits .rscDepth(1) from the root — a page that declares none still ships first-level elements', async () => {
+    // docs/core/rsc.md: "one .rscDepth(1) on the root — every point inherits it, no loader declares it again". The page
+    // below sets no rscDepth of its own; were the inherited value to regress to depth 0, its first-level `hero` element
+    // would fail the loader instead of rendering. (This is the documented default setup and every other example assumes
+    // it — the direct-on-page cases above never exercise the inheritance.)
+    const root = Point0.lets('root', 'root')
+      .loading(() => <div id="loading">...</div>)
+      .error(({ error }) => <div id="error">{error.message}</div>)
+      .queryOptions({ retry: false, refetchOnMount: false, refetchOnWindowFocus: false, refetchOnReconnect: false })
+      .rscDepth(1)
+      .root()
+    const page = root
+      .lets('page', 'home', '/')
+      .loader(async () => ({ hero: <b id="hero">H!</b> }))
+      .page(({ data }) => <div id="page">{data.hero}</div>)
+
+    const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
+    const preview = await fetchPreview(page)
+    expect(preview).toContain('#hero: H!')
+    expect(preview).not.toContain('#error')
+  })
+
   it('element deeper than rscDepth fails the loader with a hint', async () => {
     const root = createRoot()
     const page = root
@@ -327,6 +349,39 @@ describe('rsc', () => {
       mutation.publish (client) < {}
       "
     `)
+  })
+
+  it('transform:false + an element still decodes on the client — no raw __p0e reaches React', async () => {
+    // A client fetch (a mutation, always client-triggered) whose point opts out of the app transformer with
+    // `transform: false` and returns an element. The server RSC-encodes its output regardless of `transform`; the client
+    // must decode it symmetrically. Before the fix the client returned the raw res.json() under transform:false, so
+    // `mutation.data.badge` was a `{ __p0e: … }` object and rendering it threw "Objects are not valid as a React child"
+    // — `#badge-raw` never appeared.
+    const root = createRoot()
+    const publish = root
+      .lets('mutation', 'publishRaw')
+      .rscDepth(1)
+      .fetchOptions(() => ({ transform: false }))
+      .loader(async () => ({ badge: <b id="badge-raw">ok!</b> }))
+      .mutation()
+    const page = root.lets('page', 'home', '/').page(() => {
+      const mutation = publish.useMutation()
+      return (
+        <div id="page">
+          <button id="mutate" onClick={() => mutation.mutate()}>
+            go
+          </button>
+          {mutation.data?.badge ?? <span id="pending">…</span>}
+        </div>
+      )
+    })
+
+    const { render } = await createTestThings({ ssr: true, points: [root, publish, page] })
+    await render(page.route(), async ({ waitContent, click }) => {
+      await waitContent('#pending')
+      await click('#mutate')
+      await waitContent('#badge-raw') // renders only if the client decoded the transform:false element
+    })
   })
 
   it('referenced component point runs its own input + loader on the client', async () => {
