@@ -431,7 +431,7 @@ export class FilesGenerator {
     await this.initRoutesInstances()
     const files = [...this.files].sort((a, b) => a.localeCompare(b))
     const chunks = FilesGenerator.chunk(files, chunkSize)
-    const walker = new Walker({ routes: this.routes, ssr: this.ssr })
+    const walker = new Walker({ routes: this.routes, ssrEnabled: this.ssr })
     const collectedChunks = await Promise.all(
       chunks.map(async (chunk) => {
         const pointsArrays = await Promise.all(chunk.map(async (file) => walker.collectPointsFromFile({ file })))

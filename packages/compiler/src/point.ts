@@ -243,6 +243,33 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     return firstArg.value
   }
 
+  // The statically-known `enabled` from a `.ssr(...)` call: a bare boolean literal, or the `enabled` property of an
+  // object literal. Returns undefined when the point sets only options (no `enabled`) or passes a non-literal — then
+  // SSR stays whatever the chain carried so far.
+  private getSsrEnabledFromCallArg({ nodePath }: { nodePath: NodePath<Node> }): boolean | undefined {
+    if (nodePath.node.type !== 'CallExpression') {
+      return undefined
+    }
+    const arg = nodePath.node.arguments[0]
+    if (arg.type === 'BooleanLiteral') {
+      return arg.value
+    }
+    if (arg.type === 'ObjectExpression') {
+      for (const property of arg.properties) {
+        if (
+          property.type === 'ObjectProperty' &&
+          !property.computed &&
+          property.key.type === 'Identifier' &&
+          property.key.name === 'enabled' &&
+          property.value.type === 'BooleanLiteral'
+        ) {
+          return property.value.value
+        }
+      }
+    }
+    return undefined
+  }
+
   getLetsPosition(): { file: string; line: number; column: number } | undefined {
     // Extract the source code location (line and column) of the lets() call
     // Example: In Point0.lets('root', 'myroot'), this gets the position where "lets" appears
@@ -566,7 +593,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     if (!lastChainMethod) {
       return false
     }
-    return lastChainMethod.underSsr
+    return lastChainMethod.ssrEnabled
   }
 
   private getAllowedLastMethodNames(): string[] {
@@ -916,13 +943,27 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     }
     const chainMethods: CompilerPointChainMethod[] = []
     let chainIndex = 0
-    let underSsr = this.walker.ssr
+    const orderedPoints = [this, ...this.parents].reverse()
+    // `ssrEnabled` is a POINT-level property, not positional: SSR can only be turned OFF (`.ssr(false)` /
+    // `.ssr({enabled:false})`), so a single opt-out anywhere in the chain means the whole point does not SSR — every
+    // render method of it is cut, wherever it sits relative to the `.ssr(false)`. Compute it up front from the side
+    // default and any opt-out in the chain, then stamp the same value on every method.
+    let ssrEnabled = this.walker.ssrEnabled
+    for (const point of orderedPoints) {
+      for (const method of point.getSelfMethods()) {
+        if (method.name === 'ssr' && this.getSsrEnabledFromCallArg({ nodePath: method.nodePath }) === false) {
+          ssrEnabled = false
+        }
+      }
+    }
+    // `underClientOnly`, by contrast, IS positional — `.clientOnly()` marks only the render tail browser-only.
+    let underClientOnly = false
     let underAction = false
-    for (const point of [this, ...this.parents].reverse()) {
+    for (const point of orderedPoints) {
       const methods = point.getSelfMethods()
       for (const method of methods) {
         if (method.name === 'clientOnly') {
-          underSsr = false
+          underClientOnly = true
         }
         underAction = underAction || point.type === 'action'
         chainMethods.push({
@@ -930,7 +971,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
           name: method.name,
           index: method.index,
           chainIndex,
-          underSsr,
+          ssrEnabled,
+          underClientOnly,
           underAction,
           point,
         })
@@ -957,6 +999,21 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       return
     }
     nodePath.node.arguments = []
+    this.file.modified = true
+  }
+
+  // Client build: strip the server-only SSR options from `.ssr({...})`, keeping only `enabled`. `.ssr(true|false)` and
+  // non-literal args are left untouched; an options-only object becomes `.ssr({})` (a runtime no-op that drops them).
+  private reduceSsrArgToEnabled({ nodePath }: { nodePath: NodePath<Node> }): void {
+    if (nodePath.node.type !== 'CallExpression') {
+      return
+    }
+    const arg = nodePath.node.arguments[0]
+    if (arg.type !== 'ObjectExpression') {
+      return
+    }
+    const enabled = this.getSsrEnabledFromCallArg({ nodePath })
+    nodePath.node.arguments[0] = typeof enabled === 'boolean' ? t.booleanLiteral(enabled) : t.objectExpression([])
     this.file.modified = true
   }
 
@@ -1045,6 +1102,12 @@ export class CompilerPoint<TValid extends boolean = boolean> {
           this.removeMethodArgs({ nodePath: method.nodePath })
           break
         }
+        case 'ssr': {
+          // SSR options (discovery renders, loader prefetch) are server-only — collapse `.ssr({...})` to just its
+          // `enabled` boolean so they never reach the client bundle.
+          this.reduceSsrArgToEnabled({ nodePath: method.nodePath })
+          break
+        }
         case 'params':
         case 'search': {
           if (method.underAction) {
@@ -1057,7 +1120,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   }
 
   private shakeMethodsForServer(): void {
-    // when method underSsr, then we prune on nossr-server
+    // when the point does not SSR (or the method is under a clientOnly tail), prune its render on the server
     for (const method of this.getSelfRichMethods()) {
       if (method.name === 'clientLoader') {
         this.removeArgsIfNotBooleanLiteral({ nodePath: method.nodePath })
@@ -1079,7 +1142,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         ].includes(method.name)
       ) {
         this.removeMethodArgs({ nodePath: method.nodePath })
-      } else if (!method.underSsr) {
+      } else if (!method.ssrEnabled || method.underClientOnly) {
         if (
           [
             'error',
@@ -1413,7 +1476,11 @@ export type CompilerPointChainMethod = {
   name: string
   index: number
   chainIndex: number
-  underSsr: boolean
+  // Point-level: does this point participate in SSR (side default, turned off by any `.ssr(false)` in the chain).
+  // Independent of `.clientOnly()`. Also the clean SSR flag for meta / point info.
+  ssrEnabled: boolean
+  // Positional: a `.clientOnly()` was seen at or before this method (render tail is browser-only).
+  underClientOnly: boolean
   underAction: boolean
   point: CompilerPoint
 }

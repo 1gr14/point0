@@ -128,7 +128,7 @@ const traverse = ((traverseModule as any).default ?? traverseModule) as typeof t
 
 export class Walker {
   readonly files = new Map<string, CompilerFile<boolean>>()
-  readonly ssr: boolean
+  readonly ssrEnabled: boolean
 
   // <scope, Routes>
   readonly routes: Record<string, RoutesPretty>
@@ -138,15 +138,15 @@ export class Walker {
 
   constructor({
     routes,
-    ssr,
+    ssrEnabled,
     markdown,
   }: {
     routes: Record<string, RoutesPretty> | undefined
-    ssr?: boolean
+    ssrEnabled?: boolean
     markdown?: MdxCompileOptions
   }) {
     this.routes = routes ?? {}
-    this.ssr = ssr === undefined ? false : ssr
+    this.ssrEnabled = ssrEnabled === undefined ? false : ssrEnabled
     this.markdown = markdown
   }
 
@@ -412,7 +412,7 @@ export class Walker {
         baseNodePath,
         letsNodePath,
         isBasePoint0,
-        ssr: this.ssr,
+        ssr: this.ssrEnabled,
       })
       const exPoint = this.points.get(point.strpos)
       if (exPoint) {

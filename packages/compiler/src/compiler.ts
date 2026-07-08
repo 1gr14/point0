@@ -287,7 +287,7 @@ export class Compiler {
       scope,
       consts,
       hmrFix: hmrFix ?? (side === 'server' ? false : true),
-      walker: new Walker({ routes, ssr, markdown }),
+      walker: new Walker({ routes, ssrEnabled: ssr, markdown }),
       routes,
       built: normalizedBuilt,
       mode: normalizedMode,

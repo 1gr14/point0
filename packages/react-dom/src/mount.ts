@@ -1,4 +1,11 @@
-import { ClientPoints, installPushedQueriesReceiver, log, rscComponentsRegistry, superstore } from '@point0/core'
+import {
+  ClientPoints,
+  installPushedQueriesReceiver,
+  log,
+  markClientHydrationFinished,
+  rscComponentsRegistry,
+  superstore,
+} from '@point0/core'
 import type { PointsDefinition, PointsManager } from '@point0/core'
 import type * as React from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
@@ -61,6 +68,9 @@ export function mount(
           },
         })
       } else {
+        // No SSR markup to hydrate — seed the hydration-finished flag so `<ClientOnly>` renders its real content at
+        // once instead of flashing its fallback for a hydration that never happens.
+        markClientHydrationFinished()
         reactRoot = createRoot(domRootElement)
         reactRoot.render(element)
       }

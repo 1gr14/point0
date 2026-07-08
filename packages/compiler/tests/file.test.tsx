@@ -46,7 +46,7 @@ const helper = (
   { preserve = false, ssr = false }: { preserve?: boolean; ssr?: boolean } = {},
 ) => {
   return async () => {
-    const walker = new Walker({ routes: undefined, ssr })
+    const walker = new Walker({ routes: undefined, ssrEnabled: ssr })
     const files = Array.from({ length: 11 }, () => prepareRandomFile(walker))
     try {
       await callback({

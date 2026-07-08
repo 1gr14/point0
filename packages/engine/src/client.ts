@@ -96,8 +96,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
   // pointsDistFile: string | null
   pointsProvided: PointsDefinitionSource<any, any> | null
   points: TPrepared extends true ? ClientPoints<TError> | null : undefined
-  ssr: boolean
-  ssrOptions: SsrOptionsResolved
+  ssrDefaultOptions: SsrOptionsResolved
   appProvided: EngineOptionsAppComponent | null
   App: TPrepared extends true ? AppComponent | null : undefined
   // appDistFile: string | null
@@ -168,8 +167,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     bunViteDevServer: Bun.Server<unknown> | true | null // true in case if it was run in separate process
     viteDevServer: ViteDevServer | true | null
     server: EngineServer<any, TError>
-    ssr: boolean
-    ssrOptions: SsrOptionsResolved
+    ssrDefaultOptions: SsrOptionsResolved
   }) {
     this.scope = input.scope
     this.cwd = input.cwd
@@ -211,8 +209,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     this.server = input.server
     this.prepared = input.prepared
     this.engineFile = input.engineFile
-    this.ssr = input.ssr
-    this.ssrOptions = input.ssrOptions
+    this.ssrDefaultOptions = input.ssrDefaultOptions
     this.App = undefined as TPrepared extends true ? AppComponent | null : undefined
   }
 
@@ -246,8 +243,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     viteConfig: EngineOptionsViteConfig | null
     compiler: EngineOptionsCompilerSpecificParsed | false
     server: EngineServer<any, TError>
-    ssr: boolean
-    ssrOptions: SsrOptionsResolved
+    ssrDefaultOptions: SsrOptionsResolved
   }): EngineClient<false, TError> {
     const viteDevServer = null
     const bunNativeDevServer = null
@@ -296,16 +292,16 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     NODE_ENV: NormalizedNodeEnv
     POINT0_SCOPE: PointsScope
     POINT0_SIDE: 'client'
-    POINT0_SSR: 'true' | 'false'
+    POINT0_SSR_ENABLED_DEFAULT: 'true' | 'false'
   } {
     const NODE_ENV = normalizeAndValidateNodeEnv(nodeEnvFallback)
     const POINT0_SCOPE = this.scope
     const POINT0_SIDE = 'client'
-    const POINT0_SSR = this.ssr ? 'true' : 'false'
+    const POINT0_SSR_ENABLED_DEFAULT = this.ssrDefaultOptions.enabled ? 'true' : 'false'
     this.envConsts.NODE_ENV = NODE_ENV
     this.envConsts.POINT0_SCOPE = POINT0_SCOPE
     this.envConsts.POINT0_SIDE = POINT0_SIDE
-    this.envConsts.POINT0_SSR = POINT0_SSR
+    this.envConsts.POINT0_SSR_ENABLED_DEFAULT = POINT0_SSR_ENABLED_DEFAULT
     if (!this.envVarsApplied) {
       this.envVarsApplied = true
       process.env.POINT0_STATIC_COMPILER_OPTIONS = JSON.stringify(
@@ -316,7 +312,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
         process.env.POINT0_STATIC_COMPILER_REF = compilerRef
       }
     }
-    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR }
+    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR_ENABLED_DEFAULT }
   }
 
   /**
@@ -1726,8 +1722,26 @@ try {
       resolveRscComponentPreloads: (componentNames) => this.resolveRscPreloads(componentNames),
       redirectPolicy,
       waitForAllReady,
-      ssrOptions: this.ssrOptions,
+      ssrOptions: this._effectiveSsrOptions(pagePoint),
     })
+  }
+
+  // Per-page SSR render-loop options: `.ssr({...})` on the page overrides this client's defaults (not `enabled` — the
+  // fetcher gate already decided whether to SSR this page).
+  private _effectiveSsrOptions(pagePoint: PagePoint | undefined): SsrOptionsResolved {
+    const pointSsr = pagePoint?._ssr
+    if (!pointSsr) {
+      return this.ssrDefaultOptions
+    }
+    // Override only the render-loop knobs the page set; `enabled` stays the client default (the fetcher gate handled it).
+    const merged: SsrOptionsResolved = { ...this.ssrDefaultOptions }
+    if (pointSsr.allowedDiscoveryRenders !== undefined)
+      merged.allowedDiscoveryRenders = pointSsr.allowedDiscoveryRenders
+    if (pointSsr.forbiddenDiscoveryRenders !== undefined)
+      merged.forbiddenDiscoveryRenders = pointSsr.forbiddenDiscoveryRenders
+    if (pointSsr.prefetchLoadersBeforePageRender !== undefined)
+      merged.prefetchLoadersBeforePageRender = pointSsr.prefetchLoadersBeforePageRender
+    return merged
   }
 
   async renderAsString({
@@ -1778,7 +1792,7 @@ try {
       pagePoint,
       clientPoints: this.points,
       redirectPolicy,
-      ssrOptions: this.ssrOptions,
+      ssrOptions: this._effectiveSsrOptions(pagePoint),
       target,
       suspenseQueryPolicy,
     })

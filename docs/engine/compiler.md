@@ -485,21 +485,21 @@ The `compiler` option on the engine (and per side). Set it to `false` to turn
 the compiler off for that side; `true` / an object turns it on. A built engine
 forces it to `false` (a built app never compiles sources at runtime).
 
-| Option     | Type                             | What it does                                  |
-| ---------- | -------------------------------- | --------------------------------------------- |
-| `side`     | toggle                           | shake server/client code for this side        |
-| `scope`    | toggle                           | shake by points scope                         |
-| `mode`     | toggle                           | shake `env.mode.*` (NODE_ENV)                 |
-| `runtime`  | `EnvRuntimeName \| false`        | resolve `env.runtime.*`                       |
-| `os`       | `EnvOsName \| false`             | resolve `env.os.*`                            |
-| `consts`   | env-const table                  | replace `env.vars.*` / `process.env.*`        |
-| `filter`   | `RegExp`                         | which files the compiler claims               |
-| `ssr`      | toggle                           | set `POINT0_SSR` / fold `env.ssr.*` on client |
-| `cache`    | boolean                          | on-disk transform cache (default on)          |
-| `markdown` | MDX options                      | remark/rehype/recma plugins, MDX config       |
-| `babel`    | plugins / `{ plugins, presets }` | your babel plugins (see above)                |
-| `assets`   | assets options / `false`         | static-asset pipeline ([assets](assets))      |
-| `importer` | importer options                 | mock/deny/cold imports ([importer](importer)) |
+| Option     | Type                             | What it does                                                  |
+| ---------- | -------------------------------- | ------------------------------------------------------------- |
+| `side`     | toggle                           | shake server/client code for this side                        |
+| `scope`    | toggle                           | shake by points scope                                         |
+| `mode`     | toggle                           | shake `env.mode.*` (NODE_ENV)                                 |
+| `runtime`  | `EnvRuntimeName \| false`        | resolve `env.runtime.*`                                       |
+| `os`       | `EnvOsName \| false`             | resolve `env.os.*`                                            |
+| `consts`   | env-const table                  | replace `env.vars.*` / `process.env.*`                        |
+| `filter`   | `RegExp`                         | which files the compiler claims                               |
+| `ssr`      | toggle                           | set `POINT0_SSR_ENABLED_DEFAULT` / fold `env.ssr.*` on client |
+| `cache`    | boolean                          | on-disk transform cache (default on)                          |
+| `markdown` | MDX options                      | remark/rehype/recma plugins, MDX config                       |
+| `babel`    | plugins / `{ plugins, presets }` | your babel plugins (see above)                                |
+| `assets`   | assets options / `false`         | static-asset pipeline ([assets](assets))                      |
+| `importer` | importer options                 | mock/deny/cold imports ([importer](importer))                 |
 
 `importer` is **per-side only**, not engine-level. The full engine config
 surface is on [Engine config](engine-config); the importer options on

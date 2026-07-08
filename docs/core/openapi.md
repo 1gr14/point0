@@ -161,9 +161,11 @@ Two header parameters can appear that you did not declare:
   [transformer](transformer) (e.g. `superjson`) is set on the root. It is
   `enum: ['true', 'false']`, optional, and controls whether the response body is
   run through the transformer. Suppress it with `hideTransformHeader: true`.
-- **`X-Point0-Output-Type`** — added to a **page** endpoint when SSR is on
-  (`enum` of `data` / `queryClientDehydratedState` / `html`), selecting the
-  output format of the page response.
+- **`X-Point0-Output-Type`** — added to a **page** endpoint when SSR is on for
+  the client that owns the page (`enum` of `data` / `queryClientDehydratedState`
+  / `html`), selecting the output format of the page response. SSR resolves per
+  client, so the spec advertises this header by the owning client's SSR, not the
+  server's.
 
 ## Response schemas — `.response()`
 

@@ -50,10 +50,10 @@ describe('page', () => {
     // loaderless `useQuery` throw does not leak into this internal path — it builds options via
     // `_getServerQueryOptions` directly, never through the public hooks.
     //
-    // In a real app POINT0_SSR is an injected bundle const, already set when point modules load;
+    // In a real app POINT0_SSR_ENABLED_DEFAULT is an injected bundle const, already set when point modules load;
     // this harness constructs points inline, so set it around construction — `.page()` preserves
     // a loaderless page's endpoint only when it sees SSR on.
-    process.env.POINT0_SSR = 'true'
+    process.env.POINT0_SSR_ENABLED_DEFAULT = 'true'
     try {
       const root = createRoot()
       const page = root.lets('page', 'home', '/').page(() => <div id="page">x=nothing</div>)
@@ -62,7 +62,7 @@ describe('page', () => {
       expect(response.status).toBe(200)
       expect(dehydratedState.queries).toEqual([])
     } finally {
-      delete process.env.POINT0_SSR
+      delete process.env.POINT0_SSR_ENABLED_DEFAULT
     }
   })
 

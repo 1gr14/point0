@@ -4,6 +4,7 @@ import type {
   FetcherFetchDetailedResult,
   LogFn,
   NormalizedNodeEnv,
+  PointSsrResolved,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
@@ -80,7 +81,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   hmrPort: number | false
   fetcher: TPrepared extends true ? Fetcher<TError> : null
   compiler: EngineOptionsCompilerSpecificParsed | false
-  ssr: boolean
+  ssrEnabled: boolean
   /**
    * Server-dev hot-reload binding (CHILD side). Set by {@link bindHotStore} when the stable dev child runs in hot mode:
    * `readPoints` then re-imports the server points aggregator from the content-addressed store (per request, gated by
@@ -115,7 +116,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     viteDevServer: ViteDevServer | null
     hmrPort: number | false
     compiler: EngineOptionsCompilerSpecificParsed | false
-    ssr: boolean
+    ssrEnabled: boolean
   }) {
     this.cwd = input.cwd
     this.scope = input.scope
@@ -153,7 +154,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     this.hmrPort = input.hmrPort
     this.compiler = input.compiler
     this.fetcher = null as TPrepared extends true ? Fetcher<TError> : null
-    this.ssr = input.ssr
+    this.ssrEnabled = input.ssrEnabled
   }
 
   static create<TError extends ErrorPoint0>(input: {
@@ -182,7 +183,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     viteConfig: EngineOptionsViteConfig | null
     hmrPort: number | false
     compiler: EngineOptionsCompilerSpecificParsed | false
-    ssr: boolean
+    ssrEnabled: boolean
   }): EngineServer<false, TError> {
     const publicdir = input.publicdir
       ? Publicdir.create<TError>({
@@ -269,15 +270,20 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   }: {
     nodeEnvFallback: NormalizedNodeEnv | undefined
     assignToProcessEnv: boolean
-  }): { NODE_ENV: NormalizedNodeEnv; POINT0_SCOPE: PointsScope; POINT0_SIDE: 'server'; POINT0_SSR: 'true' | 'false' } {
+  }): {
+    NODE_ENV: NormalizedNodeEnv
+    POINT0_SCOPE: PointsScope
+    POINT0_SIDE: 'server'
+    POINT0_SSR_ENABLED_DEFAULT: 'true' | 'false'
+  } {
     const NODE_ENV = normalizeAndValidateNodeEnv(nodeEnvFallback)
     const POINT0_SCOPE = this.scope
     const POINT0_SIDE = 'server'
-    const POINT0_SSR = this.ssr ? 'true' : 'false'
+    const POINT0_SSR_ENABLED_DEFAULT = this.ssrEnabled ? 'true' : 'false'
     this.envConsts.NODE_ENV = NODE_ENV
     this.envConsts.POINT0_SCOPE = POINT0_SCOPE
     this.envConsts.POINT0_SIDE = POINT0_SIDE
-    this.envConsts.POINT0_SSR = POINT0_SSR
+    this.envConsts.POINT0_SSR_ENABLED_DEFAULT = POINT0_SSR_ENABLED_DEFAULT
     if (assignToProcessEnv && !this.envVarsApplied) {
       this.envVarsApplied = true
       for (const [envVarKey, envVarValue] of Object.entries({ ...this.envVars, ...this.envConsts })) {
@@ -289,7 +295,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         // }
       }
     }
-    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR }
+    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR_ENABLED_DEFAULT }
   }
 
   isFileInOutdir(file: string = Bun.main): boolean {
@@ -374,6 +380,13 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     try {
       const points = await ServerPoints.createFromSource(source, { log: this.log })
       await points.load()
+      // Authoritative per-scope SSR for server-side tooling (the openapi spec). The server's own scope first, then each
+      // client — a client sharing the server's scope wins, since pages belong to the client. Ambient `_getSsrEnabled()` here
+      // would report the server's SSR for every scope, which is exactly the ambiguity this map resolves.
+      points.ssrDefaultOptionsByScope = new Map<PointsScope, PointSsrResolved>([
+        [this.scope, { enabled: this.ssrEnabled }],
+        ...this.clients.map((client) => [client.scope, client.ssrDefaultOptions] as const),
+      ])
       this.points = points as TPrepared extends true ? ServerPoints<TError> : undefined
       if (hot && hotHash !== undefined) {
         hot.store.markLoaded(hot.abs, hotHash)

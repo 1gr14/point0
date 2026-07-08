@@ -196,12 +196,16 @@ export type SsrOptions = {
    */
   prefetchLoadersBeforePageRender?: boolean
 }
+// The fully-resolved SSR settings for a side. `enabled` is just one of the options — everything about SSR lives in one
+// object, so there is no separate boolean to keep in sync. Per-point `.ssr(...)` overrides pieces of it.
 export type SsrOptionsResolved = {
+  enabled: boolean
   allowedDiscoveryRenders: number
   forbiddenDiscoveryRenders: number
   prefetchLoadersBeforePageRender: boolean
 }
 export const defaultSsrOptionsResolved: SsrOptionsResolved = {
+  enabled: false,
   allowedDiscoveryRenders: Infinity,
   forbiddenDiscoveryRenders: 25,
   prefetchLoadersBeforePageRender: false,
@@ -518,8 +522,7 @@ export type EngineClientOptionsParsed = {
     outdir: string
     cacheLimit: number | boolean
   } | null
-  ssr: boolean
-  ssrOptions: SsrOptionsResolved
+  ssrDefaultOptions: SsrOptionsResolved
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
@@ -546,7 +549,7 @@ export type EngineServerOptionsParsed = {
   viteConfig: EngineOptionsViteConfig | null
   compiler: EngineOptionsCompilerSpecificParsed | false
   hmrPort: number | false
-  ssr: boolean
+  ssrEnabled: boolean
   devWatchGlob: string[]
 }
 export type EngineOptionsParsed = {
@@ -1187,7 +1190,7 @@ export const parseEngineServerOptions = ({
             path: serverOptions.viteConfig,
           })
         : (serverOptions.viteConfig ?? generalOptionsParsed.viteConfig ?? null),
-    ssr,
+    ssrEnabled: ssr,
     devWatchGlob,
   }
 }
@@ -1397,8 +1400,7 @@ const parseEngineClientOptions = ({
     bunBuildConfig: clientOptions.bunBuildConfig ?? {},
     bunPlugins: clientOptions.bunPlugins ?? [],
     engineFile: generalOptionsParsed.engineFile,
-    ssr,
-    ssrOptions,
+    ssrDefaultOptions: { ...ssrOptions, enabled: ssr },
   }
 }
 

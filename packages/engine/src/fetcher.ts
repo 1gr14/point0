@@ -895,7 +895,9 @@ export class Fetcher<TError extends ErrorPoint0> {
         serverStorageState,
       })
 
-      if (client.ssr) {
+      // SSR the page when the client SSRs AND this page did not opt out with `.ssr(false)`. An opted-out page (or a
+      // fully-SPA client) ships the shell — matching the compiler, which strips its render from the server build.
+      if (client.ssrDefaultOptions.enabled && point?._ssr?.enabled !== false) {
         try {
           const readableStream = await client.renderAsReadableStream({
             executor,

@@ -195,8 +195,8 @@ server-rendered through its client, so the executor reads
 `allowedDiscoveryRenders`, `forbiddenDiscoveryRenders`, and
 `prefetchLoadersBeforePageRender` from the resolved **client** SSR options. The
 server's `ssr` is only a boolean: it gates whether the server runs the SSR
-machinery (and the `POINT0_SSR` const). Set the object form on the engine
-default or on the client — tuning fields on `server.ssr` are dropped.
+machinery (and the `POINT0_SSR_ENABLED_DEFAULT` const). Set the object form on
+the engine default or on the client — tuning fields on `server.ssr` are dropped.
 
 ## Telling the engine where points are
 
@@ -441,7 +441,8 @@ records/arrays, no string or glob form. The server can see everything, so it has
 no such guard on `consts`.
 
 Point0 always injects these consts: `NODE_ENV`, `POINT0_SCOPE`, `POINT0_SIDE`,
-`POINT0_SSR`, and `POINT0_BUILT` (at build). Full treatment on [env](env).
+`POINT0_SSR_ENABLED_DEFAULT`, and `POINT0_BUILT` (at build). Full treatment on
+[env](env).
 
 ## Guarding imports (`importer`)
 

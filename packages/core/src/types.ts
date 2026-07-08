@@ -1558,8 +1558,40 @@ export type NormalizedPrefetchPagePolicy = Exclude<PrefetchPagePolicy, boolean>
 
 // middlewares
 
+/**
+ * SSR tuning for a single point, authored on the chain via {@link Point0.ssr} — the same knobs the engine's per-side
+ * `ssr` option carries, but per point. `enabled` applies to any point; the render-loop options only matter for pages
+ * and layouts. An unset key inherits the scope default (the point's root) and, under that, the engine's per-side
+ * value.
+ */
+export type PointSsrOptions = {
+  allowedDiscoveryRenders?: number
+  forbiddenDiscoveryRenders?: number
+  prefetchLoadersBeforePageRender?: boolean
+}
+/**
+ * What `.ssr(...)` accepts. SSR can only be turned OFF per point, never on: `false` opts the point out of SSR (it ships
+ * as the client shell), or an options object tunes the render loop (and may also opt out via `enabled: false`). Forcing
+ * SSR on where the side default is off is impossible — the request pipeline never engages SSR for that side — so
+ * `enabled` is `false`-only.
+ */
+export type PointSsrInput = false | ({ enabled?: false } & PointSsrOptions)
+/** What a point stores in `_ssr`: the accumulated `.ssr(...)` merges. `enabled` is only ever `false` or absent. */
+export type PointSsrState = { enabled?: false } & PointSsrOptions
+/** A fully-resolved per-scope SSR default (the engine's per-side value): `enabled` plus the render-loop options. */
+export type PointSsrResolved = { enabled: boolean } & PointSsrOptions
+
 export type NiceServerPoints = {
   collection: AnyNiceReadyPoint[]
+  /**
+   * Per-scope SSR defaults, one entry per side (the server's own scope plus every client), filled by the engine from
+   * the per-side `ssr` config. SSR resolves per-side, but this map is generated on the server, so tooling that runs
+   * there (the {@link openapi} spec, notably) can resolve a point's SSR by its owning scope instead of the ambient
+   * `_getSsrEnabled()` — which on the server would report the _server's_ SSR, not that of the client that owns the
+   * point. An explicit `.ssr(...)` on the point still wins over this default. Absent when the points weren't built by
+   * the engine.
+   */
+  ssrDefaultOptionsByScope?: Map<PointsScope, PointSsrResolved>
   findPoint: (options: { type: PointType; name: PointName; scope: PointsScope }) => AnyNiceReadyPoint | undefined
   findEndpoint: (
     options:
@@ -2247,6 +2279,7 @@ export type NiceRootStagePoint<
     TQueriesDefinitions
   >,
   | 'root'
+  | 'ssr'
   | 'errorClass'
   | 'schemaHelper'
   | 'use'
@@ -2468,6 +2501,7 @@ export type NiceBaseStagePoint<
     TQueriesDefinitions
   >,
   | 'base'
+  | 'ssr'
   | 'basePath'
   | 'on'
   | 'serverOn'
@@ -2573,6 +2607,7 @@ export type NicePageStagePoint<
     TQueriesDefinitions
   >,
   | 'page'
+  | 'ssr'
   | 'on'
   | 'clientOnly'
   | 'serverOn'
@@ -3028,6 +3063,7 @@ export type NiceLayoutStagePoint<
     TQueriesDefinitions
   >,
   | 'layout'
+  | 'ssr'
   | 'on'
   | 'clientOnly'
   | 'serverOn'

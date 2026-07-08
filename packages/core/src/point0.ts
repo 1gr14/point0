@@ -264,6 +264,8 @@ import type {
   UndefinedRouteDefinition,
   UseInfiniteQueryOptions,
   UsePointQueryResult,
+  PointSsrInput,
+  PointSsrState,
   UsePointSuspenseQueryResult,
   UseQueryOptions,
   WithError,
@@ -451,8 +453,14 @@ export class Point0<
   _getTransformerWithRsc = () => (this._transformerWithRsc ??= wrapTransformerWithRsc(this._getTransformer()))
   readonly _rscDepth: number | undefined
   private readonly _eventerSubscriptions: EventerSubscription<any, TError>[]
-  readonly _ssr: boolean | undefined
-  readonly _getSsr = () => (typeof this._ssr === 'boolean' ? this._ssr : _point0_env.vars.POINT0_SSR === 'true')
+  readonly _ssr: PointSsrState | undefined
+  // Set by `.clientOnly()`: records that a `<ClientOnly>` wrapper was declared up the chain, so the render tail runs in
+  // the browser only. It is about WHERE the render runs, not whether the point does SSR — orthogonal to `_ssr`.
+  readonly _clientOnly: boolean
+  // Is SSR enabled for this point: its own `.ssr(enabled)` (inherited down the chain from its root) if set, else this
+  // side's baked `POINT0_SSR_ENABLED_DEFAULT`. Independent of `_clientOnly`. Server-side tooling that needs another scope's value (the
+  // openapi spec) resolves through `ssrDefaultOptionsByScope` instead of this ambient fallback.
+  readonly _getSsrEnabled = () => this._ssr?.enabled ?? _point0_env.vars.POINT0_SSR_ENABLED_DEFAULT === 'true'
   readonly scope: PointsScope
   readonly scopes: PointsScope[]
   private readonly _defaultMutationOptions: ExtraUseMutationOptions | undefined
@@ -690,7 +698,8 @@ export class Point0<
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | undefined
-    _ssr?: boolean | undefined
+    _ssr?: PointSsrState | undefined
+    _clientOnly?: boolean | undefined
     _eventerSubscriptions?: EventerSubscription<any, TError>[]
     scope: PointsScope
     scopes: PointsScope[]
@@ -771,6 +780,7 @@ export class Point0<
     this._middlewares = options._middlewares ?? []
     this._transformer = options._transformer ?? undefined
     this._ssr = options._ssr ?? undefined
+    this._clientOnly = options._clientOnly ?? false
     this._eventerSubscriptions = options._eventerSubscriptions ?? []
     this._serverUrl = options._serverUrl ?? undefined
     this._clientUrl = options._clientUrl ?? undefined
@@ -880,7 +890,8 @@ export class Point0<
     _endpoint?: EndpointDefinition | undefined
     _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | null
-    _ssr?: boolean | undefined
+    _ssr?: PointSsrState | undefined
+    _clientOnly?: boolean | undefined
     _eventerSubscriptions?: EventerSubscription<any, TError>[]
     _defaultMutationOptions?: ExtraUseMutationOptions | undefined
     _mutationOptions?: ExtraUseMutationOptions | undefined
@@ -1025,6 +1036,7 @@ export class Point0<
       _endpointPrefix: set('_endpointPrefix'),
       _transformer: set('_transformer'),
       _ssr: set('_ssr'),
+      _clientOnly: set('_clientOnly'),
       _eventerSubscriptions: set('_eventerSubscriptions'),
       _defaultMutationOptions: set('_defaultMutationOptions'),
       _mutationOptions: set('_mutationOptions'),
@@ -1445,7 +1457,10 @@ export class Point0<
               action.type === 'input',
           )
     if (letsReadyPointType === 'component' || letsReadyPointType === 'provider') {
-      mountActionsSuitable.push({ type: 'selfProps', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() })
+      mountActionsSuitable.push({
+        type: 'selfProps',
+        unstableId: Point0._getNextUnstableId(),
+      })
     }
     const wrappersSuitable = this.type === 'layout' ? [] : this._wrappers
 
@@ -2733,9 +2748,9 @@ export class Point0<
    * Opt a mountable out of SSR: its render runs in the browser only, and the server bundle drops the render chain.
    * Takes an optional fallback component shown in place during SSR. On page, layout, component, provider.
    *
-   * The strip switch — it sets the rest of the chain to behave as `ssr:false`, so every server-ssr-and-client method
-   * after it (`.page`/`.layout`/`.component`/`.provider`, `.loading`, `.error`, `.wrapper`, `.with`, `.mapper`,
-   * `.head`) is cut from the server build and runs in the browser only.
+   * The strip switch — everything after it (`.page`/`.layout`/`.component`/`.provider`, `.loading`, `.error`,
+   * `.wrapper`, `.with`, `.mapper`, `.head`) is cut from the server build and runs in the browser only. This is about
+   * where the render runs, not whether the point participates in SSR — it is independent of `.ssr()`.
    *
    *     .clientOnly(() => <Spinner />).page(() => <HeavyClientChart />)
    *
@@ -2780,16 +2795,70 @@ export class Point0<
       TError
     >,
   ) {
-    const mountActions = (() => {
-      if (!this._getSsr()) {
-        return this._mountActions
-      }
-      return [...this._mountActions, { type: 'clientOnly' as const, Fallback, unstableId: Point0._getNextUnstableId() }]
-    })()
     return this._continue({
-      _ssr: false,
-      _mountActions: mountActions,
+      _clientOnly: true,
+      // Always add the wrapper. Whether it shows the fallback (during SSR) or the content (after hydration, or right
+      // away when the page was not SSR'd) is decided at render time by `useIsHydrated` — not here. SSR can still change
+      // further down the chain, so deciding now, from this point's current SSR, would be wrong.
+      _mountActions: [
+        ...this._mountActions,
+        { type: 'clientOnly' as const, Fallback, unstableId: Point0._getNextUnstableId() },
+      ],
     }) as never
+  }
+
+  /**
+   * Set SSR for this point and everything after it in the chain — a per-point override of the engine's per-side `ssr`.
+   * `.ssr(false)` opts the page/subtree out of server rendering (it ships as the client shell); `.ssr(true)` forces it
+   * on even where the side defaults off; an options object also tunes the SSR render loop (discovery renders, loader
+   * prefetch) for this page. Merges over whatever the chain already carries, so a later `.ssr(...)` refines an earlier
+   * one, and a page inherits its root's `.ssr(...)` as the scope default. On root, base, page, layout — not in a plugin
+   * (the compiler resolves SSR statically along the chain and cannot trace a plugin into its consumers).
+   *
+   *     .ssr(false)                            // this page renders client-only (ships the shell, hydrates on the client)
+   *     .ssr({ allowedDiscoveryRenders: 1 })   // keep SSR, cap the discovery passes for this page
+   *
+   * Full reference: https://1gr14.dev/point0/latest/ssr
+   */
+  ssr<TSelf>(this: TSelf, ssr: PointSsrInput): TSelf
+  ssr(ssr: PointSsrInput) {
+    const incoming: PointSsrState = ssr === false ? { enabled: false } : ssr
+    const merged: PointSsrState = { ...(this._ssr ?? {}), ...incoming }
+    const patch: Record<string, unknown> = { _ssr: merged }
+    // Turning SSR off retires any `pageDehydratedState` prefetch already set on this point (there is no dehydrated
+    // state without SSR). A policy set AFTER this `.ssr(false)` is caught in the setters instead (they throw).
+    if (merged.enabled === false) {
+      if (this._polhPolicy) {
+        patch._polhPolicy = Point0._downgradedDehydrationPolicy(this._polhPolicy)
+      }
+      if (this._ponPolicy) {
+        patch._ponPolicy = Point0._downgradedDehydrationPolicy(this._ponPolicy)
+      }
+    }
+    return this._continue(patch as never) as never
+  }
+
+  private static _isDehydrationPolicy(policy: PrefetchPagePolicy | undefined): boolean {
+    return policy === 'pageDehydratedState' || policy === 'pageDehydratedStateAndClientQuery'
+  }
+
+  // The cheap non-SSR equivalent of a dehydrated-state prefetch policy (others pass through unchanged).
+  private static _downgradedDehydrationPolicy(policy: PrefetchPagePolicy | undefined): PrefetchPagePolicy | undefined {
+    return policy === 'pageDehydratedState'
+      ? 'serverQuery'
+      : policy === 'pageDehydratedStateAndClientQuery'
+        ? 'serverAndClientQuery'
+        : policy
+  }
+
+  // Setters call this: declaring a dehydrated-state prefetch policy when SSR is already off here is a contradiction
+  // (unlike turning SSR off after the policy, which silently downgrades) — fail loudly at build time.
+  private _throwIfDehydrationPolicyWithoutSsr(policy: PrefetchPagePolicy | undefined): void {
+    if (Point0._isDehydrationPolicy(policy) && !this._getSsrEnabled()) {
+      throw new Error(
+        `Prefetch policy "${policy}" needs SSR, but SSR is off on ${this.toStringWithLocation()} (from \`.ssr(false)\` or the side default). Use serverQuery / serverAndClientQuery / clientQuery instead.`,
+      )
+    }
   }
 
   /**
@@ -3027,7 +3096,7 @@ export class Point0<
   error(errorComponent: ErrorComponentType<any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
     return this._continue({
       _mountActions: [
@@ -3040,7 +3109,6 @@ export class Point0<
                 Component: errorComponent,
                 variant: this._getDestinationComponentVariant(),
                 unstableId: Point0._getNextUnstableId(),
-                ssr: this._getSsr(),
               },
             ]
           : []),
@@ -3194,7 +3262,7 @@ export class Point0<
     // })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
     return this._continue({
       _mountActions: [
@@ -3207,7 +3275,6 @@ export class Point0<
                 Component: loadingComponent,
                 variant: this._getDestinationComponentVariant(),
                 unstableId: Point0._getNextUnstableId(),
-                ssr: this._getSsr(),
               },
             ]
           : []),
@@ -3276,7 +3343,7 @@ export class Point0<
   wrapper(wrapperComponent: WrapperComponentType<any, any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
     return this._continue({
       _mountActions: [...this._mountActions, ...selfQueryAction],
@@ -3604,7 +3671,7 @@ export class Point0<
         ]
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
 
     // in case if we shake with for server without ssr
@@ -3652,7 +3719,6 @@ export class Point0<
             type: 'with',
             fn: withQueryFn,
             unstableId: Point0._getNextUnstableId(),
-            ssr: this._getSsr(),
           },
           ...(withResolveFn
             ? [
@@ -3660,7 +3726,6 @@ export class Point0<
                   type: 'with' as const,
                   fn: withResolveFn,
                   unstableId: Point0._getNextUnstableId(),
-                  ssr: this._getSsr(),
                 },
               ]
             : []),
@@ -3680,7 +3745,6 @@ export class Point0<
           type: 'with',
           fn: withFn,
           unstableId: Point0._getNextUnstableId(),
-          ssr: this._getSsr(),
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -3786,7 +3850,7 @@ export class Point0<
   ) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
 
     // in case if we shake with for server without ssr
@@ -3814,7 +3878,6 @@ export class Point0<
           queryOptions,
           inputGetter: getInputFn,
           unstableId: Point0._getNextUnstableId(),
-          ssr: this._getSsr(),
         },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
@@ -4236,6 +4299,7 @@ export class Point0<
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
     duration?: number,
   ) {
+    this._throwIfDehydrationPolicyWithoutSsr(policy)
     return this._continue({
       _polhPolicy: policy,
       ...(duration !== undefined ? { _polhDuration: duration } : {}),
@@ -4256,6 +4320,7 @@ export class Point0<
   prefetchPageOnNavigate(
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
   ) {
+    this._throwIfDehydrationPolicyWithoutSsr(policy)
     return this._continue({
       _ponPolicy: policy,
     }) as never
@@ -4277,6 +4342,7 @@ export class Point0<
     policy?: PrefetchPagePolicy, // in case if it was shaked for nossr server
     duration?: number,
   ) {
+    this._throwIfDehydrationPolicyWithoutSsr(policy)
     return this._continue({
       _polhPolicy: policy,
       _ponPolicy: policy,
@@ -4822,13 +4888,13 @@ export class Point0<
     mapperFn ||= ((o) => o.data) as MapperFn<any, any, any, any, any, any, any, any>
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
     return this._continue({
       _mountActions: [
         ...this._mountActions,
         ...selfQueryAction,
-        { type: 'mapper', fn: mapperFn, unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() },
+        { type: 'mapper', fn: mapperFn, unstableId: Point0._getNextUnstableId() },
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
@@ -5037,7 +5103,7 @@ export class Point0<
     })()
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
     return this._continue({
       _mountActions: [
@@ -5049,10 +5115,15 @@ export class Point0<
                 type: 'globalHead' as const,
                 fn: headFn as GlobalHeadFn<any, any>,
                 unstableId: Point0._getNextUnstableId(),
-                ssr: this._getSsr(),
               },
             ]
-          : [{ type: 'head' as const, fn: headFn, unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]),
+          : [
+              {
+                type: 'head' as const,
+                fn: headFn,
+                unstableId: Point0._getNextUnstableId(),
+              },
+            ]),
       ],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
     }) as never
@@ -6566,17 +6637,21 @@ export class Point0<
     // this._applyComponentDisplayName(page as React.ComponentType<any>, { suffix: 'PageInner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
-    // just for safety we can preserve here endpoint
-    const _endpoint = !this._getSsr() ? this.undefinedEndpointIfHasNotServerLoader() : this._endpoint
+    // Endpoint existence is fixed here at point-build time by the BUILDING BUNDLE's side default (ambient
+    // `_getSsrEnabled()`), not the owning client's SSR: a side that doesn't SSR keeps the endpoint only when the page
+    // has a server loader; a side that DOES SSR keeps `_endpoint` so `queryClientDehydratedState` stays prefetchable
+    // even without a server loader. Accepted degenerate cost: a server bundle with `ssr: false` drops a no-loader
+    // page's data-endpoint even if an `ssr: true` client owns it, so that page is absent from the server-generated
+    // OpenAPI spec — nonsensical in practice (server scope is API-only, SSR is per-client); making endpoint existence
+    // client-aware would be a runtime-routing change.
+    const _endpoint = !this._getSsrEnabled() ? this.undefinedEndpointIfHasNotServerLoader() : this._endpoint
     const point = this._continue({
       type: 'page',
       _page: page,
       _letsReadyPointType: undefined,
       _endpoint,
-      // preserve endpoint for queryClientDehydratedState prefetching
-      // _endpoint: this.undefinedEndpointIfHasNotServerLoader(),
       _mountActions: [...this._mountActions, ...selfQueryAction],
       ...(queryShouldBeFinalized ? { _queryResultType: 'query' } : {}),
     })
@@ -6665,7 +6740,7 @@ export class Point0<
     // this._applyComponentDisplayName(component, { suffix: 'Inner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
     const point = this._continue({
       type: 'component',
@@ -6807,7 +6882,7 @@ export class Point0<
   layout(...args: any[]) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
     if (this._letsReadyPointType === 'layout') {
       const [layout = ({ children }) => children] = args as [
@@ -6994,7 +7069,7 @@ export class Point0<
     const mapperFn = _mapperFn as MapperFn<any, any, any, any, any, any, any, any> | undefined
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
     const point = this._continue({
       type: 'provider',
@@ -7009,7 +7084,6 @@ export class Point0<
                 type: 'mapper' as const,
                 fn: mapperFn,
                 unstableId: Point0._getNextUnstableId(),
-                ssr: this._getSsr(),
               },
             ]
           : []),
@@ -7173,56 +7247,30 @@ export class Point0<
       )
     }
 
-    // // throw new Error(`Point ${this.toString()} and ${point.toString()} have different ssr settings`)
-    // let pointMountActionsSsr = 'none' as 'none' | 'mash' | true | false
-    // for (const mountAction of point._mountActions) {
-    //   if (!('ssr' in mountAction)) {
-    //     continue
-    //   }
-    //   if (mountAction.ssr) {
-    //     if (pointMountActionsSsr === true) {
-    //       // continue
-    //     } else if (pointMountActionsSsr === false) {
-    //       pointMountActionsSsr = 'mash'
-    //     } else if (pointMountActionsSsr === 'none') {
-    //       pointMountActionsSsr = true
-    //     } else {
-    //       // already mash
-    //     }
-    //   } else {
-    //     if (pointMountActionsSsr === false) {
-    //       // continue
-    //     } else if (pointMountActionsSsr === true) {
-    //       pointMountActionsSsr = 'mash'
-    //     } else if (pointMountActionsSsr === 'none') {
-    //       pointMountActionsSsr = false
-    //     } else {
-    //       // already mash
-    //     }
-    //   }
-    // }
-    // if (typeof pointMountActionsSsr === 'boolean' && this._getSsr() !== pointMountActionsSsr) {
-    //   throw new Error(
-    //     `Points have different ssr settings, so you may loose mount actions in ssr mode ${this.toStringWithLocation()} and ${point.toStringWithLocation()} `,
-    //   )
-    // }
+    // A client-only plugin can only go onto an already-client-only consumer. `.clientOnly()` is resolved statically by
+    // the compiler along the chain, but a plugin reaches its consumer through a runtime `.use()` value the compiler
+    // cannot trace. If we flipped the consumer to client-only here at runtime, the compiler would still ship the
+    // consumer's render to the server — a desync. So we refuse it and ask for an explicit `.clientOnly()` up front.
+    if (point._clientOnly && !this._clientOnly) {
+      throw new Error(
+        `Cannot .use() a client-only plugin (${point.toStringWithLocation()}) on a point that is not client-only (${this.toStringWithLocation()}). Call .clientOnly() before .use() so the compiler strips the server build consistently.`,
+      )
+    }
 
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
-      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() }]
+      ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
       : []
 
     const pluginStart = {
       type: 'pluginStart' as const,
       name: point.name,
       unstableId: Point0._getNextUnstableId(),
-      ssr: this._getSsr(),
     }
     const pluginEnd = {
       type: 'pluginEnd' as const,
       name: point.name,
       unstableId: Point0._getNextUnstableId(),
-      ssr: this._getSsr(),
     }
     const pluginStartServerAction = point._serverExecuteActions.length > 0 ? [pluginStart] : []
     const pluginEndServerAction = point._serverExecuteActions.length > 0 ? [pluginEnd] : []
@@ -7254,6 +7302,8 @@ export class Point0<
       // _basePath: point._basePath,
       // _transformer: point._transformer,
       ...set('_ssr'),
+      // The consumer's own flag — a client-only plugin on a non-client-only consumer already threw above.
+      _clientOnly: this._clientOnly,
       _eventerSubscriptions: [...this._eventerSubscriptions, ...point._eventerSubscriptions],
       _defaultMutationOptions: mergeMutationOptions(this._defaultMutationOptions, point._defaultMutationOptions),
       _mutationOptions: mergeMutationOptions(this._mutationOptions, point._mutationOptions),
@@ -7511,10 +7561,7 @@ export class Point0<
         type: 'finalStage',
         _queryResultType: 'query',
         _queryOptions: queryOptions,
-        _mountActions: [
-          ...this._mountActions,
-          { type: 'selfQuery', unstableId: Point0._getNextUnstableId(), ssr: this._getSsr() },
-        ],
+        _mountActions: [...this._mountActions, { type: 'selfQuery', unstableId: Point0._getNextUnstableId() }],
       }) as never
     } else if (this._letsReadyPointType === 'query') {
       return this._continue({
@@ -7759,7 +7806,6 @@ export class Point0<
           {
             type: 'selfQuery',
             unstableId: Point0._getNextUnstableId(),
-            ssr: this._getSsr(),
           },
         ],
       }) as never
@@ -11949,7 +11995,10 @@ export class Point0<
 
     const queryClientDehydratedStateWasPrefetched = await (async () => {
       if (policy === 'pageDehydratedState' || policy === 'pageDehydratedStateAndClientQuery') {
-        if (!this._root?._getSsr()) {
+        if (!this._getSsrEnabled()) {
+          // Safety net: `.ssr()` and the policy setters keep a dehydrated-state policy off an ssr-off point, so this
+          // should be unreachable — but a hand-forged policy must never try to prefetch dehydrated state that the
+          // server won't produce.
           throw new Error(
             `Query client dehydrated state can be prefetched only when ssr is enabled on point ${this.toStringWithLocation()}`,
           )

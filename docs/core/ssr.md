@@ -139,41 +139,69 @@ no server render to keep them around for; they stay in the client build. Of the
 four strip categories, only this one tracks the SSR flag — the other three are
 covered below.
 
-You can also opt **one point** out while SSR is globally on, with
-[`.clientOnly`](mountable) — it forces that point to client-only render and
-shows an optional fallback during SSR:
+### `.ssr(false)` — a page or a whole section as an SPA
+
+While SSR is globally on, opt **one page** — or a whole subtree — out of SSR
+with `.ssr(false)`. That page ships as the bare shell (like the global
+`ssr: false`) and renders entirely on the client, while the rest of the app
+keeps SSR:
+
+```tsx
+export const Dashboard = root.lets
+  .page('/dashboard')
+  .ssr(false) // a pure SPA page — the server ships the shell, the browser renders it
+  .page(/* a heavy, interaction-only dashboard */)
+```
+
+`.ssr(...)` is inherited down the chain, so putting it on a **base** turns a
+whole section into an SPA in one place — every page built from that base is SPA.
+This is a real win, not cosmetics: the server spends **nothing** rendering those
+routes, every visit is served as a static shell, and the work moves to the
+browser. A server-rendered marketing site and blog can sit in front of a
+pure-SPA logged-in app, all in one project.
+
+`.ssr()` can only turn SSR **off** — `.ssr(false)`, or an options object with
+`enabled: false` (the object form also [tunes the loop](#tuning-the-loop) for a
+page that stays SSR). There is no `.ssr(true)`: SSR is engaged per side by the
+engine `ssr` option, and a single point cannot force the server to render for a
+side that does not. On root, base, page, layout — SSR is a page-level property,
+so not on components/providers (use `.clientOnly()` there) or plugins.
+
+A [prefetch policy](#prefetch-policies) that needs a server render —
+`pageDehydratedState` / `pageDehydratedStateAndClientQuery` — is quietly
+downgraded to `serverQuery` / `serverAndClientQuery` on an `.ssr(false)` page
+(there is no dehydrated state to prefetch). Declaring such a policy _after_
+`.ssr(false)` instead throws at build — that ordering is a contradiction.
+
+### `.clientOnly()` — a browser-only render inside an SSR page
+
+`.clientOnly()` is **not** the same as `.ssr(false)`: the page still SSRs — its
+layouts render on the server and the HTML ships — but the render tail after it
+is wrapped to run in the browser only, showing an optional fallback during SSR:
 
 ```tsx
 export const ChartPage = root.lets
   .page('/chart')
-  .clientOnly(() => <Skeleton />) // SSR renders the fallback; the real chart mounts on the client
+  .clientOnly(() => <Skeleton />) // the page SSRs; only the chart is client-only, skeleton meanwhile
   .page(/* a component that only works in the browser */)
 ```
 
-The fallback is optional — call `.clientOnly()` with no argument and SSR renders
-nothing for the point (an empty placeholder) until it mounts on the client:
+Call `.clientOnly()` with no argument and the slot is empty during SSR, filled
+after hydration. Reach for `.clientOnly()` when a page is mostly server-rendered
+but one piece (a chart, a map) is browser-only; reach for `.ssr(false)` when a
+whole page or section should not be server-rendered at all.
 
-```tsx
-export const ChartPage = root.lets
-  .page('/chart')
-  .clientOnly() // no fallback; the slot is empty during SSR, filled after hydration
-  .page(/* a browser-only chart */)
-```
-
-`.clientOnly()` makes the rest of the point's chain client-only — exactly as if
-`ssr: false` applied to this one point. It targets the same strip category: the
-**server-ssr-and-client** render methods above are cut from the server bundle
-for this point — bodies and imports removed — so a browser-only library you
-reach for in them never lands in the server build and never executes during SSR.
-
-The other three categories are unaffected by `.clientOnly()` / `ssr: false`.
-**server-only** methods before it (`.ctx`, a server `.loader`, `.input`, …) stay
-cut from the client bundle either way — their bodies and imports never ship to
-the browser; **client-only** methods (`.clientLoader`, `.onPrefetchPage`, …)
-stay cut from the server bundle regardless of SSR; and **server-and-client**
-methods (closers like `.query`, the `*QueryOptions` setters, `.relatedQuery`, …)
-are cut from neither bundle. `.clientOnly()` only client-restricts what
-_renders_, not what loads.
+Both cut the **server-ssr-and-client** render methods (`.page` / `.layout` /
+`.component` / `.provider`, the `.loading` and `.error` families, `.wrapper`,
+`.with`, `.mapper`, `.head`) from the server bundle for the affected point —
+bodies and imports removed — so a browser-only library you reach for in them
+never lands in the server build. Of the four strip categories, only this one
+tracks SSR; the other three are unaffected. **server-only** methods (`.ctx`, a
+server `.loader`, `.input`, …) stay cut from the client bundle either way;
+**client-only** methods (`.clientLoader`, `.onPrefetchPage`, …) stay cut from
+the server bundle regardless of SSR; and **server-and-client** methods (closers
+like `.query`, the `*QueryOptions` setters, `.relatedQuery`, …) are cut from
+neither. Both only restrict what _renders_, not what loads.
 
 ## The `ssr` and `suspend` query options
 

@@ -31,7 +31,7 @@ function helper(...args: [HelperCallback] | [HelperOptions, HelperCallback]): It
   return async () => {
     const [options, callback] = args.length === 1 ? [{}, args[0]] : args
     const { preserve = false, ssr = false } = options
-    const walker = new Walker({ routes: undefined, ssr })
+    const walker = new Walker({ routes: undefined, ssrEnabled: ssr })
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
       await callback({
@@ -986,7 +986,7 @@ export const root = Point0.lets('root', 'root')
       )
 
       it.concurrent(
-        'correctly understand when it is underSsr (when ssr=false is default)',
+        'correctly understand when it is ssrEnabled (when ssr=false is default)',
         helper(async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
@@ -1000,22 +1000,26 @@ export const page = root.lets('page', 'page', '/')
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.shakeMethods({ side: 'client', scope: 'root' })
-          expect(point.chainMethods.map((m) => `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}`))
-            .toMatchInlineSnapshot(`
+          expect(
+            point.chainMethods.map(
+              (m) =>
+                `${m.name}: ssrEnabled=${m.ssrEnabled ? 'true' : 'false'} underClientOnly=${m.underClientOnly ? 'true' : 'false'}`,
+            ),
+          ).toMatchInlineSnapshot(`
             [
-              "root: underSsr=false",
-              "iamNotUnderSsrByDefault: underSsr=false",
-              "clientLoader: underSsr=false",
-              "clientOnly: underSsr=false",
-              "iamNotUnderSsr: underSsr=false",
-              "page: underSsr=false",
+              "root: ssrEnabled=false underClientOnly=false",
+              "iamNotUnderSsrByDefault: ssrEnabled=false underClientOnly=false",
+              "clientLoader: ssrEnabled=false underClientOnly=false",
+              "clientOnly: ssrEnabled=false underClientOnly=true",
+              "iamNotUnderSsr: ssrEnabled=false underClientOnly=true",
+              "page: ssrEnabled=false underClientOnly=true",
             ]
           `)
         }),
       )
 
       it.concurrent(
-        'correctly understand when it is underSsr (when ssr=true)',
+        'correctly understand when it is ssrEnabled (when ssr=true)',
         helper({ ssr: true }, async ({ files: [file], walker }) => {
           await file.write(`import {Point0} from '@point0/core'
 export const root = Point0.lets('root', 'root').root()
@@ -1029,17 +1033,65 @@ export const page = root.lets('page', 'page', '/')
           const result = walker.collectPointsFromFile({ file: file.path })
           const point = result.points[1]
           point.shakeMethods({ side: 'client', scope: 'root' })
-          expect(point.chainMethods.map((m) => `${m.name}: underSsr=${m.underSsr ? 'true' : 'false'}`))
-            .toMatchInlineSnapshot(`
+          expect(
+            point.chainMethods.map(
+              (m) =>
+                `${m.name}: ssrEnabled=${m.ssrEnabled ? 'true' : 'false'} underClientOnly=${m.underClientOnly ? 'true' : 'false'}`,
+            ),
+          ).toMatchInlineSnapshot(`
             [
-              "root: underSsr=true",
-              "iamNotUnderSsrByDefault: underSsr=true",
-              "clientLoader: underSsr=true",
-              "clientOnly: underSsr=false",
-              "iamNotUnderSsr: underSsr=false",
-              "page: underSsr=false",
+              "root: ssrEnabled=true underClientOnly=false",
+              "iamNotUnderSsrByDefault: ssrEnabled=true underClientOnly=false",
+              "clientLoader: ssrEnabled=true underClientOnly=false",
+              "clientOnly: ssrEnabled=true underClientOnly=true",
+              "iamNotUnderSsr: ssrEnabled=true underClientOnly=true",
+              "page: ssrEnabled=true underClientOnly=true",
             ]
           `)
+        }),
+      )
+
+      it.concurrent(
+        'ssrEnabled is point-level: a .ssr(false) anywhere turns SSR off for the whole point',
+        helper({ ssr: true }, async ({ files: [file], walker }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const page = root.lets('page', 'page', '/')
+.loading(() => <div>Loading</div>)
+.ssr(false)
+.page(() => <div>Hello</div>)
+        `)
+          const result = walker.collectPointsFromFile({ file: file.path })
+          const point = result.points[1]
+          point.shakeMethods({ side: 'server', scope: 'root' })
+          const selfMethods = point.chainMethods.filter((m) => m.point === point)
+          // Every method of the point shares one ssrEnabled — point-level, not positional.
+          expect(selfMethods.every((m) => !m.ssrEnabled)).toBe(true)
+          // Including `.loading()`, which is declared BEFORE `.ssr(false)` yet is still off (and thus pruned).
+          expect(selfMethods.find((m) => m.name === 'loading')?.ssrEnabled).toBe(false)
+        }),
+      )
+
+      it.concurrent(
+        'ssrEnabled is inherited: a .ssr(false) on a PARENT turns SSR off for a child page that has none of its own',
+        helper({ ssr: true }, async ({ files: [file], walker }) => {
+          // root (SSRs) → base (opts out) → page (no `.ssr(...)` of its own). The page must still be off — the opt-out
+          // lives up the chain, and `ssrEnabled` is resolved over `[this, ...parents]`, not from the point alone.
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'root').root()
+export const base = root.lets('base', 'mybase').ssr(false).base()
+export const page = base.lets('page', 'child', '/')
+.loading(() => <div>Loading</div>)
+.page(() => <div>Hello</div>)
+        `)
+          const result = walker.collectPointsFromFile({ file: file.path })
+          const page = result.points.find((p) => p.type === 'page')!
+          page.shakeMethods({ side: 'server', scope: 'root' })
+          // The page declares no `.ssr(false)` itself, yet every method of its resolved chain is off.
+          expect(page.chainMethods.map((m) => m.ssrEnabled)).toEqual(page.chainMethods.map(() => false))
+          // Sanity: the base sibling point is what actually carries the opt-out.
+          const base = result.points.find((p) => p.type === 'base')!
+          expect(base.getSelfMethods().some((m) => m.name === 'ssr')).toBe(true)
         }),
       )
 

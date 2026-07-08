@@ -304,8 +304,8 @@ export const engine = Engine.create({
 
 Point0 always adds a small `POINT0_*` set to the client, regardless of your
 config: `NODE_ENV`, `POINT0_SCOPE`, `POINT0_SIDE` (`'client'`), and
-`POINT0_SSR`. These are what power `env.mode`, `env.scope`, and `env.side` in
-the browser. You don't declare them.
+`POINT0_SSR_ENABLED_DEFAULT`. These are what power `env.mode`, `env.scope`, and
+`env.side` in the browser. You don't declare them.
 
 ## Validating env variables (the `sharedEnv` / `serverEnv` pattern)
 

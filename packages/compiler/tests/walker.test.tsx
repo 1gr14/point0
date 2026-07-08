@@ -32,7 +32,7 @@ function helper(...args: [HelperCallback] | [HelperOptions, HelperCallback]): It
   return async () => {
     const [options, callback] = args.length === 1 ? [{}, args[0]] : args
     const { preserve = false, ssr = false } = options
-    const walker = new Walker({ routes: undefined, ssr })
+    const walker = new Walker({ routes: undefined, ssrEnabled: ssr })
     const files = Array.from({ length: 11 }, prepareRandomFile)
     try {
       await callback({

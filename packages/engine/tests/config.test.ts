@@ -490,12 +490,12 @@ describe('config', () => {
   describe('ssr resolution', () => {
     it('defaults to false when nothing is provided', () => {
       const parsed = parseEngineOptions(base({}))
-      expect(parsed.server.ssr).toBe(false)
+      expect(parsed.server.ssrEnabled).toBe(false)
     })
 
     it('uses general.ssr when server.ssr is not set', () => {
       const parsed = parseEngineOptions(base({ general: { ssr: true } }))
-      expect(parsed.server.ssr).toBe(true)
+      expect(parsed.server.ssrEnabled).toBe(true)
     })
 
     it('server.ssr wins over general.ssr', () => {
@@ -505,7 +505,7 @@ describe('config', () => {
           server: { ssr: false },
         }),
       )
-      expect(parsed.server.ssr).toBe(false)
+      expect(parsed.server.ssrEnabled).toBe(false)
     })
 
     it('compiler.ssr at specific level wins for the compiler record', () => {
@@ -691,7 +691,8 @@ describe('config', () => {
           clients: [{ scope: 'web' }],
         }),
       )
-      expect(parsed.clients[0].ssrOptions).toEqual({
+      expect(parsed.clients[0].ssrDefaultOptions).toEqual({
+        enabled: true,
         allowedDiscoveryRenders: 7,
         forbiddenDiscoveryRenders: 25,
         prefetchLoadersBeforePageRender: true,
@@ -706,10 +707,10 @@ describe('config', () => {
         }),
       )
       // web overrides allowedDiscoveryRenders, keeps the forbidden default
-      expect(parsed.clients[0].ssrOptions.allowedDiscoveryRenders).toBe(1)
-      expect(parsed.clients[0].ssrOptions.forbiddenDiscoveryRenders).toBe(25)
+      expect(parsed.clients[0].ssrDefaultOptions.allowedDiscoveryRenders).toBe(1)
+      expect(parsed.clients[0].ssrDefaultOptions.forbiddenDiscoveryRenders).toBe(25)
       // mobile inherits the general default
-      expect(parsed.clients[1].ssrOptions.allowedDiscoveryRenders).toBe(7)
+      expect(parsed.clients[1].ssrDefaultOptions.allowedDiscoveryRenders).toBe(7)
     })
   })
 

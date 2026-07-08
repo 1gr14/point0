@@ -134,10 +134,21 @@ export const useIsHydrated = (): boolean => {
       setLocalHydrationFinished(true)
     }
   }, [])
-  if (_point0_env.vars.POINT0_SSR !== 'true') {
-    return true
-  }
   return localHydrationFinished
+}
+
+/**
+ * Seed the "hydration finished" flag from the mount entry when there is NO SSR markup to hydrate (a client-only mount).
+ * With it set, {@link useIsHydrated} returns true on the first render, so `<ClientOnly>` shows its real content
+ * immediately instead of flashing its fallback for a hydration that never happens. This replaces the old
+ * `POINT0_SSR_ENABLED_DEFAULT`-flag shortcut: whether a page was SSR'd is now read from the actual mount path, not a
+ * per-side default.
+ */
+export const markClientHydrationFinished = (): void => {
+  const __POINT0_HYDRATION_FINISHED__ = superstore.getItem(
+    '__POINT0_HYDRATION_FINISHED__',
+  ) as (typeof _ss)['__POINT0_HYDRATION_FINISHED__']
+  __POINT0_HYDRATION_FINISHED__.set(true)
 }
 
 export const ClientOnly = <TChildren extends React.ReactNode = null, TFallback extends React.ReactNode = null>({

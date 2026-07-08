@@ -1374,10 +1374,9 @@ export type MountAction<
       inputGetter: RelatedQueryInputGetter<{ point: AnyPoint }>
       queryOptions: ExtraUseInfiniteQueryOptions<any> | ExtraUseQueryOptions
       unstableId: number
-      ssr: boolean
     }
   : TType extends 'selfQuery'
-    ? { type: 'selfQuery'; unstableId: number; ssr: boolean }
+    ? { type: 'selfQuery'; unstableId: number }
     : TType extends 'clientOnly'
       ? {
           type: 'clientOnly'
@@ -1391,27 +1390,25 @@ export type MountAction<
           : TType extends 'search'
             ? { type: 'search'; schema: InputSchema; unstableId: number }
             : TType extends 'with'
-              ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number; ssr: boolean }
+              ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number }
               : TType extends 'mapper'
                 ? {
                     type: 'mapper'
                     fn: MapperFn<any, any, any, any, any, any, any, any>
                     unstableId: number
-                    ssr: boolean
                   }
                 : TType extends 'selfProps'
-                  ? { type: 'selfProps'; unstableId: number; ssr: boolean }
+                  ? { type: 'selfProps'; unstableId: number }
                   : TType extends 'head'
-                    ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number; ssr: boolean }
+                    ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
                     : TType extends 'globalHead'
-                      ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number; ssr: boolean }
+                      ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number }
                       : TType extends 'errorComponent'
                         ? {
                             type: 'errorComponent'
                             Component: ErrorComponentType<any, ErrorPoint0>
                             variant: DestinationComponentVariant | undefined
                             unstableId: number
-                            ssr: boolean
                           }
                         : TType extends 'loadingComponent'
                           ? {
@@ -1419,12 +1416,11 @@ export type MountAction<
                               Component: LoadingComponentType<any>
                               variant: DestinationComponentVariant | undefined
                               unstableId: number
-                              ssr: boolean
                             }
                           : TType extends 'pluginStart'
-                            ? { type: 'pluginStart'; name: string; unstableId: number; ssr: boolean }
+                            ? { type: 'pluginStart'; name: string; unstableId: number }
                             : TType extends 'pluginEnd'
-                              ? { type: 'pluginEnd'; name: string; unstableId: number; ssr: boolean }
+                              ? { type: 'pluginEnd'; name: string; unstableId: number }
                               : never
 
 export type IsQueryShouldBeFinalized<

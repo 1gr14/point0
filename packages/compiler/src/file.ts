@@ -846,7 +846,7 @@ export class CompilerFile<THasContent extends boolean> {
     if (os !== false) {
       consts.unshift({ POINT0_OS: os })
     }
-    consts.unshift({ POINT0_SSR: ssr ? 'true' : 'false' })
+    consts.unshift({ POINT0_SSR_ENABLED_DEFAULT: ssr ? 'true' : 'false' })
     let modified = false
     if (this.content === undefined) {
       throw new Error(`File ${this.abs} is not read yet`)

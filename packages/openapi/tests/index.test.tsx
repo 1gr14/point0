@@ -4,7 +4,7 @@ import { describe, expect, it } from 'bun:test'
 import superjson from 'superjson'
 import { z } from 'zod'
 import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
-import { openapi } from '../src/index.js'
+import { getOpenapiSchemaFromPoints, openapi } from '../src/index.js'
 import { basicAuth, getBasicAuthHeader } from '@point0/basic-auth'
 
 describe('openapi', () => {
@@ -718,5 +718,68 @@ describe('openapi', () => {
     const json = await response.json()
     const responses = json.paths?.['/api/multi']?.post?.responses
     expect(Object.keys(responses ?? {}).sort()).toEqual(['200', '404'])
+  })
+
+  // SSR resolves per-side, and the spec is generated on the server, so a page's ambient `_getSsrEnabled()` reports the
+  // server's SSR — not the SSR of the client that owns the page. The `html` / `queryClientDehydratedState` output types
+  // only make sense when the owning client SSRs, so the enum must resolve by the point's scope via the engine-supplied
+  // `ssrByScope` map, not the ambient value. Each page carries a server loader so its endpoint survives regardless of
+  // the ambient SSR (that would otherwise strip `_endpoint` at authoring time and drop the page from the spec).
+  describe('X-Point0-Output-Type reflects the owning scope SSR, not the ambient one', () => {
+    const scopedPage = ({ scope, name, clientOnly }: { scope: string; name: string; clientOnly?: boolean }) => {
+      const root = Point0.lets('root', scope).root()
+      const base = root.lets('page', name, `/${name}`).loader(() => ({ ok: true }))
+      return (clientOnly ? base.clientOnly() : base).page(() => <div />)
+    }
+
+    // The path keys whose page operation advertises the SSR-only output-type header.
+    const outputTypeHeaderPaths = (spec: any): string[] => {
+      const paths: string[] = []
+      for (const [pathKey, pathItem] of Object.entries<any>(spec.paths ?? {})) {
+        for (const operation of Object.values<any>(pathItem)) {
+          const parameters: any[] = operation?.parameters ?? []
+          if (parameters.some((p) => p.in === 'header' && p.name === 'X-Point0-Output-Type')) {
+            paths.push(pathKey)
+          }
+        }
+      }
+      return paths
+    }
+
+    it('advertises for the ssr:true scope and not the ssr:false scope', () => {
+      const pageA = scopedPage({ scope: 'scopea', name: 'pagea' })
+      const pageB = scopedPage({ scope: 'scopeb', name: 'pageb' })
+      const spec = getOpenapiSchemaFromPoints([pageA, pageB], {
+        info: { title: 'T', version: '1.0.0' },
+        ssrDefaultOptionsByScope: new Map([
+          ['scopea', { enabled: true }],
+          ['scopeb', { enabled: false }],
+        ]),
+      })
+      const advertised = outputTypeHeaderPaths(spec)
+      expect(advertised.some((path) => path.includes('pagea'))).toBe(true)
+      expect(advertised.some((path) => path.includes('pageb'))).toBe(false)
+      // Both pages keep their endpoint in the spec — only the advertised output-type header differs by scope.
+      expect(Object.keys(spec.paths).some((path) => path.includes('pageb'))).toBe(true)
+    })
+
+    it('advertises for a clientOnly page too — clientOnly is irrelevant here, only SSR matters', () => {
+      // A clientOnly page still SSRs: its layout renders on the server and ships HTML, only the page content is
+      // browser-only. So the output-type header must be advertised — clientOnly is about where the render runs, not
+      // whether the server serves the page.
+      const co = scopedPage({ scope: 'scopec', name: 'pagec', clientOnly: true })
+      const spec = getOpenapiSchemaFromPoints([co], {
+        info: { title: 'T', version: '1.0.0' },
+        ssrDefaultOptionsByScope: new Map([['scopec', { enabled: true }]]),
+      })
+      expect(outputTypeHeaderPaths(spec).some((path) => path.includes('pagec'))).toBe(true)
+    })
+
+    it('without a scope map, falls back to the ambient _getSsrEnabled() (back-compat)', () => {
+      const pageD = scopedPage({ scope: 'scoped', name: 'paged' })
+      const spec = getOpenapiSchemaFromPoints([pageD], { info: { title: 'T', version: '1.0.0' } })
+      // With no map the resolver must behave exactly as before — advertise iff the ambient SSR says so.
+      expect(outputTypeHeaderPaths(spec).length > 0).toBe(pageD.point._getSsrEnabled())
+    })
   })
 })

@@ -8,6 +8,7 @@ import type {
   MiddlewareFn,
   PagePoint,
   PointName,
+  PointSsrResolved,
   PointsDefinition,
   PointsDefinitionSource,
   PointsScope,
@@ -26,6 +27,10 @@ export class ServerPoints<TError extends ErrorPoint0> {
   roots = new Map<PointsScope, RootPoint>()
   scopes = new Set<PointsScope>()
   middlewares = new Map<PointsScope, MiddlewareFn<any>[]>()
+  // Authoritative per-scope SSR (server scope + every client), set by EngineServer after these points are loaded. The
+  // ambient `_getSsrEnabled()` on the server reflects the server's SSR, not the owning client's — the openapi spec resolves a
+  // point's SSR through this map instead. See NiceServerPoints.ssrDefaultOptionsByScope.
+  ssrDefaultOptionsByScope?: Map<PointsScope, PointSsrResolved>
 
   // <method, Routes0>
   private readonly endpointsRoutesByMethods = new Map<WideRequestMethod, RoutesPretty>()

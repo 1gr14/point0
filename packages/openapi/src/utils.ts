@@ -1,5 +1,13 @@
 import { POINT0_QUERY_GET_INPUT_SEARCH_PARAM, toCamelCase } from '@point0/core'
-import type { InputSchema, ReadyPoint, RecordValidationSchema, ResponseContentType, SchemaHelper } from '@point0/core'
+import type {
+  InputSchema,
+  PointSsrResolved,
+  PointsScope,
+  ReadyPoint,
+  RecordValidationSchema,
+  ResponseContentType,
+  SchemaHelper,
+} from '@point0/core'
 import {
   extractJsonSchemaBySchemasHelpers,
   hasFileOrBlobBySchemasHelpers,
@@ -320,6 +328,7 @@ const getOpenapiSchemaFromPoint = (
     modelNameBySignature?: Map<string, string>
     schemasHelpers?: SchemaHelper[]
     hideTransformHeader?: boolean
+    ssrDefaultOptionsByScope?: Map<PointsScope, PointSsrResolved>
   },
 ): object | undefined => {
   const normalizedPoint = point.point
@@ -338,7 +347,16 @@ const getOpenapiSchemaFromPoint = (
     ...buildOpenapiParametersBySchema(jsonSchemas.headers, 'header'),
     ...buildOpenapiParametersBySchema(jsonSchemas.cookies, 'cookie'),
   ]
-  if (normalizedPoint.type === 'page' && normalizedPoint._getSsr()) {
+  // SSR resolves per-side, but this spec is generated on the server, so the point's ambient `_getSsrEnabled()` reports
+  // the server's SSR — not the SSR of the client that owns the page. The `html` / `queryClientDehydratedState` output
+  // types make sense whenever that owning client SSRs; `.clientOnly()` is irrelevant here (a server-rendered layout
+  // still ships HTML even if the page content is client-only). Resolve by the point's own scope: an explicit `.ssr(...)`
+  // wins, else the engine-supplied per-scope default, else ambient (back-compat for a hand-built spec with no map).
+  const pointSsr =
+    normalizedPoint._ssr?.enabled ??
+    options?.ssrDefaultOptionsByScope?.get(normalizedPoint.scope)?.enabled ??
+    normalizedPoint._getSsrEnabled()
+  if (normalizedPoint.type === 'page' && pointSsr) {
     const outputTypeParameterName = 'X-Point0-Output-Type'
     const outputTypeEnum = normalizedPoint._hasServerLoader
       ? ['data', 'queryClientDehydratedState', 'html']
@@ -349,7 +367,9 @@ const getOpenapiSchemaFromPoint = (
     normalizedParameters.push({
       in: 'header',
       name: outputTypeParameterName,
-      required: normalizedPoint._getSsr() && !normalizedPoint._hasServerLoader,
+      // Inside this branch the page SSRs, so the header is required exactly when there is no server loader (no default
+      // `data` output to fall back to).
+      required: !normalizedPoint._hasServerLoader,
       schema: {
         type: 'string',
         enum: outputTypeEnum,
@@ -461,21 +481,25 @@ const _cache = new Map<string, OpenapiSchemaV3_1 | OpenapiSchemaV3>()
  */
 export function getOpenapiSchemaFromPoints(
   points: Array<ReadyPoint | { point: ReadyPoint }>,
-  options: OpenapiOptionsV3_1 & { cache?: string },
+  options: OpenapiOptionsV3_1 & { cache?: string; ssrDefaultOptionsByScope?: Map<PointsScope, PointSsrResolved> },
 ): OpenapiSchemaV3_1
 export function getOpenapiSchemaFromPoints(
   points: Array<ReadyPoint | { point: ReadyPoint }>,
-  options?: OpenapiOptionsV3 & { cache?: string },
+  options?: OpenapiOptionsV3 & { cache?: string; ssrDefaultOptionsByScope?: Map<PointsScope, PointSsrResolved> },
 ): OpenapiSchemaV3
 export function getOpenapiSchemaFromPoints(
   points: Array<ReadyPoint | { point: ReadyPoint }>,
-  options: (OpenapiOptionsV3_1 | OpenapiOptionsV3) & { cache?: string } = {},
+  options: (OpenapiOptionsV3_1 | OpenapiOptionsV3) & {
+    cache?: string
+    ssrDefaultOptionsByScope?: Map<PointsScope, PointSsrResolved>
+  } = {},
 ): OpenapiSchemaV3_1 | OpenapiSchemaV3 {
   const {
     models: providedModelsSchemas,
     helpers: providedSchemasHelpers,
     cache,
     hideTransformHeader,
+    ssrDefaultOptionsByScope,
     ...providedDocument
   } = options
 
@@ -500,6 +524,7 @@ export function getOpenapiSchemaFromPoints(
       modelNameBySignature,
       schemasHelpers,
       hideTransformHeader,
+      ssrDefaultOptionsByScope,
     })
     if (!pointSchema || !isObjectRecord(pointSchema)) {
       return acc
