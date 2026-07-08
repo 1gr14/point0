@@ -4871,11 +4871,11 @@ Read more in the docs [about deploy](deploy).
 
 The size of Point0's files inside the client bundle.
 
-- `@point0/core` itself: raw 143.4 KB, gzip 40.9 KB, brotli 36.2 KB
-- Peer dependency `@1gr14/route0`: raw 15.0 KB, gzip 4.7 KB, brotli 4.2 KB
-- Peer dependency `@1gr14/error0`: raw 3.6 KB, gzip 1.4 KB, brotli 1.3 KB
-- Peer dependency `@tanstack/react-query`: raw 38.2 KB, gzip 15.9 KB, brotli
-  14.2
+- `@point0/core` itself: raw 169.8 KB, gzip 44.4 KB, brotli 38.4 KB
+- Peer dependency `@1gr14/route0`: raw 15.5 KB, gzip 4.9 KB, brotli 4.4 KB
+- Peer dependency `@1gr14/error0`: raw 10.9 KB, gzip 3.2 KB, brotli 2.9 KB
+- Peer dependency `@tanstack/react-query`: raw 49.0 KB, gzip 14.8 KB, brotli
+  13.2
 
 ## Examples
 
