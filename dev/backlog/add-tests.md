@@ -124,3 +124,40 @@ stay assertive instead of hedging.
   `FetchOptions.transform` defaults `true` (round-trips through the point's
   transformer); no test asserts `transform: false` skips the transformer so raw
   JSON is sent and received.
+
+## SSR/RSC batch (ssr-batch review) — pin these
+
+Surfaced by the pre-PR validation of the ssr-batch pack — documented behavior
+with no test. (The `transform:false`-element decode and the nested-hole
+stream-drop failsafe that landed in that review are now pinned by real tests:
+`rsc.test.tsx` + `rsc.fast.test.tsx`.)
+
+- **get-reads — GET round-trip + both POST fallbacks.** Only the malformed-input
+  400 is tested. Add: a valid `?input={"id":"x"}` GET whose loader receives
+  `{id:'x'}`; a low `POINT0_QUERY_GET_MAX_URL_LENGTH` forcing the over-long
+  POST-body fallback (assert method POST, loader still gets the input); and a
+  Blob input forcing the FormData POST fallback.
+- **cache-control/asset — runtime classification.** Only the build-side
+  `collectClientBuildHashedFiles` is tested. Add an engine test driving the
+  fetcher for a hashed chunk path vs a stable-name publicdir file and asserting
+  `variant.type` is `asset` vs `publicdir`; plus a unit for
+  `Client.isClientBuildAssetPath` (dev → false, absent/unparsable file, exact vs
+  miss).
+- **stale — `stale: 'error'` surfaces `POINT0_STALE_CLIENT_BUILD`.**
+  `client-build-stale.test.ts` covers `'navigate'`, a custom handler, and the
+  network-error path, but never `createNavigation({ stale: 'error' })`. Add an
+  e2e variant asserting the target page's `.error()` receives a
+  `POINT0_STALE_CLIENT_BUILD`-coded error and the SPA is NOT document-navigated.
+- **rsc — remaining rejection guards.** `rsc.test.tsx` now covers class /
+  functions-in-props / non-component-point / `<ClientOnly>` / memo-unwrap /
+  forwardRef-unfold; still unpinned: a `ref` prop (expect throw "refs cannot
+  travel"), and a `React.lazy` / context element (generic "not supported"
+  branch).
+- **stale — a layout chunk failing on its own triggers recovery (fix landed).**
+  `_loadPage` now warms the page + layout FCs with `rethrowLoadError` BEFORE
+  committing the ready point, so a layout whose chunk 404s independently (not in
+  the page module's static import graph) surfaces as `PAGE_CHUNK_LOAD_FAILED`
+  and reaches deploy-invalidation recovery, instead of being swallowed and
+  failing at render. Add a test where a layout's lazy FC load rejects while the
+  page chunk loads fine, asserting `_loadPage` throws `PAGE_CHUNK_LOAD_FAILED`
+  (and, e2e, that stale recovery runs).

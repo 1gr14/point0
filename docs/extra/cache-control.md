@@ -118,8 +118,8 @@ cacheControl({
 ```
 
 Two things only `override` can do: reach variants without a slot (`middleware`,
-`options`, `unknown`), and overrule a header a handler set. Because it bypasses
-the existing-header rule, an override that wants to _respect_ an app-set header
+`options`), and overrule a header a handler set. Because it bypasses the
+existing-header rule, an override that wants to _respect_ an app-set header
 checks `result.response.headers` itself:
 
 ```tsx

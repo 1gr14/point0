@@ -612,9 +612,13 @@ Detection is always on and free:
 
 Reload loops cannot happen: a document navigation is attempted once per new
 build version (sessionStorage-guarded), and only after the version check
-confirmed the build actually changed. If that one attempt still fails (a broken
-deploy), the error surfaces to the page's `.error()` with the code
-`POINT0_STALE_CLIENT_BUILD`.
+confirmed the build actually changed. Once that reload lands, the tab runs the
+new build — so a chunk that still won't load is now a genuine error and surfaces
+as `POINT0_PAGE_CHUNK_LOAD_FAILED`, not another reload.
+`POINT0_STALE_CLIENT_BUILD` is what the page's `.error()` receives under
+`stale: 'error'`, and when a `'navigate'` reload is guard-blocked because the
+tab still can't reach the new build (a rolling deploy caught mid-rollout, or a
+client that can't document-navigate).
 
 The reaction is the `stale` option of `createNavigation`:
 

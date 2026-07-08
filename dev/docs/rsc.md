@@ -118,9 +118,9 @@ class). `toJsonErrorResponse` stays raw on purpose. Naming per review:
   path splits, so bun and vite share it. The manifest writer
   ([preload-manifest.ts](../../packages/engine/src/preload-manifest.ts)) emits
   `byComponent` (per-component chunk + static closure, minus entry closure) into
-  `dist/client/_point0/preload.json`. Bun graphs come from the build metafile,
-  vite/rolldown from `chunkGraphFromRollup` — the manifest shape is
-  bundler-agnostic.
+  `dist/client/_point0/<scope>/preload-manifest.json`. Bun graphs come from the
+  build metafile, vite/rolldown from `chunkGraphFromRollup` — the manifest shape
+  is bundler-agnostic.
 - Serve time (prod only, `shouldServeModulePreload` gate):
   `collectRscComponentNames(superstore.dehydrate())` runs before the document
   render and the names' chunks merge into the document `modulePreloads` — the

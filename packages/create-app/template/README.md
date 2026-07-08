@@ -22,10 +22,10 @@ typecheck fails and the app won't run.
 ## Playground
 
 The home page demos the core loop: an `Idea` Prisma model
-(`prisma/schema.prisma`), a query that lists the rows (`src/lib/idea.ts`), and a
-mutation with a form that adds one (`src/pages/home.tsx`). `bun run setup` seeds
-a few ideas (`src/lib/seed.ts`). Edit or delete it all freely — it's there to be
-replaced.
+(`prisma/schema.prisma`), and — both inlined in `src/pages/home.tsx` — a query
+that lists the rows plus a mutation with a form that adds one. `bun run setup`
+seeds a few ideas (`src/lib/seed.ts`). Edit or delete it all freely — it's there
+to be replaced.
 
 ## Production build
 
