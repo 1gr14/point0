@@ -359,12 +359,15 @@ export const readStreamedRscFetch = async (
   }
 
   const firstLine = await readLine()
-  // The holes THIS fetch introduces: line-1 decode is synchronous, so nothing else touches the bundle-wide registry
-  // between these two snapshots — the diff is exactly the ids we must fail if the stream drops before they arrive. (Ids
-  // are globally unique per server registry, so this never captures another concurrent stream's holes.)
+  // The holes THIS fetch introduces, tracked LIVE across the whole stream — NOT a one-shot line-1 snapshot. Line 1
+  // introduces the top-level holes; but a nested defer() (a deferred subtree that itself defers) is decoded into a fresh
+  // client slot only when its PARENT fill line lands, so it is never in the line-1 diff. We therefore union in every
+  // id that becomes pending after each fill too — otherwise a nested hole orphaned by a mid-stream drop (parent filled,
+  // its own fill never arrived) would spin forever. Ids are globally unique per server registry, so this never captures
+  // another concurrent stream's holes.
   const pendingBefore = rscHolesRegistry.pendingIds()
   const data = firstLine === undefined ? undefined : transformer.parse(firstLine)
-  const myHoleIds = [...rscHolesRegistry.pendingIds()].filter((id) => !pendingBefore.has(id))
+  const myHoleIds = new Set([...rscHolesRegistry.pendingIds()].filter((id) => !pendingBefore.has(id)))
 
   const done = (async (): Promise<void> => {
     try {
@@ -374,7 +377,14 @@ export const readStreamedRscFetch = async (
           break
         }
         if (line.length > 0) {
+          // A fill may decode a nested hole into a new slot — capture any newly-pending id so the drop failsafe covers it.
+          const pendingBeforeFill = rscHolesRegistry.pendingIds()
           await applyPushedRscFill(transformer, line)
+          for (const id of rscHolesRegistry.pendingIds()) {
+            if (!pendingBeforeFill.has(id)) {
+              myHoleIds.add(id)
+            }
+          }
         }
       }
     } catch (error) {
@@ -384,7 +394,7 @@ export const readStreamedRscFetch = async (
       // Any hole whose fill never arrived (the stream dropped, or the fetch was aborted mid-flight) throws to its
       // nearest boundary instead of spinning forever. A clean close fills every hole first, so this is a happy-path
       // no-op; `failIfPending` leaves already-arrived holes untouched.
-      if (myHoleIds.length > 0) {
+      if (myHoleIds.size > 0) {
         const ErrorClass = getClientPoints().manager.root._Error
         for (const id of myHoleIds) {
           rscHolesRegistry.failIfPending(

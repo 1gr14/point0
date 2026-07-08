@@ -452,6 +452,16 @@ export class Point0<
    * `_getTransformer` (raw), so the server never decodes React elements from untrusted bytes.
    */
   _getTransformerWithRsc = () => (this._transformerWithRsc ??= wrapTransformerWithRsc(this._getTransformer()))
+  private _blankTransformerWithRsc: DataTransformerExtended | undefined
+  /**
+   * The RSC-wrapped BLANK transformer — the client mirror of the server's output transformer under `transform: false`
+   * (server: `wrapTransformerWithRsc(blank)`, fetcher.ts). The RSC element codec is orthogonal to the app transform:
+   * `transform: false` only skips the app (superjson) layer, it does NOT skip RSC. So a `transform: false` response
+   * whose loader returned elements still round-trips — the server encodes the markers and the client decodes them
+   * through this, instead of handing the consumer raw `{__p0e:…}` objects (which React can't render).
+   */
+  _getBlankTransformerWithRsc = () =>
+    (this._blankTransformerWithRsc ??= wrapTransformerWithRsc(blankDataTransformerExtended))
   readonly _rscDepth: number | undefined
   private readonly _eventerSubscriptions: EventerSubscription<any, TError>[]
   readonly _ssr: PointSsrState | undefined
@@ -2809,12 +2819,14 @@ export class Point0<
   }
 
   /**
-   * Set SSR for this point and everything after it in the chain — a per-point override of the engine's per-side `ssr`.
-   * `.ssr(false)` opts the page/subtree out of server rendering (it ships as the client shell); `.ssr(true)` forces it
-   * on even where the side defaults off; an options object also tunes the SSR render loop (discovery renders, loader
-   * prefetch) for this page. Merges over whatever the chain already carries, so a later `.ssr(...)` refines an earlier
-   * one, and a page inherits its root's `.ssr(...)` as the scope default. On root, base, page, layout — not in a plugin
-   * (the compiler resolves SSR statically along the chain and cannot trace a plugin into its consumers).
+   * Turn SSR OFF for this point, or tune its SSR render loop — a per-point narrowing of the engine's per-side `ssr`
+   * default. SSR can only be turned OFF here, never on: a point cannot force a side to render. `.ssr(false)` opts the
+   * page/subtree out of server rendering (it ships as the client shell, hydrating on the client); an options object
+   * (optionally carrying `enabled: false`) tunes the SSR render loop — discovery renders, loader prefetch — for this
+   * page. It is point-level, not positional: a `.ssr(false)` anywhere in the point's chain turns the WHOLE point off
+   * (even methods declared before it), and a page inherits its root's `.ssr(...)` as the scope default; a later
+   * `.ssr(...)` merges over an earlier one. On root, base, page, layout — not in a plugin (the compiler resolves SSR
+   * statically along the chain and cannot trace a plugin into its consumers). There is no `.ssr(true)`.
    *
    *     .ssr(false)                            // this page renders client-only (ships the shell, hydrates on the client)
    *     .ssr({ allowedDiscoveryRenders: 1 })   // keep SSR, cap the discovery passes for this page
@@ -9177,7 +9189,13 @@ export class Point0<
         data = streamed.data
       } else {
         const json = await res.json()
-        data = fetchOptions.transform ? (this._getTransformerWithRsc().deserialize(json) ?? json) : json
+        // RSC decode mirrors the server encode, which is independent of `transform` (the server always wraps its output
+        // with the RSC codec — `getTransformerWithRsc`). `transform` toggles only the inner app transformer: on → the
+        // point's transformer, off → blank. Decoding through the matching wrapper both ways keeps element markers from
+        // leaking to the consumer as raw objects under `transform: false`.
+        data = fetchOptions.transform
+          ? (this._getTransformerWithRsc().deserialize(json) ?? json)
+          : (this._getBlankTransformerWithRsc().deserialize(json) ?? json)
       }
       // decoding may have started component-point chunk imports (RSC references) — resolve the fetch only with the
       // chunks warm, so the consumer never renders a Suspense fallback for an island that is already in the data

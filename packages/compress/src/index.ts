@@ -182,12 +182,13 @@ const appendVaryAcceptEncoding = (headers: Headers): void => {
  * a strong `ETag` is weakened (the compressed bytes are an equivalent, not identical, representation).
  *
  * Skips by itself: internal server-to-server fetches (`request.from.server`), already-encoded responses, `HEAD` /
- * bodyless / `204`/`205`/`304` responses, non-compressible content types (SSE — `text/event-stream` — among them), and
- * known-small bodies (`minBytes`). Two escape hatches within those guardrails: the `tune` option decides per response
- * from config, and {@link tuneCompress} sets the same decision imperatively from a handler (and overrides `tune`) — to
- * skip a long-lived stream (an LLM answer) where even flushed compression must not sit between the handler and the
- * client, force a normally-skipped content type, or set per-response encodings/quality/floor. Server-only by
- * construction: the compiler strips `.middleware(...)` arguments from the client bundle.
+ * bodyless / `204`/`205`/`304` responses, `206` partial-content / range responses (re-encoding would break the byte
+ * offsets), non-compressible content types (SSE — `text/event-stream` — among them), and known-small bodies
+ * (`minBytes`). Two escape hatches within those guardrails: the `tune` option decides per response from config, and
+ * {@link tuneCompress} sets the same decision imperatively from a handler (and overrides `tune`) — to skip a long-lived
+ * stream (an LLM answer) where even flushed compression must not sit between the handler and the client, force a
+ * normally-skipped content type, or set per-response encodings/quality/floor. Server-only by construction: the compiler
+ * strips `.middleware(...)` arguments from the client bundle.
  *
  *     export const root = Point0.lets.root().middleware(compress()).root()
  *
@@ -209,7 +210,8 @@ export const compress = (options: CompressOptions = {}): MiddlewareFn<any> => {
       return result
     }
     const status = response.status
-    if (status < 200 || status === 204 || status === 205 || status === 304) {
+    // 206 is left raw: a compressed stream can't honor the Content-Range byte offsets the partial response describes.
+    if (status < 200 || status === 204 || status === 205 || status === 206 || status === 304) {
       return result
     }
     if (request.method.toUpperCase() === 'HEAD') {
@@ -269,6 +271,8 @@ export const compress = (options: CompressOptions = {}): MiddlewareFn<any> => {
     headers.set('Content-Encoding', encoding)
     // The compressed size isn't known ahead of the stream — an inherited Content-Length would describe the raw bytes.
     headers.delete('content-length')
+    // Byte ranges over a re-encoded body are meaningless (the offsets no longer line up), so stop advertising them.
+    headers.delete('accept-ranges')
     // The compressed bytes are an equivalent, not identical, representation — a strong validator would be a lie.
     const etag = headers.get('etag')
     if (etag && !etag.startsWith('W/')) {

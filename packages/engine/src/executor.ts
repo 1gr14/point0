@@ -1069,9 +1069,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       // above still ran, so the cache holds whatever the hooks / `prefetchLoadersBeforePageRender`
       // put there. Everything else surfaces only in the FINAL render, which therefore must
       // stream (`discoveryCutShort`). A redirect that renders into that final render's SHELL
-      // still becomes the real HTTP redirect (getReadableStreamWithWrapper checks the task after
-      // the shell settles — nothing has been sent yet); only what resolves POST-shell degrades
-      // to its client-side equivalent, the deliberate price of the earliest shell.
+      // still becomes the real HTTP redirect (renderAppAsReadableStream checks the redirect task
+      // right after the shell render, before the response stream starts — nothing has been sent
+      // yet); only what resolves POST-shell degrades to its client-side equivalent, the deliberate
+      // price of the earliest shell.
       // KEEP IN SYNC: this early exit mirrors the loop tail below (cookie flush, page
       // dehydrated-state snapshot, discovery-renders header).
       if (!discoveryRenderAllowed) {

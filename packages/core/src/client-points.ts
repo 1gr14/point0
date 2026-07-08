@@ -362,11 +362,14 @@ export class ClientPoints<TError extends ErrorPoint0> {
   // THROWS the loading thenable (React's lazyInitializer contract) — catch and await it; React's
   // own then-handler (attached first, inside _init) marks the payload resolved before the await
   // continues. A non-lazy (already eager) component is a no-op — the server's eager-loaded
-  // collections short-circuit here. Module-load errors are swallowed: a real chunk failure
-  // already surfaced as the coded PAGE_CHUNK_LOAD_FAILED throw at `await point()` (same
-  // underlying import).
+  // collections short-circuit here. Module-load errors are swallowed by default (the common page
+  // chunk already surfaced its failure as the coded PAGE_CHUNK_LOAD_FAILED throw at `await point()`,
+  // the same underlying import) — but a caller warming FCs the tree WILL render passes
+  // `rethrowLoadError` so an independently-failing chunk (e.g. a layout not statically imported by
+  // the page module) reaches deploy-invalidation recovery instead of a bare render-time boundary.
   private static readonly prefetchLazyComponent = async (
     component: React.ComponentType<any> | React.LazyExoticComponent<React.ComponentType<any>> | undefined,
+    { rethrowLoadError = false }: { rethrowLoadError?: boolean } = {},
   ): Promise<void> => {
     const anyComp = component as
       | { _init?: (payload: unknown) => unknown; _payload?: unknown; preload?: () => Promise<unknown> }
@@ -386,7 +389,16 @@ export class ClientPoints<TError extends ErrorPoint0> {
       if (thrown && typeof (thrown as PromiseLike<unknown>).then === 'function') {
         try {
           await (thrown as PromiseLike<unknown>)
-        } catch {}
+        } catch (error) {
+          if (rethrowLoadError) {
+            throw error
+          }
+        }
+        return
+      }
+      // A non-thenable throw (e.g. a synchronous load error) — surface it too when the caller asked.
+      if (rethrowLoadError) {
+        throw thrown
       }
     }
   }
@@ -478,9 +490,26 @@ export class ClientPoints<TError extends ErrorPoint0> {
       ),
     ]
 
-    this.manager.setReadyPoint(page)
+    // Warm the captured lazy FCs BEFORE committing the ready point, and surface a chunk-load failure the SAME coded way
+    // `await point()` does above (so recovery runs and the collection is not mutated on a failure). The page's own FC is
+    // the already-loaded page chunk and can't fail here; a layout FC is a separate chunk that CAN fail on its own after
+    // a redeploy (only when it isn't part of the page module's static import graph — the usual case surfaces at
+    // `await point()`). Either way this reaches deploy-invalidation recovery instead of a bare render-time boundary.
+    try {
+      await Promise.all(lazyFCs.map((FC) => ClientPoints.prefetchLazyComponent(FC, { rethrowLoadError: true })))
+    } catch (error) {
+      const ErrorClass = this.manager.root._Error
+      throw new ErrorClass(
+        `Failed to load the client chunk of page "${suitable.name}" (its page or a layout it renders)`,
+        {
+          code: POINT0_ERROR_CODES_MAP.PAGE_CHUNK_LOAD_FAILED,
+          cause: error,
+          meta: { point: `${this.manager.scope}.page.${suitable.name}` },
+        },
+      )
+    }
 
-    await Promise.all(lazyFCs.map((FC) => ClientPoints.prefetchLazyComponent(FC)))
+    this.manager.setReadyPoint(page)
 
     return {
       page: page as PagePoint,

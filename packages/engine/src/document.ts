@@ -22,8 +22,10 @@ import type { HeadTag, ResolvableHead } from 'unhead/types'
  *   they render verbatim, preserving their relative order (unhead would reorder them).
  * - Everything inside `<body>` renders verbatim ({@link DocumentTemplate.bodyNodes}); the element with the client's
  *   `domRootElementId` hosts the app.
- * - HTML comments are dropped — React cannot render comment nodes. Whitespace-only text nodes are dropped except inside
- *   `pre`/`textarea` (browsers collapse them anyway; React would warn about text children of `<html>`/`<head>`).
+ * - HTML comments are dropped — React cannot render comment nodes. Whitespace-only text nodes inside `<body>` are KEPT
+ *   and rendered verbatim, exactly like a browser (so a word-separating space between inline content authored in
+ *   `<body>` is never lost); at the `<head>` level they are dropped (head text is only source formatting, and React
+ *   warns about text children of `<html>`/`<head>`).
  * - Text and attribute values are entity-decoded (`&amp;` → `&`) — React re-escapes on render. `<script>`/`<style>`
  *   contents are raw-text in HTML and stay verbatim.
  */
@@ -68,9 +70,6 @@ const VOID_TAGS = new Set([
 
 /** Elements whose text content is raw in HTML — never entity-decode it (and for script/style, render it verbatim). */
 const RAW_TEXT_TAGS = new Set(['script', 'style'])
-
-/** Elements where whitespace-only text nodes are significant and must be kept. */
-const WHITESPACE_SIGNIFICANT_TAGS = new Set(['pre', 'textarea', 'script', 'style'])
 
 /** Template head tags that become unhead input (everything else head-level is passthrough). */
 const HEAD_UNHEAD_TAGS = new Set(['title', 'base', 'meta', 'link', 'style'])
@@ -124,13 +123,21 @@ export async function parseDocumentTemplate(html: string): Promise<DocumentTempl
         if (!chunk.text) {
           return
         }
-        const insideRaw = stack.length > 0 && RAW_TEXT_TAGS.has(stack[stack.length - 1].tag)
-        append({ type: 'text', text: insideRaw ? chunk.text : decodeHTML(chunk.text) })
+        // Append RAW text and let append() merge the chunks — decoding runs ONCE per finalized text node below.
+        // HTMLRewriter splits text at arbitrary boundaries (a `<` inside a script, or the MIDDLE of an entity), so
+        // decoding each chunk independently would mangle an entity that straddles a chunk break: `&am` + `p;` must
+        // decode as `&`, not stay the literal `&amp;`.
+        append({ type: 'text', text: chunk.text })
       },
       // comments are intentionally not collected — React cannot render comment nodes
     })
 
   await rewriter.transform(new Response(html)).text()
+
+  // Now that every text node is whole, entity-decode it in one pass — skipping raw-text elements (script/style keep
+  // their source verbatim). Attribute values are already whole at element() time (HTMLRewriter never splits them), so
+  // they are decoded there.
+  decodeParsedText(roots, false)
 
   const htmlNode = findElement(roots, 'html')
   const headNode = htmlNode ? findElement(htmlNode.children, 'head') : findElement(roots, 'head')
@@ -183,7 +190,9 @@ export async function parseDocumentTemplate(html: string): Promise<DocumentTempl
   const template: DocumentTemplate = {
     headInput,
     headPassthrough,
-    bodyNodes: dropInsignificantWhitespace(bodyNode.children),
+    // Body nodes are kept verbatim — including whitespace-only text — so the document renders exactly what the author
+    // wrote (a browser keeps those text nodes too; the client only hydrates `#root`, so body siblings are static SSR).
+    bodyNodes: bodyNode.children,
   }
   if (parseCache.size >= PARSE_CACHE_MAX) {
     const oldest = parseCache.keys().next().value
@@ -204,23 +213,21 @@ function findElement(nodes: DocumentTemplateNode[], tag: string): DocumentTempla
   return undefined
 }
 
-/** Drops whitespace-only text nodes recursively, except inside {@link WHITESPACE_SIGNIFICANT_TAGS}. */
-function dropInsignificantWhitespace(nodes: DocumentTemplateNode[]): DocumentTemplateNode[] {
-  const result: DocumentTemplateNode[] = []
+/**
+ * Entity-decode every text node in the tree after parsing, once each node is whole (HTMLRewriter streams text in
+ * arbitrary chunks — decoding per chunk would mangle an entity split across a chunk boundary). Raw-text elements
+ * (`script`/`style`) are never decoded — their content is verbatim HTML raw-text.
+ */
+function decodeParsedText(nodes: DocumentTemplateNode[], insideRaw: boolean): void {
   for (const node of nodes) {
     if (node.type === 'text') {
-      if (node.text.trim() !== '') {
-        result.push(node)
+      if (!insideRaw) {
+        node.text = decodeHTML(node.text)
       }
       continue
     }
-    result.push(
-      WHITESPACE_SIGNIFICANT_TAGS.has(node.tag)
-        ? node
-        : { ...node, children: dropInsignificantWhitespace(node.children) },
-    )
+    decodeParsedText(node.children, RAW_TEXT_TAGS.has(node.tag))
   }
-  return result
 }
 
 /**
@@ -538,6 +545,13 @@ export function buildDocumentElement({
   ]
   if (rootMatches.count === 0) {
     throw new Error(`Root element #${domRootElementId} not found in the <body> of the index.html template`)
+  }
+  if (rootMatches.count > 1) {
+    // Fail loud instead of rendering the app into every match: the client hydrates a single #root container, so a
+    // duplicated app subtree would mismatch. Duplicate ids are invalid HTML — surface it, don't silently double-render.
+    throw new Error(
+      `Root element #${domRootElementId} appears more than once in the <body> of the index.html template — give the app root a unique id`,
+    )
   }
 
   return createElement(

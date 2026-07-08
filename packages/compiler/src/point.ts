@@ -250,11 +250,13 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     if (nodePath.node.type !== 'CallExpression') {
       return undefined
     }
-    const arg = nodePath.node.arguments[0]
-    if (arg.type === 'BooleanLiteral') {
+    // `.at(0)` (not `[0]`) so the type is `Node | undefined` — a `.ssr()` with no argument reaches here as untrusted
+    // source and must not crash the compiler.
+    const arg = nodePath.node.arguments.at(0)
+    if (arg?.type === 'BooleanLiteral') {
       return arg.value
     }
-    if (arg.type === 'ObjectExpression') {
+    if (arg?.type === 'ObjectExpression') {
       for (const property of arg.properties) {
         if (
           property.type === 'ObjectProperty' &&
@@ -1008,8 +1010,10 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     if (nodePath.node.type !== 'CallExpression') {
       return
     }
-    const arg = nodePath.node.arguments[0]
-    if (arg.type !== 'ObjectExpression') {
+    // `.at(0)` (not `[0]`) so the type is `Node | undefined` — a `.ssr()` with no argument reaches here as untrusted
+    // source and must not crash the compiler.
+    const arg = nodePath.node.arguments.at(0)
+    if (arg?.type !== 'ObjectExpression') {
       return
     }
     const enabled = this.getSsrEnabledFromCallArg({ nodePath })

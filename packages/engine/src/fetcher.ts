@@ -1295,26 +1295,34 @@ export class Fetcher<TError extends ErrorPoint0> {
    * belongs to the app (a middleware / a proxy); the handshake doesn't need it, since the client fetches
    * `build-version.json` with `cache: 'no-store'`.
    */
+  // The `<scope>:<buildVersion>` value for the deploy-invalidation header, or undefined when not attributable to a built
+  // client scope (dev, unknown scope, no version). Shared by the effect path (success) and the direct-set path (the
+  // uncaught-throw 500 below) so BOTH carry the header — every response the engine can attribute to a client scope must,
+  // or a stale tab misses the proactive channel on that response.
+  private async getClientBuildHeaderValue(scope: string): Promise<string | undefined> {
+    if (!this.server.itWasBuilt) {
+      return undefined
+    }
+    const client = this.server.clients.find((c) => c.scope === scope)
+    if (!client) {
+      return undefined
+    }
+    const buildVersion = await client.getClientBuildVersion()
+    if (!buildVersion) {
+      return undefined
+    }
+    return buildClientBuildHeaderValue({ scope, buildVersion })
+  }
+
   private async setClientBuildHeaderEffect({
     prepareFetchResult,
   }: {
     prepareFetchResult: PrepareFetchResult<TError>
   }): Promise<void> {
-    if (!this.server.itWasBuilt) {
-      return
+    const value = await this.getClientBuildHeaderValue(prepareFetchResult.scope)
+    if (value) {
+      prepareFetchResult.effects.set.headers({ [POINT0_CLIENT_BUILD_HEADER]: value })
     }
-    const scope = prepareFetchResult.scope
-    const client = this.server.clients.find((c) => c.scope === scope)
-    if (!client) {
-      return
-    }
-    const buildVersion = await client.getClientBuildVersion()
-    if (!buildVersion) {
-      return
-    }
-    prepareFetchResult.effects.set.headers({
-      [POINT0_CLIENT_BUILD_HEADER]: buildClientBuildHeaderValue({ scope, buildVersion }),
-    })
   }
 
   async fetchDetailed({
@@ -1434,6 +1442,12 @@ export class Fetcher<TError extends ErrorPoint0> {
           }),
           variant: { type: 'error' as const, error: error0 },
           error: error0,
+        }
+        // The success path sets this through the effects; an uncaught throw bypasses them, so set it directly — a
+        // scope-attributable 500 must still echo its client build for the proactive stale-detection channel.
+        const clientBuildHeader = await this.getClientBuildHeaderValue(prepareFetchResult.scope)
+        if (clientBuildHeader) {
+          finalResult.response.headers.set(POINT0_CLIENT_BUILD_HEADER, clientBuildHeader)
         }
         const renders = prepareFetchResult.request.renders
         const settledMeta = renders > 0 ? { ...meta, request: { ...meta.request, renders } } : meta
