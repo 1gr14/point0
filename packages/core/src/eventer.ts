@@ -465,6 +465,28 @@ export type EventerEventEngineFetchError<TError extends ErrorPoint0> = EventerEv
   }
 >
 
+// rsc
+/**
+ * A deferred subtree (see `defer`) threw while rendering on the server. This is the ONE RSC failure that ESCAPES the
+ * loader error events (`pointQueryError` / `engineFetchError`): the loader already returned its shell, and the subtree
+ * resolves asynchronously afterward, so its error is caught in the per-request hole registry and streamed to the client
+ * (as an error fill, or replaced by a per-hole error fallback) instead of propagating out of the loader. This event
+ * restores server-side observability for it — normalize/encode failures DO propagate and already surface as loader
+ * errors, so they are deliberately NOT re-emitted here. Always server-side: deferred subtrees resolve and stream from
+ * the server, on the initial SSR render and on client fetches alike.
+ */
+export type EventerEventRscError<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'rscError',
+  {
+    error: TError
+    /** The point whose loader produced the deferred subtree, e.g. `page "home"` — undefined when the label is unknown. */
+    label: string | undefined
+    /** The deferred hole's id (see `defer`). */
+    holeId: string
+  }
+>
+
 // emit
 export type EventerEventEmitError<TError extends ErrorPoint0> = EventerEvent<
   'client' | 'server',
@@ -474,6 +496,7 @@ export type EventerEventEmitError<TError extends ErrorPoint0> = EventerEvent<
 
 export type AnyEventerEvent<TError extends ErrorPoint0> =
   | EventerEventEmitError<TError>
+  | EventerEventRscError<TError>
   | EventerEventPointFetchServerStart
   | EventerEventPointFetchServerSettled<TError>
   | EventerEventPointFetchServerSuccess
@@ -525,6 +548,7 @@ export const uniqEventerErrorEventNames = [
   'pointQueryError',
   'pointInfiniteQueryError',
   'engineFetchError',
+  'rscError',
 ] satisfies Array<AnyEventerEventName>
 export type AnyEventerEventName = AnyEventerEvent<any>['name']
 export type UniqEventerErrorEventName = (typeof uniqEventerErrorEventNames)[number]

@@ -34,6 +34,7 @@ export const homePage = root.lets('page', 'home', '/').page(() => (
     home
     <Link to="/rsc">go-rsc</Link>
     <Link to="/warm">go-warm</Link>
+    <Link to="/defer-island">go-defer-island</Link>
   </div>
 ))
 `,
@@ -174,6 +175,166 @@ const ServerWrap = async () => (
 export const nestedPage = root.lets('page', 'nestedPage', '/nested-island')
   .loader(async () => <ServerWrap />)
   .page(({ data }) => <main id="nested-page">{data}</main>)
+`,
+  )
+  // Phase 2 payoff: a defer hole whose subtree WRAPS an interactive island. On a CLIENT navigation the hole renders
+  // fresh on the client (no Fizz $RC), so the island inside it is LIVE — the exact thing an SSR hole can't hydrate.
+  await project.write(
+    'src/rsc/defer-island.tsx',
+    `import { defer } from '@point0/core'
+import { root } from '../lib/root.js'
+import { RscCta } from './cta.js'
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+const SlowIsland = async () => {
+  await sleep(600)
+  return (
+    <div id="di-wrap">
+      DEFER_ISLAND_MARKER
+      <RscCta />
+    </div>
+  )
+}
+
+export const deferIslandPage = root.lets('page', 'deferIslandPage', '/defer-island')
+  .rscDepth(1)
+  .loader(async () => ({
+    fast: <span id="di-fast">DEFER_ISLAND_FAST</span>,
+    slow: defer(<SlowIsland />, <span id="di-fb">island-loading</span>),
+  }))
+  .page(({ data }) => (
+    <main id="defer-island-page">
+      {data.fast}
+      {data.slow}
+    </main>
+  ))
+`,
+  )
+  // The contrast to defer: a slow query that returns an interactive island as element data, streamed on SSR via
+  // suspend:'server' (not defer). An island revealed through the QUERY channel stays live on first paint (observer).
+  await project.write(
+    'src/rsc/suspend-island.tsx',
+    `import { root } from '../lib/root.js'
+import { RscCta } from './cta.js'
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+export const slowIslandQuery = root.lets('query', 'slowIsland')
+  .rscDepth(1)
+  .loader(async () => { await sleep(600); return { cta: <RscCta /> } })
+  .query()
+
+export const suspendIslandPage = root.lets('page', 'suspendIslandPage', '/suspend-island')
+  .loading(() => <span id="si-loading">si-loading</span>)
+  .page(() => {
+    const q = slowIslandQuery.useQuery(undefined, { suspend: 'server' })
+    return <main id="suspend-island-page">SUSPEND_ISLAND {q.data?.cta}</main>
+  })
+`,
+  )
+  // The exact "put the loader on the island itself" pattern: an interactive island that fetches its OWN slow data with
+  // suspend:'server' inside its body (top-level, no defer). Stays live once its own query streams in (same observer).
+  await project.write(
+    'src/rsc/self-suspend.tsx',
+    `import { useState } from 'react'
+import { root } from '../lib/root.js'
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+export const selfSlowQuery = root.lets('query', 'selfSlow')
+  .loader(async () => { await sleep(600); return { label: 'DATA_READY' } })
+  .query()
+
+export const SelfSuspendIsland = root.lets('component', 'selfSuspendIsland').component(() => {
+  const q = selfSlowQuery.useQuery(undefined, { suspend: 'server' })
+  const [n, setN] = useState(0)
+  return <button id="cta" onClick={() => setN((c) => c + 1)}>{q.data?.label} clicks={n}</button>
+})
+
+export const selfSuspendPage = root.lets('page', 'selfSuspendPage', '/self-suspend')
+  .loading(() => <span id="ss-loading">ss-loading</span>)
+  .page(() => <main id="self-suspend-page">SELF_SUSPEND <SelfSuspendIsland /></main>)
+`,
+  )
+  // defer's 3rd arg: a per-hole error fallback. The deferred subtree throws on the server; its error fallback renders in
+  // its place (scoped to the hole) and the rest of the page survives — the root error boundary is never hit.
+  await project.write(
+    'src/rsc/defer-error.tsx',
+    `import { defer } from '@point0/core'
+import { root } from '../lib/root.js'
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+const BoomServer = async () => {
+  await sleep(300)
+  throw new Error('DEFER_BOOM_SECRET')
+}
+
+export const deferErrorPage = root.lets('page', 'deferErrorPage', '/defer-error')
+  .rscDepth(1)
+  .loader(async () => ({
+    ok: <span id="de-ok">DEFER_ERROR_OK</span>,
+    slow: defer(<BoomServer />, <span id="de-fb">de-loading</span>, <span id="de-err">DEFER_ERROR_FALLBACK</span>),
+  }))
+  .page(({ data }) => <main id="defer-error-page">{data.ok}{data.slow}</main>)
+`,
+  )
+  // "islands within islands, each with its OWN loader": a component point whose loader ships data AND wraps a SECOND
+  // component point whose loader ships its own data. Both resolve server-side, both hydrate, both stay interactive.
+  await project.write(
+    'src/rsc/nested-loaders.tsx',
+    `import { useState } from 'react'
+import { root } from '../lib/root.js'
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+export const InnerLoaderIsland = root.lets('component', 'innerLoaderIsland')
+  .loader(async () => { await sleep(200); return { label: 'INNER_LOADER_DATA' } })
+  .component(({ data }) => {
+    const [n, setN] = useState(0)
+    return <button id="inner-cta" onClick={() => setN((c) => c + 1)}>{data.label} inner={n}</button>
+  })
+
+export const OuterLoaderIsland = root.lets('component', 'outerLoaderIsland')
+  .loader(async () => { await sleep(200); return { label: 'OUTER_LOADER_DATA' } })
+  .component(({ data }) => {
+    const [n, setN] = useState(0)
+    return (
+      <div id="outer-wrap">
+        <button id="outer-cta" onClick={() => setN((c) => c + 1)}>{data.label} outer={n}</button>
+        <InnerLoaderIsland />
+      </div>
+    )
+  })
+
+export const nestedLoadersPage = root.lets('page', 'nestedLoadersPage', '/nested-loaders')
+  .rscDepth(1)
+  .loader(async () => ({ island: <OuterLoaderIsland /> }))
+  .page(({ data }) => <main id="nested-loaders-page">{data.island}</main>)
+`,
+  )
+  // defer's 3rd arg as a FUNCTION: a server component throws a TYPED error; the function fallback renders its \`code\`. In
+  // a real browser this proves the whole error path — a typed throw is preserved (not flattened to the RSC hint), and it
+  // reaches the fallback projected, code intact.
+  await project.write(
+    'src/rsc/defer-error-fn.tsx',
+    `import { defer, ErrorPoint0 } from '@point0/core'
+import { root } from '../lib/root.js'
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+const BoomTyped = async () => {
+  await sleep(300)
+  throw new ErrorPoint0('typed defer failure', { code: 'DEFER_TYPED_CODE' })
+}
+
+export const deferErrorFnPage = root.lets('page', 'deferErrorFnPage', '/defer-error-fn')
+  .rscDepth(1)
+  .loader(async () => ({
+    slow: defer(<BoomTyped />, <span id="def-fb">def-loading</span>, (error) => <span id="def-err">CODE:{String(error.code)}</span>),
+  }))
+  .page(({ data }) => <main id="defer-error-fn-page">{data.slow}</main>)
 `,
   )
 }
@@ -325,6 +486,118 @@ const expectRscNestedIslandFlow = async (tp: TestProjectOneClient) => {
   await page.close()
 }
 
+// Phase 2 payoff: on a CLIENT navigation a deferred hole streams over the wire (NDJSON) and renders fresh on the client
+// — no Fizz `$RC` — so an interactive island INSIDE the hole is LIVE (clickable), the exact thing an SSR hole can't
+// hydrate. The fast field paints first, the slow subtree streams in, and its island responds to clicks.
+const expectRscDeferIslandClientNavFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/')
+  await page.waitContent('#home')
+  await page.original.getByRole('link', { name: 'go-defer-island', exact: true }).click()
+  // the fast field paints at once — the hole holds its fallback while the subtree streams
+  await page.waitContent('DEFER_ISLAND_FAST', 15000)
+  await page.waitContent('island-loading', 15000)
+  // the deferred subtree streams in as a client fetch and reveals its island…
+  await page.waitContent('DEFER_ISLAND_MARKER', 15000)
+  await page.waitContent('clicks=0', 15000)
+  await page.stable
+  // the loader travelled over the wire as a client fetch (the streaming data path), not hydration
+  expect(page.requestsTale).toContain('page.defer-island-page (data)')
+  // …and the island inside the client-fetch hole is ALIVE — clicking it updates its own state (an SSR hole can't)
+  await page.original.click('#cta')
+  await page.waitContent('clicks=1', 10000)
+  const logsText = page.strlogs.join('\n')
+  expect(logsText).not.toContain('recoverable hydration/render error')
+  expect(logsText).not.toContain('Hydration')
+  expect(logsText).not.toContain('RSC:')
+  await page.close()
+}
+
+// CONFIRMED (both bundlers): an interactive island stays LIVE on the first SSR load when it rides a `suspend: 'server'`
+// query — unlike a defer hole. Its data streams over the query channel and its subscriber carries a react-query
+// observer, which drives a client re-render when the data lands, mounting the island fresh with its handlers attached.
+// That observer is exactly what a defer hole lacks (it relies on the Fizz reveal, which React never re-hydrates).
+const expectSuspendIslandSsrFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/suspend-island')
+  await page.waitContent('SUSPEND_ISLAND', 15000)
+  await page.waitContent('clicks=0', 15000)
+  await page.stable
+  await page.original.click('#cta')
+  // short window — a dead island never reaches clicks=1, so this fails fast instead of hanging 15s
+  await page.waitContent('clicks=1', 5000)
+  await page.close()
+}
+
+// PIN the documented Phase-1 limitation as a real test: an interactive island INSIDE a `defer` hole displays on the
+// first SSR load but its handlers are NOT wired — React completes the server-revealed boundary and never re-enters.
+const expectDeferIslandSsrDeadFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/defer-island')
+  await page.waitContent('DEFER_ISLAND_MARKER', 15000)
+  await page.waitContent('clicks=0', 15000)
+  await page.stable
+  await page.original.click('#cta')
+  // give a live island time to react; a dead one stays at clicks=0
+  await page.original.waitForTimeout(800)
+  expect(await page.original.locator('#cta').first().textContent()).toContain('clicks=0')
+  await page.close()
+}
+
+// CONFIRMED (both bundlers): the "loader on the island itself" pattern — an island fetching its OWN slow data with
+// suspend:'server' inside its body (top-level, no defer) — is also live on the first SSR load, same observer rescue. So
+// the rule holds both ways: interactive slow content on SSR → suspend (island or query), never defer.
+const expectSelfSuspendIslandSsrFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/self-suspend')
+  await page.waitContent('SELF_SUSPEND', 15000)
+  await page.waitContent('DATA_READY', 15000)
+  await page.waitContent('clicks=0', 15000)
+  await page.stable
+  await page.original.click('#cta')
+  await page.waitContent('clicks=1', 5000)
+  await page.close()
+}
+
+// defer's 3rd arg on SSR: the deferred subtree throws on the server, its per-hole error fallback streams into the hole,
+// the fast field survives, and the page never falls to the root error boundary (both markers rendering proves it).
+const expectDeferErrorFallbackSsrFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/defer-error')
+  await page.waitContent('DEFER_ERROR_OK', 15000) // fast field, in the shell
+  await page.waitContent('DEFER_ERROR_FALLBACK', 15000) // the per-hole error fallback replaced the failed subtree
+  await page.stable
+  await page.close()
+}
+
+// "islands within islands, each with its OWN loader": an outer component point (its own loader) wraps an inner component
+// point (its own loader). Both loaders resolve server-side and ship dehydrated, both hydrate, and BOTH stay interactive
+// — nested islands each carrying independent data is not a limitation. (The DATA side of this is also pinned in-process
+// in rsc.fast.test.tsx; here we prove hydration + interactivity in a real browser.)
+const expectNestedIslandLoadersFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/nested-loaders')
+  await page.waitContent('OUTER_LOADER_DATA', 15000) // the outer island's own loader resolved
+  await page.waitContent('INNER_LOADER_DATA', 15000) // the inner island's own loader resolved too
+  await page.waitContent('outer=0', 15000)
+  await page.waitContent('inner=0', 15000)
+  await page.stable
+  const logsText = page.strlogs.join('\n')
+  expect(logsText).not.toContain('recoverable hydration/render error')
+  expect(logsText).not.toContain('Hydration')
+  expect(logsText).not.toContain('RSC:')
+  // both nested islands hydrated interactive — each responds to its own clicks independently
+  await page.original.click('#outer-cta')
+  await page.waitContent('outer=1', 10000)
+  await page.original.click('#inner-cta')
+  await page.waitContent('inner=1', 10000)
+  await page.close()
+}
+
+// defer's 3rd arg as a FUNCTION, end-to-end: a server component throws a TYPED error; the function fallback renders its
+// \`code\`. Proves the error-class fix in a browser — the typed throw is preserved (not flattened to the RSC hint) and
+// reaches the fallback projected with its code intact.
+const expectDeferErrorFnFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/defer-error-fn')
+  await page.waitContent('DEFER_TYPED_CODE', 15000) // the function fallback rendered the REAL typed error's code
+  await page.stable
+  await page.close()
+}
+
 // Strip guarantees: server code never in the client bundle, clientOnly render never in the server
 // bundle.
 const expectRscStripGuarantees = async (tp: TestProjectOneClient) => {
@@ -351,8 +624,16 @@ const expectRscComponentChunkManifest = async (tp: TestProjectOneClient) => {
     entry: string | null
     byComponent?: Record<string, string[]>
   }
-  // both islands got per-component manifest entries pointing at real chunk files
-  expect(Object.keys(manifest.byComponent ?? {}).sort()).toEqual(['lonelyBadge', 'rscCta'])
+  // every component point declared in its own fixture file gets a per-component manifest entry pointing at a real chunk
+  // (rscCta, the clientOnly lonelyBadge, the two nested-loaders islands, and the self-suspend island — five in all,
+  // one chunk each; innerLoaderIsland + outerLoaderIsland share nested-loaders' chunk since they live in one file)
+  expect(Object.keys(manifest.byComponent ?? {}).sort()).toEqual([
+    'innerLoaderIsland',
+    'lonelyBadge',
+    'outerLoaderIsland',
+    'rscCta',
+    'selfSuspendIsland',
+  ])
   for (const files of Object.values(manifest.byComponent ?? {})) {
     expect(files.length).toBeGreaterThan(0)
     for (const file of files) {
@@ -436,6 +717,34 @@ describe('rsc e2e (browser, dev)', () => {
   it('an island nested inside a server component hydrates and is interactive (nesting is not the limitation)', async () => {
     await expectRscNestedIslandFlow(tp)
   })
+
+  it('client-fetch defer hole: an interactive island inside a streamed hole is live (clickable) on client navigation', async () => {
+    await expectRscDeferIslandClientNavFlow(tp)
+  })
+
+  it('SSR: an island streamed via a suspend:server query IS interactive on first load (unlike a defer hole)', async () => {
+    await expectSuspendIslandSsrFlow(tp)
+  })
+
+  it('SSR limitation: an island inside a defer hole is NOT interactive on first load', async () => {
+    await expectDeferIslandSsrDeadFlow(tp)
+  })
+
+  it('SSR: an island with its OWN suspend:server loader IS interactive on first load', async () => {
+    await expectSelfSuspendIslandSsrFlow(tp)
+  })
+
+  it("SSR: defer()'s 3rd arg renders a per-hole error fallback when the subtree throws (page survives)", async () => {
+    await expectDeferErrorFallbackSsrFlow(tp)
+  })
+
+  it('islands within islands: an island with its own loader, nested in an island with its own loader, both hydrate and stay interactive', async () => {
+    await expectNestedIslandLoadersFlow(tp)
+  })
+
+  it("SSR: defer()'s 3rd arg as a FUNCTION renders the typed error's code (error-class fix, browser)", async () => {
+    await expectDeferErrorFnFlow(tp)
+  })
 })
 
 describe('rsc e2e (build)', () => {
@@ -515,6 +824,34 @@ describe('rsc e2e (browser, vite dev)', () => {
 
   it('an island nested inside a server component hydrates and is interactive (nesting is not the limitation)', async () => {
     await expectRscNestedIslandFlow(tp)
+  })
+
+  it('client-fetch defer hole: an interactive island inside a streamed hole is live (clickable) on client navigation', async () => {
+    await expectRscDeferIslandClientNavFlow(tp)
+  })
+
+  it('SSR: an island streamed via a suspend:server query IS interactive on first load (unlike a defer hole)', async () => {
+    await expectSuspendIslandSsrFlow(tp)
+  })
+
+  it('SSR limitation: an island inside a defer hole is NOT interactive on first load', async () => {
+    await expectDeferIslandSsrDeadFlow(tp)
+  })
+
+  it('SSR: an island with its OWN suspend:server loader IS interactive on first load', async () => {
+    await expectSelfSuspendIslandSsrFlow(tp)
+  })
+
+  it("SSR: defer()'s 3rd arg renders a per-hole error fallback when the subtree throws (page survives)", async () => {
+    await expectDeferErrorFallbackSsrFlow(tp)
+  })
+
+  it('islands within islands: an island with its own loader, nested in an island with its own loader, both hydrate and stay interactive', async () => {
+    await expectNestedIslandLoadersFlow(tp)
+  })
+
+  it("SSR: defer()'s 3rd arg as a FUNCTION renders the typed error's code (error-class fix, browser)", async () => {
+    await expectDeferErrorFnFlow(tp)
   })
 })
 

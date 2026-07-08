@@ -155,8 +155,16 @@ class). `toJsonErrorResponse` stays raw on purpose. Naming per review:
   plain query machinery.
 - **Children/slots**: props (children included) travel through the transformer;
   nested elements, server components, and islands-inside-islands all work.
-- **Hooks in a server component**: the unfold try/catch wraps React's "Invalid
-  hook call" into the friendly "make it a component point" loader error.
+- **A server component that throws**: the unfold `catch` is dead simple —
+  `throw ErrorClass.from(error)` (the resolved app error class via
+  `options.ErrorClass`, else base `ErrorPoint0`), same as everywhere in the
+  framework. `from` keeps an intentional typed error's fields
+  (code/status/message survive even across a module boundary, because it reads
+  the fields, not `instanceof`) and coerces a plain throw. Nothing is
+  editorialized — no typed-vs-runtime heuristic, no `.is()`, no wrapping (an
+  earlier friendly-hint wrapper was dropped: it mislabeled a user's own
+  `throw new Error(...)` as hook misuse). Hooks in a server component just
+  surface React's own "Invalid hook call".
 - Whole-output element unfolding to null → empty Fragment stands in (the
   engine's no-output check needs a value). Keys survive unfold (Fragment
   wrapper) and encode/decode (`k`).
@@ -185,7 +193,7 @@ the public chain type and everything after silently degrades to `any`.
 `.rscDepth` is server-and-client (isomorphic config), available on every point
 type and on `root`/`base`/`plugin` (root default is the promoted pattern).
 
-## Deferred holes (`defer`) — progressive in-tree streaming (Phase 1)
+## Deferred holes (`defer`) — progressive in-tree streaming
 
 `defer(element, fallback?)` (core `rsc.ts`) closes the one real gap vs Flight: a
 loader can defer a slow server subtree so `normalizeRscOutput` never awaits it.
@@ -234,51 +242,159 @@ The moving parts:
 - **Streaming gate.** `markSsrRenderPhase` OR-s in `hasPendingHoles()` — a hole
   still pending when discovery ends forces streaming (else the response blocks
   on `allReady` waiting for the very subtree the hole deferred).
-- **Fill delivery** (`render.ts` pump): `collectNewlyResolvedHoleScripts` drains
-  the registry's `takeResolved()` each flush and prepends
-  `<script>window.__POINT0_PUSH_RSC__(…)</script>` (the encoded subtree via
-  `clientPoints.transformer.stringify`, errors via `serializeStateError`) — the
-  exact `__POINT0_PUSH_QUERY__` pattern, incl. the shell bootstrap stub and the
-  final drain. `mount()` installs `installPushedRscReceiver` (core
-  `query-client.ts`) alongside the query receiver: parse (decodes elements +
-  starts island chunk imports), drain `rscComponentsRegistry`, then
-  `rscHolesRegistry.fill(id, …)`. `installPushedRscReceiver` returns a promise
-  for the BUFFERED fills; `mount()` awaits it (with the chunk drain) before
-  `hydrateRoot`, so a hole delivered before hydration is filled at hydration.
-- **Client hydration — the hard limit (verified by the e2e).** The server
-  streams the subtree's markup into the boundary via Fizz (`$RC` reveal), so it
-  always DISPLAYS. But React only client-hydrates a boundary whose child
-  rendered its content during hydration: a hole filled BEFORE hydration
-  hydrates; a hole revealed only AFTER hydration displays inert (React completes
-  the server-revealed boundary from the stream and never re-enters the suspended
-  child — a hand-thrown promise AND `React.use` both fail to resume it; the
-  query path dodges this only because a streamed query's content is a stable
-  cache-reading component nudged by its observer, and it is never an interactive
-  island). Net: `defer` is for server MARKUP (static, displays fine).
-  **Interactive component points inside a hole are a documented limitation**
-  (docs/core/rsc.md) — top-level islands or `suspend: 'server'` for
-  interactivity. The `React.use` slot was tried and reverted (no hydration win,
-  and it is uncallable outside a render so the codec units couldn't exercise
-  it).
-- **Scope**: SSR/page-load only. Client-side fetches still await the full
-  payload — streaming client fetches (NDJSON) is Phase 2, along with per-hole
-  error boundaries, in-hole island hydration (needs a Flight-style client
-  reconciler or a client-reveal mode), and dedup/backrefs.
+- **Fill delivery — two channels, one payload.** Both serialize the same shape
+  via the shared `buildHolePushPayload(entry, ErrorClass)` (engine
+  `rsc-stream.ts`) — the encoded subtree, or an error via `serializeStateError`.
+  - **SSR push** (`render.ts` pump): `collectNewlyResolvedHoleScripts` drains
+    the registry's `takeResolved()` each flush and prepends
+    `<script>window.__POINT0_PUSH_RSC__(…)</script>` — the exact
+    `__POINT0_PUSH_QUERY__` pattern, incl. the shell bootstrap stub and the
+    final drain. `mount()` installs `installPushedRscReceiver` (core
+    `query-client.ts`): parse (decodes elements + starts island chunk imports),
+    drain `rscComponentsRegistry`, then `rscHolesRegistry.fill(id, …)`. It
+    returns a promise for the BUFFERED fills; `mount()` awaits it before
+    `hydrateRoot`, so a hole delivered before hydration is filled at hydration.
+  - **Client fetch (NDJSON)** (`fetcher.ts` + core `_fetchServerDetailed`): line
+    1 is the payload (holes as `{ t: 2 }`), then one line per resolved hole via
+    the same `takeResolved()` drain (`createHoleNdjsonStream`, the loop that the
+    SSR pump runs per-flush, here run to completion). The client reader
+    (`readStreamedRscFetch`) resolves the query/mutation with line 1 at once and
+    fills each hole with `applyPushedRscFill` (the receiver's per-fill logic,
+    shared) as its line lands.
+- **Streaming is gated + transport-scoped.** The client advertises it can read a
+  stream with the `POINT0_STREAM_HEADER` (`x-point0-stream`) request header on
+  every data/query/mutation fetch (client-side, transform on); the server mints
+  the data-path registry and frames NDJSON only when that header is present, and
+  echoes it on the response so the reader knows to read incrementally. A
+  server-to-server SSR nested fetch and any foreign/OpenAPI client never send it
+  → single JSON body, `defer` inlined — zero impact. Client navigation runs the
+  same path (the page loader is fetched as `outputType: 'data'`); the
+  `queryClientDehydratedState` prefetch frames NDJSON too.
+- **Hole ids are globally unique.** Each `RscHoleRegistry` seeds a
+  `generateId()` prefix (lazily, on first `defer`), so ids never collide in the
+  bundle-wide client `rscHolesRegistry` when several concurrent streamed fetches
+  (each with its own server registry counting from 0) plus the SSR push channel
+  feed it at once.
+- **Error / abort.** An error fill line → the slot re-throws to its nearest
+  `ErrorBoundary0` (same as SSR). The reader diffs
+  `rscHolesRegistry.pendingIds()` around line-1 decode to learn ITS holes, and
+  `failIfPending`s any left when the stream ends (a drop, not a clean close,
+  since the server drains every hole before closing) so a hole never spins
+  forever. Unmount/navigation aborts the fetch → the reader stops; the server
+  stream's `cancel()` stops draining.
+- **Client hydration — the one remaining limit, SSR initial load only.** On the
+  first document render the server streams the subtree's markup into the
+  boundary via Fizz (`$RC` reveal), so it always DISPLAYS, but React never
+  re-enters a server-revealed boundary whose client child suspended at
+  hydration: an island revealed AFTER hydration displays inert (a hand-thrown
+  promise AND `React.use` both fail to resume it — `React.use` was tried and
+  reverted). So on the FIRST PAINT, `defer` is for server MARKUP; interactive
+  islands go top-level or in a `suspend: 'server'` query. **A CLIENT-fetch hole
+  has no such limit** — it renders fresh on the client (no Fizz, no `$RC`), so
+  an island inside it is live (proven by the browser e2e on both bundlers). This
+  is the Phase 2 payoff.
+- **Why `suspend: 'server'` keeps an island live where `defer` doesn't — tested,
+  both bundlers.** Both stream through a Fizz-revealed boundary on SSR, so the
+  difference isn't the reveal — it's the **observer**. A `suspend` query's
+  content subscribes to react-query (`useSyncExternalStore`); when the data
+  lands (pushed → cache), the observer forces a CLIENT re-render of the
+  subscriber, which mounts the island fresh (handlers attached). A `defer`
+  hole's fill only `wake()`s a Suspense thenable — no observer, no re-render, so
+  React leaves the server-revealed island inert. Net rule, now pinned by
+  `rsc.slow`: interactive slow content on the SSR first paint →
+  `suspend: 'server'` (an island element in a suspend query, OR an island with
+  its own suspend loader — both verified live); `defer` → pure server markup (an
+  island inside it is verified DEAD on first paint, live only on later client
+  fetches).
+- **Per-hole error fallback — LANDED.** `defer(el, fallback?, errorFallback?)`'s
+  3rd arg: a failed subtree renders in its place (scoped to the hole) instead of
+  throwing to the nearest boundary. The arg is static markup **or a function of
+  the error**, `(error) => …`. The function runs on the server the moment the
+  subtree fails (in `RscHoleRegistry.register`'s rejection handler, before the
+  entry is marked settled, so every consumer reads a ready entry), and gets the
+  error PROJECTED through the app's error class — `projectHoleError` =
+  `ErrorClass.from(serializeStateError(ErrorClass, err))`, i.e. public in prod /
+  full in dev, the same instance the boundary gets, so nothing private leaks and
+  a fallback and a boundary agree. The class is threaded via
+  `NormalizeRscOutputOptions.errorClass` (executor passes
+  `server.points.manager.root._Error`); it defaults to base `ErrorPoint0` for
+  the inline/unit path. The resolved markup rides the error fill
+  (`buildHolePushPayload` → `applyPushedRscFill` → the slot renders it), so no
+  wire-node change; both `serverHoleComponent` and the client slot honor it. A
+  fallback that itself throws is dropped, leaving the original error to bubble.
+  The inline (no-registry) path now applies the fallback too.
+  `serializeStateError` moved core-internal from `query-client.ts` to `error.ts`
+  (its home) so `rsc.ts` can use it without a `rsc ↔ query-client` cycle.
+  Verified in-process + browser e2e (both bundlers).
+- **RSC errors are ErrorPoint0, never native `Error` — LANDED.** The `rscError`
+  factory builds the app's error class (`options.ErrorClass`, else base
+  `ErrorPoint0`) with a `code` (`POINT0_RSC_DEPTH_EXCEEDED` /
+  `_INVALID_OUTPUT`), so a validation failure (depth, a ref, a function prop, a
+  class component, a non-component point) projects public/private and flows
+  through the boundary like any framework error. When a **server component
+  throws**, the catch is dead simple — `throw ErrorClass.from(error)` — same as
+  everywhere else in the framework: `from` keeps an intentional typed error's
+  fields (code/status/message survive even across a module boundary, because
+  `from` reads the fields rather than trusting `instanceof`) and coerces a plain
+  throw. NOTHING is editorialized: no "typed vs runtime" heuristic, no `.is()`,
+  no wrapping — a user's own `throw new Error('…')` reaches the boundary /
+  `defer` fallback exactly as written (an earlier friendly-hint wrapper was
+  dropped: it mislabeled plain throws as hook misuse). Naming: the threaded
+  class is `ErrorClass` everywhere, matching the rest of the code.
+- **`rscError` eventer event — LANDED.** A failed `defer` subtree is the one RSC
+  failure that ESCAPES the loader error events (`pointQueryError` /
+  `engineFetchError`): the loader's shell already returned, the subtree fails
+  asynchronously, its error is caught in the hole registry and streamed. So the
+  pump emits `rscError` (`{ error, label, holeId }`, server side) as it drains a
+  failed hole — `emitHoleError` in `rsc-stream.ts`, called from BOTH the SSR
+  pump (`render.ts`, root `_emit`) and the NDJSON drain (`fetcher.ts` passes the
+  scope-root's bound `_emit`). Added to `uniqEventerErrorEventNames`, so
+  `.on('error')` aggregates it. Normalize/encode failures DO propagate as loader
+  errors and are deliberately NOT re-emitted (no double report).
+- **Still open (Phase 3)**: in-hole island hydration on the SSR path (needs a
+  Flight-style client reconciler or a client-reveal mode), promises-as-props,
+  and dedup/backrefs.
 
 Tests:
 
 - `packages/core/tests/rsc.test.tsx` — defer normalize (Suspense + hole node,
   not awaited), hole codec roundtrip, fill either order, error re-throw, depth
-  guard, no-registry inline degradation.
-- `packages/engine/tests/rsc.fast.test.tsx` — single hole streams (shell
-  fallback → fill + island ref over `__POINT0_PUSH_RSC__`), THREE holes at
-  different speeds stream out of order into one response (each pushed once), a
-  throwing subtree never hangs the stream, no-fallback hole, and a mutation's
-  `defer()` degrades to an inline server render as `data.element`.
+  guard, no-registry inline degradation; a **function** error fallback runs with
+  the failed subtree's error and lands normalized on the entry; a fallback that
+  itself throws is dropped so the original bubbles; a server component throwing
+  a **typed** point0 error preserves it whole (code kept), not the RSC hint
+  wrapper; `failIfPending` fails only an unfilled hole (a delivered one keeps
+  its content).
+- `packages/engine/tests/rsc.fast.test.tsx` — **SSR push**: single hole streams
+  (shell fallback → fill + island ref over `__POINT0_PUSH_RSC__`), THREE holes
+  at different speeds stream out of order into one response (each pushed once),
+  a throwing subtree never hangs the stream, no-fallback hole. **Client fetch
+  (NDJSON)**: a stream-capable fetch frames the defer as NDJSON (line-1 hole, a
+  later fill line — no header → single inline JSON); a query hole fills
+  progressively and an interactive island INSIDE it is live (clickable); client
+  navigation (`queryClientDehydratedState`) frames a page-loader defer as
+  NDJSON; a throwing subtree's error reaches the nearest boundary; a mutation
+  `defer()` streams and lands as `data.receipt`; a **function** error fallback
+  renders the real error in the hole; an island whose OWN loader `defer()`s
+  streams its subtree into the page response; a deferred subtree that ITSELF
+  defers streams both holes — the inner, minted only when the outer resolves, is
+  caught by the drain loop and streams in after it (nested holes, one response);
+  and a failed subtree emits the `rscError` event (server-side, aggregated by
+  `.on('error')`).
 - `packages/engine/tests/rsc.slow.test.tsx` — browser e2e on both bundlers:
   three deferred markup blocks stream in, display, and hydrate with zero
   refetch; the strip test proves a deferred server component's code
-  (DEFER_SERVER_MARKER) never ships to the client.
+  (DEFER_SERVER_MARKER) never ships to the client; and — the Phase 2 payoff — on
+  a client navigation an interactive island INSIDE a streamed hole is clickable
+  (what an SSR hole can't hydrate). **The SSR interactivity matrix** is pinned
+  too: an island inside a `defer` hole is DEAD on the first SSR paint, while the
+  same island streamed via a `suspend: 'server'` query — or with its own suspend
+  loader — is LIVE (the `defer`-vs-`suspend` division proven, not asserted).
+  Islands-within-islands each with their OWN loader hydrate and stay interactive
+  (nesting is not the limitation); and `defer`'s function error fallback renders
+  a **typed** error's `code` in the browser — `ErrorClass.from` preserves the
+  code across the module boundary (the app's `@point0/core` copy ≠ the runtime's
+  in a built app), which an in-process test can't exercise.
 - `examples/basic` `defer-demo` page runs both a `suspend: 'server'` query block
   and a `defer()` server component.
 

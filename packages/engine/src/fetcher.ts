@@ -11,6 +11,8 @@ import {
   _ssRunWithServerStorageState,
   blankDataTransformerExtended,
   generateId,
+  POINT0_STREAM_HEADER,
+  RscHoleRegistry,
   serializeErrorsInDehydratedState,
   wrapTransformerWithRsc,
 } from '@point0/core'
@@ -20,6 +22,7 @@ import type {
   Data,
   DataTransformerExtended,
   ErrorPoint0,
+  EventerEmitFn,
   FetcherFetchDetailedResult,
   FetcherFetchDetailedResultError,
   FetcherFetchDetailedResultGeneral,
@@ -50,6 +53,7 @@ import type { EngineClient } from './client.js'
 import type { Engine } from './engine.js'
 import { Executor } from './executor.js'
 import type { ExecuteOptionsKnownInput } from './executor.js'
+import { createHoleNdjsonStream } from './rsc-stream.js'
 import type { Publicdir } from './publicdir.js'
 import type { EngineServer } from './server.js'
 // import { renderToReadableStream } from 'react-dom/server'
@@ -648,9 +652,17 @@ export class Fetcher<TError extends ErrorPoint0> {
     }
     const transformer = this.getTransformerWithRsc({ scope: point.scope, point, transform })
     const ErrorClass = client?.points?.manager.root._Error ?? this.server.points.manager.root._Error
+    // A failed deferred hole reports `rscError` through this root's `_emit` (the same root the errors project against).
+    // Cast like `Engine.getEmit` does — `EventerEmitFn` doesn't unify a specific `_emit` with the erased param type.
+    const rscHoleRoot = client?.points?.manager.root ?? this.server.points.manager.root
+    const rscHoleEmit = rscHoleRoot._emit.bind(rscHoleRoot) as EventerEmitFn<ErrorPoint0>
 
     try {
       const input = await this.getPointInputFromEndpointRequest({ request, location, point, transform })
+      // Whether the caller can read a streamed (NDJSON) body for deferred holes (see `defer`). A point0 client advertises
+      // it on every data-carrying fetch; a server-to-server SSR nested fetch and any foreign client never do, so they
+      // keep the single-JSON body where a hole degraded to inline.
+      const clientWantsStream = !!request.headers[POINT0_STREAM_HEADER]
       if (outputType === 'html') {
         if (point.type !== 'page') {
           throw new ErrorClass(`Point type "${point.type}" is not supported for html output type`, {
@@ -749,7 +761,33 @@ export class Fetcher<TError extends ErrorPoint0> {
         })
         const dehydratedState = serializeErrorsInDehydratedState(originalDehydratedState, ErrorClass)
         effects.set.status(200)
-        const response = new Response(transformer.stringify({ dehydratedState }), {
+        const firstLine = transformer.stringify({ dehydratedState })
+        // A prefetched loader deferred a subtree (see `defer`): the dehydrated query state carries `{ t: 2 }` holes, so
+        // stream them in as NDJSON exactly like the plain data path — client navigation gets the shell-first, slow-parts-
+        // stream-in experience too, and an island inside such a hole renders fresh (interactive). `prefetchAppPagePointDeep`
+        // always mints the registry; frame only when the client can read the stream, else the single JSON below (with a
+        // hole degraded to inline is the transform-off / non-point0 case).
+        const holeRegistry = executor.serverStorageState.__POINT0_RSC_HOLES__
+        if (clientWantsStream && holeRegistry && holeRegistry.entries.size > 0) {
+          const response = new Response(
+            createHoleNdjsonStream({
+              firstLine,
+              holeRegistry,
+              transformer,
+              ErrorClass,
+              emit: rscHoleEmit,
+            }),
+            {
+              headers: { 'Content-Type': 'application/x-ndjson', [POINT0_STREAM_HEADER]: '1' },
+            },
+          )
+          return {
+            ...partialResult,
+            response,
+            data: { dehydratedState },
+          }
+        }
+        const response = new Response(firstLine, {
           headers: { 'Content-Type': 'application/json' },
         })
         return {
@@ -757,6 +795,15 @@ export class Fetcher<TError extends ErrorPoint0> {
           response,
           data: { dehydratedState },
         }
+      }
+
+      // Streamed client fetch (see `defer`): a top-level client fetch that advertises it can read a streamed body gets a
+      // fresh per-request hole registry, so a loader/mutation `defer()` produces a `{ t: 2 }` hole (normalizeHole) that
+      // the NDJSON framing below fills line by line. Only mint when the header is present AND nothing was inherited — a
+      // server-to-server SSR nested fetch already carries the outer render's registry (whose pump drains the fills), and
+      // must keep it; a foreign / non-streaming client never sends the header, so its `defer` degrades to inline.
+      if (clientWantsStream && !executor.serverStorageState.__POINT0_RSC_HOLES__) {
+        executor.serverStorageState.__POINT0_RSC_HOLES__ = new RscHoleRegistry()
       }
 
       const executeResult = await executor.execute({
@@ -830,7 +877,33 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       // else we try to get endpoint json
-      const response = new Response(transformer.stringify(executeResult.output), {
+      const firstLine = transformer.stringify(executeResult.output)
+      const holeRegistry = executor.serverStorageState.__POINT0_RSC_HOLES__
+      // The output deferred a subtree (see `defer`): stream the response as NDJSON — line 1 is this payload (holes as
+      // `{ t: 2 }`), each following line fills one as it resolves. Gated on the request header so only a stream-capable
+      // point0 client gets a framed body; a nested SSR fetch (no header, but an inherited registry) and a foreign client
+      // both fall through to the single-JSON body, where `defer` already degraded to inline.
+      if (clientWantsStream && holeRegistry && holeRegistry.entries.size > 0) {
+        const response = new Response(
+          createHoleNdjsonStream({
+            firstLine,
+            holeRegistry,
+            transformer,
+            ErrorClass,
+            emit: rscHoleEmit,
+          }),
+          {
+            headers: { 'Content-Type': 'application/x-ndjson', [POINT0_STREAM_HEADER]: '1' },
+            status: executeResult.effects.status ?? 200,
+          },
+        )
+        return {
+          ...partialResult,
+          response,
+          data: executeResult.output,
+        }
+      }
+      const response = new Response(firstLine, {
         headers: { 'Content-Type': 'application/json' },
         status: executeResult.effects.status ?? 200,
       })

@@ -253,69 +253,205 @@ Element-containing query data opts out of TanStack's deep merge automatically �
 Point0's default [`structuralSharing`](query-client) hands such payloads back
 fresh, so a refetch never tries to merge two element trees.
 
-## Deferred subtrees: `defer`
+## Streaming a slow part: `defer` and `suspend`
 
-A server component blocks the payload: the normalize pass awaits every async
-server component before anything ships, so one slow `<Analytics />` holds back
-the whole loader output — the SSR shell and the client-fetch response alike.
+Point0 awaits every async server component in the output before the payload
+ships, so one slow `<Analytics />` holds back the **whole** loader output — the
+SSR shell and the client-fetch response alike. Two tools stream the slow part
+instead of blocking on it, and the choice between them is simple:
 
-`defer` streams it instead. Wrap a slow subtree and the loader returns at once:
-a _hole_ ships in its place under a `Suspense` boundary (showing the fallback),
-the shell streams immediately, and the resolved subtree is pushed into the
-**same** response as it settles — the RSC analog of a [`suspend: 'server'`](ssr)
-query.
+- **`defer`** — for slow server **markup** (a server component with no query of
+  its own);
+- **a `suspend: 'server'` query** — for slow **interactive** content (an
+  island).
+
+Both ship the shell first and push the rest into the **same** response, with
+zero client refetch. Everything you need at the RSC level is here; the full
+`suspend` reference (all the modes, positional fallbacks) lives in
+[SSR → the `ssr` and `suspend` query options](ssr#the-ssr-and-suspend-query-options).
+
+> The examples below assume `.rscDepth(1)` once on your [root](root) — every
+> point inherits it, so you never repeat it.
+
+### `defer` — stream slow server markup
+
+Wrap a slow subtree in `defer` and the loader returns at once: a _hole_ ships in
+its place under a `Suspense` boundary showing the fallback, and the resolved
+markup is delivered on the same response as it settles.
 
 ```tsx
 import { defer } from '@point0/core'
 
-.rscDepth(1)
-.loader(async () => ({
-  stats: await getStats(), // fast — ships in the shell
-  analytics: defer(<Analytics />, <ChartSkeleton />), // slow — streams in
-}))
-.page(({ data }) => (
-  <>
-    <StatsCard stats={data.stats} />
-    {data.analytics}
-  </>
-))
+// a plain async server component — its code (the markdown renderer, the db call) never ships
+const Article = async ({ slug }: { slug: string }) => {
+  const post = await db.post.findUniqueOrThrow({ where: { slug } })
+  return (
+    <article dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body) }} />
+  )
+}
+
+export const postPage = root.lets
+  .page('/posts/:slug')
+  .loader(async ({ params }) => ({
+    title: await getTitle(params.slug), // fast — ships in the shell
+    article: defer(<Article slug={params.slug} />, <ArticleSkeleton />), // slow — streams in
+  }))
+  .page(({ data }) => (
+    <main>
+      <h1>{data.title}</h1>
+      {data.article}
+    </main>
+  ))
 ```
 
-`<Analytics />` is an ordinary (async) server component — its code never ships,
-only its rendered host elements do, streamed after the shell. The second
-argument is the fallback shown until it lands. The field is typed as the element
-it stands for, so `{data.analytics}` renders like any other RSC output. Islands
-inside a deferred subtree work too: their references travel in the pushed fill
-and hydrate as usual.
+Only the rendered host elements of `<Article />` travel; the second argument is
+the fallback shown until they land.
 
-Deferral needs a streaming response — a page/document SSR render. In a
-non-streaming context (a data-only fetch, SSG) `defer` degrades gracefully: the
-subtree is awaited inline like a plain server component, the fallback dropped —
-the same content, just without progressive delivery.
+**A third argument catches failure** — a per-hole error boundary. If the
+deferred subtree throws, this renders in the hole's place instead of the error
+reaching the point's [`.error`](loading-error) boundary, so the rest of the page
+stays untouched:
 
-Two ways to stream a slow subtree, then:
+```tsx
+article: defer(<Article slug={params.slug} />, <ArticleSkeleton />, <ArticleFailed />),
+```
 
-- a query marked [`suspend: 'server'`](ssr) — when the slow part has its own
-  loader/data and you want the result in the query cache;
-- **`defer`** — when the slow part is just markup a server component renders,
-  with no query of its own.
+It can be a **function of the error** instead of static markup, so the fallback
+can show what actually went wrong:
 
-Both ship the shell first and stream the rest into one response, with zero
-client refetch.
+```tsx
+article: defer(<Article slug={params.slug} />, <ArticleSkeleton />, (error) => (
+  <ArticleFailed message={error.message} />
+)),
+```
 
-**`defer` is for server markup.** The streamed subtree displays as it lands, but
-it is not re-hydrated on the initial load: the browser completes a
-server-revealed boundary from the stream, so an **interactive component point
-inside a deferred subtree renders but its handlers are not wired** on first
-paint. Keep interactive parts at the top level of the loader output (they
-hydrate normally), or stream them with a component point's
-[`suspend: 'server'`](ssr) query — which is the division of labor anyway:
-`defer` for server markup, `suspend` for interactive, data-bearing islands.
+The function runs on the server when the subtree fails, and receives the error
+already projected for the client through your [`.errorClass()`](loading-error) —
+public fields in production, the full error in dev, the **same** `ErrorPoint0`
+instance the point's `.error` boundary would get. If your server component
+throws a typed error — `throw new AppError('Not found', { status: 404 })` — that
+error reaches the fallback whole, `status` and `code` intact, so you can branch
+on it. Nothing private leaks even if you render the value or pass it to an
+[island](component)'s prop, and a per-hole fallback and a boundary always agree
+on what the error is.
 
-**Scope today: the initial server-rendered load.** On a client-side navigation
-or a mutation, a deferred subtree still arrives with the rest of the response —
-correct, just not progressive. Progressive streaming for client fetches (and,
-with it, live islands _inside_ a deferred subtree) is on the roadmap.
+A failed deferred subtree is easy to miss on the server: the loader already
+returned its shell, so the failure never becomes a loader error. Point0 emits an
+[`rscError`](events) event for it — subscribe with `.on('rscError', …)`, or
+catch it alongside every other failure with `.on('error', …)`:
+
+```tsx
+root.on('error', ({ name, error, meta }) => report(error, { name, ...meta }))
+```
+
+### Where `defer` streams
+
+- **the initial SSR load** — the shell ships with the fallback, the subtree
+  pushes into the same HTML as it resolves;
+- **client fetches** — navigation, mutations, query refetches: the point0 client
+  reads the streamed body incrementally, filling each hole as it lands.
+
+A consumer that can't read a stream — SSG, OpenAPI, a foreign HTTP client — gets
+a single JSON body where `defer` degraded to inline: the subtree awaited, the
+fallback dropped, the same content without progressive delivery.
+
+### `suspend` — stream a slow interactive island
+
+`defer` is for markup. Slow content that must stay **interactive** gets a
+`suspend: 'server'` query instead — it streams the same way but comes alive. A
+[component](component) with its own loader is the natural home:
+
+```tsx
+export const LiveStats = root.lets
+  .component()
+  .loading(() => <StatsSkeleton />) // positional fallback — declared ABOVE the query
+  .loader(async () => ({ count: await db.idea.count() })) // ~2s
+  .query({ suspend: 'server' }) // don't hold the shell for it
+  .component(({ data }) => {
+    const [open, setOpen] = useState(false)
+    return (
+      <button onClick={() => setOpen(!open)}>
+        {data.count} ideas{open && ' — nice'}
+      </button>
+    )
+  })
+```
+
+Drop `<LiveStats />` anywhere: the shell ships with its `.loading()`, the loader
+streams into the same response, and the button works on the first paint — a
+**live** island, not just markup.
+
+### Or split the data into a query, injected with `.with`
+
+Prefer the data in a standalone [query](query) and the island in the page? Wire
+them with [`.with`](with) — the query's input comes from the route, and its
+`suspend: 'server'` keeps it streaming instead of blocking the shell:
+
+```tsx
+export const statsQuery = root.lets
+  .query()
+  .input(z.object({ projectId: z.string() }))
+  .loader(async ({ input }) => ({ stats: await countStats(input.projectId) }))
+  .query({ suspend: 'server' })
+
+export const projectPage = root.lets
+  .page('/projects/:projectId')
+  .loading(() => <Spinner />)
+  .with(statsQuery, ({ params }) => ({ projectId: params.projectId })) // inject + stream
+  .page(({ data: { stats } }) => <ProjectStats stats={stats} />)
+```
+
+The page renders with `data` once the query resolves; while it streams, the
+positional `.loading()` holds its place.
+
+### Combining them in one page
+
+Fast data, deferred markup, and a streamed island coexist on one page — each
+part lands as it is ready:
+
+```tsx
+export const homePage = root.lets
+  .page('/')
+  .loader(async () => ({
+    title: await getTitle(), // fast — in the shell
+    article: defer(<Article />, <ArticleSkeleton />), // slow markup — defer
+  }))
+  .page(({ data }) => (
+    <main>
+      <h1>{data.title}</h1>
+      {data.article}
+      <LiveStats />
+    </main>
+  ))
+```
+
+The shell paints instantly with the title (plus the skeleton and
+`<LiveStats />`'s loading state). The article streams in as markup; the stats
+stream in as a **live** island. One page, three arrival times, one response.
+
+### What's live where
+
+Interactivity only differs on the **first SSR paint** — every client fetch
+renders the subtree fresh on the client, so everything is live there.
+
+|                                | first SSR paint    | client fetch (nav / mutation) |
+| ------------------------------ | ------------------ | ----------------------------- |
+| top-level island               | 🟢 live            | 🟢 live                       |
+| island inside a `defer` hole   | 🔴 shows, but dead | 🟢 live                       |
+| island via `suspend: 'server'` | 🟢 live            | 🟢 live                       |
+
+So the rule is one line: **`defer` for server markup, `suspend: 'server'` for
+interactive islands.** On the first SSR paint an island revealed inside a
+`defer` hole displays but its handlers stay unwired — the browser completes the
+server-revealed `Suspense` boundary from the stream and never re-enters the
+suspended child. A `suspend` query dodges this because its data rides
+react-query: when it streams in, the observer re-renders the subscriber and
+mounts the island fresh. After the first paint (any client navigation) the limit
+is gone — a `defer` hole then renders fresh on the client too.
+
+The full `suspend` semantics — `'auto' | 'server' | 'client' | true | false`,
+positional fallbacks, point-vs-query level — are in
+[SSR → the `ssr` and `suspend` query options](ssr#the-ssr-and-suspend-query-options).
 
 ## Elements, or plain data?
 
@@ -332,22 +468,24 @@ Returning elements buys three things this cannot do:
 1. **The server decides the composition at request time.** CMS blocks, feature
    flags, markdown with embedded widgets — the loader assembles a tree the page
    renders without knowing its shape.
-2. **Component code ships per payload, not per page.** A component the page
-   imports statically always sits in the page's chunk closure. A component point
-   referenced from data downloads only when a payload mentions it — with
-   `<link rel="modulepreload">` in production builds.
+2. **Component code ships per payload, not per page.** Code-splitting is by
+   file: a component the page imports statically sits in the page's chunk, but a
+   component point **in its own file** downloads only when a payload references
+   it — with `<link rel="modulepreload">` in production builds. (One file can
+   declare any number of points; the point itself isn't the split unit, the file
+   is.)
 3. **Server-only dependencies render markup.** A server component runs Prisma, a
    markdown renderer, a heavy chart layout — and ships only the resulting host
    elements.
 
 The two element kinds split the same way:
 
-|                        | Server component (plain function)       | Component point (island)                  |
-| ---------------------- | --------------------------------------- | ----------------------------------------- |
-| What travels           | its rendered output (host elements)     | a reference (name) + props as data        |
-| Its code               | stays on the server                     | client bundle, its own chunk              |
-| Hooks, state, handlers | not available — one plain function call | a full live React component               |
-| How it updates         | refetch the loader that produced it     | re-renders on its own, like any component |
+|                        | Server component (plain function)       | Component point (island)                     |
+| ---------------------- | --------------------------------------- | -------------------------------------------- |
+| What travels           | its rendered output (host elements)     | a reference (name) + props as data           |
+| Its code               | stays on the server                     | client bundle (own chunk if in its own file) |
+| Hooks, state, handlers | not available — one plain function call | a full live React component                  |
+| How it updates         | refetch the loader that produced it     | re-renders on its own, like any component    |
 
 When none of the three apply, keep sending data.
 
@@ -363,35 +501,55 @@ Elements encode into plain JSON markers inside the regular payload:
 }
 ```
 
-`t` is the host tag (`0` = Fragment, `1` = Suspense, `2` = a deferred hole whose
-`id` names the fill streamed over `__POINT0_PUSH_RSC__` — see
-[`defer`](#deferred-subtrees-defer), `{ c: name }` = component point), `k` the
-key, `p` the props. User data keys that collide with `__p0e` are `$`-escaped and
-restored on decode. Because the codec wraps your [transformer](transformer),
-custom types keep working **inside element props** — a `Date` in
-`<Hero since={date} />` round-trips like any other `Date`.
+`t` is the node type — a host tag string like `"section"`, or `0` (Fragment),
+`1` (Suspense), `2` (a deferred hole whose `id` names the fill streamed over
+`__POINT0_PUSH_RSC__` — see
+[`defer`](#streaming-a-slow-part-defer-and-suspend)), or `{ c: name }` (a
+component-point reference); `k` is the key, `p` the props. User data keys that
+collide with `__p0e` are `$`-escaped and restored on decode. Because the codec
+wraps your [transformer](transformer), custom types keep working **inside
+element props** — a `Date` in `<Hero since={date} />` round-trips like any other
+`Date`.
 
 Decoding is one-way by design: the server encodes elements into responses, the
 SSR-embedded state, and streamed pushes, but **never decodes elements from
 client input** — element markers arriving in an `input` stay inert JSON.
 
-## What is rejected
+## What goes in loader data
 
-Every rejection fails the loader with an error naming the path.
+Three shapes cover everything a loader can return — a server component, an
+island, or plain markup:
 
-| In loader data                       | Result                                                               |
-| ------------------------------------ | -------------------------------------------------------------------- |
-| plain function component             | unfolds on the server (async supported), `memo` unwrapped            |
-| component point                      | reference — resolves from the points collection, renders client-side |
-| host element, `Fragment`, `Suspense` | kept, props walked                                                   |
-| function in host/reference props     | error — handlers belong inside a component point                     |
-| `ref` prop                           | error — refs cannot travel over the wire                             |
-| class component                      | error — server components are functions                              |
-| context / `React.lazy` elements      | error                                                                |
-| `<ClientOnly>`                       | error — use `.clientOnly()` on a component point instead             |
-| page / layout / provider point       | error — only component points can be referenced                      |
-| element deeper than `.rscDepth`      | error naming the path and the depth to set                           |
-| hooks inside a server component      | the component throws — the error says to make it a component point   |
+| In loader data                         | Becomes                                                                                                    |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| a plain function component             | a **server component** — unfolds on the server (async ok, `memo` unwrapped), only its host output travels  |
+| a component point                      | an **island** — a reference resolved from the points collection: server-rendered first, live on the client |
+| a host element, `Fragment`, `Suspense` | kept as-is, its props walked                                                                               |
+
+Everything interactive lives in the **island**, not the server component — the
+same feature works, you just declare it in the right place:
+
+| You want…                     | Server component                | Component point (island)     |
+| ----------------------------- | ------------------------------- | ---------------------------- |
+| event handlers (`onClick`, …) | ❌ can't cross the wire         | ✅                           |
+| hooks, state, effects         | ❌ it's one plain function call | ✅                           |
+| React context                 | ❌                              | ✅                           |
+| a `ref`                       | ❌ can't cross the wire         | ✅                           |
+| a code-split chunk            | ❌ `React.lazy` isn't accepted  | ✅ own file → own lazy chunk |
+| render only on the client     | —                               | ✅ set `.clientOnly()` on it |
+
+So when the loader rejects a function prop, a `ref`, or `React.lazy` — or a
+plain component throws because it called a hook — the fix is always the same:
+**move that piece into a component point.**
+
+The rest are genuinely malformed, and the error names the exact path:
+
+- a **class component** — server components and component points are both
+  functions; write it as one;
+- a **page, layout, or provider point** in data — only **component points** can
+  be referenced;
+- an element **deeper than `.rscDepth(n)`** — raise the depth (the error tells
+  you which).
 
 ## Where next
 

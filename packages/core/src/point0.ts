@@ -123,6 +123,7 @@ import {
 import {
   deserializeErrorsInDehydratedState,
   forceFreshDehydratedState,
+  readStreamedRscFetch,
   removeRedirectsFromQueryClientCache,
   toLiveDehydratedState,
 } from './query-client.js'
@@ -304,7 +305,7 @@ import {
   windowScrollPositionSetter,
   withLetsSugar,
 } from './utils.js'
-import { rscComponentsRegistry, wrapTransformerWithRsc } from './rsc.js'
+import { POINT0_STREAM_HEADER, rscComponentsRegistry, wrapTransformerWithRsc } from './rsc.js'
 
 export class Point0<
   in out TPointType extends PointType,
@@ -8859,6 +8860,10 @@ export class Point0<
       'X-Point0-Client-Request-Id': generateId(),
       ...(outputType === 'queryClientDehydratedState' ? { 'X-Point0-Output-Type': outputType } : {}),
       ...(transform ? { 'X-Point0-Transform': 'true' } : {}),
+      // Advertise that this fetch can read a streamed (NDJSON) body, so a loader/mutation `defer()` streams its holes
+      // in (see `defer`). Client-only: a server-to-server SSR nested fetch must keep getting a single JSON body (the
+      // outer render's pump drains its holes). Needs the transformer to decode the streamed subtrees, so gated on it.
+      ...(_point0_env.side.is.client && transform ? { [POINT0_STREAM_HEADER]: '1' } : {}),
     })
 
     // Encode a source object into a request body: FormData when it carries binary (File/Blob), otherwise a JSON string.
@@ -9160,8 +9165,20 @@ export class Point0<
         return result
       }
 
-      const json = await res.json()
-      const data: unknown = fetchOptions.transform ? (this._getTransformerWithRsc().deserialize(json) ?? json) : json
+      // Streamed (NDJSON) response for deferred holes (see `defer`): read incrementally — line 1 is the payload (holes
+      // decode to client slots), returned as `data` so the query/mutation resolves with the fast data at once; the
+      // remaining lines fill the holes in the background (`streamed.done`, fire-and-forget) as each subtree lands, a
+      // fresh client render that leaves an island inside a hole interactive. A response never advertised as streamed (a
+      // foreign endpoint, a hole-free payload, a server-to-server SSR fetch) takes the single-body path below unchanged.
+      let data: unknown
+      if (res.ok && res.headers.get(POINT0_STREAM_HEADER) && res.body) {
+        const streamed = await readStreamedRscFetch(this._getTransformerWithRsc(), res.body)
+        void streamed.done
+        data = streamed.data
+      } else {
+        const json = await res.json()
+        data = fetchOptions.transform ? (this._getTransformerWithRsc().deserialize(json) ?? json) : json
+      }
       // decoding may have started component-point chunk imports (RSC references) — resolve the fetch only with the
       // chunks warm, so the consumer never renders a Suspense fallback for an island that is already in the data
       await rscComponentsRegistry.drainPending()

@@ -1,10 +1,9 @@
 import { dehydrate, hydrate, QueryClient, replaceEqualDeep } from '@tanstack/react-query'
 import type { DehydratedState, QueryClientConfig, QueryState } from '@tanstack/react-query'
+import { POINT0_ERROR_CODES_MAP, serializeStateError } from './error.js'
 import type { ClassLikeError0, ErrorPoint0 } from './error.js'
 import { log } from './logger.js'
 import type { DataTransformerExtended } from './types.js'
-import { _point0_env } from './env.js'
-// import { getClientPoints } from './helpers.js'
 import { getClientPoints } from './helpers.js'
 import { RedirectTask } from './redirect.js'
 import { rscComponentsRegistry, rscDataHasElements, rscHolesRegistry } from './rsc.js'
@@ -256,6 +255,52 @@ export const installPushedQueriesReceiver = (transformer: DataTransformerExtende
  * its boundary (no refetch, no flicker). The subtree rides the RSC-wrapped transformer, so parsing decodes its elements
  * (and starts any island chunk imports) exactly like a query push; the fill lands only with those chunks warm.
  */
+/**
+ * Apply one streamed RSC-hole fill (see `defer`): parse the `{ id, data | error }` payload with the RSC-wrapped
+ * transformer (decoding the subtree's elements and starting any island chunk imports), then, once those chunks are
+ * warm, fill the client hole slot — a decoded subtree, or a revived error the slot re-throws to its nearest boundary.
+ * Shared by both fill channels: the SSR push receiver ({@link installPushedRscReceiver}, over `__POINT0_PUSH_RSC__`) and
+ * the client-fetch NDJSON reader ({@link readStreamedRscFetch}). Never rejects — a bad payload is logged and swallowed
+ * so one broken fill can't derail the others.
+ */
+export const applyPushedRscFill = (transformer: DataTransformerExtended, serialized: string): Promise<void> => {
+  const logFailure = (error: unknown): void => {
+    log({ level: 'error', category: ['ssr'], message: 'Failed to hydrate a streamed RSC hole push', error })
+  }
+  try {
+    const payload = transformer.parse(serialized) as {
+      id: string
+      data?: unknown
+      error?: unknown
+      errorFallback?: unknown
+    }
+    const applyFill = (): void => {
+      if (payload.error !== undefined) {
+        const ErrorClass = getClientPoints().manager.root._Error
+        rscHolesRegistry.fill(payload.id, {
+          error: ErrorClass.from(payload.error),
+          errorFallback: payload.errorFallback,
+        })
+      } else {
+        rscHolesRegistry.fill(payload.id, { node: payload.data })
+      }
+    }
+    const applyFillSafe = (): void => {
+      try {
+        applyFill()
+      } catch (error) {
+        logFailure(error)
+      }
+    }
+    // decode may have started island chunk imports in the pushed subtree — fill with those chunks
+    // warm, so a subtree revealed on the client never re-suspends on an island already in its data.
+    return rscComponentsRegistry.drainPending().then(applyFillSafe, applyFillSafe)
+  } catch (error) {
+    logFailure(error)
+    return Promise.resolve()
+  }
+}
+
 export const installPushedRscReceiver = (transformer: DataTransformerExtended): Promise<void> => {
   if (typeof window === 'undefined') {
     return Promise.resolve()
@@ -264,54 +309,96 @@ export const installPushedRscReceiver = (transformer: DataTransformerExtended): 
     __POINT0_PUSH_RSC__?: (serialized: string) => void
     __POINT0_PUSH_RSC_BUFFER__?: string[]
   }
-  const receive = (serialized: string): Promise<void> => {
-    const logFailure = (error: unknown): void => {
-      log({ level: 'error', category: ['ssr'], message: 'Failed to hydrate a streamed RSC hole push', error })
-    }
-    try {
-      const payload = transformer.parse(serialized) as { id: string; data?: unknown; error?: unknown }
-      const applyFill = (): void => {
-        if (payload.error !== undefined) {
-          const ErrorClass = getClientPoints().manager.root._Error
-          rscHolesRegistry.fill(payload.id, { error: ErrorClass.from(payload.error) })
-        } else {
-          rscHolesRegistry.fill(payload.id, { node: payload.data })
-        }
-      }
-      const applyFillSafe = (): void => {
-        try {
-          applyFill()
-        } catch (error) {
-          logFailure(error)
-        }
-      }
-      // decode may have started island chunk imports in the pushed subtree — fill with those chunks
-      // warm, so a subtree revealed on the client never re-suspends on an island already in its data.
-      return rscComponentsRegistry.drainPending().then(applyFillSafe, applyFillSafe)
-    } catch (error) {
-      logFailure(error)
-      return Promise.resolve()
-    }
-  }
   const buffered = w.__POINT0_PUSH_RSC_BUFFER__ ?? []
-  w.__POINT0_PUSH_RSC__ = (serialized: string) => void receive(serialized)
+  w.__POINT0_PUSH_RSC__ = (serialized: string) => void applyPushedRscFill(transformer, serialized)
   w.__POINT0_PUSH_RSC_BUFFER__ = []
   // The buffered pushes arrived BEFORE hydration; `mount()` awaits the returned promise before
   // hydrateRoot so these holes are FILLED when React hydrates their boundaries. A hole still
   // suspended at hydration would leave the server-streamed content INERT — React abandons a
   // server-revealed boundary whose client child suspends (and re-renders never re-enter it, unlike a
   // query whose observer notifies). Post-hydration pushes stream in fire-and-forget.
-  return Promise.all(buffered.map((serialized) => receive(serialized))).then(() => undefined)
+  return Promise.all(buffered.map((serialized) => applyPushedRscFill(transformer, serialized))).then(() => undefined)
 }
 
-// Errors in the dehydrated state travel to the browser: public projection in production,
-// private in dev (the developer is the audience there).
-export const serializeStateError = (
-  ErrorClass: ClassLikeError0<ErrorPoint0>,
-  error: unknown,
-): Record<string, unknown> => {
-  const error0 = ErrorClass.from(error)
-  return _point0_env.mode.is.production ? ErrorClass.serializePublic(error0) : ErrorClass.serializePrivate(error0)
+/**
+ * Read a streamed (NDJSON) data-fetch response for deferred holes (see `defer`) incrementally. Line 1 is the payload —
+ * parsed with the RSC-wrapped transformer (holes in it decode to client slots keyed by id) and returned as `data` so
+ * the caller resolves the query/mutation with the FAST data at once. Each following line is a hole fill
+ * ({@link applyPushedRscFill}) applied as its subtree lands — a client render (no Fizz `$RC`), so an interactive island
+ * inside a hole is LIVE, unlike an SSR hole. The returned `done` promise settles when the stream closes; the caller
+ * does not await it — the fills wake the already-rendered hole slots in the background. `done` never rejects: a
+ * mid-stream abort/error stops the pump and leaves its holes for the caller's abort handling.
+ */
+export const readStreamedRscFetch = async (
+  transformer: DataTransformerExtended,
+  body: ReadableStream<Uint8Array>,
+): Promise<{ data: unknown; done: Promise<void> }> => {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  // Pull chunks until the next newline; everything before it is one complete NDJSON line. Returns `undefined` at the end
+  // of the stream (a clean close leaves no trailing partial line — the server terminates every line with `\n`).
+  const readLine = async (): Promise<string | undefined> => {
+    for (;;) {
+      const nl = buffer.indexOf('\n')
+      if (nl >= 0) {
+        const line = buffer.slice(0, nl)
+        buffer = buffer.slice(nl + 1)
+        return line
+      }
+      const { done, value } = await reader.read()
+      if (value) {
+        buffer += decoder.decode(value, { stream: true })
+      }
+      if (done) {
+        const rest = buffer
+        buffer = ''
+        return rest.length > 0 ? rest : undefined
+      }
+    }
+  }
+
+  const firstLine = await readLine()
+  // The holes THIS fetch introduces: line-1 decode is synchronous, so nothing else touches the bundle-wide registry
+  // between these two snapshots — the diff is exactly the ids we must fail if the stream drops before they arrive. (Ids
+  // are globally unique per server registry, so this never captures another concurrent stream's holes.)
+  const pendingBefore = rscHolesRegistry.pendingIds()
+  const data = firstLine === undefined ? undefined : transformer.parse(firstLine)
+  const myHoleIds = [...rscHolesRegistry.pendingIds()].filter((id) => !pendingBefore.has(id))
+
+  const done = (async (): Promise<void> => {
+    try {
+      for (;;) {
+        const line = await readLine()
+        if (line === undefined) {
+          break
+        }
+        if (line.length > 0) {
+          await applyPushedRscFill(transformer, line)
+        }
+      }
+    } catch (error) {
+      log({ level: 'error', category: ['ssr'], message: 'Streamed RSC fetch reader stopped early', error })
+    } finally {
+      reader.releaseLock()
+      // Any hole whose fill never arrived (the stream dropped, or the fetch was aborted mid-flight) throws to its
+      // nearest boundary instead of spinning forever. A clean close fills every hole first, so this is a happy-path
+      // no-op; `failIfPending` leaves already-arrived holes untouched.
+      if (myHoleIds.length > 0) {
+        const ErrorClass = getClientPoints().manager.root._Error
+        for (const id of myHoleIds) {
+          rscHolesRegistry.failIfPending(
+            id,
+            new ErrorClass('The streamed response ended before this deferred content arrived', {
+              code: POINT0_ERROR_CODES_MAP.RSC_STREAM_INCOMPLETE,
+            }),
+          )
+        }
+      }
+    }
+  })()
+
+  return { data, done }
 }
 
 export const serializeErrorsInDehydratedState = (

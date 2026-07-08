@@ -671,6 +671,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                     depth: point.point._rscDepth ?? 0,
                     label: point.toString(),
                     holes: _ss.__POINT0_RSC_HOLES__.getOrUndefined(),
+                    ErrorClass: this.engine.server.points.manager.root._Error,
                   })) as Data
                   layers.forEach((layer) => {
                     layer.data = data
@@ -694,6 +695,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                     depth: point.point._rscDepth ?? 0,
                     label: point.toString(),
                     holes: _ss.__POINT0_RSC_HOLES__.getOrUndefined(),
+                    ErrorClass: this.engine.server.points.manager.root._Error,
                   })) as Data
                   layers.forEach((layer) => {
                     layer.data = data

@@ -1,7 +1,15 @@
 import * as React from 'react'
+import {
+  ErrorPoint0,
+  POINT0_ERROR_CODES_MAP,
+  serializeStateError,
+  type ClassLikeError0,
+  type Point0ErrorCode,
+} from './error.js'
 import { ClientOnly, getClientPoints } from './helpers.js'
 import { superstore } from './super-store.js'
 import type { DataTransformerExtended } from './types.js'
+import { generateId } from './utils.js'
 
 /**
  * RSC ("React elements as data") — the machinery that lets a server `.loader()` (of any point: page, layout, query,
@@ -35,6 +43,14 @@ import type { DataTransformerExtended } from './types.js'
 
 /** The marker key carrying an encoded element on the wire. User data keys colliding with it are `$`-escaped. */
 export const RSC_MARKER_KEY = '__p0e'
+/**
+ * Header that gates streamed (NDJSON) client fetches for deferred holes (see {@link defer}). Symmetric: the client sends
+ * it on a data/query/mutation fetch to say "I can read a streamed body"; the server echoes it on the response to say
+ * "this body IS NDJSON — line 1 is the payload, each following line fills a hole". Absent on both sides → a plain
+ * single JSON body, so foreign clients, OpenAPI, and server-to-server SSR fetches are untouched (a hole degrades to
+ * inline).
+ */
+export const POINT0_STREAM_HEADER = 'x-point0-stream'
 const RSC_ESCAPED_KEY_REGEX = /^__p0e\$*$/
 /**
  * Brand on the lazy-reference slot wrapper (see {@link RscComponentsRegistry.resolve}), carrying the component-point
@@ -137,9 +153,24 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return proto === Object.prototype || proto === null
 }
 
-const rscError = (path: string[], message: string): Error => {
+/**
+ * Build an RSC validation error as an `ErrorPoint0` (the app's error class when threaded in via `options.ErrorClass`,
+ * else the base) — never a native `Error`, so it carries a `code`, projects public/private like every other framework
+ * error, and flows through the same boundary/serialization path. Defaults to `POINT0_RSC_INVALID_OUTPUT` — the "this
+ * can't cross the wire" family. (A server component that THROWS is not built here — it is coerced with
+ * `ErrorClass.from` and re-thrown as-is.)
+ */
+const rscError = (
+  path: string[],
+  message: string,
+  options: NormalizeRscOutputOptions,
+  extra?: { code?: Point0ErrorCode },
+): ErrorPoint0 => {
   const at = path.length ? ` (at ${path.join('.')})` : ''
-  return new Error(`RSC${at}: ${message}`)
+  const ErrorClass = options.ErrorClass ?? ErrorPoint0
+  return new ErrorClass(`RSC${at}: ${message}`, {
+    code: extra?.code ?? POINT0_ERROR_CODES_MAP.RSC_INVALID_OUTPUT,
+  })
 }
 
 // defer — deferred holes (progressive in-tree streaming)
@@ -151,32 +182,50 @@ type DeferredSubtree = {
   readonly [RSC_DEFER_BRAND]: true
   readonly element: React.ReactElement
   readonly fallback: React.ReactNode
+  readonly errorFallback: React.ReactNode | ((error: ErrorPoint0) => React.ReactNode)
 }
 
 /**
  * Defer a slow server subtree so the loader payload never waits for it. Instead of awaiting the element inline,
- * `normalizeRscOutput` ships a HOLE in its place under a `Suspense` boundary (showing `fallback`), streams the shell
- * immediately, and pushes the resolved subtree into the same response as it settles — `__POINT0_PUSH_RSC__`, the RSC
- * analog of the streamed-query push. The client fills the hole in place and the boundary reveals: no refetch, no
- * flicker, hydration matching by construction.
+ * `normalizeRscOutput` ships a HOLE in its place under a `Suspense` boundary (showing `fallback`), returns the shell
+ * immediately, and delivers the resolved subtree on the same response as it settles — over the SSR push channel
+ * (`__POINT0_PUSH_RSC__`) on a document render, or as an NDJSON fill line on a client fetch. The client fills the hole
+ * in place and the boundary reveals: no refetch, no flicker.
  *
  * ```tsx
  * .loader(async () => ({
- *   stats: await getStats(),                             // fast — ships in the shell
- *   analytics: defer(<Analytics />, <ChartSkeleton />),  // slow — streams in later
+ *   stats: await getStats(),                                            // fast — ships in the shell
+ *   analytics: defer(<Analytics />, <ChartSkeleton />, <ChartError />), // slow — streams in later
  * }))
  * ```
  *
- * Only meaningful inside a server loader whose response can stream (a page/document SSR render). Outside a streaming
- * context (data-only fetches, SSG) it degrades gracefully — the subtree is awaited inline like a plain server component
- * and the fallback is dropped: the same content, just without progressive delivery.
+ * The optional third argument is an ERROR fallback: if the deferred subtree throws, this renders in the hole's place
+ * instead of the error propagating to the nearest `ErrorBoundary0` — a per-hole error boundary scoped to this one block
+ * (the rest of the page stays untouched). It is either static server markup (like `fallback`), or a function of the
+ * error — `(error) => <ChartError message={error.message} />`. The function runs ON THE SERVER when the subtree fails,
+ * and receives the error already projected for the client: public fields in production, the full error in dev — the
+ * SAME `ErrorPoint0` instance the nearest boundary would get, gated by the app's error class (`.errorClass()`). So
+ * nothing private leaks even when the value is rendered or handed to an island prop, and a per-hole fallback and a
+ * boundary always see the same error. Its markup streams into the hole like any other deferred subtree. Omit the
+ * argument to let the failure bubble to the nearest boundary.
+ *
+ * Streams on any response the loader produces: the initial SSR render AND client fetches (navigation, mutations,
+ * refetches). A consumer that can't read a stream (SSG, OpenAPI, a foreign client that never advertised streaming) gets
+ * a single JSON body where the subtree was awaited inline and the fallback dropped — the same content, no progressive
+ * delivery. A hole delivered on a CLIENT fetch renders fresh on the client, so an interactive island inside it is live;
+ * on the initial SSR load such an island displays but is not hydrated (the browser completes the server-revealed
+ * boundary from the stream), so keep first-paint interactivity at the top level or in a `suspend: 'server'` query.
  *
  * Typed as the element it stands for: after normalize the field IS a live element (a `Suspense` boundary), so it
  * renders like any other RSC loader output. The deferral marker is an internal detail — only ever unwrapped by
  * normalize.
  */
-export const defer = (element: React.ReactElement, fallback?: React.ReactNode): React.ReactElement =>
-  ({ [RSC_DEFER_BRAND]: true, element, fallback }) as unknown as React.ReactElement
+export const defer = (
+  element: React.ReactElement,
+  fallback?: React.ReactNode,
+  errorFallback?: React.ReactNode | ((error: ErrorPoint0) => React.ReactNode),
+): React.ReactElement =>
+  ({ [RSC_DEFER_BRAND]: true, element, fallback, errorFallback }) as unknown as React.ReactElement
 
 const isDeferred = (value: unknown): value is DeferredSubtree =>
   typeof value === 'object' && value !== null && (value as Record<string, unknown>)[RSC_DEFER_BRAND] === true
@@ -193,6 +242,13 @@ export type NormalizeRscOutputOptions = {
    * tests) a deferred subtree is awaited inline and the hole machinery is skipped.
    */
   holes?: RscHoleRegistry
+  /**
+   * The app's error class (from `.errorClass()`), used to coerce a server component's throw and to project a failed
+   * {@link defer}'d subtree's error before it reaches a function-form error fallback — public in production, full in
+   * dev, exactly as it crosses to the client. Defaults to the base {@link ErrorPoint0} when absent (direct-normalize
+   * unit tests / the inline degradation path).
+   */
+  ErrorClass?: ClassLikeError0<ErrorPoint0>
 }
 
 type RscHoleResult = { node: unknown } | { error: unknown }
@@ -202,9 +258,17 @@ export type RscHoleEntry = {
   id: string
   settled: boolean
   delivered: boolean
+  /** The point that produced the deferred subtree, e.g. `page "home"` — carried into the `rscError` event when it fails. */
+  label?: string
   /** The never-rejecting settle promise the SSR hole slot suspends on. */
   throwable: Promise<void>
   result?: RscHoleResult
+  /**
+   * Normalized markup rendered IN PLACE OF the subtree if it fails (see {@link defer}'s 3rd arg) — a per-hole error
+   * fallback. Undefined → a failed subtree's error throws to the nearest boundary (the default). Travels with the error
+   * fill so the client slot can render it too.
+   */
+  errorFallback?: React.ReactNode
 }
 
 /**
@@ -216,18 +280,39 @@ export type RscHoleEntry = {
  */
 export class RscHoleRegistry {
   private counter = 0
+  /**
+   * Unique per request. Hole ids must not collide on the CLIENT, where the bundle-wide {@link RscHolesRegistry} is fed
+   * by many streams at once — several concurrent client fetches (each with its own server registry counting from 0)
+   * plus the SSR push channel. A per-registry random prefix keeps `id`s globally distinct even across load-balanced
+   * servers. Generated lazily on the first `defer` so a registry minted for a fetch that never defers costs nothing.
+   */
+  private prefix?: string
   /** All holes minted this request, by id — the render pump drains resolved ones. */
   readonly entries = new Map<string, RscHoleEntry>()
 
-  register(normalize: () => Promise<unknown>): RscHoleEntry {
-    const id = `h${this.counter++}`
+  register(
+    normalize: () => Promise<unknown>,
+    resolveErrorFallback?: (error: unknown) => Promise<React.ReactNode>,
+  ): RscHoleEntry {
+    this.prefix ??= generateId()
+    const id = `${this.prefix}-h${this.counter++}`
     const entry: RscHoleEntry = { id, settled: false, delivered: false, throwable: Promise.resolve() }
     entry.throwable = normalize().then(
       (node) => {
         entry.settled = true
         entry.result = { node }
       },
-      (error: unknown) => {
+      async (error: unknown) => {
+        // Resolve the error fallback with the real error in hand (see {@link defer}'s 3rd arg) BEFORE marking settled,
+        // so every consumer — the SSR slot, the SSR pump, the NDJSON pump — reads a fully-ready entry. If resolving the
+        // fallback itself fails, leave it undefined so the ORIGINAL error bubbles to the nearest boundary.
+        if (resolveErrorFallback) {
+          try {
+            entry.errorFallback = await resolveErrorFallback(error)
+          } catch {
+            entry.errorFallback = undefined
+          }
+        }
         entry.settled = true
         entry.result = { error }
       },
@@ -314,6 +399,8 @@ const normalizeData = async (
       throw rscError(
         path,
         `${options.label} returned a deferred subtree deeper than its rscDepth allows. Raise it with .rscDepth(${requiredDepth}) on the point (0 allows it as the whole output, 1 allows it in first-level fields, …).`,
+        options,
+        { code: POINT0_ERROR_CODES_MAP.RSC_DEPTH_EXCEEDED },
       )
     }
     return await normalizeHole(value, path, options)
@@ -324,6 +411,8 @@ const normalizeData = async (
       throw rscError(
         path,
         `${options.label} returned a React element deeper than its rscDepth allows. Raise it with .rscDepth(${requiredDepth}) on the point (0 allows an element as the whole output, 1 allows elements in first-level fields, …).`,
+        options,
+        { code: POINT0_ERROR_CODES_MAP.RSC_DEPTH_EXCEEDED },
       )
     }
     return await normalizeElement(value, path, options)
@@ -365,7 +454,7 @@ const normalizeElement = async (
   }
   const props = element.props as Record<string, unknown>
   if (props.ref != null) {
-    throw rscError(path, `refs cannot travel over the wire — remove the ref from ${describeType(type)}.`)
+    throw rscError(path, `refs cannot travel over the wire — remove the ref from ${describeType(type)}.`, options)
   }
 
   // wire-representable types: keep the element, walk its props
@@ -384,6 +473,7 @@ const normalizeElement = async (
       `only component points can be referenced from loader data — ${describeType(type)} is a ${String(
         pointType,
       )} point. Declare it with .lets.component() to send it to the client.`,
+      options,
     )
   }
 
@@ -392,19 +482,24 @@ const normalizeElement = async (
     throw rscError(
       path,
       `<ClientOnly> has no meaning inside loader data — the loader never runs in the browser. Make the child a component point and set .clientOnly() on it instead.`,
+      options,
     )
   }
   let render: (props_: Record<string, unknown>) => unknown
   if (typeof type === 'function') {
     if (type.prototype && (type.prototype as { isReactComponent?: unknown }).isReactComponent) {
-      throw rscError(path, `class component ${describeType(type)} cannot run as a server component — use a function.`)
+      throw rscError(
+        path,
+        `class component ${describeType(type)} cannot run as a server component — use a function.`,
+        options,
+      )
     }
     render = type as (props_: Record<string, unknown>) => unknown
   } else if (typeof type === 'object' && type && $$typeofOf(type) === REACT_FORWARD_REF) {
     const forwarded = type as unknown as { render: (props_: unknown, ref: unknown) => unknown }
     render = (props_) => forwarded.render(props_, undefined)
   } else {
-    throw rscError(path, `${describeType(type)} elements are not supported in loader data.`)
+    throw rscError(path, `${describeType(type)} elements are not supported in loader data.`, options)
   }
   let output: unknown
   try {
@@ -413,12 +508,12 @@ const normalizeElement = async (
       output = await output
     }
   } catch (error) {
-    throw rscError(
-      path,
-      `server component ${describeType(type)} threw while rendering on the server: ${String(
-        (error as Error | undefined)?.message ?? error,
-      )}. Server components run as plain function calls — hooks and context are not available; if it needs them, make it a component point so it renders on the client.`,
-    )
+    // A server component threw while unfolding on the server. Coerce it to the app's error class (else the base
+    // `ErrorPoint0`) and re-throw — same as everywhere else in the framework. `from` keeps an intentional typed error's
+    // fields (code/status/message) and coerces a plain throw; nothing is editorialized, so a user's own
+    // `throw new Error(...)` reaches the boundary / `defer` fallback exactly as they wrote it.
+    const ErrorClass = options.ErrorClass ?? ErrorPoint0
+    throw ErrorClass.from(error)
   }
   const normalized = await normalizeData(output, Infinity, [...path, describeType(type)], options)
   // preserve the unfolded element's key for reconciliation
@@ -429,10 +524,23 @@ const normalizeElement = async (
 }
 
 /**
+ * Project a failed deferred subtree's error into what a function-form error fallback (see {@link defer}) receives:
+ * coerce it to the app's error class, reduce it to its client projection (public in production, full in dev), and
+ * revive it — so the fallback gets the SAME {@link ErrorPoint0} instance the nearest boundary would, and nothing private
+ * leaks even if it renders the value or hands it to an island prop. Falls back to the base class when no error class
+ * was threaded in (direct-normalize unit tests / the inline path).
+ */
+const projectHoleError = (error: unknown, ErrorClass: ClassLikeError0<ErrorPoint0> | undefined): ErrorPoint0 => {
+  const ResolvedErrorClass = ErrorClass ?? ErrorPoint0
+  return ResolvedErrorClass.from(serializeStateError(ResolvedErrorClass, error))
+}
+
+/**
  * Turn a {@link defer}'d subtree into a hole: register the subtree's (un-awaited) normalization in the per-request hole
  * registry, and stand a `Suspense` boundary in its place with a hole slot as the child. SSR renders the fallback and
  * streams the boundary out of order when the subtree lands; the wire encodes the slot as a `{ t: 2, id }` hole node.
- * Without a registry (no streaming context) the subtree is awaited inline — the same content, no progressive delivery.
+ * Without a registry (no streaming context) the subtree is awaited inline — the same content, no progressive delivery,
+ * but the error fallback still applies if the subtree fails.
  */
 const normalizeHole = async (
   deferred: DeferredSubtree,
@@ -440,14 +548,38 @@ const normalizeHole = async (
   options: NormalizeRscOutputOptions,
 ): Promise<unknown> => {
   const holes = options.holes
+  // Resolve the error fallback lazily, once the subtree's error is known: project the error for the client, run the
+  // function form with it (or take the static node), and normalize the result to wire markup. Shared by both paths.
+  const rawErrorFallback = deferred.errorFallback
+  const resolveErrorFallback =
+    rawErrorFallback === undefined
+      ? undefined
+      : async (error: unknown): Promise<React.ReactNode> => {
+          const element =
+            typeof rawErrorFallback === 'function'
+              ? rawErrorFallback(projectHoleError(error, options.ErrorClass))
+              : rawErrorFallback
+          return (await normalizeData(element, Infinity, [...path, 'defer.errorFallback'], options)) as React.ReactNode
+        }
   if (!holes) {
-    return await normalizeData(deferred.element, Infinity, [...path, 'defer'], options)
+    if (!resolveErrorFallback) {
+      return await normalizeData(deferred.element, Infinity, [...path, 'defer'], options)
+    }
+    try {
+      return await normalizeData(deferred.element, Infinity, [...path, 'defer'], options)
+    } catch (error) {
+      return await resolveErrorFallback(error)
+    }
   }
   const fallback =
     deferred.fallback === undefined
       ? undefined
       : ((await normalizeData(deferred.fallback, Infinity, [...path, 'defer.fallback'], options)) as React.ReactNode)
-  const entry = holes.register(() => normalizeData(deferred.element, Infinity, [...path, 'defer'], options))
+  const entry = holes.register(
+    () => normalizeData(deferred.element, Infinity, [...path, 'defer'], options),
+    resolveErrorFallback,
+  )
+  entry.label = options.label
   const holeSlot = makeServerHoleSlot(entry)
   return React.createElement(React.Suspense, fallback === undefined ? null : { fallback }, holeSlot)
 }
@@ -464,6 +596,11 @@ const serverHoleComponent = (entry: RscHoleEntry): React.ComponentType => {
     if (entry.settled) {
       const result = entry.result
       if (result && 'error' in result) {
+        // A per-hole error fallback (defer's 3rd arg) renders in place, scoping the failure to this block; without one
+        // the error re-throws to the nearest boundary.
+        if (entry.errorFallback !== undefined) {
+          return entry.errorFallback
+        }
         throw result.error
       }
       return (result?.node ?? null) as React.ReactNode
@@ -493,6 +630,7 @@ const keepElement = async (
         `functions cannot travel over the wire (prop "${key}" of ${describeType(
           type,
         )}). Event handlers and render props belong inside a component point.`,
+        options,
       )
     }
     const normalized = await normalizeData(value, Infinity, [...path, key], options)
@@ -741,6 +879,8 @@ type RscClientHole = {
   hasError: boolean
   node?: unknown
   error?: unknown
+  /** A per-hole error fallback (see {@link defer}) — rendered in place of the subtree when it failed. */
+  errorFallback?: unknown
   promise: Promise<void>
   wake: () => void
 }
@@ -773,12 +913,19 @@ export class RscHolesRegistry {
     return slot
   }
 
-  /** Decode side: a component that throws until the hole is filled, then renders its subtree (or re-throws its error). */
+  /**
+   * Decode side: a component that throws until the hole is filled, then renders its subtree. A failed subtree renders
+   * its per-hole error fallback in place (defer's 3rd arg) if one arrived, otherwise re-throws to the nearest
+   * boundary.
+   */
   slotComponent(id: string): React.ComponentType<any> {
     const slot = this.ensure(id)
     const Hole = (): React.ReactNode => {
       if (slot.filled) {
         if (slot.hasError) {
+          if (slot.errorFallback !== undefined) {
+            return slot.errorFallback as React.ReactNode
+          }
           throw slot.error
         }
         return slot.node as React.ReactNode
@@ -790,17 +937,44 @@ export class RscHolesRegistry {
     return Hole
   }
 
-  /** Push side: fill a hole with its decoded subtree (or error) and wake the suspended boundary. */
-  fill(id: string, result: { node: unknown } | { error: unknown }): void {
+  /** Push side: fill a hole with its decoded subtree (or error + optional per-hole error fallback) and wake it. */
+  fill(id: string, result: { node: unknown } | { error: unknown; errorFallback?: unknown }): void {
     const slot = this.ensure(id)
     if ('error' in result) {
       slot.error = result.error
       slot.hasError = true
+      slot.errorFallback = result.errorFallback
     } else {
       slot.node = result.node
     }
     slot.filled = true
     slot.wake()
+  }
+
+  /**
+   * Ids of holes whose slot exists but hasn't been filled yet — the client stream reader diffs this to learn which
+   * holes a given fetch introduced, and to fail exactly those if its stream drops before they arrive.
+   */
+  pendingIds(): Set<string> {
+    const ids = new Set<string>()
+    for (const [id, slot] of this.slots) {
+      if (!slot.filled) {
+        ids.add(id)
+      }
+    }
+    return ids
+  }
+
+  /**
+   * Fail a hole with an error ONLY if it's still unfilled (a hole that already arrived keeps its content). Used when a
+   * streamed fetch ends before a hole's subtree landed, so its slot throws to the nearest boundary instead of
+   * spinning.
+   */
+  failIfPending(id: string, error: unknown): void {
+    const slot = this.slots.get(id)
+    if (slot && !slot.filled) {
+      this.fill(id, { error })
+    }
   }
 }
 

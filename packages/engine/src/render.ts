@@ -5,10 +5,9 @@ import {
   getDehydratedStateFromQueryClientDehydratedStateQuery,
   isQueryClientDehydratedStateQuery,
   serializeErrorsInDehydratedState,
-  serializeStateError,
   superstore,
 } from '@point0/core'
-import type { AppComponent, ClientPoints, PagePoint } from '@point0/core'
+import type { AppComponent, ClientPoints, ErrorPoint0, EventerEmitFn, PagePoint } from '@point0/core'
 import { createHead } from '@unhead/react/server'
 import { uneval } from 'devalue'
 import { createElement } from 'react'
@@ -19,6 +18,7 @@ import { resolveTags } from 'unhead/utils'
 import type { SsrOptionsResolved } from './config.js'
 import { buildDocumentElement, parseDocumentTemplate } from './document.js'
 import type { Executor } from './executor.js'
+import { buildHolePushPayload, emitHoleError } from './rsc-stream.js'
 import { readableStreamToString } from './utils.js'
 
 /**
@@ -416,19 +416,19 @@ window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientP
     // Suspense boundary, so the fill lands in the client hole registry before React reveals the content and hydration
     // matches. `undefined` when the page never used `defer` (no registry, or nothing resolved since the last flush).
     const holeRegistry = _ss.__POINT0_RSC_HOLES__.get()
+    // Cast like `Engine.getEmit` does — a specific `_emit` doesn't unify with `EventerEmitFn`'s erased param type.
+    const rscEmit = clientPoints.manager.root._emit.bind(clientPoints.manager.root) as EventerEmitFn<ErrorPoint0>
     const collectNewlyResolvedHoleScripts = (): string | undefined => {
       if (!holeRegistry) {
         return undefined
       }
       const scripts: string[] = []
       for (const entry of holeRegistry.takeResolved()) {
-        const result = entry.result
-        // A failed subtree pushes its error (public projection in prod, like a query error) so the client hole slot
-        // throws it to the nearest boundary — matching the server, which streamed the fallback + a client retry.
-        const payload =
-          result && 'error' in result
-            ? { id: entry.id, error: serializeStateError(ErrorClass, result.error) }
-            : { id: entry.id, data: result?.node }
+        // A failed subtree is observable server-side via `rscError` before its error state streams to the client.
+        emitHoleError(rscEmit, entry, ErrorClass)
+        // The same push payload the client-fetch NDJSON framing writes (a failed subtree carries its error's public
+        // projection so the client hole slot re-throws it to the nearest boundary) — here wrapped in an inline script.
+        const payload = buildHolePushPayload(entry, ErrorClass)
         scripts.push(
           `<script>window.__POINT0_PUSH_RSC__(${uneval(clientPoints.transformer.stringify(payload))})</script>`,
         )

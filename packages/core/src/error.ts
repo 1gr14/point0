@@ -211,6 +211,18 @@ export type ClassLikeError0<T extends ErrorPoint0 = ErrorPoint0> = {
   serializePrivate(error: T): Record<string, unknown>
 }
 
+// Project an error for a client audience: coerce to the configured class, then serialize public in production, private
+// in dev (the developer is the audience there). The single gate for what an error reveals across the wire — the
+// dehydrated state, streamed query pushes, and deferred-hole error fills all pass through here. Reviving the result with
+// `ErrorClass.from(...)` gives the same instance the client boundary receives.
+export const serializeStateError = (
+  ErrorClass: ClassLikeError0<ErrorPoint0>,
+  error: unknown,
+): Record<string, unknown> => {
+  const error0 = ErrorClass.from(error)
+  return _point0_env.mode.is.production ? ErrorClass.serializePublic(error0) : ErrorClass.serializePrivate(error0)
+}
+
 /**
  * Registry of all `POINT0_*` error codes the framework attaches (via `error.code`) to the errors it creates. This is
  * the single source of truth: every code is written here exactly once. Keep it in sync when adding a new coded error —
@@ -247,6 +259,12 @@ export const POINT0_ERROR_CODES = [
   'POINT0_ERROR_STRINGIFY_FAILED',
   // ssr (@point0/engine)
   'POINT0_SSR_STREAM_RENDER_ERROR',
+  // rsc: elements as data (@point0/core) — a loader returned something that can't cross the wire (a server component
+  // that THROWS is not coded here: it is coerced with `ErrorClass.from` and re-thrown as-is)
+  'POINT0_RSC_DEPTH_EXCEEDED', // an element/deferred subtree sits deeper than the point's .rscDepth() allows
+  'POINT0_RSC_INVALID_OUTPUT', // a ref, a function prop, a class component, a non-component point, …
+  // deferred RSC holes (@point0/core) — a streamed data fetch dropped before a hole's subtree arrived
+  'POINT0_RSC_STREAM_INCOMPLETE',
 ] as const
 
 export type Point0ErrorCode = (typeof POINT0_ERROR_CODES)[number]

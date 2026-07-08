@@ -12,6 +12,7 @@ import {
   rscHolesRegistry,
 } from '../src/rsc.js'
 import { Point0 } from '../src/point0.js'
+import { ErrorPoint0 } from '../src/error.js'
 
 const roundtrip = (value: unknown): unknown => decodeRscData(JSON.parse(JSON.stringify(encodeRscData(value))))
 
@@ -271,6 +272,77 @@ describe('rsc defer / holes', () => {
     const Slot = decoded.y.type as (props: object) => React.ReactNode
     rscHolesRegistry.fill('hErr', { error: new Error('boom') })
     expect(() => Slot({})).toThrow('boom')
+  })
+
+  it('a function error fallback (defer 3rd arg) runs with the failed subtree error and lands on the entry', async () => {
+    const holes = new RscHoleRegistry()
+    const Boom = async () => {
+      throw new Error('unit-boom')
+    }
+    await normalizeRscOutput(
+      { hero: defer(<Boom />, <span>loading</span>, (error) => <b>{`msg: ${error.message}`}</b>) },
+      { depth: 1, label: 'p', holes },
+    )
+    const [entry] = [...holes.entries.values()]
+    await entry!.throwable
+    expect(entry!.settled).toBe(true)
+    expect(entry!.result && 'error' in entry!.result).toBe(true)
+    // the function ran with the real (coerced) error; its normalized markup is stored for the slot AND the push payload
+    const fb = entry!.errorFallback as React.ReactElement
+    expect(fb.type).toBe('b')
+    expect((fb.props as { children: string }).children).toContain('unit-boom') // the failure text reached the fallback
+  })
+
+  it('a server component throwing a TYPED point0 error preserves it whole (code kept), not the RSC hint wrapper', async () => {
+    const holes = new RscHoleRegistry()
+    const Boom = async (): Promise<React.ReactNode> => {
+      throw new ErrorPoint0('not found', { code: 'POINT0_NOT_FOUND', status: 404 })
+    }
+    let seen: ErrorPoint0 | undefined
+    await normalizeRscOutput(
+      {
+        hero: defer(<Boom />, undefined, (error) => {
+          seen = error
+          return <b>{error.code}</b>
+        }),
+      },
+      { depth: 1, label: 'p', holes },
+    )
+    const [entry] = [...holes.entries.values()]
+    await entry!.throwable
+    // the typed throw reached the registry untouched — no "server component threw" wrapper flattening its fields
+    const failed = entry!.result as { error: ErrorPoint0 }
+    expect(failed.error.code).toBe('POINT0_NOT_FOUND')
+    expect(failed.error.message).toBe('not found')
+    // …and the fallback got it projected, code intact — so `(error) => …` can branch on the REAL failure
+    expect(seen?.code).toBe('POINT0_NOT_FOUND')
+  })
+
+  it('an error fallback that itself throws is dropped, leaving the original error to bubble', async () => {
+    const holes = new RscHoleRegistry()
+    const Boom = async () => {
+      throw new Error('orig-boom')
+    }
+    const badFallback = (): React.ReactNode => {
+      throw new Error('fallback-boom')
+    }
+    await normalizeRscOutput({ hero: defer(<Boom />, undefined, badFallback) }, { depth: 1, label: 'p', holes })
+    const [entry] = [...holes.entries.values()]
+    await entry!.throwable
+    expect(entry!.errorFallback).toBeUndefined() // the broken fallback is dropped
+    expect((entry!.result as { error: Error }).error.message).toContain('orig-boom') // the subtree error is kept to bubble
+  })
+
+  it('failIfPending fails only an unfilled hole; a filled one keeps its content', () => {
+    const Pending = rscHolesRegistry.slotComponent('hPend') as (props: object) => React.ReactNode
+    expect(() => Pending({})).toThrow() // pending → throws its thenable
+    rscHolesRegistry.failIfPending('hPend', new Error('stream-ended'))
+    expect(() => Pending({})).toThrow('stream-ended') // now throws the error to the nearest boundary
+    // a hole that already arrived is untouched by a later failIfPending — a dropped stream never clobbers content
+    rscHolesRegistry.fill('hFilled', { node: <b>kept</b> })
+    rscHolesRegistry.failIfPending('hFilled', new Error('too-late'))
+    const Filled = rscHolesRegistry.slotComponent('hFilled') as (props: object) => React.ReactNode
+    expect((Filled({}) as React.ReactElement).type).toBe('b')
   })
 
   it('a deferred subtree deeper than rscDepth errors like an element', async () => {

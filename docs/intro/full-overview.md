@@ -4383,6 +4383,60 @@ fix things precisely in those places where there are many re-renders.
 
 Read more in the docs [about SSR](ssr).
 
+## RSC
+
+RSC here comes out of one decision, the same way everything else does: **a React
+element is just a value in the loader's data.** A `.loader()` can return JSX
+right next to numbers and strings; it travels to the client through the same
+[data transformer](transformer) as every other value and lands in `data` as a
+live element. No Flight protocol, no second `react-server` module graph, no
+`'use client'` / `'use server'` directives, nothing to decode on the client. And
+because an element is just data, RSC works everywhere data already works — SSR,
+hydration, the query cache, refetches — with no RSC-specific code.
+
+An element in loader data is one of two things. A **plain function component**
+is a _server component_: Point0 calls it on the server right after the loader
+(async is fine), and only its rendered host markup travels — its code (Prisma, a
+markdown renderer, a heavy layout) never reaches the browser. A **component
+point** is an _interactive island_: in the data it serializes as a reference —
+its name — and its props as data; on the client the real component mounts from
+the points collection, with hooks, state and handlers; its code ships to the
+browser, and — when the point lives in its own file — as a separate chunk
+fetched only when a payload mentions it (code-splitting is by file, not by
+point). The security story falls out of this: the server sends names, never
+code, and client input is parsed with the raw transformer, so an element marker
+arriving in an input stays inert JSON — the server never turns client bytes into
+components.
+
+Streaming composes with the SSR loop above. `suspend: 'server'` streams a slow
+_query's data_; **`defer`** streams a slow _server component's markup_ — the
+same in-tree property the Flight stacks are proud of, without Flight. Wrap a
+slow subtree in `defer` and the loader returns at once: a hole ships under a
+`Suspense` boundary with a fallback, and the resolved markup is pushed into the
+same response as it settles — on the first SSR load and on client fetches
+(navigation, mutations, refetches) alike.
+
+```tsx
+export const postPage = root.lets
+  .page('/posts/:slug')
+  .loader(async ({ params }) => ({
+    title: await getTitle(params.slug), // fast — in the shell
+    article: defer(<Article slug={params.slug} />, <ArticleSkeleton />), // slow — streams in
+  }))
+  .page(({ data }) => (
+    <main>
+      <h1>{data.title}</h1>
+      {data.article}
+    </main>
+  ))
+```
+
+The one honest caveat: an interactive island _inside_ a `defer` hole is live on
+every client fetch, but on the very first SSR paint it displays without its
+handlers — for first-paint interactivity keep the island top-level or give it
+its own `suspend: 'server'` query. The full picture — the wire format, error
+handling, and the live-where matrix — is in the docs [about RSC](rsc).
+
 ## SsrStore
 
 And since we can do server-side re-rendering, let's go ahead and introduce a
@@ -5277,10 +5331,3 @@ on [YouTube](https://www.youtube.com/@s_1gr14) and
 
 After that, I want to finish realtime points that work over WebSocket, in the
 same style as regular points. I also want to finish static site generation.
-
-For a long time I didn't want to do React Server Components — I didn't
-understand what benefit they could bring here. In the end I built them, and
-exactly the way described here: `.loader()` can simply return React elements as
-data. Server components render on the server and never ship to the browser,
-while component points travel as references and come alive on the client as
-interactive islands. Details: [about RSC](rsc).
