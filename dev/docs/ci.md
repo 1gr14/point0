@@ -52,20 +52,22 @@ from [`scripts/test.ts`](../../scripts/test.ts). It's unit-tested
 ([`ci-decide.unit.test.ts`](../../scripts/ci-decide.unit.test.ts)) so the
 invariants can't silently regress. The full table:
 
-| event                 | tests                      | publish               |
-| --------------------- | -------------------------- | --------------------- |
-| `pull_request → main` | full matrix                | no                    |
-| …docs-only diff       | none (only build + check)  | no                    |
-| `push` tag `v*`       | full matrix, **mandatory** | yes → `latest`/`next` |
-| `push` to a branch    | only if `--run-tests[=os]` | no                    |
-| any with `--skip-ci`  | none (ignored on a tag)    | no                    |
+| event                 | tests                         | publish               |
+| --------------------- | ----------------------------- | --------------------- |
+| `pull_request → main` | full matrix                   | no                    |
+| …docs-only diff       | none (only build + check)     | no                    |
+| `push` tag `v*`       | full matrix, **mandatory**    | yes → `latest`/`next` |
+| `push` to a branch    | only if `--run-tests[=os]`    | no                    |
+| branch `--skip-ci`    | none (a tag or PR ignores it) | no                    |
 
-**Commit-message flags** (dash style): `--run-tests[=os]`, `--skip-ci`. OS =
-`linux`/`windows` (`macos` accepted, off by default).
-`--run-tests=linux,windows` runs both; a bare flag means all OSes. There is **no
-`--skip-tests`** — every tag tests, stable or prerelease (it died in the CI
-rework: when a prerelease must ship despite a broken suite, fix the suite
-locally instead of publishing untested bytes).
+**Commit-message flags** (dash style): `--run-tests[=os]`, `--skip-ci` — both
+apply to the maintainer's own **branch pushes only**: a PR ignores every flag
+(no one can merge an untested change by writing `--skip-ci` into the tip
+commit), and a tag always tests. OS = `linux`/`windows` (`macos` accepted, off
+by default). `--run-tests=linux,windows` runs both; a bare flag means all OSes.
+There is **no `--skip-tests`** — every tag tests, stable or prerelease (it died
+in the CI rework: when a prerelease must ship despite a broken suite, fix the
+suite locally instead of publishing untested bytes).
 
 ## Invariants (the things that must always hold)
 

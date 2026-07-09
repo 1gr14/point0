@@ -32,6 +32,15 @@ describe('ci-decide', () => {
       expect(decide(run({ ref: 'feature', message: 'wip --skip-ci --run-tests' })).oses).toEqual([])
     })
 
+    it('INVARIANT: commit-message flags are ignored on a PR — no flag can skip the merge gate', () => {
+      expect(decide(run({ event: 'pull_request', ref: '7/merge', message: 'wip --skip-ci' })).oses).toEqual(FULL)
+      expect(decide(run({ event: 'pull_request', ref: '7/merge', message: 'wip --skip-tests' })).oses).toEqual(FULL)
+      // …only a provably docs-only diff skips (and stays gated by check):
+      expect(
+        decide(run({ event: 'pull_request', ref: '7/merge', message: '--skip-ci', changedFiles: ['docs/a.md'] })).oses,
+      ).toEqual([])
+    })
+
     it('feature branch: no tests unless asked', () => {
       expect(decide(run({ ref: 'feat-x', message: 'wip' })).oses).toEqual([])
     })

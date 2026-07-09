@@ -107,16 +107,18 @@ export function decide({ event, refType, ref, message, changedFiles }: DecideInp
   // RELEASE — a tag is the only thing that publishes (invariant 2), and it ALWAYS tests (invariant 1).
   if (refType === 'tag') return { oses: full, publish: true }
 
-  // --skip-ci short-circuits any non-tag run.
-  if (hasSkipCi(message)) return { oses: [], publish: false }
-
-  // GATE — never publishes (invariant 2).
+  // GATE — never publishes (invariant 2). Checked BEFORE --skip-ci: commit-message flags are ignored on a
+  // PR, so no one can merge an untested change by writing --skip-ci into the tip commit — the only thing
+  // that may skip a PR's matrix is a provably docs-only diff.
   if (event === 'pull_request') {
     // A PR that touches only prose has nothing to build or test → skip the matrix. The `gate` job in
     // ci.yml stays green on the skip, so the required check still reports (a bare skip would hang the PR).
     if (isDocsOnly(changedFiles ?? [])) return { oses: [], publish: false }
     return { oses: full, publish: false }
   }
+
+  // --skip-ci short-circuits any other non-tag run (the maintainer's own branch pushes).
+  if (hasSkipCi(message)) return { oses: [], publish: false }
   if (ref === MAIN_BRANCH) return { oses: full, publish: false } // push to trunk
 
   // Any other branch: tests are opt-in via --run-tests (all, or a specific OS).
