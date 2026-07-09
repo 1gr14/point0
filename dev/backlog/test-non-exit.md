@@ -46,12 +46,51 @@ the breadcrumbs + a Warnings section in the log). Assertions ran green; the
 non-exit is this card, not a test failure. A file that times out _without_ a
 green summary still fails and retries as before, so real hangs keep failing.
 
+## Minimal repro (Windows, bun 1.3.14 — needs @point0/core, spins with `.unref()` restored)
+
+```ts
+import { test } from 'bun:test'
+import * as React from 'react'
+import { RscHoleRegistry, normalizeRscOutput, defer } from '@point0/core'
+test('minimal deadline hole via defer', async () => {
+  const holes = new RscHoleRegistry()
+  const Hung = async () => {
+    await new Promise<void>(() => {})
+    return React.createElement('b', null, 'x')
+  }
+  await normalizeRscOutput({ hero: defer(React.createElement(Hung)) }, {
+    depth: 1,
+    label: 'p',
+    holes,
+    holeTimeoutMs: 20,
+  } as never)
+  const entry = [
+    ...(
+      holes as never as {
+        entries: Map<string, { throwable: Promise<unknown> }>
+      }
+    ).entries.values(),
+  ][0]
+  try {
+    await entry.throwable
+  } catch {}
+  await new Promise((r) => setTimeout(r, 30))
+})
+```
+
+A `defer()` whose subtree never settles + the fired unref'd deadline timer is
+enough — no error-fallback, no ALS wrapper, no late gate release. Four
+dependency-free pure-JS variants (fired unref'd timer; same inside
+`AsyncLocalStorage.run`; + a late-resolving pending promise; + a forever-pending
+promise with `.then` and clearTimeout-on-settle) all exit CLEAN — the trigger
+lives in the promise/timer topology of `register()`/`normalizeRscOutput`, not in
+a bare `setTimeout().unref()`.
+
 ## Next
 
-- Root-cause on a real Windows machine (bridge session with the Windows agent):
-  minimize the repro — which describe/test leaves the handle behind, does
-  `AsyncLocalStorage.disable()` / avoiding `run()` at module scope fix it, does
-  it reproduce on newer Bun.
-- If it minimizes cleanly → file a Bun issue with the repro.
-- When a Bun release fixes it: the `⚠` warnings simply stop appearing — nothing
-  to un-quarantine (the suite never skipped anything).
+- File a Bun issue — either with the @point0/core-based repro above, or first
+  instrument `register()` to see which promises/microtasks are alive when bun
+  finalizes the test, and extract a dependency-free repro from that.
+- When a Bun release fixes it, the `.unref()` can return to the hole-deadline
+  timer (restoring the no-wait exit for genuinely un-settled holes) — nothing
+  else to unwind; the suite never skipped anything.
