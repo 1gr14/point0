@@ -127,12 +127,23 @@ const outputs = new Map<string, string>()
 const exitCodes = new Map<string, number>()
 const failureLines = new Map<string, string[]>()
 
+// Pull the lines that actually explain a failure. Deliberately NARROW: match real failure MARKERS, never
+// a substring like "fail"/"error" anywhere in a line — that used to surface passing tests whose NAME says
+// "failed" (`✓ … a failed chunk import`) and errors a test logs on purpose while asserting error handling
+// (`[ssr] Failed to hydrate …`, a `SyntaxError` from a "swallows a malformed line" test), burying the real
+// cause (e.g. our own `[harness] TIMED OUT`). On no match, fall back to the TAIL — a crash/hang ends the log.
 const extractFailureLines = (output: string) => {
   const lines = output.split(/\r?\n/).filter(Boolean)
-  const matched = lines.filter(
-    (line) => /^\s*[✗×]/.test(line) || /\bFAIL\b/.test(line) || /\bfailed\b/i.test(line) || /\bError:/.test(line),
-  )
-  return matched.length > 0 ? matched : lines.slice(0, 20)
+  const isFailure = (line: string) =>
+    /\[harness\] TIMED OUT/.test(line) || // our per-file wall-clock kill (the real cause of a hang)
+    /^\s*\(fail\)/.test(line) || // bun's failing-test line
+    /^\s*[✗×]/.test(line) || // failing-test marker
+    /^\s*[1-9]\d* fail\b/.test(line) || // bun's summary "N fail" with N > 0 (never "0 fail")
+    /timed out after \d+ms/.test(line) || // bun's per-test timeout note
+    /\(exit code [1-9]/.test(line) ||
+    /\bpanic\b|Segmentation fault/.test(line)
+  const matched = lines.filter(isFailure)
+  return matched.length > 0 ? matched : lines.slice(-20)
 }
 
 const formatDuration = (ms: number) => {

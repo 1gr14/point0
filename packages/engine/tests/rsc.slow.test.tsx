@@ -793,9 +793,25 @@ const expectRscComponentChunkManifest = async (tp: TestProjectOneClient) => {
 }
 
 // Production flow: modulepreload for referenced islands, hydration clean, islands interactive.
+// Poll the freshly-started prod server until it actually serves `/rsc`, bounding each attempt so a transient
+// cold-serve reset (on a loaded CI runner the "started" log fires, but the first request can hang/reset) can't
+// stall the flow. Called from the build describes' beforeAll, so the tests hit a proven-serving server —
+// without it `production flow` was bimodal on ubuntu CI: ~730ms when warm, a full 60s hang when not.
+const warmProdServe = async (tp: TestProjectOneClient) => {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    try {
+      await tp.fetchServerHtml('/rsc', { signal: AbortSignal.timeout(5000) })
+      return
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+    }
+  }
+  throw new Error('prod server did not serve /rsc within ~30s after start')
+}
+
 const expectRscProductionFlow = async (tp: TestProjectOneClient) => {
-  // The prod server is started in the describe's `beforeAll` (off this test's 60s budget) — see the build
-  // describes. This test is the browser flow only.
+  // The prod server is started + warmed in the describe's `beforeAll` (off this test's 60s budget) — see the
+  // build describes. This test is the browser flow only.
   const html = await tp.fetchServerHtml('/rsc')
   // per-payload modulepreload links for the referenced islands (prod-build-only feature)
   expect(html).toContain('rel="modulepreload"')
@@ -918,6 +934,7 @@ describe('rsc e2e (build)', () => {
     // describes warm their server in beforeAll.
     tp.spawn(['bun', 'run', 'start'])
     await tp.waitStarted((await tp.importEngine()).server.port)
+    await warmProdServe(tp)
   }, 240000)
 
   afterAll(async () => {
@@ -1041,6 +1058,7 @@ describe('rsc e2e (vite build)', () => {
     // describes warm their server in beforeAll.
     tp.spawn(['bun', 'run', 'start'])
     await tp.waitStarted((await tp.importEngine()).server.port)
+    await warmProdServe(tp)
   }, 240000)
 
   afterAll(async () => {
