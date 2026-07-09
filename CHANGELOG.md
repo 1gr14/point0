@@ -5,6 +5,57 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- Streamed SSR, rebuilt end to end. React renders the whole document (no
+  wrapper div, no string splicing), the shell flushes immediately, and slow
+  parts stream into the same response. Per-query `ssr` and `suspend` options
+  control what the server awaits, streams, or leaves to the client. BREAKING
+  rename: `ssr.allowedRerendersCount` / `ssr.forbiddenRerendersCount` →
+  `allowedDiscoveryRenders` / `forbiddenDiscoveryRenders`, now counting
+  discovery renders (old `N` ≡ new `N + 1`; `0` skips discovery entirely — the
+  earliest possible shell).
+- RSC — React elements as data. A server loader can return React elements,
+  whole or nested in the output (gated by `.rsc({ depth })`): plain function
+  components run on the server and ship as markup (their code never reaches the
+  browser), component points hydrate as interactive islands resolved from the
+  points collection, and everything rides the normal data pipe — SSR, client
+  fetches, caching, both bundlers, no Flight, no directives.
+- `defer(element, fallback?, errorFallback?)` streams a slow server subtree as
+  a hole in the same response — over the SSR document and over client fetches
+  (NDJSON, gated on the `x-point0-stream` header; foreign clients get the
+  subtree inlined). Waiting streams heartbeat every 5s so idle reapers (Bun's
+  10s default, proxies) never kill a legitimately slow subtree, and every hole
+  carries a deadline — `.rsc({ holeTimeoutMs })`, default 60s — so a hung one
+  fails loud with `POINT0_RSC_HOLE_TIMEOUT` instead of holding the connection.
+- Promises as island props. Hand a still-resolving value straight to an island
+  prop — `<Stats slowStats={getSlowStats()} />` — and the island mounts LIVE at
+  once (first SSR paint included) while the value streams into the prop; the
+  island reads it with React 19 `use()`. Non-streaming consumers get the value
+  awaited inline.
+- Per-point `.ssr(false | options)` split from `.clientOnly()`: whether the
+  server executes a point during SSR and whether its render runs only in the
+  browser are now independent switches.
+- Query-family reads go over GET (`?input=` JSON, automatic POST fallback for
+  oversized or binary inputs), so CDNs can cache them; new packages
+  `@point0/cache-control` (correct `Cache-Control` per response variant,
+  content-hashed assets immutable) and `@point0/compress` (streaming
+  brotli/gzip/zstd with per-chunk flush).
+- `createQueryClient` now takes a config factory and merges it over Point0's
+  defaults (element-carrying query data opts out of structural sharing);
+  passing a `QueryClient` instance throws. BREAKING for
+  `createQueryClient(() => new QueryClient())` apps.
+- The server loads the client points eagerly: every page/layout module is
+  imported up front, so SSR never suspends on a `React.lazy` chunk — slightly
+  heavier dev boot, fully-warm prod boot. The browser bundle keeps the lazy
+  collection (code splitting unchanged).
+- On the very first client-side mount of an SPA (`ssr: false`, no server HTML)
+  the root/layout `.loading()` renders while the first page chunk loads —
+  previously the root stayed blank. Client navigations are unaffected.
+- What SSR renders for a FAILED loader explicitly follows TanStack's
+  `retryOnMount`, exactly like a client mount; recommended:
+  `.queryOptions({ retryOnMount: false })` on the root (every example now does)
+  to render the real `.error()` + its `.head()` into the SSR HTML. See "Failed
+  loaders and retryOnMount" in the SSR docs.
+
 ## 0.1.12 — 2026-07-03
 
 - Internal: cleared dead imports and an unused store-dir helper from the engine
