@@ -5,6 +5,18 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.2.1 — 2026-07-09
+
+- **0.2.0 never reached npm.** Its release tag was pushed, but the release run
+  failed on a CI flake before the publish step, so npm `latest` stayed at
+  0.1.12. 0.2.1 is the first published build of everything listed under 0.2.0
+  below.
+- The RSC hole-deadline timer no longer calls `.unref()`. On bun-on-Windows a
+  fired deadline timer could busy-spin the event loop and keep a short-lived
+  process from exiting; dropping `.unref()` works around it. Trade-off: an exit
+  with a genuinely un-settled hole now waits at most `holeTimeoutMs` for the
+  deadline to fire.
+
 ## 0.2.0 — 2026-07-09
 
 - Streamed SSR, rebuilt end to end. React renders the whole document (no

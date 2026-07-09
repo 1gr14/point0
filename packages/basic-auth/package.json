@@ -1,6 +1,6 @@
 {
   "name": "@point0/basic-auth",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
@@ -50,8 +50,8 @@
     "format": "prettier --write ."
   },
   "peerDependencies": {
-    "@point0/core": "^0.2.0",
-    "@point0/engine": "^0.2.0"
+    "@point0/core": "^0.2.1",
+    "@point0/engine": "^0.2.1"
   },
   "devDependencies": {
     "@scalar/types": "^0.12.3",
