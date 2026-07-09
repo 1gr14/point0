@@ -752,6 +752,32 @@ export const x = ClientOnly`)
         expect(message).not.toContain('"././')
       }),
     )
+
+    it.concurrent(
+      'shakes a point registered earlier from a disk parse when compile later receives bundler content (vite transform-order race)',
+      helper(async ({ files: [rootFile, pageFile] }) => {
+        // In a production build (pruneWalker: false, like the vite plugin with built: true) the bundler may transform
+        // the page BEFORE the root file. The page compile resolves its parent chain by reading the root file from
+        // disk, registering the root point bound to that disk AST. When the bundler then hands the root file's
+        // content to compile(), a fresh AST is parsed for the same source — the registered point must not be reused
+        // for it, or shakeMethods mutates the stale AST while the fresh one is serialized unshaken (leaking
+        // server-only method args, e.g. `.middleware(cors())`, into the client bundle).
+        const rootContent = `import { Point0 } from '@point0/core'
+export const root = Point0.lets('root', 'root').middleware(() => ({ leaked: 'MY_SERVER_ONLY_MIDDLEWARE' })).root()
+`
+        await rootFile.write(rootContent)
+        await pageFile.write(`import { root } from '${rootFile.importpath}'
+export const page = root.lets('page', 'home', '/').page(() => 'home')
+`)
+        const compiler = Compiler.create({ side: 'client', scope: 'root' })
+        const pageResult = compiler.compile({ file: pageFile.path, pruneWalker: false })
+        expect(pageResult.errors).toHaveLength(0)
+        const rootResult = compiler.compile({ file: rootFile.path, content: rootContent, pruneWalker: false })
+        expect(rootResult.errors).toHaveLength(0)
+        expect(rootResult.code).toContain('.middleware()')
+        expect(rootResult.code).not.toContain('MY_SERVER_ONLY_MIDDLEWARE')
+      }),
+    )
   })
 
   describe('#trace', () => {

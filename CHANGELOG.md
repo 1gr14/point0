@@ -5,6 +5,16 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- Vite production builds no longer intermittently leak server-only method
+  arguments into the client bundle. Rolldown transforms modules in
+  nondeterministic order: when a page compiled before the file defining its
+  parent point, that point got registered from a disk parse of the parent file,
+  and the parent's own client compile then shook the stale AST instead of the
+  one being emitted — `.middleware(cors())` (and any other server-only args)
+  survived, pulling `@point0/cors` into the client chunk on ~50% of builds. The
+  compiler now reuses a registered point only when it is bound to the exact AST
+  being compiled.
+
 ## 0.2.1 — 2026-07-09
 
 - **0.2.0 never reached npm.** Its release tag was pushed, but the release run

@@ -414,8 +414,15 @@ export class Walker {
         isBasePoint0,
         ssr: this.ssrEnabled,
       })
+      // Reuse the registered point only when it is bound to the exact AST being collected (same CompilerFile instance
+      // AND same lets NodePath). A point registered from another parse of the same source (e.g. parent-chain resolution
+      // read the file from disk before the bundler's transform delivered its content) carries NodePaths into that OTHER
+      // AST — shakeMethods would mutate the stale tree while toCode() serializes the current one, leaking server-only
+      // method arguments (like `.middleware(cors())`) into the client bundle. On a binding mismatch, register the fresh
+      // point instead: strpos-keyed lookups (parent resolution, cycle detection) keep working, and the current AST is
+      // the one that gets shaken.
       const exPoint = this.points.get(point.strpos)
-      if (exPoint) {
+      if (exPoint && exPoint.file === file && exPoint.letsNodePath === letsNodePath) {
         return { point: exPoint, errors }
       }
       this.points.set(point.strpos, point)
