@@ -92,7 +92,7 @@ slow would turn a 10-min fail into a 30-min job-timeout hang.
   there is no bucket move to make. Real fix lives in those two cards (stabilize
   vite Fast Refresh state / vite dev startup under load).
 
-### 3. `engine/tests/rsc.slow.test.tsx` — prod-flow e2e timeout + ECONNRESET (slow, ubuntu) · FIXED (dev/vite) + prod-flow QUARANTINED on Linux
+### 3. `engine/tests/rsc.slow.test.tsx` — browser e2e flaky (slow, ubuntu) · QUARANTINED on Linux (windows + macOS keep it)
 
 - **Signature:**
   `(fail) rsc e2e (build) > production flow: modulepreload for referenced islands, hydration clean, islands interactive [60000ms]`
@@ -244,3 +244,24 @@ slow would turn a 10-min fail into a 30-min job-timeout hang.
   `max-parallel`, `warmProdServe`, `launchChromiumWithRetry`, the reporting fix,
   and three tracked quarantines (core-rsc/win32, dev-bundler/vite,
   rsc.slow-prod-flow/linux).
+- **2026-07-09 — branch `ci-flakes` round 4
+  ([29026359660](https://github.com/1gr14/point0/actions/runs/29026359660)):
+  narrow quarantine wasn't enough; escalated to the whole `rsc.slow` browser e2e
+  on Linux.** `production flow` was correctly skipped (2 skip), but the
+  `rsc e2e (browser, vite dev)` describe failed **wholesale again** (13 fail, no
+  `launch attempt` in the log → this time the **vite dev server** failed to come
+  up, a documented flake **separate** from the chromium launch flake the retry
+  fixed) and its afterAll cascaded into the build describes. So `rsc.slow` on
+  ubuntu has a **rotating set** of independent flake sources (chromium launch,
+  vite dev startup, prod serve), and even a describe with `production flow`
+  skipped still launches an unused browser in `beforeAll` whose teardown can
+  hang. Four rounds of whack-a-mole, so took the decisive fallback:
+  `describeRscE2e = linux ? describe.skip : describe` on **all four** RSC
+  browser e2e describes — no dev/prod server, no Chromium, launched on Linux for
+  this file at all. **Kept fully on windows + macOS**; the RSC contract stays
+  covered in-process by `rsc.fast.test.tsx` on every OS, and Linux prod is
+  exercised live by the igrich/start0 deploys. Removed the now-redundant
+  `itProdFlow` and the `beforeAll` Linux guard (the describe-level skip subsumes
+  them). This is the broadest quarantine of the batch — worth revisiting once
+  the ubuntu-runner browser-e2e instability (or a dedicated, less-loaded e2e
+  runner) is addressed.
