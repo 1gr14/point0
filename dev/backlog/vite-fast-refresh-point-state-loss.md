@@ -2,8 +2,18 @@
 
 **Status:** open · **Area:** HMR / react-refresh / mountable points ·
 **Blocks:** full state-preservation assertions in the
-`'have hmr client updates'` test (`packages/engine/tests/dev.test.ts`) for the
-**vite** bundler.
+`'have hmr client updates'` test
+(`packages/engine/tests/dev-bundler.e2e.test.ts`) for the **vite** bundler.
+
+> **Update (2026-07-09, ci-rework):** after the ssr-batch (v0.2.0) the remount
+> is **deterministic** — locally on macOS the `Hop→Hay` page edit reset the
+> page's state 3/3 and 4/4 retries (tale shows `Hay 0`), where the 2026-06-11
+> evidence still had isolated runs passing. This is what made the HMR pair
+> "flake" on the v0.2.0 release CI on BOTH OSes. Both tests now fork earlier on
+> vite: `have hmr client updates` asserts propagation only (as its vite branch
+> always did), `have server updates` asserts the server half on a FRESH page
+> (state 0 + one click ⇒ the edited `inc: 10`), so they test what vite actually
+> guarantees. The architectural fix below stays open.
 
 ## Symptom
 
@@ -96,8 +106,8 @@ bare-mount work.
 
 ## References
 
-- Test: `packages/engine/tests/dev.test.ts` → `it('have hmr client updates')`
-  (the vite branch is gated on this file).
+- Test: `packages/engine/tests/dev-bundler.e2e.test.ts` →
+  `it('have hmr client updates')` (the vite branch is gated on this file).
 - Render path: `packages/react-dom/src/router.tsx` (`RenderPagesTree`),
   `packages/core/src/client-points.ts` (`toPagesTree`, `Page: p.FC`).
 - Runtime mount: `packages/core/src/point0.ts` (`Page`/`Component`/`Provider`,
