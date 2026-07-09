@@ -46,6 +46,13 @@ bun run release minor        # 0.1.0        → 0.2.0
 bun run release 0.2.0-next.0 # explicit (stays in 0.x; an explicit jump out of 0.x is refused)
 ```
 
+## When a dependency bumps — extra checks
+
+- **A React minor bump → re-run the RSC suites** (`rsc.test.tsx`, `rsc.fast`,
+  `rsc.slow` on both bundlers). The RSC contract is ours (element shape,
+  `Suspense`, `memo`/`forwardRef` unwrap, Fizz reveal behavior) — a small
+  surface, but it sits directly on React internals drift.
+
 ## As you work — jot changelog notes
 
 Add a bullet under `## Unreleased` in [CHANGELOG.md](../../CHANGELOG.md)

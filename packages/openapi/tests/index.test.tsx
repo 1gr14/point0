@@ -1,4 +1,4 @@
-import { Point0 } from '@point0/core'
+import { Point0, defer } from '@point0/core'
 import { zodSchemaHelper } from '@point0/core/schema/zod'
 import { describe, expect, it } from 'bun:test'
 import superjson from 'superjson'
@@ -781,5 +781,29 @@ describe('openapi', () => {
       // With no map the resolver must behave exactly as before — advertise iff the ambient SSR says so.
       expect(outputTypeHeaderPaths(spec).length > 0).toBe(pageD.point._getSsrEnabled())
     })
+  })
+
+  it('an RSC loader with defer() keeps the schema generating and serves OpenAPI consumers an inline body', async () => {
+    // OpenAPI consumers never advertise streaming (no x-point0-stream header), so a `defer()` in the loader must
+    // degrade to a single JSON body with the subtree awaited inline — and a loader returning elements must not break
+    // schema generation.
+    const root = createRoot()
+    const Slow = async () => <b>OPENAPI-INLINE</b>
+    const report = root
+      .lets('action', 'report', 'GET', '/api/report')
+      .rsc({ depth: 1 })
+      .loader(async () => ({ x: defer(<Slow />, <span>fb</span>) }))
+      .action()
+    const { fetch } = await createTestThings({ points: [root, report] })
+    // schema generation walks the RSC point without choking (built directly — the served /openapi.json reflects the
+    // process-global root, which belongs to the first test in this file)
+    const schema = getOpenapiSchemaFromPoints([root, report], { info: { title: 'T', version: '1.0.0' } })
+    expect(Object.keys(schema.paths as Record<string, unknown>)).toContain('/api/report')
+    const dataRes = await fetch('http://localhost:3000/api/report')
+    expect(dataRes.status).toBe(200)
+    expect(dataRes.headers.get('x-point0-stream')).toBeNull()
+    const body = await dataRes.text()
+    expect(body).toContain('OPENAPI-INLINE')
+    expect(body).not.toContain('"t":2')
   })
 })

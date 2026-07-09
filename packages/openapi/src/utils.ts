@@ -418,7 +418,7 @@ const getOpenapiSchemaFromPoint = (
     },
   }
   if (normalizedPoint.type !== 'action' && !baseOperation.summary) {
-    baseOperation.summary = normalizedPoint.toString()
+    baseOperation.summary = normalizedPoint.id
   }
   if (!baseOperation.operationId) {
     if (normalizedPoint.type === 'action') {

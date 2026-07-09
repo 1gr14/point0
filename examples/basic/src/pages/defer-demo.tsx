@@ -42,7 +42,7 @@ export const DeferredStatsComponent = root.lets
 export default generalLayout
   .lets('page', 'deferDemo', '/defer-demo')
   .head({ title: 'Deferred SSR' })
-  .rscDepth(1)
+  .rsc({ depth: 1 })
   .loader(async () => ({
     slowBlock: defer(
       <SlowServerBlock />,

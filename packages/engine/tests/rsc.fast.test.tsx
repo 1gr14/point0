@@ -52,11 +52,11 @@ describe('rsc', () => {
     `)
   })
 
-  it('elements in first-level fields with .rscDepth(1), arrays transparent', async () => {
+  it('elements in first-level fields with .rsc({ depth: 1 }), arrays transparent', async () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({
         n: 1,
         hero: <b id="hero">H!</b>,
@@ -104,16 +104,16 @@ describe('rsc', () => {
     `)
   })
 
-  it('inherits .rscDepth(1) from the root — a page that declares none still ships first-level elements', async () => {
-    // docs/core/rsc.md: "one .rscDepth(1) on the root — every point inherits it, no loader declares it again". The page
-    // below sets no rscDepth of its own; were the inherited value to regress to depth 0, its first-level `hero` element
+  it('inherits .rsc({ depth: 1 }) from the root — a page that declares none still ships first-level elements', async () => {
+    // docs/core/rsc.md: "one .rsc({ depth: 1 }) on the root — every point inherits it, no loader declares it again". The page
+    // below sets no rsc depth of its own; were the inherited value to regress to depth 0, its first-level `hero` element
     // would fail the loader instead of rendering. (This is the documented default setup and every other example assumes
     // it — the direct-on-page cases above never exercise the inheritance.)
     const root = Point0.lets('root', 'root')
       .loading(() => <div id="loading">...</div>)
       .error(({ error }) => <div id="error">{error.message}</div>)
       .queryOptions({ retry: false, refetchOnMount: false, refetchOnWindowFocus: false, refetchOnReconnect: false })
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .root()
     const page = root
       .lets('page', 'home', '/')
@@ -126,7 +126,7 @@ describe('rsc', () => {
     expect(preview).not.toContain('#error')
   })
 
-  it('element deeper than rscDepth fails the loader with a hint', async () => {
+  it('element deeper than the rsc depth fails the loader with a hint', async () => {
     const root = createRoot()
     const page = root
       .lets('page', 'home', '/')
@@ -141,7 +141,7 @@ describe('rsc', () => {
         /
           #loading: ...
 
-          #error: RSC (at hero): root:page:home returned a React element deeper than its rscDepth allows. Raise it with .rscDepth(1) on the point (0 allows an element as the whole output, 1 allows elements in first-level fields, …).
+          #error: RSC (at hero): root:page:home returned a React element deeper than its rsc depth allows. Raise it with .rsc({ depth: 1 }) on the point (0 allows an element as the whole output, 1 allows elements in first-level fields, …).
         "
       `)
     })
@@ -244,7 +244,7 @@ describe('rsc', () => {
     const Cta = root.lets('component', 'rscCtaStatic').component(() => <div id="cta">go!</div>)
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ n: 1, cta: <Cta /> }))
       .page(({ data }) => (
         <div id="page">
@@ -284,7 +284,7 @@ describe('rsc', () => {
     const lazyRecord = { type: 'component', name: 'rscCtaLazy', point: async () => Cta }
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ cta: <Cta /> }))
       .page(({ data }) => <div id="page">{data.cta}</div>)
 
@@ -309,7 +309,7 @@ describe('rsc', () => {
     const Cta = root.lets('component', 'rscCtaFromMutation').component(() => <div id="cta-m">go!</div>)
     const publish = root
       .lets('mutation', 'publish')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ n: 1, badge: <Badge text="published!" />, cta: <Cta /> }))
       .mutation()
     const page = root.lets('page', 'home', '/').page(() => {
@@ -360,7 +360,7 @@ describe('rsc', () => {
     const root = createRoot()
     const publish = root
       .lets('mutation', 'publishRaw')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .fetchOptions(() => ({ transform: false }))
       .loader(async () => ({ badge: <b id="badge-raw">ok!</b> }))
       .mutation()
@@ -393,7 +393,7 @@ describe('rsc', () => {
       .component(({ data }) => <div id="stats">x={data.x}</div>)
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ stats: <Stats input={{ id: 'zxc' }} /> }))
       .page(({ data }) => <div id="page">{data.stats}</div>)
 
@@ -427,7 +427,7 @@ describe('rsc', () => {
       .component(({ data }) => <div id="stats">x={data.x}</div>)
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ stats: <Stats input={{ id: 'zxc' }} /> }))
       .page(({ data }) => <div id="page">{data.stats}</div>)
 
@@ -466,7 +466,7 @@ describe('rsc', () => {
       ))
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({
         card: (
           <Card title={<b id="title-el">T!</b>}>
@@ -535,7 +535,7 @@ describe('rsc', () => {
     const Cta = root.lets('component', 'rscCtaPrefetched').component(() => <div id="cta-p">go!</div>)
     const promo = root
       .lets('query', 'promo')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ hero: <b id="hero-p">H!</b>, cta: <Cta /> }))
       .query()
     const page = root
@@ -589,7 +589,7 @@ describe('rsc', () => {
     const root = createRoot()
     const promo = root
       .lets('query', 'promo')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ hero: <b id="hero-w">H!</b> }))
       .query()
     const page = root
@@ -623,7 +623,7 @@ describe('rsc', () => {
     let version = 0
     const stamp = root
       .lets('query', 'stamp')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => {
         version++
         return { badge: <b id={`v${version}`}>v={version}</b> }
@@ -671,7 +671,7 @@ describe('rsc', () => {
     const Cta = root.lets('component', 'rscCtaStreamed').component(() => <div id="cta-s">go!</div>)
     const slow = root
       .lets('query', 'slow')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => {
         await gate.promise
         return { hero: <b id="hero-s">H!</b>, cta: <Cta /> }
@@ -733,7 +733,7 @@ describe('rsc', () => {
     }
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({
         hero: defer(<SlowHero />, <div id="hero-fallback">hero-loading</div>),
       }))
@@ -790,7 +790,7 @@ describe('rsc', () => {
     }
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({
         a: defer(<A />, <span id="fa">a-loading</span>),
         b: defer(<B />, <span id="fb">b-loading</span>),
@@ -851,7 +851,7 @@ describe('rsc', () => {
     }
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ x: defer(<Boom />, <span id="boom-fb">boom-loading</span>) }))
       .page(({ data }) => <div id="page">{data.x}</div>)
     const { client } = await createTestThings({ ssr: true, points: [root, page] })
@@ -884,7 +884,7 @@ describe('rsc', () => {
     }
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ x: defer(<Slow />) }))
       .page(({ data }) => (
         <div id="page">
@@ -920,7 +920,7 @@ describe('rsc', () => {
     const Receipt = async ({ id }: { id: number }) => <b id="receipt">receipt-{id}</b>
     const publish = root
       .lets('mutation', 'publish')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ ok: true, receipt: defer(<Receipt id={42} />, <span>pending</span>) }))
       .mutation()
     const page = root.lets('page', 'home', '/').page(() => {
@@ -953,7 +953,7 @@ describe('rsc', () => {
     const Slow = async () => <b id="slow">SLOW-DEFERRED-CONTENT</b>
     const thing = root
       .lets('action', 'thing', 'GET', '/api/thing')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ x: defer(<Slow />, <span id="fb">fb</span>) }))
       .action()
     const { engine } = await createTestThings({ ssr: true, points: [root, thing] })
@@ -966,6 +966,12 @@ describe('rsc', () => {
       new Request('http://localhost:3000/api/thing', { headers: { [POINT0_STREAM_HEADER]: 'true' } }),
     )
     expect(streamed.headers.get(POINT0_STREAM_HEADER)).toBe('true')
+    expect(streamed.headers.get('Content-Type')).toBe('application/x-ndjson')
+    // The framed body is per-request state gated on a request header: no cache may store or replay it (a cached NDJSON
+    // body served to a non-streaming client would fail its JSON.parse), and buffering proxies must not collapse it.
+    expect(streamed.headers.get('Cache-Control')).toBe('private, no-store')
+    expect(streamed.headers.get('Vary')).toBe(POINT0_STREAM_HEADER)
+    expect(streamed.headers.get('X-Accel-Buffering')).toBe('no')
     const lines = (await streamed.text()).split('\n').filter((line) => line.length > 0)
     expect(lines.length).toBeGreaterThanOrEqual(2)
     expect(JSON.stringify(transformer.parse(lines[0]!))).toContain('"t":2')
@@ -980,6 +986,78 @@ describe('rsc', () => {
     const plainBody = await plain.text()
     expect(plainBody).toContain('SLOW-DEFERRED-CONTENT')
     expect(JSON.stringify(transformer.parse(plainBody))).not.toContain('"t":2')
+  })
+
+  it("a defer() that outlives the point's .rsc({ holeTimeoutMs }) streams an RSC_HOLE_TIMEOUT error fill instead of hanging", async () => {
+    // The deadline is the stream's only bound: heartbeats keep idle reapers (Bun's default 10s idleTimeout, proxies)
+    // away from a legitimately-waiting stream, so a subtree that never settles must be failed by point0 itself. The
+    // error fill rides the normal error path — the client hole re-throws it to its boundary (or renders the per-hole
+    // error fallback) and the stream closes cleanly. The deadline is the OWNER point's `.rsc({ holeTimeoutMs })`,
+    // resolved through the executor — this drives the whole chain-to-registry plumbing.
+    const root = createRoot()
+    const Hung = async (): Promise<React.ReactNode> => new Promise<React.ReactNode>(() => {})
+    const hung = root
+      .lets('action', 'hung', 'GET', '/api/hung')
+      .rsc({ depth: 1, holeTimeoutMs: 60 })
+      .loader(async () => ({ x: defer(<Hung />, <span>fb</span>) }))
+      .action()
+    const { engine } = await createTestThings({ ssr: true, points: [root, hung] })
+    const streamed = await engine.fetch(
+      new Request('http://localhost:3000/api/hung', { headers: { [POINT0_STREAM_HEADER]: 'true' } }),
+    )
+    expect(streamed.headers.get(POINT0_STREAM_HEADER)).toBe('true')
+    // .text() resolving at all proves the deadline closed the stream — without it this fetch would hang forever
+    const lines = (await streamed.text()).split('\n').filter((line) => line.length > 0)
+    expect(lines).toHaveLength(2)
+    expect(lines[1]).toContain('POINT0_RSC_HOLE_TIMEOUT')
+  })
+
+  it('a loader that sets a non-2xx status inlines its defer() — an error response never rides the NDJSON framing', async () => {
+    // The client reader only takes the stream path on `res.ok`, so a framed 4xx body would fall to res.json() and fail
+    // to parse. The executor withholds the hole registry when the status is already non-2xx at normalize time, so the
+    // defer degrades to the same inline single-JSON body a foreign client gets.
+    const root = createRoot()
+    const Slow = async () => <b>INLINE-ON-ERROR</b>
+    const missing = root
+      .lets('action', 'missing', 'GET', '/api/missing')
+      .rsc({ depth: 1 })
+      .loader(async ({ set }) => {
+        set.status(404)
+        return { x: defer(<Slow />, <span>fb</span>) }
+      })
+      .action()
+    const { engine } = await createTestThings({ ssr: true, points: [root, missing] })
+    const transformer = missing.point._getTransformer()
+    const res = await engine.fetch(
+      new Request('http://localhost:3000/api/missing', { headers: { [POINT0_STREAM_HEADER]: 'true' } }),
+    )
+    expect(res.status).toBe(404)
+    expect(res.headers.get(POINT0_STREAM_HEADER)).toBeNull()
+    const body = await res.text()
+    expect(body).toContain('INLINE-ON-ERROR')
+    expect(JSON.stringify(transformer.parse(body))).not.toContain('"t":2')
+  })
+
+  it('a mutation defer() without the stream header degrades to a single inline JSON body', async () => {
+    // The no-header inline degrade is pinned for the action GET path above — this is the mutation (POST endpoint)
+    // symmetry: a foreign client posting to the mutation endpoint gets the subtree awaited inline, no framing.
+    const root = createRoot()
+    const Receipt = async () => <b>receipt-inline-77</b>
+    const publishInline = root
+      .lets('mutation', 'publishInline')
+      .rsc({ depth: 1 })
+      .loader(async () => ({ ok: true, receipt: defer(<Receipt />, <span>pending</span>) }))
+      .mutation()
+    const { engine } = await createTestThings({ ssr: true, points: [root, publishInline] })
+    const transformer = publishInline.point._getTransformer()
+    const res = await engine.fetch(
+      new Request('http://localhost:3000/_point0/root/mutation/publish-inline', { method: 'POST' }),
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get(POINT0_STREAM_HEADER)).toBeNull()
+    const body = await res.text()
+    expect(body).toContain('receipt-inline-77')
+    expect(JSON.stringify(transformer.parse(body))).not.toContain('"t":2')
   })
 
   it('Phase 2: a client-fetch query streams a defer() hole in and an interactive island INSIDE the hole is live (clickable)', async () => {
@@ -1004,7 +1082,7 @@ describe('rsc', () => {
     )
     const q = root
       .lets('query', 'stuff')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ fast: 'fast-data', slow: defer(<Slow />, <span id="slow-fb">slow-loading</span>) }))
       .query()
     const page = root.lets('page', 'home', '/').page(() => {
@@ -1037,7 +1115,7 @@ describe('rsc', () => {
     const Slow = async () => <b id="nav-slow">NAV-SLOW-CONTENT</b>
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ fast: 'fast', slow: defer(<Slow />, <span id="nav-fb">nav-loading</span>) }))
       .page(({ data }) => (
         <div id="page">
@@ -1077,7 +1155,7 @@ describe('rsc', () => {
     }
     const q = root
       .lets('query', 'stuff')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ ok: true, slow: defer(<Boom />, <span id="boom-fb">boom-loading</span>) }))
       .query()
     const page = root.lets('page', 'home', '/').page(() => {
@@ -1100,7 +1178,7 @@ describe('rsc', () => {
     }
     const q = root
       .lets('query', 'stuff')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({
         slow: defer(<Boom />, <span id="fb">loading</span>, <span id="err-fb">could-not-load</span>),
       }))
@@ -1134,7 +1212,7 @@ describe('rsc', () => {
     }
     const q = root
       .lets('query', 'stuff')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({
         slow: defer(<Boom />, <span id="fb">loading</span>, (error) => (
           <span id="err-fb">{`handled: ${error.message}`}</span>
@@ -1181,7 +1259,7 @@ describe('rsc', () => {
     }
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ block: defer(<Outer />, <span id="outer-fb">outer-loading</span>) }))
       .page(({ data }) => <div id="page">{data.block}</div>)
     const { client } = await createTestThings({ ssr: true, points: [root, page] })
@@ -1228,12 +1306,12 @@ describe('rsc', () => {
     }
     const Stats = root
       .lets('component', 'rscStatsDefer')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ inner: defer(<Slow />, <span id="island-fb">island-loading</span>) }))
       .component(({ data }) => <div id="island">{data.inner}</div>)
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ island: <Stats /> }))
       .page(({ data }) => <div id="page">{data.island}</div>)
     const { client } = await createTestThings({ ssr: true, points: [root, Stats, page] })
@@ -1286,7 +1364,7 @@ describe('rsc', () => {
     }
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ x: defer(<Boom />, <span id="fb">loading</span>) }))
       .page(({ data }) => <div id="page">{data.x}</div>)
     const { render } = await createTestThings({ ssr: true, points: [root, page] })
@@ -1314,7 +1392,7 @@ describe('rsc', () => {
       .component(({ props }) => <div id="cta-d">year={props.at.getFullYear()}</div>)
     const page = root
       .lets('page', 'home', '/')
-      .rscDepth(1)
+      .rsc({ depth: 1 })
       .loader(async () => ({ cta: <Cta at={new Date('2026-07-06T00:00:00Z')} /> }))
       .page(({ data }) => <div id="page">{data.cta}</div>)
 

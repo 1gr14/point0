@@ -261,10 +261,12 @@ export const POINT0_ERROR_CODES = [
   'POINT0_SSR_STREAM_RENDER_ERROR',
   // rsc: elements as data (@point0/core) — a loader returned something that can't cross the wire (a server component
   // that THROWS is not coded here: it is coerced with `ErrorClass.from` and re-thrown as-is)
-  'POINT0_RSC_DEPTH_EXCEEDED', // an element/deferred subtree sits deeper than the point's .rscDepth() allows
+  'POINT0_RSC_DEPTH_EXCEEDED', // an element/deferred subtree sits deeper than the point's .rsc({ depth }) allows
   'POINT0_RSC_INVALID_OUTPUT', // a ref, a function prop, a class component, a non-component point, …
   // deferred RSC holes (@point0/core) — a streamed data fetch dropped before a hole's subtree arrived
   'POINT0_RSC_STREAM_INCOMPLETE',
+  // deferred RSC holes (@point0/core) — a hole's subtree did not settle within the engine's `rsc.holeTimeoutMs`
+  'POINT0_RSC_HOLE_TIMEOUT',
 ] as const
 
 export type Point0ErrorCode = (typeof POINT0_ERROR_CODES)[number]

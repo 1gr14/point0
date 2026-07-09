@@ -443,10 +443,10 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 
         if (!point._hasServerLoader) {
           const status = 500
-          const error0 = new ErrorClass(`Point "${point.toString()}" has no server loader`, {
+          const error0 = new ErrorClass(`Point "${point.id}" has no server loader`, {
             status,
             code: POINT0_ERROR_CODES_MAP.POINT_NO_SERVER_LOADER,
-            meta: { point: point.toString() },
+            meta: { point: point.id },
           })
           effects.set.status(status)
           return {
@@ -663,9 +663,16 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                   // RSC: unfold server components and validate element positions ONCE, right here — SSR renders this
                   // normalized tree and the wire encodes the same tree, so hydration matches by construction
                   const data = (await normalizeRscOutput(result[1] ?? {}, {
-                    depth: point.point._rscDepth ?? 0,
-                    label: point.toString(),
-                    holes: _ss.__POINT0_RSC_HOLES__.getOrUndefined(),
+                    depth: point.point._rsc?.depth ?? 0,
+                    holeTimeoutMs: point.point._rsc?.holeTimeoutMs,
+                    label: point.id,
+                    // A non-2xx response can't stream: the client reader only takes the NDJSON path on `res.ok`, so a
+                    // hole would arrive as an unparseable multi-line body. Withhold the registry and `defer` degrades
+                    // to awaiting inline — the same single-JSON body a foreign client gets.
+                    holes:
+                      effects.status === undefined || (effects.status >= 200 && effects.status < 300)
+                        ? _ss.__POINT0_RSC_HOLES__.getOrUndefined()
+                        : undefined,
                     ErrorClass: this.engine.server.points.manager.root._Error,
                   })) as Data
                   layers.forEach((layer) => {
@@ -687,9 +694,14 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                   })
                 } else {
                   const data = (await normalizeRscOutput(result ?? {}, {
-                    depth: point.point._rscDepth ?? 0,
-                    label: point.toString(),
-                    holes: _ss.__POINT0_RSC_HOLES__.getOrUndefined(),
+                    depth: point.point._rsc?.depth ?? 0,
+                    holeTimeoutMs: point.point._rsc?.holeTimeoutMs,
+                    label: point.id,
+                    // Same non-2xx rule as the tuple branch above: no registry → `defer` inlines, single JSON body.
+                    holes:
+                      effects.status === undefined || (effects.status >= 200 && effects.status < 300)
+                        ? _ss.__POINT0_RSC_HOLES__.getOrUndefined()
+                        : undefined,
                     ErrorClass: this.engine.server.points.manager.root._Error,
                   })) as Data
                   layers.forEach((layer) => {

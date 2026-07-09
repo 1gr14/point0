@@ -163,10 +163,11 @@ default for a typical app. Each slot is
 
 ### Behavior at a glance
 
-| Aspect               | Behavior                                                                                                                   |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Side                 | cut from the client bundle — the `.middleware(...)` argument and its imports are removed, so it never ships to the browser |
-| Existing header      | a `Cache-Control` already on the response always wins — unless `override` overrules it                                     |
-| Other variants       | `middleware` / `options` have no slot; only `override` can set them                                                        |
-| Slot value           | string sets, `undefined` skips; the built-in default applies only when the slot is left unconfigured                       |
-| Callback `undefined` | skips (does not fall back to the default — return the default explicitly to keep it)                                       |
+| Aspect               | Behavior                                                                                                                                                                                                         |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Side                 | cut from the client bundle — the `.middleware(...)` argument and its imports are removed, so it never ships to the browser                                                                                       |
+| Existing header      | a `Cache-Control` already on the response always wins — unless `override` overrules it                                                                                                                           |
+| Other variants       | `middleware` / `options` have no slot; only `override` can set them                                                                                                                                              |
+| Slot value           | string sets, `undefined` skips; the built-in default applies only when the slot is left unconfigured                                                                                                             |
+| Callback `undefined` | skips (does not fall back to the default — return the default explicitly to keep it)                                                                                                                             |
+| Streamed endpoints   | a [`defer()`](rsc)-streamed NDJSON response already carries `private, no-store` from the framework, so the existing-header rule leaves it alone — an `endpoint` policy only ever caches the non-streamed variant |

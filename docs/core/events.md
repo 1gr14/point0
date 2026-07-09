@@ -128,13 +128,13 @@ SSR, but it's the same code). Only `engineFetch*` — the HTTP layer — reports
 
 ## The `'error'` shorthand
 
-`.on('error', cb)` is sugar — it expands to **four** subscriptions, one per
+`.on('error', cb)` is sugar — it expands to **five** subscriptions, one per
 error event:
 
 ```tsx
 .on('error', (e) => { /* … */ })
 // equivalent to:
-.on(['pointMutationError', 'pointQueryError', 'pointInfiniteQueryError', 'engineFetchError'], (e) => { /* … */ })
+.on(['pointMutationError', 'pointQueryError', 'pointInfiniteQueryError', 'engineFetchError', 'rscError'], (e) => { /* … */ })
 ```
 
 Inside the callback, `error` is narrowed to a non-`undefined` error instance.
@@ -142,9 +142,10 @@ One user `throw` can produce more than one of them: a failing server query
 surfaces as `engineFetchError` (server) **and** `pointQueryError` (client), so
 an `.on('error')` logger may see the same failure from two angles.
 
-> **GOTCHA:** the shorthand covers query, infinite-query, mutation, and
-> engineFetch errors — **not** `pointFetchServerError` or
-> `pointPrefetchPageError`. To catch those two, name them explicitly:
+> **GOTCHA:** the shorthand covers query, infinite-query, mutation, engineFetch,
+> and [rscError](rsc) (a failed `defer()` subtree) — **not**
+> `pointFetchServerError` or `pointPrefetchPageError`. To catch those two, name
+> them explicitly:
 > `.on(['pointFetchServerError', 'pointPrefetchPageError'], cb)`.
 
 ## The event object
@@ -260,7 +261,7 @@ pointMutationStart       pointMutationSettled       pointMutationSuccess       p
 pointFetchServerStart    pointFetchServerSettled    pointFetchServerSuccess    pointFetchServerError
 pointPrefetchPageStart   pointPrefetchPageSettled   pointPrefetchPageSuccess   pointPrefetchPageError
 engineFetchStart         engineFetchSettled         engineFetchSuccess         engineFetchError
-emitError
+rscError                 emitError
 ```
 
 ### Subscription methods
@@ -295,6 +296,7 @@ All three are on every point type, accumulate, and are inherited down the chain.
 | `pointFetchServer*`   | `{ input, point }` + the fetch-server output on settled/success/error |
 | `pointPrefetchPage*`  | `{ point, input, options, error? }`                                   |
 | `engineFetch*`        | `{ request, scope, result?, error? }`                                 |
+| `rscError`            | `{ error, label, holeId }` — a failed `defer()` subtree, server-side  |
 | `emitError`           | `{ error, event }` — the original event and the thrown error          |
 
 ### Public types
@@ -302,5 +304,5 @@ All three are on every point type, accumulate, and are inherited down the chain.
 The event types are exported from `@point0/core`: `AnyEventerEvent`,
 `EventerEvent`, `EventerEventMeta`, `EventerSide`, and the per-event types. The
 barrel is type-only (`export type * from './eventer.js'`), so the runtime
-`uniqEventerErrorEventNames` constant — the four names the `'error'` shorthand
+`uniqEventerErrorEventNames` constant — the five names the `'error'` shorthand
 expands to — is **not** importable as a value.

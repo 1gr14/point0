@@ -668,7 +668,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         if (point.type !== 'page') {
           throw new ErrorClass(`Point type "${point.type}" is not supported for html output type`, {
             code: POINT0_ERROR_CODES_MAP.HTML_OUTPUT_UNSUPPORTED_POINT_TYPE,
-            meta: { point: point.toString(), pointType: point.type },
+            meta: { point: point.id, pointType: point.type },
           })
         }
         if (!client) {
@@ -679,9 +679,9 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
         const route = point.route as AnyRoute | undefined
         if (!route) {
-          throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via task`, {
+          throw new ErrorClass(`Point "${point.id}" has no route while requested page html via task`, {
             code: POINT0_ERROR_CODES_MAP.POINT_NO_ROUTE,
-            meta: { point: point.toString() },
+            meta: { point: point.id },
           })
         }
         const pageUrl = route.get({ ...input.params, '?': input.search } as never, {
@@ -722,7 +722,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             `Point type "${point.type}" is not supported for queryClientDehydratedState output type`,
             {
               code: POINT0_ERROR_CODES_MAP.DEHYDRATED_STATE_UNSUPPORTED_POINT_TYPE,
-              meta: { point: point.toString(), pointType: point.type },
+              meta: { point: point.id, pointType: point.type },
             },
           )
         }
@@ -734,9 +734,9 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
         const route = point.route as AnyRoute | undefined
         if (!route) {
-          throw new ErrorClass(`Point "${point.toString()}" has no route while requested page html via endpoint`, {
+          throw new ErrorClass(`Point "${point.id}" has no route while requested page html via endpoint`, {
             code: POINT0_ERROR_CODES_MAP.POINT_NO_ROUTE,
-            meta: { point: point.toString() },
+            meta: { point: point.id },
           })
         }
         const pageUrl = route.get({ ...input.params, '?': input.search } as never, {
@@ -779,7 +779,18 @@ export class Fetcher<TError extends ErrorPoint0> {
               emit: rscHoleEmit,
             }),
             {
-              headers: { 'Content-Type': 'application/x-ndjson', [POINT0_STREAM_HEADER]: 'true' },
+              headers: {
+                'Content-Type': 'application/x-ndjson',
+                [POINT0_STREAM_HEADER]: 'true',
+                // The framed body exists only for requests that advertised the stream header, and its hole fills are
+                // per-request state — no cache may store or replay it (Vary guards a cache that ignores no-store, and
+                // keeps a cached non-streamed variant from ever answering a streaming client, or the reverse).
+                'Cache-Control': 'private, no-store',
+                Vary: POINT0_STREAM_HEADER,
+                // nginx-style proxies buffer responses by default, which would collapse the progressive delivery into
+                // one late chunk — opt the stream out where the convention is honored.
+                'X-Accel-Buffering': 'no',
+              },
             },
           )
           return {
@@ -894,7 +905,18 @@ export class Fetcher<TError extends ErrorPoint0> {
             emit: rscHoleEmit,
           }),
           {
-            headers: { 'Content-Type': 'application/x-ndjson', [POINT0_STREAM_HEADER]: 'true' },
+            headers: {
+              'Content-Type': 'application/x-ndjson',
+              [POINT0_STREAM_HEADER]: 'true',
+              // The framed body exists only for requests that advertised the stream header, and its hole fills are
+              // per-request state — no cache may store or replay it (Vary guards a cache that ignores no-store, and
+              // keeps a cached non-streamed variant from ever answering a streaming client, or the reverse).
+              'Cache-Control': 'private, no-store',
+              Vary: POINT0_STREAM_HEADER,
+              // nginx-style proxies buffer responses by default, which would collapse the progressive delivery into
+              // one late chunk — opt the stream out where the convention is honored.
+              'X-Accel-Buffering': 'no',
+            },
             status: executeResult.effects.status ?? 200,
           },
         )

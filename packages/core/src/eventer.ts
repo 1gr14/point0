@@ -480,7 +480,10 @@ export type EventerEventRscError<TError extends ErrorPoint0> = EventerEvent<
   'rscError',
   {
     error: TError
-    /** The point whose loader produced the deferred subtree, e.g. `page "home"` — undefined when the label is unknown. */
+    /**
+     * The point whose loader produced the deferred subtree, e.g. `root:page:home` — undefined when the label is
+     * unknown.
+     */
     label: string | undefined
     /** The deferred hole's id (see `defer`). */
     holeId: string

@@ -147,7 +147,7 @@ The return value becomes `data`. Six shapes are accepted:
 - **A React element** — the element becomes `data` and travels to the client
   like any other value: server components render on the server, component points
   hydrate as interactive islands. Elements may also sit inside the data object —
-  opt in with `.rscDepth(n)`. The whole model is on the [RSC](rsc) page.
+  opt in with `.rsc({ depth: n })`. The whole model is on the [RSC](rsc) page.
 
 ```tsx
 // real production loader: read ctx, gate, then return data — or throw a typed error
@@ -289,16 +289,16 @@ your own error class — anything with the shape of the default `ErrorPoint0`. S
 
 ### Return values
 
-| Return                       | Effect                                                                 |
-| ---------------------------- | ---------------------------------------------------------------------- |
-| plain object                 | becomes `data`                                                         |
-| `undefined` / `void`         | empty data `{}`                                                        |
-| `[status, data]`             | sets the HTTP status, then handles `data` (server only)                |
-| `Response`                   | sets the response, `data` becomes `undefined` (mutation / action only) |
-| `RedirectTask`               | redirects (from the [`redirect(...)`](navigation) helper)              |
-| `Error` (thrown or returned) | error state; status applied; normalized via your error class           |
-| React element                | element as data — see [RSC](rsc); nested elements need `.rscDepth(n)`  |
-| array / string / primitive   | **type error** — data must be a plain object or a React element        |
+| Return                       | Effect                                                                      |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| plain object                 | becomes `data`                                                              |
+| `undefined` / `void`         | empty data `{}`                                                             |
+| `[status, data]`             | sets the HTTP status, then handles `data` (server only)                     |
+| `Response`                   | sets the response, `data` becomes `undefined` (mutation / action only)      |
+| `RedirectTask`               | redirects (from the [`redirect(...)`](navigation) helper)                   |
+| `Error` (thrown or returned) | error state; status applied; normalized via your error class                |
+| React element                | element as data — see [RSC](rsc); nested elements need `.rsc({ depth: n })` |
+| array / string / primitive   | **type error** — data must be a plain object or a React element             |
 
 The client loader (`.clientLoader`) takes the same return values **except** the
 `[status, data]` tuple, and a `Response` only on a mutation. Its argument is

@@ -51,19 +51,19 @@ works: pages, layouts, [queries](query), [mutations](mutation), components,
 providers; SSR and hydration; [streamed SSR](ssr) pushes; client-side refetches
 — a refetch simply delivers fresh elements.
 
-## Where elements may appear: `.rscDepth`
+## Where elements may appear: `.rsc({ depth })`
 
-`.rscDepth(n)` declares how deep in the output object elements are allowed. It
-is an explicitness gate — elements never leak into data by accident.
+`.rsc({ depth: n })` declares how deep in the output object elements are
+allowed. It is an explicitness gate — elements never leak into data by accident.
 
-The usual setup is one `.rscDepth(1)` on the root — every point inherits it, no
-loader declares it again, and that is what every other example on this page
-assumes:
+The usual setup is one `.rsc({ depth: 1 })` on the root — every point inherits
+it, no loader declares it again, and that is what every other example on this
+page assumes:
 
 ```tsx
 export const root = Point0.lets
   .root()
-  .rscDepth(1) // the whole app may return elements in first-level fields
+  .rsc({ depth: 1 }) // the whole app may return elements in first-level fields
   // …the rest of your root defaults
   .root()
 ```
@@ -72,19 +72,19 @@ Setting it on a single point works the same way and overrides the inherited
 value:
 
 ```tsx
-// rscDepth 0 (the default): an element as the whole output
+// depth 0 (the default): an element as the whole output
 .loader(async () => <Hello />)
 ```
 
 ```tsx
 // elements in first-level fields
-.rscDepth(1)
+.rsc({ depth: 1 })
 .loader(async () => ({ hero: <Hero /> }))
 ```
 
 ```tsx
 // any depth — every object level consumes one, arrays don't consume any
-.rscDepth(3)
+.rsc({ depth: 3 })
 .loader(async () => ({
   blocks: { main: { hero: <Hero />, items: [<Row key="1" />] } },
 }))
@@ -94,15 +94,18 @@ An element deeper than the declared depth fails the loader with an error naming
 the exact path and the depth to set:
 
 ```
-RSC (at hero): root:page:home returned a React element deeper than its rscDepth
-allows. Raise it with .rscDepth(1) on the point …
+RSC (at hero): root:page:home returned a React element deeper than its rsc
+depth allows. Raise it with .rsc({ depth: 1 }) on the point …
 ```
 
 Inside an element tree the depth no longer applies — props and children nest
 freely, including further elements.
 
-`.rscDepth` is available on every point type and on `root`/`base`/`plugin`.
-Server-and-client — kept on both bundles (isomorphic config).
+`.rsc(options)` is available on every point type and on `root`/`base`/`plugin`,
+and merges per key down the chain — the root sets the app default, a point
+overrides only the keys it names. Its second knob, `holeTimeoutMs`, bounds the
+point's [`defer()` holes](#defer--stream-slow-server-markup). Server-and-client
+— kept on both bundles (isomorphic config).
 
 ## Server components
 
@@ -134,8 +137,9 @@ Server components run as plain function calls — hooks and context are not
 available (the same rule as React's own server components). A component that
 needs state or effects belongs on the client: make it a component point.
 
-Event handlers cannot travel over the wire, so a function in a host element's
-props fails the loader with the path:
+Event handlers cannot travel over the wire, so a function anywhere in a host
+element's or island's props — a direct prop or nested inside a prop object or
+array — fails the loader with the path:
 
 ```
 RSC (at onClick): functions cannot travel over the wire (prop "onClick" of
@@ -191,9 +195,9 @@ Component point names are the reference keys, so they must be unique per scope �
 ## Queries and mutations ship elements too
 
 Elements are a loader feature, not a page feature — any [query](query) or
-[mutation](mutation) returns them the same way, with the same `.rscDepth` gate.
-A query with elements is an ordinary query: call it with `useQuery` anywhere,
-inject it with [`.with`](with), warm it in `.onPrefetchPage`:
+[mutation](mutation) returns them the same way, with the same `.rsc({ depth })`
+gate. A query with elements is an ordinary query: call it with `useQuery`
+anywhere, inject it with [`.with`](with), warm it in `.onPrefetchPage`:
 
 ```tsx
 export const promoQuery = root.lets
@@ -270,8 +274,8 @@ zero client refetch. Everything you need at the RSC level is here; the full
 `suspend` reference (all the modes, positional fallbacks) lives in
 [SSR → the `ssr` and `suspend` query options](ssr#the-ssr-and-suspend-query-options).
 
-> The examples below assume `.rscDepth(1)` once on your [root](root) — every
-> point inherits it, so you never repeat it.
+> The examples below assume `.rsc({ depth: 1 })` once on your [root](root) —
+> every point inherits it, so you never repeat it.
 
 ### `defer` — stream slow server markup
 
@@ -353,7 +357,36 @@ root.on('error', ({ name, error, meta }) => report(error, { name, ...meta }))
 
 A consumer that can't read a stream — SSG, OpenAPI, a foreign HTTP client — gets
 a single JSON body where `defer` degraded to inline: the subtree awaited, the
-fallback dropped, the same content without progressive delivery.
+fallback dropped, the same content without progressive delivery. The same
+degrade applies when the loader sets a non-2xx status: an error response is
+always a single JSON body, never a framed stream.
+
+While a stream waits on a slow subtree, Point0 writes a no-op heartbeat every 5
+seconds (a blank NDJSON line / an empty script in the HTML), so a legitimately
+slow `defer` is never killed by an idle-connection reaper — Bun's server default
+reaps silent responses after 10 seconds, and reverse proxies carry idle windows
+of their own. The flip side: a subtree that never settles would now hold the
+response open forever, so every hole carries a **deadline** — the owner point's
+`.rsc({ holeTimeoutMs })`, default 60 seconds, `false` to disable (set it on the
+root for an app-wide value). A hole that misses it fails with a
+`POINT0_RSC_HOLE_TIMEOUT` error, rendered by the hole's error fallback or its
+nearest boundary; the subtree's late result is dropped unread.
+
+On the client, a streamed fetch resolves with line 1 immediately and keeps
+reading in the background until the server delivers every hole — navigating away
+does not abort it. That is deliberate: the fills land in the query cache (a
+back-navigation shows the completed content instead of refetching), and the
+deadline above bounds how long the connection can live.
+
+Streamed bodies are per-request state, so they ship
+`Cache-Control: private, no-store` (plus `Vary: x-point0-stream`) — a CDN never
+stores or replays one. Cache a read the usual way
+([cache-control](cache-control)) and its non-streamed variant stays cacheable; a
+`defer` in it only ever streams to point0 clients. One infrastructure caveat: a
+reverse proxy that buffers responses collapses progressive delivery into one
+late chunk. Point0 sends `X-Accel-Buffering: no` (honored by nginx-style
+proxies), but after deploying behind a new proxy or edge, load a page with a
+`defer` and watch it stream.
 
 ### `suspend` — stream a slow interactive island
 
@@ -548,8 +581,33 @@ The rest are genuinely malformed, and the error names the exact path:
   functions; write it as one;
 - a **page, layout, or provider point** in data — only **component points** can
   be referenced;
-- an element **deeper than `.rscDepth(n)`** — raise the depth (the error tells
-  you which).
+- an element **inside a `Map` or `Set`** — the codec walks plain objects and
+  arrays; put element-carrying data in those (an element-free `Map`/`Set` passes
+  through to the transformer untouched);
+- an element **deeper than `.rsc({ depth: n })`** — raise the depth (the error
+  tells you which).
+
+## The model's edges, and where it goes next
+
+Point0's RSC is deliberately smaller than Flight, and its edges are explicit:
+
+- **An island inside a `defer` hole is not interactive on the first SSR paint**
+  (the matrix above). This is a known trade of the model, and the answer is not
+  "wait for a fix": slow interactive content goes through `suspend: 'server'` or
+  a top-level island — first-class patterns, covered on this page. Lifting the
+  limit would take a Flight-style client reconciler, and that machinery is
+  exactly what this model trades away, so don't plan around it changing.
+- **Planned: promises as island props.** Hand a still-resolving value straight
+  to an island — `<Stats data={promise} />` — and let it stream into the prop
+  while the island is already live. Today the same result goes through a
+  `suspend: 'server'` query (when the value is a query) or `defer` (when the
+  block is markup).
+- **Not planned: Flight compatibility, `'use server'` actions, a second
+  react-server module graph.** Elements ride the normal data pipe — that is the
+  point. Server work goes in loaders, mutations are mutations.
+
+If an edge here costs you something real, open an issue — real usage is what
+moves these.
 
 ## Where next
 

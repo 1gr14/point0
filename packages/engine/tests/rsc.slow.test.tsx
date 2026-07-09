@@ -74,7 +74,7 @@ const ServerInfo = async ({ n }: { n: number }) => {
 }
 
 export const rscPage = root.lets('page', 'rscPage', '/rsc')
-  .rscDepth(1)
+  .rsc({ depth: 1 })
   .loader(async () => ({
     n: 1,
     hero: <ServerInfo n={7} />,
@@ -95,7 +95,7 @@ export const rscPage = root.lets('page', 'rscPage', '/rsc')
     `import { root } from '../lib/root.js'
 import { RscCta } from './cta.js'
 export const promoQuery = root.lets('query', 'promo')
-  .rscDepth(1)
+  .rsc({ depth: 1 })
   .loader(async () => ({ hero: <b id="hero-w">W!</b>, cta: <RscCta /> }))
   .query()
 export const warmPage = root.lets('page', 'warmPage', '/warm')
@@ -143,7 +143,7 @@ const Slow = async () => {
 }
 
 export const deferPage = root.lets('page', 'deferPage', '/defer')
-  .rscDepth(1)
+  .rsc({ depth: 1 })
   .loader(async () => ({
     fast: defer(<Fast />, <span id="d-fast-fb">fast-loading</span>),
     med: defer(<Med />, <span id="d-med-fb">med-loading</span>),
@@ -198,7 +198,7 @@ const SlowIsland = async () => {
 }
 
 export const deferIslandPage = root.lets('page', 'deferIslandPage', '/defer-island')
-  .rscDepth(1)
+  .rsc({ depth: 1 })
   .loader(async () => ({
     fast: <span id="di-fast">DEFER_ISLAND_FAST</span>,
     slow: defer(<SlowIsland />, <span id="di-fb">island-loading</span>),
@@ -221,7 +221,7 @@ import { RscCta } from './cta.js'
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export const slowIslandQuery = root.lets('query', 'slowIsland')
-  .rscDepth(1)
+  .rsc({ depth: 1 })
   .loader(async () => { await sleep(600); return { cta: <RscCta /> } })
   .query()
 
@@ -272,7 +272,7 @@ const BoomServer = async () => {
 }
 
 export const deferErrorPage = root.lets('page', 'deferErrorPage', '/defer-error')
-  .rscDepth(1)
+  .rsc({ depth: 1 })
   .loader(async () => ({
     ok: <span id="de-ok">DEFER_ERROR_OK</span>,
     slow: defer(<BoomServer />, <span id="de-fb">de-loading</span>, <span id="de-err">DEFER_ERROR_FALLBACK</span>),
@@ -309,7 +309,7 @@ export const OuterLoaderIsland = root.lets('component', 'outerLoaderIsland')
   })
 
 export const nestedLoadersPage = root.lets('page', 'nestedLoadersPage', '/nested-loaders')
-  .rscDepth(1)
+  .rsc({ depth: 1 })
   .loader(async () => ({ island: <OuterLoaderIsland /> }))
   .page(({ data }) => <main id="nested-loaders-page">{data.island}</main>)
 `,
@@ -330,11 +330,36 @@ const BoomTyped = async () => {
 }
 
 export const deferErrorFnPage = root.lets('page', 'deferErrorFnPage', '/defer-error-fn')
-  .rscDepth(1)
+  .rsc({ depth: 1 })
   .loader(async () => ({
     slow: defer(<BoomTyped />, <span id="def-fb">def-loading</span>, (error) => <span id="def-err">CODE:{String(error.code)}</span>),
   }))
   .page(({ data }) => <main id="defer-error-fn-page">{data.slow}</main>)
+`,
+  )
+  // A defer slower than Bun's default 10s idleTimeout (and typical proxy idle windows): only the stream heartbeats
+  // keep the socket alive until the subtree lands — this page/action pair is fetched by the idle-reaper survival test.
+  await project.write(
+    'src/rsc/slow-stream.tsx',
+    `import { defer } from '@point0/core'
+import { root } from '../lib/root.js'
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+const VerySlow = async () => {
+  await sleep(12000)
+  return <b id="slow12">SLOW-12S-MARKER</b>
+}
+
+export const slowStreamPage = root.lets('page', 'slowStreamPage', '/slow-stream')
+  .rsc({ depth: 1 })
+  .loader(async () => ({ slow: defer(<VerySlow />, <span id="slow12-fb">slow12-waiting</span>) }))
+  .page(({ data }) => <main id="slow-stream-page">{data.slow}</main>)
+
+export const slowStreamAction = root.lets('action', 'slowStreamAction', 'GET', '/api/slow-stream')
+  .rsc({ depth: 1 })
+  .loader(async () => ({ slow: defer(<VerySlow />, <span>slow12-waiting</span>) }))
+  .action()
 `,
   )
 }
@@ -369,6 +394,27 @@ const bootRscProject = async (
 // ——— The shared assertion bodies. Each runs identically against the bun and vite projects: the
 // observable RSC contract (SSR html, hydration, islands, strip, chunks, manifest, preloads) must
 // not depend on the bundler. ———
+
+// Slow streams survive idle reapers — the regression that motivated the heartbeats: Bun's default idleTimeout kills a
+// SILENT response after 10s (and reverse proxies carry idle windows of their own), so a legitimately slow defer used
+// to die mid-stream on a real socket. 12 seconds of real wall-clock against a real server is the whole point; the two
+// channels (SSR document push and NDJSON data fetch) run concurrently, so the test costs ~12s, not 24. Channel
+// behavior is bundler-independent — this runs in ONE describe (dev) rather than all four.
+const expectSlowStreamsSurviveIdleReapers = async (tp: TestProjectOneClient) => {
+  const [html, ndjson] = await Promise.all([
+    tp.fetchServerHtml('/slow-stream'),
+    (async () => {
+      const response = await tp.fetchServer('/api/slow-stream', { headers: { 'x-point0-stream': 'true' } })
+      return await response.text()
+    })(),
+  ])
+  // the SSR shell shipped the fallback and the fill's push script arrived ~12s later on the SAME response
+  expect(html).toContain('slow12-waiting')
+  expect(html).toContain('SLOW-12S-MARKER')
+  // the NDJSON stream stayed open through the silence (heartbeat blank lines) and delivered the fill line
+  expect(ndjson).toContain('"t":2')
+  expect(ndjson).toContain('SLOW-12S-MARKER')
+}
 
 // SSR html: server component and island rendered, clientOnly island absent, payload encoded.
 const expectRscSsrHtml = async (tp: TestProjectOneClient) => {
@@ -696,6 +742,10 @@ describe('rsc e2e (browser, dev)', () => {
 
   it('SSR html: server component and island rendered, clientOnly island absent, payload encoded', async () => {
     await expectRscSsrHtml(tp)
+  })
+
+  it('slow streams survive idle reapers: a 12s defer arrives over SSR and NDJSON on a real socket (heartbeats)', async () => {
+    await expectSlowStreamsSurviveIdleReapers(tp)
   })
 
   it('direct load: hydration is clean, no refetch, islands interactive, clientOnly appears after hydration', async () => {

@@ -305,7 +305,7 @@ import {
   windowScrollPositionSetter,
   withLetsSugar,
 } from './utils.js'
-import { POINT0_STREAM_HEADER, rscComponentsRegistry, wrapTransformerWithRsc } from './rsc.js'
+import { POINT0_STREAM_HEADER, rscComponentsRegistry, wrapTransformerWithRsc, type RscPointOptions } from './rsc.js'
 
 export class Point0<
   in out TPointType extends PointType,
@@ -462,7 +462,7 @@ export class Point0<
    */
   _getBlankTransformerWithRsc = () =>
     (this._blankTransformerWithRsc ??= wrapTransformerWithRsc(blankDataTransformerExtended))
-  readonly _rscDepth: number | undefined
+  readonly _rsc: RscPointOptions | undefined
   private readonly _eventerSubscriptions: EventerSubscription<any, TError>[]
   readonly _ssr: PointSsrState | undefined
   // Set by `.clientOnly()`: records that a `<ClientOnly>` wrapper was declared up the chain, so the render tail runs in
@@ -761,7 +761,7 @@ export class Point0<
     _layouts?: LayoutPoint[]
     name: PointName
     _fetchOptions?: FetchOptionsFn
-    _rscDepth?: number
+    _rsc?: RscPointOptions
     _scrollPositionGetter?: ScrollPositionGetter | undefined
     _scrollPositionSetter?: ScrollPositionSetter | undefined
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy | undefined
@@ -839,7 +839,7 @@ export class Point0<
     this._layouts = options._layouts ?? []
     this.name = options.name
     this._fetchOptions = options._fetchOptions ?? (() => ({}))
-    this._rscDepth = options._rscDepth ?? undefined
+    this._rsc = options._rsc ?? undefined
     this._scrollPositionGetter = options._scrollPositionGetter ?? undefined
     this._scrollPositionSetter = options._scrollPositionSetter ?? undefined
     this._scrollPositionRestorePolicy = options._scrollPositionRestorePolicy ?? undefined
@@ -952,7 +952,7 @@ export class Point0<
     _layouts?: LayoutPoint[]
     name?: PointName
     _fetchOptions?: FetchOptionsFn
-    _rscDepth?: number
+    _rsc?: RscPointOptions
     _scrollPositionGetter?: ScrollPositionGetter | undefined
     _scrollPositionSetter?: ScrollPositionSetter | undefined
     _scrollPositionRestorePolicy?: ScrollPositionRestorePolicy | undefined
@@ -1078,7 +1078,7 @@ export class Point0<
       _layouts: set('_layouts'),
       name: set('name'),
       _fetchOptions: set('_fetchOptions'),
-      _rscDepth: set('_rscDepth'),
+      _rsc: set('_rsc'),
       _scrollPositionGetter: set('_scrollPositionGetter'),
       _scrollPositionSetter: set('_scrollPositionSetter'),
       _scrollPositionRestorePolicy: set('_scrollPositionRestorePolicy'),
@@ -1510,7 +1510,7 @@ export class Point0<
       _pageDehydratedStateQueryOptions: this._base?._pageDehydratedStateQueryOptions,
       _infiniteQueryOptions: {} as never,
       _fetchOptions: this._base?._fetchOptions,
-      _rscDepth: this._base?._rscDepth,
+      _rsc: this._base?._rsc,
       _scrollPositionGetter: this._base?._scrollPositionGetter,
       _scrollPositionSetter: this._base?._scrollPositionSetter,
       _scrollPositionRestorePolicy: this._base?._scrollPositionRestorePolicy,
@@ -3023,28 +3023,33 @@ export class Point0<
   }
 
   /**
-   * How deep in the loader output React elements are allowed (RSC — "elements as data"). `0` (the default) allows an
-   * element only as the whole output — `.loader(async () => <Hello />)`; `1` also allows elements in first-level fields
-   * — `.loader(async () => ({ stats, hero: <Hero /> }))`; and so on. Arrays don't consume a level (`{ items: [<Row />]
-   * }` needs `1`). Elements found deeper than the declared depth fail the loader with an error naming the path — depth
-   * is an explicitness gate, so elements never leak into data by accident.
-   *
-   * Inside an element tree the depth no longer applies: props and children nest freely, including further elements.
-   * Plain function components unfold on the server (they are server components — their code never ships to the
-   * browser); component points serialize as references and render on the client. On root, base, plugin, and every point
+   * The point's RSC knobs ("elements as data") — merged PER KEY down the chain, so `root.rsc({ … })` sets the app-wide
+   * default and a point's own `.rsc({ … })` overrides only the keys it names. On root, base, plugin, and every point
    * type.
+   *
+   * `depth` — how deep in the loader output React elements are allowed. `0` (the default) allows an element only as the
+   * whole output — `.loader(async () => <Hello />)`; `1` also allows elements in first-level fields — `.loader(async ()
+   * => ({ stats, hero: <Hero /> }))`; and so on. Arrays don't consume a level (`{ items: [<Row />] }` needs `1`).
+   * Elements found deeper fail the loader with an error naming the path — depth is an explicitness gate, so elements
+   * never leak into data by accident. Inside an element tree the depth no longer applies: props and children nest
+   * freely. Plain function components unfold on the server (they are server components — their code never ships to the
+   * browser); component points serialize as references and render on the client.
+   *
+   * `holeTimeoutMs` — the deadline for this point's `defer()` holes, default 60s, `false` disables: a subtree that has
+   * not settled by then fails with `POINT0_RSC_HOLE_TIMEOUT` (rendered by the hole's error fallback or its nearest
+   * boundary), so a hung subtree never holds the streamed response open forever.
    *
    * Server-and-client — kept on both bundles (isomorphic config).
    *
-   *     .rscDepth(1)
+   *     .rsc({ depth: 1 })
    *     .loader(async () => ({ hero: <Hero />, cta: <MyCta label="Go" /> }))
    *
    * Full reference: https://1gr14.dev/point0/latest/rsc
    */
-  rscDepth<TSelf>(this: TSelf, rscDepth: number): TSelf
-  rscDepth(rscDepth: number) {
+  rsc<TSelf>(this: TSelf, rsc: RscPointOptions): TSelf
+  rsc(rsc: RscPointOptions) {
     return this._continue({
-      _rscDepth: rscDepth,
+      _rsc: { ...this._rsc, ...rsc },
     }) as never
   }
 
@@ -6957,7 +6962,7 @@ export class Point0<
   private _getProviderLikeProps() {
     return {
       _ProviderReactContext: singletonize(
-        `__POINT0_PROVIDER_REACT_CONTEXT__${this.toString()}`,
+        `__POINT0_PROVIDER_REACT_CONTEXT__${this.id}`,
         createContext<MountableSuccessData<TQueriesDefinitions, TMapperOutput>>(null as never) as never,
       ),
       _useValue: (point: AnyPoint, keys?: string | string[] | undefined) => {
@@ -7392,7 +7397,8 @@ export class Point0<
       ...set('_openapiSchema', () => {
         return mergeEndpointOpenapiSchemas(this._openapiSchema, point._openapiSchema)
       }),
-      ...set('_rscDepth'),
+      // per-key merge like `_fetchOptions` — a plugin's `.rsc({ … })` adds its keys over the consumer's
+      ...set('_rsc', { ...this._rsc, ...point._rsc }),
       ...set('_scrollPositionGetter'),
       ...set('_scrollPositionSetter'),
       ...set('_scrollPositionRestorePolicy'),
@@ -8338,7 +8344,7 @@ export class Point0<
       if (result instanceof Promise) {
         throw new this._Error(
           `Promise returning schema input not allowed for client input schemas on point ${this.toStringWithLocation()}`,
-          { code: POINT0_ERROR_CODES_MAP.INPUT_SCHEMA_PROMISE_NOT_ALLOWED, meta: { point: this.toString() } },
+          { code: POINT0_ERROR_CODES_MAP.INPUT_SCHEMA_PROMISE_NOT_ALLOWED, meta: { point: this.id } },
         )
       }
 
@@ -8358,7 +8364,7 @@ export class Point0<
           error: new this._Error(`Unknown input schema error on point ${this.toStringWithLocation()}`, {
             cause: result,
             code: POINT0_ERROR_CODES_MAP.INPUT_SCHEMA_UNKNOWN,
-            meta: { point: this.toString() },
+            meta: { point: this.id },
           }),
         }
       }
@@ -8367,7 +8373,7 @@ export class Point0<
       const error = new this._Error(message, {
         cause: result,
         code: POINT0_ERROR_CODES_MAP.INPUT_SCHEMA_INVALID,
-        meta: { point: this.toString(), path },
+        meta: { point: this.id, path },
       })
       return {
         success: false,
@@ -8599,7 +8605,7 @@ export class Point0<
       // reach it, and a silent `{ data: {} }` stub would just move the failure downstream.
       throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
         code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
-        meta: { point: this.toString() },
+        meta: { point: this.id },
       })
     }
 
@@ -8650,7 +8656,7 @@ export class Point0<
     if (!serverQueryEnabled && !clientQueryEnabled) {
       throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
         code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
-        meta: { point: this.toString() },
+        meta: { point: this.id },
       })
     }
     // `enabled: true` — a suspense query can never be disabled (a merged-in default `enabled: false` would park it
@@ -8723,7 +8729,7 @@ export class Point0<
       // see useQuery — aligned with every other query surface
       throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
         code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
-        meta: { point: this.toString() },
+        meta: { point: this.id },
       })
     }
 
@@ -8783,7 +8789,7 @@ export class Point0<
     if (!serverQueryEnabled && !clientQueryEnabled) {
       throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
         code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
-        meta: { point: this.toString() },
+        meta: { point: this.id },
       })
     }
     // see useSuspenseQuery — same forced call-site options, same reasons
@@ -9123,7 +9129,7 @@ export class Point0<
       error: undefined,
       output: undefined,
     }
-    const meta = { point: this.toString(), input: sanitizeForLog(input) }
+    const meta = { point: this.id, input: sanitizeForLog(input) }
     try {
       const fetchOptions = this._getFetchServerOptions({
         input,
@@ -9387,7 +9393,7 @@ export class Point0<
     }
     throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
       code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
-      meta: { point: this.toString() },
+      meta: { point: this.id },
     })
   }
 
@@ -9416,7 +9422,7 @@ export class Point0<
     }
     throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
       code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
-      meta: { point: this.toString() },
+      meta: { point: this.id },
     })
   }
 
@@ -9507,7 +9513,7 @@ export class Point0<
       error: undefined,
       data: undefined,
     }
-    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
+    const meta = { point: this.id, input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
     const queryFn = async ({ signal }: { signal: AbortSignal }) => {
       this._emit('pointQueryStart', _eventData, meta)
       try {
@@ -9643,7 +9649,7 @@ export class Point0<
       error: undefined,
       data: undefined,
     }
-    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
+    const meta = { point: this.id, input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
     const queryFn = async () => {
       this._emit('pointQueryStart', _eventData, meta)
       try {
@@ -9768,7 +9774,7 @@ export class Point0<
     }
     throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
       code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
-      meta: { point: this.toString() },
+      meta: { point: this.id },
     })
   }
 
@@ -9838,7 +9844,7 @@ export class Point0<
       error: undefined,
       data: undefined,
     }
-    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
+    const meta = { point: this.id, input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
     const cache = queryClient.getQueryCache()
     const query = cache.find({ queryKey, exact: true })
     const maybeRedirect = (query?.state.error as Record<string, unknown> | undefined)?.redirect
@@ -9969,7 +9975,7 @@ export class Point0<
       error: undefined,
       data: undefined,
     }
-    const meta = { point: this.toString(), input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
+    const meta = { point: this.id, input: sanitizeForLog(input), queryKey, mode: _eventData.mode }
     const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
       try {
         this._emit('pointInfiniteQueryStart', _eventData, meta)
@@ -10099,7 +10105,7 @@ export class Point0<
     }
     throw new this._Error(`No loader found on point ${this.toStringWithLocation()}`, {
       code: POINT0_ERROR_CODES_MAP.POINT_NO_LOADER,
-      meta: { point: this.toString() },
+      meta: { point: this.id },
     })
   }
 
@@ -10430,7 +10436,7 @@ export class Point0<
         output: undefined,
         redirect: undefined,
       }
-      const meta = { point: this.toString(), input: sanitizeForLog(input) }
+      const meta = { point: this.id, input: sanitizeForLog(input) }
       const handleRedirect = async (redirect: RedirectTask) => {
         const redirectEventData = {
           ...eventData,
@@ -12006,7 +12012,7 @@ export class Point0<
     if (policy === 'none') {
       return
     }
-    const meta = { point: this.toString(), input: sanitizeForLog(input), options: { policy, trigger } }
+    const meta = { point: this.id, input: sanitizeForLog(input), options: { policy, trigger } }
     this._emit('pointPrefetchPageStart', eventData, meta)
 
     if (!this.route) {
@@ -12255,9 +12261,7 @@ export class Point0<
   ): Promise<void> {
     const prefetchPagePromises = _ss.__POINT0_PREFETCH_PAGE_PROMISES__.get()
     const policy = this._getPrefetchPagePolicy(options?.trigger, options?.policy)
-    const hash =
-      stringify({ input, id: this.toString(), policy }) ||
-      JSON.stringify({ input: 'invalid', id: this.toString(), policy })
+    const hash = stringify({ input, id: this.id, policy }) || JSON.stringify({ input: 'invalid', id: this.id, policy })
     const exPromise = prefetchPagePromises.get(hash)
     if (exPromise) {
       await exPromise
@@ -13034,7 +13038,7 @@ export class Point0<
                 `Usual input schema are not allowed for this point: ${this.toStringWithLocation()}`,
                 {
                   code: POINT0_ERROR_CODES_MAP.INPUT_SCHEMA_NOT_ALLOWED,
-                  meta: { point: this.toString(), pointType: this.type },
+                  meta: { point: this.id, pointType: this.type },
                 },
               ),
             })
@@ -13066,7 +13070,7 @@ export class Point0<
                 `Params input schema are not allowed for this point: ${this.toStringWithLocation()}`,
                 {
                   code: POINT0_ERROR_CODES_MAP.PARAMS_SCHEMA_NOT_ALLOWED,
-                  meta: { point: this.toString(), pointType: this.type },
+                  meta: { point: this.id, pointType: this.type },
                 },
               ),
             })
@@ -13104,7 +13108,7 @@ export class Point0<
                 `Search input schema are not allowed for this point: ${this.toStringWithLocation()}`,
                 {
                   code: POINT0_ERROR_CODES_MAP.SEARCH_SCHEMA_NOT_ALLOWED,
-                  meta: { point: this.toString(), pointType: this.type },
+                  meta: { point: this.id, pointType: this.type },
                 },
               ),
             })

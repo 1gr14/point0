@@ -15,7 +15,7 @@ import {
 import { Point0 } from '../src/point0.js'
 import { ClientPoints } from '../src/client-points.js'
 import { ClientOnly } from '../src/helpers.js'
-import { readStreamedRscFetch } from '../src/query-client.js'
+import { applyPushedRscFill, readStreamedRscFetch } from '../src/query-client.js'
 import { blankDataTransformerExtended } from '../src/utils.js'
 import { superstore } from '../src/super-store.js'
 import { ErrorPoint0, POINT0_ERROR_CODES_MAP } from '../src/error.js'
@@ -101,6 +101,25 @@ describe('rsc codec', () => {
     expect((decoded.hero as React.ReactElement).type).toBe('b')
     expect(decoded.n).toBe(1)
   })
+
+  it('an own __proto__ key in user data survives the codec as an own key — never rewriting a prototype', () => {
+    // JSON.parse is the realistic producer of an own `__proto__` key (an object literal can't make one)
+    const value = JSON.parse('{"__proto__":{"polluted":true},"n":1}') as Record<string, unknown>
+    value.hero = <b /> // force the codec's copy path
+    const encoded = encodeRscData(value) as Record<string, unknown>
+    expect(Object.getPrototypeOf(encoded)).toBe(Object.prototype)
+    expect((encoded as { polluted?: boolean }).polluted).toBeUndefined()
+    expect(Object.getOwnPropertyDescriptor(encoded, '__proto__')?.value).toEqual({ polluted: true })
+    const decoded = decodeRscData(JSON.parse(JSON.stringify(encoded))) as Record<string, unknown>
+    expect(Object.getPrototypeOf(decoded)).toBe(Object.prototype)
+    expect(React.isValidElement(decoded.hero)).toBe(true)
+    expect(Object.getOwnPropertyDescriptor(decoded, '__proto__')?.value).toEqual({ polluted: true })
+  })
+
+  it('drops props explicitly set to undefined at encode — JSON cannot carry them', () => {
+    const encoded = encodeRscData(<div id="x" title={undefined} />) as Record<string, { p?: Record<string, unknown> }>
+    expect(encoded[RSC_MARKER_KEY]!.p).toEqual({ id: 'x' })
+  })
 })
 
 describe('rsc normalize', () => {
@@ -138,10 +157,12 @@ describe('rsc normalize', () => {
   })
 
   it('enforces depth: objects consume a level, arrays do not', async () => {
-    await expect(normalizeRscOutput({ hero: <b /> }, opts)).rejects.toThrow(/rscDepth/)
+    await expect(normalizeRscOutput({ hero: <b /> }, opts)).rejects.toThrow(/rsc depth/)
     expect(await normalizeRscOutput({ hero: <b /> }, { ...opts, depth: 1 })).toBeTruthy()
     expect(await normalizeRscOutput({ items: [<b key="b" />] }, { ...opts, depth: 1 })).toBeTruthy()
-    await expect(normalizeRscOutput({ deep: { hero: <b /> } }, { ...opts, depth: 1 })).rejects.toThrow(/rscDepth\(2\)/)
+    await expect(normalizeRscOutput({ deep: { hero: <b /> } }, { ...opts, depth: 1 })).rejects.toThrow(
+      /\.rsc\(\{ depth: 2 \}\)/,
+    )
   })
 
   it('rejects functions in host element props with the path', async () => {
@@ -214,6 +235,69 @@ describe('rsc normalize', () => {
     const encoded = encodeRscData(out) as { __p0e: { p: { children: Array<{ __p0e: { t: unknown } }> } } }
     expect(encoded.__p0e.p.children.map((child) => child.__p0e.t)).toContainEqual({ c: 'cta' })
   })
+
+  it('rejects a ref on a host element — refs cannot travel over the wire', async () => {
+    await expect(normalizeRscOutput(<div ref={React.createRef<HTMLDivElement>()} />, opts)).rejects.toThrow(
+      /refs cannot travel/,
+    )
+  })
+
+  it('rejects React.lazy and other exotic elements as unsupported', async () => {
+    const Lazy = React.lazy(async () => ({ default: () => null }))
+    await expect(normalizeRscOutput(<Lazy />, opts)).rejects.toThrow(/not supported/)
+  })
+
+  it('rejects a function NESTED in a kept element prop, naming the path — not just a direct prop', async () => {
+    await expect(normalizeRscOutput(<div data-cfg={{ format: () => 'x' }} />, opts)).rejects.toThrow(
+      /functions cannot travel/,
+    )
+    const root = Point0.lets('root', 'nested-fn').root()
+    const Chart = root.lets<{ options?: unknown }>('component', 'chart').component(() => <div />)
+    await expect(normalizeRscOutput(<Chart options={{ rows: [{ render: () => null }] }} />, opts)).rejects.toThrow(
+      /rows/,
+    )
+  })
+
+  it('a render prop handed to an UNFOLDED server component stays legal — it is consumed server-side', async () => {
+    const List = ({ render }: { render: (x: string) => React.ReactNode }) => <ul>{render('a')}</ul>
+    const out = (await normalizeRscOutput(<List render={(x) => <li>{x}</li>} />, opts)) as React.ReactElement
+    expect(out.type).toBe('ul')
+    expect(((out.props as { children: React.ReactElement }).children as React.ReactElement).type).toBe('li')
+  })
+
+  it('rejects elements hiding inside a Map or Set with a clear error; element-free ones pass through untouched', async () => {
+    await expect(normalizeRscOutput({ m: new Map([['k', <b />]]) }, { ...opts, depth: 1 })).rejects.toThrow(/Map/)
+    await expect(normalizeRscOutput({ s: new Set([<b />]) }, { ...opts, depth: 1 })).rejects.toThrow(/Set/)
+    const plainMap = new Map([['k', 1]])
+    const out = (await normalizeRscOutput({ hero: <b />, m: plainMap }, { ...opts, depth: 1 })) as { m: unknown }
+    expect(out.m).toBe(plainMap)
+  })
+
+  it('.rsc() merges per key down the chain — root sets the app default, the point adds its own keys', () => {
+    const root = Point0.lets('root', 'rsc-merge').rsc({ holeTimeoutMs: 120_000 }).root()
+    const q = root
+      .lets('query', 'q')
+      .rsc({ depth: 1 })
+      .loader(async () => ({}))
+      .query()
+    expect(q.point._rsc).toEqual({ holeTimeoutMs: 120_000, depth: 1 })
+    // a later call overrides only the keys it names
+    const deeper = root
+      .lets('query', 'q2')
+      .rsc({ depth: 1 })
+      .rsc({ depth: 2 })
+      .loader(async () => ({}))
+      .query()
+    expect(deeper.point._rsc).toEqual({ holeTimeoutMs: 120_000, depth: 2 })
+  })
+
+  it('a circular loader output scans without stack overflow — legal under cycle-supporting transformers', async () => {
+    const circular: Record<string, unknown> = { n: 1 }
+    circular.self = circular
+    circular.list = [circular]
+    expect(rscDataHasElements(circular)).toBe(false)
+    expect(await normalizeRscOutput(circular, opts)).toBe(circular) // element-free → the fast path bails untouched
+  })
 })
 
 describe('rsc registry', () => {
@@ -254,6 +338,20 @@ describe('rsc registry', () => {
     release(() => null)
     await registry.drainPending()
     expect(() => (Resolved as (props: object) => React.ReactNode)({})).not.toThrow()
+  })
+
+  it('a failed chunk import is observed (no unhandled rejection) and evicted — the next resolve retries', async () => {
+    const registry = new RscComponentsRegistry()
+    let rejectLoad!: (error: Error) => void
+    const failing = registry.resolve('flaky', () => new Promise((_resolve, reject) => (rejectLoad = reject)))
+    rejectLoad(new Error('chunk 404'))
+    await registry.drainPending() // settles despite the failure — the drain never rejects
+    // the wrapper was evicted on failure, so resolving again starts a FRESH import instead of replaying the failure
+    const Real = () => <div id="real" />
+    const recovered = registry.resolve('flaky', async () => Real)
+    expect(recovered).not.toBe(failing)
+    await registry.drainPending()
+    expect((recovered as (props: object) => React.ReactElement)({}).type).toBe(Real)
   })
 })
 
@@ -427,10 +525,14 @@ describe('rsc defer / holes', () => {
         },
       },
       async () => {
-        const { done } = await readStreamedRscFetch(transformer, body)
+        const { data, done } = await readStreamedRscFetch(transformer, body)
         await done
-        // B was pending and NOT in the line-1 snapshot — only the live tracking fails it with the coded error.
-        const SlotB = rscHolesRegistry.slotComponent(B) as (props: object) => React.ReactNode
+        // Walk the REAL decoded tree (consumed slots are evicted from the registry, so a by-id lookup would mint a
+        // fresh empty slot): line 1 decoded A's slot into `data.hero`; A's fill delivered the nested B slot as its
+        // node. B was pending and NOT in the line-1 snapshot — only the live tracking fails it with the coded error.
+        const HoleA = (data as { hero: React.ReactElement }).hero.type as (props: object) => React.ReactNode
+        const filledA = HoleA({}) as React.ReactElement
+        const SlotB = filledA.type as (props: object) => React.ReactNode
         let thrown: unknown
         try {
           void SlotB({})
@@ -445,10 +547,122 @@ describe('rsc defer / holes', () => {
     )
   })
 
-  it('a deferred subtree deeper than rscDepth errors like an element', async () => {
+  it('applyPushedRscFill swallows a malformed line and drains island chunks BEFORE filling', async () => {
+    const root = Point0.lets('root', 'fill-robust').root()
+    const clientPoints = ClientPoints.createFromDefintion([root])
+    let releaseChunk!: (component: React.ComponentType) => void
+    const chunkImport = new Promise<React.ComponentType>((resolve) => (releaseChunk = resolve))
+    // a lazy aggregator record, like the generated client aggregator lists component points
+    ;(clientPoints as unknown as { manager: { collection: unknown[] } }).manager.collection.push({
+      type: 'component',
+      name: 'fillRobustIsland',
+      point: () => chunkImport,
+    })
+    const transformer = {
+      parse: (s: string) => decodeRscData(JSON.parse(s)),
+      stringify: (v: unknown) => JSON.stringify(v),
+      serialize: (v: unknown) => v,
+      deserialize: (v: unknown) => v,
+    } as unknown as Parameters<typeof applyPushedRscFill>[0]
+    await superstore.runWithServerStorageState(
+      {
+        __POINT0_FAKE_CLIENT__: {
+          id: 't',
+          scope: 'root',
+          runtime: 'browser',
+          fetch: (async () => new Response()) as never,
+          points: clientPoints as never,
+        },
+      },
+      async () => {
+        // a malformed line resolves without throwing — a broken push must never take the app down
+        await applyPushedRscFill(transformer, '{definitely not json')
+        // the fill carries a lazy island reference: the slot must stay unfilled until the chunk import resolves, so a
+        // pushed island never renders through a cold reference (no Suspense-fallback flash)
+        const Slot = rscHolesRegistry.slotComponent('hFillDrain') as (props: object) => React.ReactNode
+        const fillLine = JSON.stringify({
+          id: 'hFillDrain',
+          data: { [RSC_MARKER_KEY]: { t: { c: 'fillRobustIsland' } } },
+        })
+        const applied = applyPushedRscFill(transformer, fillLine)
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        expect(() => Slot({})).toThrow() // still pending — the chunk is not warm yet
+        releaseChunk(() => <div id="island" />)
+        await applied
+        const rendered = Slot({}) as React.ReactElement
+        expect(React.isValidElement(rendered)).toBe(true) // filled, chunk warm
+      },
+    )
+  })
+
+  it('two concurrent streams: one dropping mid-stream fails only ITS holes', async () => {
+    const root = Point0.lets('root', 'concurrent-streams').root()
+    const clientPoints = ClientPoints.createFromDefintion([root])
+    const A1 = 'cs-a1'
+    const B1 = 'cs-b1'
+    const enc = new TextEncoder()
+    // stream A: introduces its hole, then DROPS — the fill never arrives
+    const bodyA = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(enc.encode(JSON.stringify({ hero: { [RSC_MARKER_KEY]: { t: 2, id: A1 } } }) + '\n'))
+        controller.close()
+      },
+    })
+    // stream B: introduces its hole and delivers it cleanly
+    const bodyB = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(enc.encode(JSON.stringify({ hero: { [RSC_MARKER_KEY]: { t: 2, id: B1 } } }) + '\n'))
+        controller.enqueue(
+          enc.encode(
+            JSON.stringify({ id: B1, data: { [RSC_MARKER_KEY]: { t: 'b', p: { children: 'b-ok' } } } }) + '\n',
+          ),
+        )
+        controller.close()
+      },
+    })
+    const transformer = {
+      parse: (s: string) => decodeRscData(JSON.parse(s)),
+      stringify: (v: unknown) => JSON.stringify(v),
+      serialize: (v: unknown) => v,
+      deserialize: (v: unknown) => v,
+    } as unknown as Parameters<typeof readStreamedRscFetch>[0]
+    await superstore.runWithServerStorageState(
+      {
+        __POINT0_FAKE_CLIENT__: {
+          id: 't',
+          scope: 'root',
+          runtime: 'browser',
+          fetch: (async () => new Response()) as never,
+          points: clientPoints as never,
+        },
+      },
+      async () => {
+        // line-1 reads run sequentially so each reader's pending-diff captures exactly its own hole
+        const streamedA = await readStreamedRscFetch(transformer, bodyA)
+        const streamedB = await readStreamedRscFetch(transformer, bodyB)
+        await Promise.all([streamedA.done, streamedB.done])
+        // A's hole failed with the coded drop error…
+        const HoleA = (streamedA.data as { hero: React.ReactElement }).hero.type as (props: object) => React.ReactNode
+        let thrownA: unknown
+        try {
+          void HoleA({})
+        } catch (error) {
+          thrownA = error
+        }
+        expect((thrownA as ErrorPoint0).code).toBe(POINT0_ERROR_CODES_MAP.RSC_STREAM_INCOMPLETE)
+        // …while B's — fed through the SAME bundle-wide registry at the same time — delivered untouched
+        const HoleB = (streamedB.data as { hero: React.ReactElement }).hero.type as (props: object) => React.ReactNode
+        const renderedB = HoleB({}) as React.ReactElement
+        expect(renderedB.type).toBe('b')
+        expect((renderedB.props as { children: string }).children).toBe('b-ok')
+      },
+    )
+  })
+
+  it('a deferred subtree deeper than the rsc depth errors like an element', async () => {
     const holes = new RscHoleRegistry()
     await expect(normalizeRscOutput({ hero: defer(<b />) }, { depth: 0, label: 'p', holes })).rejects.toThrow(
-      /rscDepth/,
+      /rsc depth/,
     )
   })
 
@@ -459,5 +673,165 @@ describe('rsc defer / holes', () => {
     }
     // no Suspense boundary — the subtree is inlined, the fallback dropped
     expect(out.hero.type).toBe('b')
+  })
+
+  it('a keyed defer() in a list carries the key onto the Suspense wrapper and over the wire', async () => {
+    const holes = new RscHoleRegistry()
+    const Slow = async () => <b>s</b>
+    const out = (await normalizeRscOutput(
+      { items: [defer(<Slow key="k1" />, <i>l</i>)] },
+      { depth: 1, label: 'p', holes },
+    )) as { items: React.ReactElement[] }
+    expect(out.items[0]!.type).toBe(React.Suspense)
+    expect(out.items[0]!.key).toBe('k1')
+    const encoded = encodeRscData(out) as { items: Array<{ __p0e: { t: number; k?: string } }> }
+    expect(encoded.items[0]!.__p0e.t).toBe(1)
+    expect(encoded.items[0]!.__p0e.k).toBe('k1')
+  })
+
+  it('defer() as the whole output works at rsc depth 0', async () => {
+    const holes = new RscHoleRegistry()
+    const Slow = async () => <b>s</b>
+    const out = (await normalizeRscOutput(defer(<Slow />, <i>l</i>), {
+      depth: 0,
+      label: 'p',
+      holes,
+    })) as React.ReactElement
+    expect(out.type).toBe(React.Suspense)
+    expect(holes.entries.size).toBe(1)
+  })
+
+  it('a hole that misses its deadline fails with RSC_HOLE_TIMEOUT; the late real result is dropped', async () => {
+    const holes = new RscHoleRegistry()
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const Hung = async () => {
+      await gate
+      return <b>late</b>
+    }
+    let seen: ErrorPoint0 | undefined
+    await normalizeRscOutput(
+      {
+        hero: defer(<Hung />, <i>l</i>, (error) => {
+          seen = error
+          return <b>{error.code}</b>
+        }),
+      },
+      // the deadline is the owner point's `.rsc({ holeTimeoutMs })`, threaded through the normalize options
+      { depth: 1, label: 'p', holes, holeTimeoutMs: 20 },
+    )
+    const [entry] = [...holes.entries.values()]
+    await entry!.throwable
+    expect(entry!.settled).toBe(true)
+    expect((entry!.result as { error: ErrorPoint0 }).error.code).toBe('POINT0_RSC_HOLE_TIMEOUT')
+    // the per-hole error fallback covers the deadline like any other failure — it ran with the timeout error
+    expect(seen?.code).toBe('POINT0_RSC_HOLE_TIMEOUT')
+    expect(entry!.errorFallback).toBeDefined()
+    // the real subtree settling AFTER the deadline is dropped unread — the timeout result stands
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect('error' in (entry!.result as object)).toBe(true)
+  })
+
+  it('holeTimeoutMs: false disables the deadline while a configured one fires', async () => {
+    const never = (): Promise<unknown> => new Promise(() => {})
+    const registry = new RscHoleRegistry()
+    const unbounded = registry.register(never, undefined, { holeTimeoutMs: false, ErrorClass: ErrorPoint0 })
+    const bounded = registry.register(never, undefined, { holeTimeoutMs: 15, ErrorClass: ErrorPoint0 })
+    await new Promise((resolve) => setTimeout(resolve, 40))
+    expect(bounded.settled).toBe(true)
+    expect(unbounded.settled).toBe(false)
+  })
+
+  it('a consumed client hole (slot decoded + fill applied, either order) is evicted from the registry', () => {
+    const slots = (rscHolesRegistry as unknown as { slots: Map<string, unknown> }).slots
+    // decode → fill
+    const DecodedFirst = rscHolesRegistry.slotComponent('hClean1') as (props: object) => React.ReactNode
+    expect(slots.has('hClean1')).toBe(true)
+    rscHolesRegistry.fill('hClean1', { node: <b>x</b> })
+    expect(slots.has('hClean1')).toBe(false)
+    // the component closes over the slot object — eviction never affects rendering
+    expect((DecodedFirst({}) as React.ReactElement).type).toBe('b')
+    // fill → decode (the buffered-push order)
+    rscHolesRegistry.fill('hClean2', { node: <i>y</i> })
+    expect(slots.has('hClean2')).toBe(true)
+    const FilledFirst = rscHolesRegistry.slotComponent('hClean2') as (props: object) => React.ReactNode
+    expect(slots.has('hClean2')).toBe(false)
+    expect((FilledFirst({}) as React.ReactElement).type).toBe('i')
+    // a late failIfPending on a consumed id is a no-op — nothing resurrects
+    rscHolesRegistry.failIfPending('hClean1', new Error('late'))
+    expect(slots.has('hClean1')).toBe(false)
+    expect((DecodedFirst({}) as React.ReactElement).type).toBe('b')
+  })
+
+  it('blank NDJSON lines (server heartbeats) are skipped by the stream reader', async () => {
+    const root = Point0.lets('root', 'heartbeat-skip').root()
+    const clientPoints = ClientPoints.createFromDefintion([root])
+    const H = 'hb-hole'
+    const line1 = JSON.stringify({ hero: { [RSC_MARKER_KEY]: { t: 2, id: H } } })
+    const fill = JSON.stringify({ id: H, data: { [RSC_MARKER_KEY]: { t: 'b', p: { children: 'beat' } } } })
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const enc = new TextEncoder()
+        controller.enqueue(enc.encode(line1 + '\n'))
+        controller.enqueue(enc.encode('\n\n')) // heartbeats while the subtree was slow
+        controller.enqueue(enc.encode(fill + '\n'))
+        controller.enqueue(enc.encode('\n'))
+        controller.close()
+      },
+    })
+    const transformer = {
+      parse: (s: string) => decodeRscData(JSON.parse(s)),
+      stringify: (v: unknown) => JSON.stringify(v),
+      serialize: (v: unknown) => v,
+      deserialize: (v: unknown) => v,
+    } as unknown as Parameters<typeof readStreamedRscFetch>[0]
+    await superstore.runWithServerStorageState(
+      {
+        __POINT0_FAKE_CLIENT__: {
+          id: 't',
+          scope: 'root',
+          runtime: 'browser',
+          fetch: (async () => new Response()) as never,
+          points: clientPoints as never,
+        },
+      },
+      async () => {
+        const { data, done } = await readStreamedRscFetch(transformer, body)
+        await done
+        const Hole = (data as { hero: React.ReactElement }).hero.type as (props: object) => React.ReactNode
+        const rendered = Hole({}) as React.ReactElement
+        expect(rendered.type).toBe('b') // the fill landed despite the blank lines around it
+        expect((rendered.props as { children: string }).children).toBe('beat')
+      },
+    )
+  })
+
+  it('in production a failed subtree reaches the error fallback projected PUBLIC — meta stays server-side', async () => {
+    const holes = new RscHoleRegistry()
+    const Boom = async (): Promise<React.ReactNode> => {
+      throw new ErrorPoint0('kaput', { code: 'POINT0_NOT_FOUND', meta: { secretDsn: 'postgres://u:p@host/db' } })
+    }
+    let seen: ErrorPoint0 | undefined
+    const prevNodeEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+    try {
+      await normalizeRscOutput(
+        {
+          hero: defer(<Boom />, undefined, (error) => {
+            seen = error
+            return <b>{error.code}</b>
+          }),
+        },
+        { depth: 1, label: 'p', holes },
+      )
+      const [entry] = [...holes.entries.values()]
+      await entry!.throwable // the fallback resolves inside the rejection handler, within the production window
+    } finally {
+      process.env.NODE_ENV = prevNodeEnv
+    }
+    expect(seen?.message).toBe('kaput')
+    expect(seen?.code).toBe('POINT0_NOT_FOUND')
+    expect(seen?.meta).toBeUndefined() // the private (dev) projection carries meta — the public one strips it
   })
 })

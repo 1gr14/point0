@@ -14,14 +14,14 @@ import { generateId } from './utils.js'
 /**
  * RSC ("React elements as data") — the machinery that lets a server `.loader()` (of any point: page, layout, query,
  * mutation, component, …) return React elements — plain (`.loader(async () => <Hello />)`) or nested in the output
- * object (`.loader(async () => ({ stats, hero: <Hero /> }))`, opted in via `.rscDepth(n)`).
+ * object (`.loader(async () => ({ stats, hero: <Hero /> }))`, opted in via `.rsc({ depth: n })`).
  *
  * The model is "elements are just data": an element returned from a loader travels to the client through the exact same
  * pipe as every other loader/query/mutation value — the data transformer — and lands in `data` like everything else. No
  * Flight protocol, no react-server module graph, no directives. Three cooperating pieces:
  *
- * - `normalizeRscOutput` — runs on the server right after the loader resolves. Walks the output to the point's
- *   `.rscDepth()`, validates element positions, and UNFOLDS plain function components by calling them (async supported)
+ * - `normalizeRscOutput` — runs on the server right after the loader resolves. Walks the output to the point's `.rsc({
+ *   depth })`, validates element positions, and UNFOLDS plain function components by calling them (async supported)
  *   until only wire-representable elements remain: host elements (`'div'`), `Fragment`/`Suspense`, and component-point
  *   references. SSR then renders this normalized tree, and the wire carries an equivalent encoding of the same tree —
  *   which is what makes hydration match by construction.
@@ -153,6 +153,17 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return proto === Object.prototype || proto === null
 }
 
+// Bracket-assigning a key named `__proto__` rewrites the accumulator's prototype instead of creating an own property —
+// and user data CAN carry it as an own enumerable key (JSON.parse, object spread of parsed input). Every codec copy
+// loop writes through here; the odd key gets an explicit own-property define, every other key takes the fast path.
+const setOwnKey = (target: Record<string, unknown>, key: string, value: unknown): void => {
+  if (key === '__proto__') {
+    Object.defineProperty(target, key, { value, writable: true, enumerable: true, configurable: true })
+  } else {
+    target[key] = value
+  }
+}
+
 /**
  * Build an RSC validation error as an `ErrorPoint0` (the app's error class when threaded in via `options.ErrorClass`,
  * else the base) — never a native `Error`, so it carries a `code`, projects public/private like every other framework
@@ -212,9 +223,15 @@ type DeferredSubtree = {
  * Streams on any response the loader produces: the initial SSR render AND client fetches (navigation, mutations,
  * refetches). A consumer that can't read a stream (SSG, OpenAPI, a foreign client that never advertised streaming) gets
  * a single JSON body where the subtree was awaited inline and the fallback dropped — the same content, no progressive
- * delivery. A hole delivered on a CLIENT fetch renders fresh on the client, so an interactive island inside it is live;
- * on the initial SSR load such an island displays but is not hydrated (the browser completes the server-revealed
- * boundary from the stream), so keep first-paint interactivity at the top level or in a `suspend: 'server'` query.
+ * delivery; a loader that set a non-2xx status degrades the same way (an error response never rides a framed stream). A
+ * hole delivered on a CLIENT fetch renders fresh on the client, so an interactive island inside it is live; on the
+ * initial SSR load such an island displays but is not hydrated (the browser completes the server-revealed boundary from
+ * the stream), so keep first-paint interactivity at the top level or in a `suspend: 'server'` query.
+ *
+ * A waiting stream heartbeats every 5s (idle-connection reapers — Bun's 10s server default, proxy idle windows — never
+ * kill a legitimately slow subtree), and every hole carries a deadline — the owner point's `.rsc({ holeTimeoutMs })`,
+ * default 60s, `false` to disable. A subtree that misses it fails with `POINT0_RSC_HOLE_TIMEOUT`, rendered by the error
+ * fallback or the nearest boundary; its late result is dropped unread.
  *
  * Typed as the element it stands for: after normalize the field IS a live element (a `Suspense` boundary), so it
  * renders like any other RSC loader output. The deferral marker is an internal detail — only ever unwrapped by
@@ -232,10 +249,33 @@ const isDeferred = (value: unknown): value is DeferredSubtree =>
 
 // normalize (server, right after the loader)
 
+/**
+ * The argument of the `.rsc(options)` chain method — the per-point RSC knobs. Inherited down the chain with a per-key
+ * merge (`root.rsc({ holeTimeoutMs: 120_000 })` sets the app default, a point's `.rsc({ depth: 1 })` adds to it), so
+ * the root chain is where an app-wide value lives.
+ */
+export type RscPointOptions = {
+  /**
+   * How deep in the loader output React elements are allowed. `0` (the default) allows an element only as the whole
+   * output; `1` also allows elements in first-level fields; arrays don't consume a level. Elements deeper than the
+   * declared depth fail the loader with an error naming the path — an explicitness gate, so elements never leak into
+   * data by accident. Inside an element tree the depth no longer applies.
+   */
+  depth?: number
+  /**
+   * Per-hole deadline for {@link defer}, in ms from the hole's registration. A subtree that has not settled by then is
+   * failed with a `POINT0_RSC_HOLE_TIMEOUT` error — delivered like any failed subtree (the per-hole error fallback or
+   * the nearest boundary renders it), so a hung `defer()` never holds the streamed response open forever (the stream's
+   * heartbeats keep idle reapers away, making this deadline the only bound). Each hole answers to the setting of the
+   * POINT whose loader deferred it. `false` disables the deadline. Default {@link DEFAULT_RSC_HOLE_TIMEOUT_MS} (60s).
+   */
+  holeTimeoutMs?: number | false
+}
+
 export type NormalizeRscOutputOptions = {
-  /** The point's `.rscDepth()` — how deep in the output object elements are allowed. */
+  /** The point's `.rsc({ depth })` — how deep in the output object elements are allowed. */
   depth: number
-  /** Point description for error messages, e.g. `page "home"`. */
+  /** Point description for error messages — `point.id`, e.g. `root:page:home`. */
   label: string
   /**
    * Per-request hole registry for {@link defer}. Present only in a streaming SSR pass; when absent (data-only, SSG, unit
@@ -249,6 +289,11 @@ export type NormalizeRscOutputOptions = {
    * unit tests / the inline degradation path).
    */
   ErrorClass?: ClassLikeError0<ErrorPoint0>
+  /**
+   * The point's `.rsc({ holeTimeoutMs })` — the deadline each hole this normalize pass registers is placed under.
+   * `undefined` → {@link DEFAULT_RSC_HOLE_TIMEOUT_MS}; `false` disables. See {@link RscPointOptions.holeTimeoutMs}.
+   */
+  holeTimeoutMs?: number | false
 }
 
 type RscHoleResult = { node: unknown } | { error: unknown }
@@ -258,7 +303,10 @@ export type RscHoleEntry = {
   id: string
   settled: boolean
   delivered: boolean
-  /** The point that produced the deferred subtree, e.g. `page "home"` — carried into the `rscError` event when it fails. */
+  /**
+   * The point that produced the deferred subtree, e.g. `root:page:home` — carried into the `rscError` event when it
+   * fails.
+   */
   label?: string
   /** The never-rejecting settle promise the SSR hole slot suspends on. */
   throwable: Promise<void>
@@ -271,12 +319,28 @@ export type RscHoleEntry = {
   errorFallback?: React.ReactNode
 }
 
+/** Default per-hole deadline (see {@link RscPointOptions.holeTimeoutMs}). */
+export const DEFAULT_RSC_HOLE_TIMEOUT_MS = 60_000
+
+/**
+ * The deadline a hole is registered under (see {@link RscHoleRegistry.register}) — resolved per POINT by `normalizeHole`
+ * from the owner's `.rsc({ holeTimeoutMs })`, because one request's registry collects holes from many points (the page,
+ * its layouts, island loaders) and each hole answers to its own point's setting.
+ */
+export type RscHoleDeadline = {
+  /** Ms from registration; `false` disables. See {@link RscPointOptions.holeTimeoutMs}. */
+  holeTimeoutMs: number | false
+  /** The app's error class for the timeout error. */
+  ErrorClass: ClassLikeError0<ErrorPoint0>
+}
+
 /**
  * Per-request server-side registry of deferred holes (see {@link defer}). `register` mints an id, kicks off the
  * subtree's normalization WITHOUT awaiting it, and returns an entry the SSR hole slot suspends on. The entry's
  * throwable never rejects — a failed subtree settles to an error the slot re-throws at render (a rejected Suspense
  * thenable hangs Fizz on Bun) — so the render pump can push resolved subtrees (or errors) into the streamed response as
- * they land.
+ * they land. An entry settles exactly once: the subtree, its failure, or the {@link RscHoleDeadline} deadline, whichever
+ * lands first (a late subtree result after the deadline is dropped unread).
  */
 export class RscHoleRegistry {
   private counter = 0
@@ -293,30 +357,62 @@ export class RscHoleRegistry {
   register(
     normalize: () => Promise<unknown>,
     resolveErrorFallback?: (error: unknown) => Promise<React.ReactNode>,
+    deadline?: RscHoleDeadline,
   ): RscHoleEntry {
     this.prefix ??= generateId()
     const id = `${this.prefix}-h${this.counter++}`
-    const entry: RscHoleEntry = { id, settled: false, delivered: false, throwable: Promise.resolve() }
-    entry.throwable = normalize().then(
-      (node) => {
-        entry.settled = true
-        entry.result = { node }
-      },
-      async (error: unknown) => {
-        // Resolve the error fallback with the real error in hand (see {@link defer}'s 3rd arg) BEFORE marking settled,
-        // so every consumer — the SSR slot, the SSR pump, the NDJSON pump — reads a fully-ready entry. If resolving the
-        // fallback itself fails, leave it undefined so the ORIGINAL error bubbles to the nearest boundary.
-        if (resolveErrorFallback) {
-          try {
-            entry.errorFallback = await resolveErrorFallback(error)
-          } catch {
-            entry.errorFallback = undefined
-          }
+    let wake!: () => void
+    const settled = new Promise<void>((resolve) => {
+      wake = resolve
+    })
+    const entry: RscHoleEntry = { id, settled: false, delivered: false, throwable: settled }
+    // Settle exactly once — the subtree, its failure, or the deadline, whichever lands first. Error paths resolve the
+    // per-hole error fallback (see {@link defer}'s 3rd arg) with the error in hand BEFORE marking settled, so every
+    // consumer — the SSR slot, the SSR pump, the NDJSON drain — reads a fully-ready entry. If resolving the fallback
+    // itself fails, it is left undefined so the ORIGINAL error bubbles to the nearest boundary.
+    // Read through a closure — the competing settle paths (subtree vs deadline) mutate `entry.settled` concurrently,
+    // which the compiler's control flow can't see across the await below (a bare re-check narrows to the guard above).
+    const isSettled = (): boolean => entry.settled
+    const settle = async (result: RscHoleResult): Promise<void> => {
+      if (isSettled()) {
+        return
+      }
+      if ('error' in result && resolveErrorFallback) {
+        let errorFallback: React.ReactNode | undefined
+        try {
+          errorFallback = await resolveErrorFallback(result.error)
+        } catch {
+          errorFallback = undefined
         }
-        entry.settled = true
-        entry.result = { error }
-      },
+        if (isSettled()) {
+          // another path (the subtree vs the deadline) settled while the fallback resolved — its result stands
+          return
+        }
+        entry.errorFallback = errorFallback
+      }
+      entry.settled = true
+      entry.result = result
+      wake()
+    }
+    void normalize().then(
+      (node) => settle({ node }),
+      (error: unknown) => settle({ error }),
     )
+    if (deadline && deadline.holeTimeoutMs !== false && Number.isFinite(deadline.holeTimeoutMs)) {
+      const timeoutMs = deadline.holeTimeoutMs
+      const TimeoutErrorClass = deadline.ErrorClass
+      const timer = setTimeout(() => {
+        void settle({
+          error: new TimeoutErrorClass(
+            `RSC: deferred subtree${entry.label ? ` of ${entry.label}` : ''} did not settle within ${timeoutMs}ms and was failed. Raise or disable the point's .rsc({ holeTimeoutMs }) for longer work.`,
+            { code: POINT0_ERROR_CODES_MAP.RSC_HOLE_TIMEOUT },
+          ),
+        })
+      }, timeoutMs)
+      // don't let a pending deadline hold the process; clear it once the entry settles either way
+      ;(timer as unknown as { unref?: () => void }).unref?.()
+      void settled.then(() => clearTimeout(timer))
+    }
     this.entries.set(id, entry)
     return entry
   }
@@ -335,10 +431,12 @@ export class RscHoleRegistry {
 }
 
 /**
- * Detect whether a value contains React elements anywhere a plain data walk can reach (objects/arrays). Used to skip
- * the whole normalize pass for element-free outputs — the overwhelmingly common case.
+ * Detect whether a value contains React elements anywhere a plain data walk can reach (objects/arrays — plus Map/Set,
+ * walked only so normalize can reject elements hiding inside them with a clear error instead of corrupting silently).
+ * Used to skip the whole normalize pass for element-free outputs — the overwhelmingly common case. Cycle-safe: circular
+ * data is legal under transformers that support it (superjson), so the scan must terminate, not stack-overflow.
  */
-export const rscDataHasElements = (value: unknown): boolean => {
+export const rscDataHasElements = (value: unknown, seen?: WeakSet<object>): boolean => {
   if (isDeferred(value)) {
     return true
   }
@@ -346,11 +444,47 @@ export const rscDataHasElements = (value: unknown): boolean => {
     return true
   }
   if (Array.isArray(value)) {
-    return value.some(rscDataHasElements)
+    seen ??= new WeakSet()
+    if (seen.has(value)) {
+      return false
+    }
+    seen.add(value)
+    return value.some((item) => rscDataHasElements(item, seen))
+  }
+  if (value instanceof Map) {
+    seen ??= new WeakSet()
+    if (seen.has(value)) {
+      return false
+    }
+    seen.add(value)
+    for (const [mapKey, mapValue] of value) {
+      if (rscDataHasElements(mapKey, seen) || rscDataHasElements(mapValue, seen)) {
+        return true
+      }
+    }
+    return false
+  }
+  if (value instanceof Set) {
+    seen ??= new WeakSet()
+    if (seen.has(value)) {
+      return false
+    }
+    seen.add(value)
+    for (const item of value) {
+      if (rscDataHasElements(item, seen)) {
+        return true
+      }
+    }
+    return false
   }
   if (isPlainObject(value)) {
+    seen ??= new WeakSet()
+    if (seen.has(value)) {
+      return false
+    }
+    seen.add(value)
     for (const key in value) {
-      if (rscDataHasElements(value[key])) {
+      if (rscDataHasElements(value[key], seen)) {
         return true
       }
     }
@@ -372,7 +506,7 @@ export const rscDataHasElements = (value: unknown): boolean => {
  * - functions in host/reference props, `ref`, class components, `React.lazy`/context elements — rejected with an error
  *   naming the path.
  *
- * Elements found deeper than `depth` raise an error pointing at `.rscDepth(n)`.
+ * Elements found deeper than `depth` raise an error pointing at `.rsc({ depth: n })`.
  */
 export const normalizeRscOutput = async (value: unknown, options: NormalizeRscOutputOptions): Promise<unknown> => {
   if (!rscDataHasElements(value)) {
@@ -392,13 +526,19 @@ const normalizeData = async (
   budget: number,
   path: string[],
   options: NormalizeRscOutputOptions,
+  /**
+   * True once the walk crossed into a kept element's subtree (host/reference props, a defer'd subtree/fallback, an
+   * unfolded server component's output). Functions there would silently vanish in the transformer — reject them at ANY
+   * depth, not just as direct props. Outside elements, plain data keeps its pre-RSC behavior (JSON drops functions).
+   */
+  insideElement = false,
 ): Promise<unknown> => {
   if (isDeferred(value)) {
     if (budget < 0) {
       const requiredDepth = path.filter((part) => !part.startsWith('[') && !part.startsWith('<')).length
       throw rscError(
         path,
-        `${options.label} returned a deferred subtree deeper than its rscDepth allows. Raise it with .rscDepth(${requiredDepth}) on the point (0 allows it as the whole output, 1 allows it in first-level fields, …).`,
+        `${options.label} returned a deferred subtree deeper than its rsc depth allows. Raise it with .rsc({ depth: ${requiredDepth} }) on the point (0 allows it as the whole output, 1 allows it in first-level fields, …).`,
         options,
         { code: POINT0_ERROR_CODES_MAP.RSC_DEPTH_EXCEEDED },
       )
@@ -410,17 +550,37 @@ const normalizeData = async (
       const requiredDepth = path.filter((part) => !part.startsWith('[') && !part.startsWith('<')).length
       throw rscError(
         path,
-        `${options.label} returned a React element deeper than its rscDepth allows. Raise it with .rscDepth(${requiredDepth}) on the point (0 allows an element as the whole output, 1 allows elements in first-level fields, …).`,
+        `${options.label} returned a React element deeper than its rsc depth allows. Raise it with .rsc({ depth: ${requiredDepth} }) on the point (0 allows an element as the whole output, 1 allows elements in first-level fields, …).`,
         options,
         { code: POINT0_ERROR_CODES_MAP.RSC_DEPTH_EXCEEDED },
       )
     }
     return await normalizeElement(value, path, options)
   }
+  if (insideElement && typeof value === 'function') {
+    throw rscError(
+      path,
+      `functions cannot travel over the wire. Event handlers and render props belong inside a component point.`,
+      options,
+    )
+  }
+  if (value instanceof Map || value instanceof Set) {
+    // The codec only walks plain objects and arrays, so an element inside a Map/Set would neither unfold nor encode —
+    // it would serialize as garbage. Fail loud; an element-free Map/Set passes through to the transformer untouched.
+    if (rscDataHasElements(value)) {
+      const container = value instanceof Map ? 'Map' : 'Set'
+      throw rscError(
+        path,
+        `React elements inside a ${container} cannot cross the wire — the RSC codec only walks plain objects and arrays. Restructure the ${container} into a plain object or array.`,
+        options,
+      )
+    }
+    return value
+  }
   if (Array.isArray(value)) {
     let out: unknown[] | undefined
     for (let i = 0; i < value.length; i++) {
-      const normalized = await normalizeData(value[i], budget, [...path, `[${i}]`], options)
+      const normalized = await normalizeData(value[i], budget, [...path, `[${i}]`], options, insideElement)
       if (normalized !== value[i]) {
         out ??= [...value]
         out[i] = normalized
@@ -431,10 +591,10 @@ const normalizeData = async (
   if (isPlainObject(value)) {
     let out: Record<string, unknown> | undefined
     for (const key in value) {
-      const normalized = await normalizeData(value[key], budget - 1, [...path, key], options)
+      const normalized = await normalizeData(value[key], budget - 1, [...path, key], options, insideElement)
       if (normalized !== value[key]) {
         out ??= { ...value }
-        out[key] = normalized
+        setOwnKey(out, key, normalized)
       }
     }
     return out ?? value
@@ -515,7 +675,7 @@ const normalizeElement = async (
     const ErrorClass = options.ErrorClass ?? ErrorPoint0
     throw ErrorClass.from(error)
   }
-  const normalized = await normalizeData(output, Infinity, [...path, describeType(type)], options)
+  const normalized = await normalizeData(output, Infinity, [...path, describeType(type)], options, true)
   // preserve the unfolded element's key for reconciliation
   if (element.key != null) {
     return React.createElement(React.Fragment, { key: element.key }, normalized as React.ReactNode)
@@ -559,14 +719,20 @@ const normalizeHole = async (
             typeof rawErrorFallback === 'function'
               ? rawErrorFallback(projectHoleError(error, options.ErrorClass))
               : rawErrorFallback
-          return (await normalizeData(element, Infinity, [...path, 'defer.errorFallback'], options)) as React.ReactNode
+          return (await normalizeData(
+            element,
+            Infinity,
+            [...path, 'defer.errorFallback'],
+            options,
+            true,
+          )) as React.ReactNode
         }
   if (!holes) {
     if (!resolveErrorFallback) {
-      return await normalizeData(deferred.element, Infinity, [...path, 'defer'], options)
+      return await normalizeData(deferred.element, Infinity, [...path, 'defer'], options, true)
     }
     try {
-      return await normalizeData(deferred.element, Infinity, [...path, 'defer'], options)
+      return await normalizeData(deferred.element, Infinity, [...path, 'defer'], options, true)
     } catch (error) {
       return await resolveErrorFallback(error)
     }
@@ -574,14 +740,34 @@ const normalizeHole = async (
   const fallback =
     deferred.fallback === undefined
       ? undefined
-      : ((await normalizeData(deferred.fallback, Infinity, [...path, 'defer.fallback'], options)) as React.ReactNode)
+      : ((await normalizeData(
+          deferred.fallback,
+          Infinity,
+          [...path, 'defer.fallback'],
+          options,
+          true,
+        )) as React.ReactNode)
   const entry = holes.register(
-    () => normalizeData(deferred.element, Infinity, [...path, 'defer'], options),
+    () => normalizeData(deferred.element, Infinity, [...path, 'defer'], options, true),
     resolveErrorFallback,
+    // the deadline is the OWNER point's setting — one request's registry carries holes from many points
+    {
+      holeTimeoutMs: options.holeTimeoutMs ?? DEFAULT_RSC_HOLE_TIMEOUT_MS,
+      ErrorClass: options.ErrorClass ?? ErrorPoint0,
+    },
   )
   entry.label = options.label
   const holeSlot = makeServerHoleSlot(entry)
-  return React.createElement(React.Suspense, fallback === undefined ? null : { fallback }, holeSlot)
+  // The deferred element's key climbs onto the Suspense wrapper — a defer() in a keyed list reconciles by it (the
+  // wrapper is what sits in the array position; without this every deferred list item would be unkeyed).
+  const suspenseProps: Record<string, unknown> = {}
+  if (fallback !== undefined) {
+    suspenseProps.fallback = fallback
+  }
+  if (deferred.element.key != null) {
+    suspenseProps.key = deferred.element.key
+  }
+  return React.createElement(React.Suspense, suspenseProps, holeSlot)
 }
 
 /**
@@ -633,10 +819,10 @@ const keepElement = async (
         options,
       )
     }
-    const normalized = await normalizeData(value, Infinity, [...path, key], options)
+    const normalized = await normalizeData(value, Infinity, [...path, key], options, true)
     if (normalized !== value) {
       nextProps ??= { ...props }
-      nextProps[key] = normalized
+      setOwnKey(nextProps, key, normalized)
     }
   }
   if (!nextProps && type === element.type) {
@@ -738,11 +924,11 @@ export const encodeRscData = (value: unknown): unknown => {
         out = {}
         for (let j = 0; j < i; j++) {
           // earlier keys are unchanged and unescaped, otherwise `out` would already exist
-          out[keys[j]!] = value[keys[j]!]
+          setOwnKey(out, keys[j]!, value[keys[j]!])
         }
       }
       if (out) {
-        out[escapedKey] = encoded
+        setOwnKey(out, escapedKey, encoded)
       }
     }
     return out ?? value
@@ -792,7 +978,7 @@ const encodeElement = (element: React.ReactElement): RscNode => {
       continue
     }
     encodedProps ??= {}
-    encodedProps[key] = encodeRscData(props[key])
+    setOwnKey(encodedProps, key, encodeRscData(props[key]))
   }
   if (encodedProps) {
     node.p = encodedProps
@@ -828,9 +1014,17 @@ export class RscComponentsRegistry {
     // fills a slot the moment the chunk lands (attached before any drain await, so a drained caller renders the real
     // component synchronously) and suspends React-style (throws the thenable) only when genuinely not loaded yet.
     const slot: { Component?: React.ComponentType<any> } = {}
-    void promise.then((Component) => {
-      slot.Component = Component
-    })
+    void promise.then(
+      (Component) => {
+        slot.Component = Component
+      },
+      () => {
+        // A failed chunk import (network drop, a stale deploy's 404) must not become an unhandled rejection — the
+        // thrown thenable already carries the failure to the nearest boundary at render. Evict the cached wrapper so
+        // the NEXT decode (a later navigation, a retry) starts a fresh import instead of replaying the failure forever.
+        this.resolved.delete(name)
+      },
+    )
     const Ref = (props: Record<string, unknown>): React.ReactNode => {
       if (slot.Component) {
         return React.createElement(slot.Component, props)
@@ -876,6 +1070,8 @@ export const rscComponentsRegistry = new RscComponentsRegistry()
 
 type RscClientHole = {
   filled: boolean
+  /** The decode side has built this hole's slot component (which closes over this object directly). */
+  decoded: boolean
   hasError: boolean
   node?: unknown
   error?: unknown
@@ -896,6 +1092,11 @@ type RscClientHole = {
  * awaits those) hydrates its content; one revealed only after hydration displays but is not re-hydrated (React keeps
  * the server-completed boundary), so INTERACTIVE islands inside a deferred subtree are a documented limitation — put
  * interactive parts at the top level or stream them with `suspend: 'server'`. See docs/core/rsc.md.
+ *
+ * Entry lifecycle: an entry is EVICTED the moment both sides have met — the slot component was built (decode) AND the
+ * fill was applied (push), in either order. The slot component closes over the slot object directly, so later
+ * re-renders never need the map; ids are unique per fetch, so an id is never looked up again after the handshake. This
+ * keeps the bundle-wide map from pinning every delivered subtree for the life of the session.
  */
 export class RscHolesRegistry {
   private slots = new Map<string, RscClientHole>()
@@ -907,7 +1108,7 @@ export class RscHolesRegistry {
       const promise = new Promise<void>((resolve) => {
         wake = resolve
       })
-      slot = { filled: false, hasError: false, promise, wake }
+      slot = { filled: false, decoded: false, hasError: false, promise, wake }
       this.slots.set(id, slot)
     }
     return slot
@@ -920,6 +1121,11 @@ export class RscHolesRegistry {
    */
   slotComponent(id: string): React.ComponentType<any> {
     const slot = this.ensure(id)
+    slot.decoded = true
+    if (slot.filled) {
+      // handshake complete (fill arrived first) — the component below closes over `slot`, the map entry is done
+      this.slots.delete(id)
+    }
     const Hole = (): React.ReactNode => {
       if (slot.filled) {
         if (slot.hasError) {
@@ -949,6 +1155,10 @@ export class RscHolesRegistry {
     }
     slot.filled = true
     slot.wake()
+    if (slot.decoded) {
+      // handshake complete (slot was decoded first) — its component holds the slot object, the map entry is done
+      this.slots.delete(id)
+    }
   }
 
   /**
@@ -1012,11 +1222,11 @@ export const decodeRscData = (value: unknown): unknown => {
       if (!out && (decoded !== value[key] || unescapedKey !== key)) {
         out = {}
         for (let j = 0; j < i; j++) {
-          out[keys[j]!] = value[keys[j]!]
+          setOwnKey(out, keys[j]!, value[keys[j]!])
         }
       }
       if (out) {
-        out[unescapedKey] = decoded
+        setOwnKey(out, unescapedKey, decoded)
       }
     }
     return out ?? value
@@ -1028,7 +1238,7 @@ const decodeElement = (node: RscNode): React.ReactElement => {
   const props: Record<string, unknown> = {}
   if (node.p) {
     for (const key in node.p) {
-      props[key] = decodeRscData(node.p[key])
+      setOwnKey(props, key, decodeRscData(node.p[key]))
     }
   }
   if (node.k != null) {

@@ -457,5 +457,5 @@ file and it stays out of every page's bundle until a payload references it.
 A component point inside a loader's output serializes as a reference — its name
 plus its props as data — and renders on the client as an interactive island,
 while plain function components in the same payload render on the server. The
-full model, including `.rscDepth(n)` and the wire format, is on the [RSC](rsc)
-page.
+full model, including `.rsc({ depth: n })` and the wire format, is on the
+[RSC](rsc) page.

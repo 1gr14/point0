@@ -9,6 +9,35 @@ import {
 } from '@point0/core'
 
 /**
+ * How often a WAITING streamed response writes a no-op byte so the socket never looks idle: Bun's default `idleTimeout`
+ * reaps a silent connection after 10s, and reverse proxies carry idle windows of their own (nginx/edge, typically
+ * 30-60s) — without a heartbeat, a `defer()`/suspend subtree slower than the smallest of those killed the stream
+ * mid-response. 5s stays safely under Bun's default; the beat runs only while something is still pending and stops with
+ * the stream. NDJSON writes a blank line (the client reader skips empty lines); the SSR document pump writes an empty
+ * `<script></script>` through the same injection point as the push scripts (proven hydration-safe).
+ */
+export const RSC_STREAM_HEARTBEAT_MS = 5000
+
+/**
+ * Race a promise against a timer: resolves `true` when the timer wins (time to write a heartbeat), `false` when the
+ * promise settles first. The timer never holds the process (unref) and is cleared on either outcome.
+ */
+export const raceIsTimeout = async (promise: Promise<unknown>, ms: number): Promise<boolean> => {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise.then(() => false),
+      new Promise<true>((resolve) => {
+        timer = setTimeout(() => resolve(true), ms)
+        ;(timer as unknown as { unref?: () => void }).unref?.()
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
  * The push payload for one resolved deferred hole (see `defer`): either the decoded subtree, or a serialized error for
  * the client hole slot to re-throw to its nearest boundary (public projection in prod, exactly like a query error).
  * Shared by the two delivery channels — the SSR pump (`render.ts`) wraps it in a `__POINT0_PUSH_RSC__` inline script,
@@ -65,6 +94,7 @@ export const createHoleNdjsonStream = ({
   transformer,
   ErrorClass,
   emit,
+  heartbeatMs = RSC_STREAM_HEARTBEAT_MS,
 }: {
   // The transformer's `stringify` is typed `string | undefined`; the caller only builds this stream when the output
   // carries holes (so it is always a real object → a real string), but coalesce defensively rather than assert.
@@ -74,8 +104,21 @@ export const createHoleNdjsonStream = ({
   ErrorClass: ClassLikeError0<ErrorPoint0>
   /** Bound root/point `_emit` — a failed subtree emits `rscError` as it drains. Undefined skips eventing. */
   emit: EventerEmitFn<ErrorPoint0> | undefined
+  /** Test hook — see {@link RSC_STREAM_HEARTBEAT_MS} (the production cadence). */
+  heartbeatMs?: number
 }): ReadableStream<Uint8Array> => {
   const encoder = new TextEncoder()
+  // The client reader splits on `\n`, so every stringified payload MUST be single-line. The default JSON/superjson
+  // stringify always is; a custom pretty-printing transformer would silently corrupt the framing — fail loud instead
+  // (the stream errors, the client fails its pending holes to the nearest boundary).
+  const assertSingleLine = (line: string): string => {
+    if (line.includes('\n')) {
+      throw new Error(
+        'RSC: the data transformer produced multi-line stringify output, which breaks NDJSON hole framing — the app transformer must stringify without pretty-printing.',
+      )
+    }
+    return line
+  }
   let cancelled = false
   // Read through a closure so the loop below sees the live value (a bare `cancelled` narrows to its `false` initializer
   // — the only writer is the sibling `cancel()` callback, which the compiler's control flow can't see).
@@ -83,7 +126,7 @@ export const createHoleNdjsonStream = ({
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        controller.enqueue(encoder.encode((firstLine ?? '') + '\n'))
+        controller.enqueue(encoder.encode(assertSingleLine(firstLine ?? '') + '\n'))
         for (;;) {
           if (isCancelled()) {
             return
@@ -94,15 +137,22 @@ export const createHoleNdjsonStream = ({
             }
             emitHoleError(emit, entry, ErrorClass)
             const line = transformer.stringify(buildHolePushPayload(entry, ErrorClass))
-            controller.enqueue(encoder.encode(line + '\n'))
+            controller.enqueue(encoder.encode(assertSingleLine(line ?? '') + '\n'))
           }
           const undelivered = [...holeRegistry.entries.values()].filter((entry) => !entry.delivered)
           if (undelivered.length === 0) {
             break
           }
           // Never-rejecting settle promises (a failed subtree settles to an error the payload carries), so this only
-          // wakes on progress and never throws out of the loop.
-          await Promise.race(undelivered.map((entry) => entry.throwable))
+          // wakes on progress and never throws out of the loop. While nothing settles, write a blank-line heartbeat
+          // (see RSC_STREAM_HEARTBEAT_MS) so idle reapers never kill a stream that is legitimately waiting; the client
+          // reader skips empty lines.
+          while (await raceIsTimeout(Promise.race(undelivered.map((entry) => entry.throwable)), heartbeatMs)) {
+            if (isCancelled()) {
+              return
+            }
+            controller.enqueue(encoder.encode('\n'))
+          }
         }
         if (!isCancelled()) {
           controller.close()

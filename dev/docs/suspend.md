@@ -8,8 +8,8 @@ base commit d717d655; later batches landed on `ssr-batch`); the follow-up
 `streaming-document` branch moved the response to a full-document React render
 (engine `document.ts`). User-facing docs:
 [docs/core/ssr.md](../../docs/core/ssr.md) ("The `ssr` and `suspend` query
-options" section). Remaining work:
-[dev/backlog/suspend.md](../backlog/suspend.md); planned refactors:
+options" section). Release notes & pre-release checks:
+[dev/backlog/release-notes.md](../backlog/release-notes.md); planned refactors:
 [dev/backlog/refactoring.md](../backlog/refactoring.md).
 
 ## The feature in one paragraph
@@ -511,7 +511,7 @@ pure-React/pure-TanStack repros (and, for #5, a stack trace through
    `_getClient[Infinite]QueryOptions`) additionally set `suspense: undefined` to
    neutralize a stray key from plain-JS callers.
 
-## What the branch touches (all uncommitted in the worktree)
+## What the branch touches (landed on `ssr-batch`)
 
 Core: `types.ts` (ExtraQueryPoint0Options — `ssr?: boolean` +
 `suspend?: 'auto' | 'server' | 'client' | boolean` with JSDoc;

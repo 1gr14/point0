@@ -254,17 +254,19 @@ most of these calls).
 .fetchOptions(() => ({ headers: { authorization: `Bearer ${getToken()}` } }))
 ```
 
-### .rscDepth
+### .rsc
 
-How deep in the loader output React elements are allowed (RSC — elements as
-data). `0` (the default) allows an element only as the whole output; `1` also
-allows elements in first-level fields; arrays don't consume a level. On **every
+The point's RSC knobs (elements as data), merged per key down the chain. `depth`
+— how deep in the loader output React elements are allowed: `0` (the default)
+allows an element only as the whole output; `1` also allows elements in
+first-level fields; arrays don't consume a level. `holeTimeoutMs` — the deadline
+for the point's `defer()` holes (default 60 000, `false` disables). On **every
 point type** (and root/base/plugin — set an app default once).
 **Server-and-client** — not cut from either bundle (isomorphic config). Full
 page: [RSC](rsc).
 
 ```tsx
-.rscDepth(1)
+.rsc({ depth: 1 })
 .loader(async () => ({ hero: <Hero />, cta: <HomeCta label="Join" /> }))
 ```
 
@@ -517,7 +519,7 @@ infinite-query, mutation, root, base, plugin).
 | `.use`                                                            | all                                                                      | per contributed method                             |
 | `.middleware`                                                     | all                                                                      | server-only                                        |
 | `.fetchOptions`                                                   | all                                                                      | server-and-client                                  |
-| `.rscDepth`                                                       | all                                                                      | server-and-client                                  |
+| `.rsc`                                                            | all                                                                      | server-and-client                                  |
 | `.transformer`                                                    | root, plugin                                                             | server-and-client                                  |
 | `.serverUrl` / `.clientUrl`                                       | root, plugin                                                             | server-and-client                                  |
 | `.basePath`                                                       | root, base, plugin                                                       | server-and-client                                  |

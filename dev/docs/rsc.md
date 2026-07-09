@@ -7,14 +7,14 @@ shaped every non-obvious decision. Built as `feat(rsc)` (78487ee1) on the
 `~/cc/worktrees/point0/rsc-vite`) adds the vite-parity e2e, three behavior
 tests, and the docs rework — merge it in when this lands. User-facing docs:
 [docs/core/rsc.md](../../docs/core/rsc.md). Future work:
-[dev/backlog/rsc-flight.md](../backlog/rsc-flight.md).
+[dev/backlog/rsc.md](../backlog/rsc.md).
 
 ## The feature in one paragraph
 
 A server `.loader()` (of any point: page, layout, query, mutation, component,
 provider) can return React elements — as the whole output or nested in the
-output object, gated by `.rscDepth(n)`. Elements travel through the app's data
-transformer like every other value: plain function components UNFOLD on the
+output object, gated by `.rsc({ depth: n })`. Elements travel through the app's
+data transformer like every other value: plain function components UNFOLD on the
 server (their code never ships), component points serialize as name references
 and hydrate as interactive islands resolved from the points collection, host
 elements/Fragment/Suspense encode structurally. There is no Flight, no
@@ -27,7 +27,7 @@ and both bundlers work without RSC-specific code.
 
 1. **`normalizeRscOutput`** — runs on the server right after the loader resolves
    (executor loader case). Walks the output to the point's resolved
-   `.rscDepth()` (objects consume a budget level, arrays are transparent),
+   `.rsc({ depth })` (objects consume a budget level, arrays are transparent),
    validates element positions, and unfolds plain function components by calling
    them (async awaited, `memo` unwrapped, `forwardRef` rendered with
    `ref: undefined`) until only wire-representable nodes remain. SSR renders
@@ -168,10 +168,24 @@ class). `toJsonErrorResponse` stays raw on purpose. Naming per review:
 - Whole-output element unfolding to null → empty Fragment stands in (the
   engine's no-output check needs a value). Keys survive unfold (Fragment
   wrapper) and encode/decode (`k`).
-- Rejections (all fail the loader naming the path): functions in host/reference
-  props, `ref`, class components, context/`React.lazy` elements, `<ClientOnly>`
-  (use `.clientOnly()` on the component point), non-component point instances,
-  elements deeper than `rscDepth`.
+- Rejections (all fail the loader naming the path): functions ANYWHERE inside a
+  kept element's subtree — direct host/reference props and nested in prop
+  objects/arrays alike (`insideElement` flag threaded through `normalizeData`;
+  functions handed to an UNFOLDED server component stay legal — it consumes them
+  server-side), `ref`, class components, context/`React.lazy` elements,
+  `<ClientOnly>` (use `.clientOnly()` on the component point), non-component
+  point instances, elements inside `Map`/`Set` (the codec walks only plain
+  objects/arrays; an element-free `Map`/`Set` passes to the transformer
+  untouched), elements deeper than the `.rsc({ depth })` gate.
+- Walk hardening: `rscDataHasElements` is cycle-safe (a `WeakSet`, minted lazily
+  — circular data is legal under superjson and must scan, not stack-overflow)
+  and scans `Map`/`Set` so normalize can reject elements hiding there; every
+  codec copy loop writes through `setOwnKey` (an own `__proto__` key from
+  `JSON.parse`d user data would otherwise rewrite the accumulator's prototype).
+- A failed island chunk import (`RscComponentsRegistry.resolve`) is handled: the
+  rejection is observed (no unhandled-rejection noise) and the cached wrapper is
+  EVICTED, so the next decode retries the import instead of replaying the
+  failure forever — stale-deploy 404s recover on the next navigation.
 
 ## Bundler parity — zero bundler-specific code
 
@@ -190,8 +204,10 @@ bundle (prod).
 New chain methods MUST be added to the `Nice*` method-name unions in
 `packages/core/src/types.ts` (11 lists) — the class method alone is invisible on
 the public chain type and everything after silently degrades to `any`.
-`.rscDepth` is server-and-client (isomorphic config), available on every point
-type and on `root`/`base`/`plugin` (root default is the promoted pattern).
+`.rsc(options)` is server-and-client (isomorphic config), available on every
+point type and on `root`/`base`/`plugin` (root default is the promoted pattern),
+and merges PER KEY down the chain — the method itself spreads
+`{ ...this._rsc, ...rsc }`, the plugin `.use()` merge mirrors `_fetchOptions`.
 
 ## Deferred holes (`defer`) — progressive in-tree streaming
 
@@ -199,7 +215,7 @@ type and on `root`/`base`/`plugin` (root default is the promoted pattern).
 loader can defer a slow server subtree so `normalizeRscOutput` never awaits it.
 It is a recombination of shipped pieces — Suspense-as-wire-node, the
 slot-wrapper, the query-push channel — sketched in
-[dev/backlog/rsc-flight.md](../backlog/rsc-flight.md).
+[dev/backlog/rsc.md](../backlog/rsc.md).
 
 The moving parts:
 
@@ -270,6 +286,58 @@ The moving parts:
   → single JSON body, `defer` inlined — zero impact. Client navigation runs the
   same path (the page loader is fetched as `outputType: 'data'`); the
   `queryClientDehydratedState` prefetch frames NDJSON too.
+- **NDJSON response headers (fetcher.ts, both framing sites).** Streamed bodies
+  are per-request state AND vary on a request header, so they ship
+  `Cache-Control: private, no-store` + `Vary: x-point0-stream` (a cached NDJSON
+  body replayed to a non-streaming client would fail its `JSON.parse`; the
+  existing-header rule makes the cache-control middleware leave them alone) and
+  `X-Accel-Buffering: no` (nginx-style proxies buffer by default, collapsing
+  progressive delivery). The framing also asserts every stringified line is
+  single-line — a pretty-printing custom transformer breaks `\n`-split framing,
+  so it fails loud (stream errors → client fails its pending holes) instead of
+  corrupting silently.
+- **`defer` in a keyed list.** The deferred element's `key` climbs onto the
+  Suspense wrapper `normalizeHole` builds (the wrapper is what sits in the array
+  position) and rides the wire as the Suspense node's `k` — without this every
+  deferred list item was unkeyed.
+- **Heartbeats — a waiting stream is never "idle".** Bun's default `idleTimeout`
+  reaps a SILENT response after 10s (verified by probe), and proxies carry idle
+  windows of their own — a legitimately slow subtree used to die mid-stream on a
+  real socket (in-process `engine.fetch` never sees it; the 12s slow test does).
+  Both pumps write a no-op every `RSC_STREAM_HEARTBEAT_MS` (5s, rsc-stream.ts)
+  while waiting: the NDJSON drain a blank line (the client reader skips
+  empties), the SSR pump an empty `<script></script>` through the push-script
+  injection point (proven hydration-safe) — and only AFTER the shell, since
+  nothing may precede `<!DOCTYPE html>` (pre-shell silence is an ordinary slow
+  request). The SSR pump holds ONE in-flight React read across pulls
+  (`pendingRead`) so a beat-interrupted wait never double-reads the reader.
+- **Per-hole deadline — the bound heartbeats make necessary.** Heartbeats defeat
+  the idle reaper, so a subtree that NEVER settles would hold the response open
+  forever; every hole is therefore settled by its OWNER point's
+  `.rsc({ holeTimeoutMs })` (chain option → normalize options → `register`'s
+  per-hole deadline — one request's registry carries holes from many points;
+  core default `DEFAULT_RSC_HOLE_TIMEOUT_MS` = 60s; `false` disables) with a
+  coded `POINT0_RSC_HOLE_TIMEOUT` error — delivered like any failed subtree
+  (error fallback / boundary / `rscError` event), timer unref'd + cleared on
+  settle, the late real result dropped unread (settle-once guard).
+- **Non-2xx never streams.** The client reader only takes the NDJSON path on
+  `res.ok`, so a framed 4xx body would fall to `res.json()` and fail to parse.
+  The executor withholds the registry at normalize time when `effects.status` is
+  already non-2xx — the defer degrades to inline, the response is the ordinary
+  single-JSON error-status body.
+- **Client registry hygiene.** A consumed client hole (slot decoded AND fill
+  applied, either order) is EVICTED from the bundle-wide `rscHolesRegistry` map
+  — the slot component closes over the slot object, ids are never looked up
+  again after the handshake — so delivered subtrees are not pinned for the life
+  of the session. Introspection gotcha: `slotComponent(id)` after consumption
+  mints a FRESH pending slot; tests must walk the decoded tree instead.
+- **Post-line-1 drain is deliberate.** After line 1 resolves the query, the
+  background reader (`void streamed.done`) reads until the SERVER closes —
+  unmount/navigation does not abort it. Decided (2026-07-09) against
+  observer-based cancel: fills land in the query cache (back-nav shows completed
+  content), the hole deadline bounds the connection's lifetime, and cancelling
+  on transient observer-0 would strand stale-data holes on back-nav with
+  `staleTime > 0`.
 - **Hole ids are globally unique.** Each `RscHoleRegistry` seeds a
   `generateId()` prefix (lazily, on first `defer`), so ids never collide in the
   bundle-wide client `rscHolesRegistry` when several concurrent streamed fetches
@@ -400,15 +468,38 @@ Tests:
 
 ## Tests & docs inventory
 
-- `packages/core/tests/rsc.test.tsx` — 16 codec units (roundtrips, escaping,
-  depth budget, rejections, registry drain).
-- `packages/engine/tests/rsc.fast.test.tsx` — 19 in-process. NOTE: the harness
-  `render()` is a PURE CLIENT MOUNT (no SSR request, no hydration); SSR-boundary
-  assertions go through `fetchSsr`. `fetchPreview` of a streaming page may parse
-  oddly — the rendered end state via `render()`/`waitContent` is the reliable
-  signal.
-- `packages/engine/tests/rsc.slow.test.tsx` — 14 browser e2e on both bundlers
-  (registered in `scripts/slow-tests.ts`).
+- `packages/core/tests/rsc.test.tsx` — 49 units: the codec (roundtrips,
+  escaping, `__proto__` safety, undefined-prop drop), normalize (unfolding,
+  depth budget, every rejection incl. `ref`, `React.lazy`, nested-in-prop
+  functions, elements inside `Map`/`Set`, cycle-safe scan), the registries
+  (drain, failed-chunk eviction, consumed-hole eviction), defer/holes (keyed
+  list defer, whole-output defer at depth 0, deadline + late-result drop,
+  production error projection of the fallback), the fill pipeline
+  (`applyPushedRscFill` swallows a bad line, drains chunks before filling;
+  heartbeat blank lines skipped; two concurrent streams, one dropped, isolated
+  failure).
+- `packages/engine/tests/rsc.fast.test.tsx` — 38 in-process (incl. the NDJSON
+  response headers `no-store` + `Vary` + `X-Accel-Buffering`, the
+  `.rsc({ holeTimeoutMs })` deadline through the point chain, the non-2xx inline
+  degrade, the no-header mutation inline degrade). NOTE: the harness `render()`
+  is a PURE CLIENT MOUNT (no SSR request, no hydration); SSR-boundary assertions
+  go through `fetchSsr`. `fetchPreview` of a streaming page may parse oddly —
+  the rendered end state via `render()`/`waitContent` is the reliable signal.
+- `packages/engine/tests/rsc-stream.test.tsx` — 5 units on the NDJSON framing
+  driven directly (no server): a failed hole's wire payload is the PUBLIC
+  projection in production (meta/stack never cross), cancel mid-drain stops
+  delivery cleanly, blank-line heartbeats while a hole pends, a multi-line
+  stringify fails loud.
+- `packages/engine/tests/rsc.slow.test.tsx` — 15 browser e2e on both bundlers
+  (registered in `scripts/slow-tests.ts`), incl. the 12s real-socket idle-reaper
+  survival test (dev describe only — channel behavior is bundler-independent; it
+  costs ~12s wall-clock and runs both channels concurrently). Gotcha: the slow
+  projects run the BUILT dists — rebuild core+engine before a focused run or you
+  test stale code.
+- `packages/compress/tests/index.test.tsx` — the x-ndjson content-type skip is
+  pinned (unit) and a real-chain defer stream is proven progressive and
+  uncompressed; `packages/openapi/tests/index.test.tsx` — an RSC/defer loader
+  keeps the schema generating and serves foreign clients the inline body.
 - User docs: [docs/core/rsc.md](../../docs/core/rsc.md) (+ loader,
   stage-methods, component, query-client, ssr pages). Component-point JSX in
   tests and docs uses the instance directly (`<Stats input={…} />`) — `.X` is

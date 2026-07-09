@@ -51,7 +51,7 @@ export const root = Point0.lets
   // shown if loading failed
   .error(({ error }) => <ErrorScreen error={error} />)
   // loaders may return React elements (RSC: server components & islands)
-  .rscDepth(1)
+  .rsc({ depth: 1 })
   .root() // a point ends with the word it started with (.root) — same for all points
 ```
 

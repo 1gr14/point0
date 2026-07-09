@@ -18,7 +18,7 @@ import { resolveTags } from 'unhead/utils'
 import type { SsrOptionsResolved } from './config.js'
 import { buildDocumentElement, parseDocumentTemplate } from './document.js'
 import type { Executor } from './executor.js'
-import { buildHolePushPayload, emitHoleError } from './rsc-stream.js'
+import { buildHolePushPayload, emitHoleError, raceIsTimeout, RSC_STREAM_HEARTBEAT_MS } from './rsc-stream.js'
 import { readableStreamToString } from './utils.js'
 
 /**
@@ -460,9 +460,24 @@ window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientP
     // carries everything settled up to that point).
     const reactStreamReader = reactStream.getReader()
     let firstChunkSent = false
+    // One in-flight React read survives across pulls: a heartbeat-interrupted wait must not issue a SECOND read (reads
+    // would queue and deliver chunks to different pulls out of order with the beats).
+    let pendingRead: ReturnType<typeof reactStreamReader.read> | undefined
     return new ReadableStream<Uint8Array>({
       async pull(controller) {
-        const { done, value } = await reactStreamReader.read()
+        const read = (pendingRead ??= reactStreamReader.read())
+        if (firstChunkSent) {
+          // Heartbeat while React has nothing to flush (a slow suspended query / deferred hole): a no-op script every
+          // RSC_STREAM_HEARTBEAT_MS keeps the socket non-idle past Bun's default 10s idleTimeout and proxy idle
+          // windows. Injected through the same channel as the push scripts (proven hydration-safe), and only AFTER the
+          // shell — nothing may precede `<!DOCTYPE html>` (silence BEFORE the shell is an ordinary slow request, the
+          // same class as any non-streamed slow response).
+          while (await raceIsTimeout(read, RSC_STREAM_HEARTBEAT_MS)) {
+            controller.enqueue(encoder.encode('<script></script>'))
+          }
+        }
+        const { done, value } = await read
+        pendingRead = undefined
         if (done) {
           // A query or hole can settle without producing another React flush (e.g. a blocking render
           // that arrived as one chunk) — drain the leftovers before closing. The HTML parser moves

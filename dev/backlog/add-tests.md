@@ -148,11 +148,6 @@ stream-drop failsafe that landed in that review are now pinned by real tests:
   network-error path, but never `createNavigation({ stale: 'error' })`. Add an
   e2e variant asserting the target page's `.error()` receives a
   `POINT0_STALE_CLIENT_BUILD`-coded error and the SPA is NOT document-navigated.
-- **rsc — remaining rejection guards.** `rsc.test.tsx` now covers class /
-  functions-in-props / non-component-point / `<ClientOnly>` / memo-unwrap /
-  forwardRef-unfold; still unpinned: a `ref` prop (expect throw "refs cannot
-  travel"), and a `React.lazy` / context element (generic "not supported"
-  branch).
 - **stale — a layout chunk failing on its own triggers recovery (fix landed).**
   `_loadPage` now warms the page + layout FCs with `rethrowLoadError` BEFORE
   committing the ready point, so a layout whose chunk 404s independently (not in
