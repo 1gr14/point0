@@ -92,7 +92,7 @@ slow would turn a 10-min fail into a 30-min job-timeout hang.
   there is no bucket move to make. Real fix lives in those two cards (stabilize
   vite Fast Refresh state / vite dev startup under load).
 
-### 3. `engine/tests/rsc.slow.test.tsx` — prod-flow e2e timeout + ECONNRESET (slow, ubuntu) · FIXED
+### 3. `engine/tests/rsc.slow.test.tsx` — prod-flow e2e timeout + ECONNRESET (slow, ubuntu) · FIXED (dev/vite) + prod-flow QUARANTINED on Linux
 
 - **Signature:**
   `(fail) rsc e2e (build) > production flow: modulepreload for referenced islands, hydration clean, islands interactive [60000ms]`
@@ -225,3 +225,22 @@ slow would turn a 10-min fail into a 30-min job-timeout hang.
   defense. If ubuntu still flakes after this, the fallback is to quarantine the
   `rsc.slow` browser e2e on Linux (reliable on windows + macOS; contract also
   pinned by `rsc.fast` in-process).
+- **2026-07-09 — branch `ci-flakes` round 3
+  ([29024832291](https://github.com/1gr14/point0/actions/runs/29024832291)):
+  launch retry worked, flake narrowed to `production flow`, quarantined it on
+  Linux.** The launch retry **fixed the vite-dev describe** (round 2's 24 fails
+  → **30 pass, 0 fail**); `bun`-dev stayed solid. The only ubuntu failures left
+  were the two `production flow` tests (bun-build + vite-build) — the browser
+  flow against the freshly-built **prod** server times out at 60 s on loaded
+  ubuntu even with the server warmed + launch retried. It's the
+  prod-serve-under-load path specifically, and it is green on windows + macOS
+  every run. After three rounds of whack-a-mole (server → browser launch → prod
+  flow), took the documented fallback but **narrow**:
+  `itProdFlow = linux ? it.skip : it` skips only the two `production flow` tests
+  on Linux (and the build describes skip the prod-server start there, since
+  nothing else uses it). Everything else in `rsc.slow` — strip/chunk + the
+  bun/vite **dev** browser e2e — still runs on Linux; prod-flow keeps full
+  coverage on windows + macOS. Net kept fixes: the self-sizing plan,
+  `max-parallel`, `warmProdServe`, `launchChromiumWithRetry`, the reporting fix,
+  and three tracked quarantines (core-rsc/win32, dev-bundler/vite,
+  rsc.slow-prod-flow/linux).
