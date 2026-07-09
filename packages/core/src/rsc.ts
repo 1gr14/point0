@@ -483,8 +483,13 @@ export class RscHoleRegistry {
           ),
         })
       }, timeoutMs)
-      // don't let a pending deadline hold the process; clear it once the entry settles either way
-      ;(timer as unknown as { unref?: () => void }).unref?.()
+      // Deliberately NO .unref() here: on bun 1.3.14/Windows an unref'd deadline timer in this exact
+      // context (async subtree through normalize + settle, inside the superstore ALS) busy-spins the
+      // event loop after firing — the process never exits, pinned at 100% (bisected and proven 5/5 on a
+      // real Windows machine; dev/backlog/test-non-exit.md). The clearTimeout below already covers the
+      // normal path (entry settles → pending deadline cleared → nothing holds the process); the one case
+      // a ref'd timer changes is an exit with a genuinely un-settled hole, where shutdown now waits at
+      // most holeTimeoutMs for the deadline to fire and settle it.
       void settled.then(() => clearTimeout(timer))
     }
     this.entries.set(id, entry)

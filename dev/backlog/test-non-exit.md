@@ -1,7 +1,23 @@
 # Bun-on-Windows: green test file's process won't exit
 
-**Status:** open · **Area:** test infra / Bun upstream · **Kind:** tracked
-workaround
+**Status:** root-caused, workaround landed · **Area:** test infra / Bun upstream
+· **Kind:** tracked workaround
+
+> **Root cause found (2026-07-09, Mac↔Windows bridge session).** Not an idle
+> hang — a **busy-spin**: one JS thread pinned at 100%, event loop never
+> empties. Bisected to exactly one test (`rsc.unit.test.tsx` "a hole that misses
+> its deadline fails with RSC_HOLE_TIMEOUT") and proven by toggling one line: on
+> bun 1.3.14/Windows, **the `.unref()` on the hole-deadline timer** — in this
+> exact context (async subtree through normalize + settle, inside the superstore
+> ALS, late-released gate) — spins the loop forever after the timer fires. A
+> bare `setTimeout().unref()` does NOT reproduce (the full context is required),
+> and skipping the post-fire `clearTimeout` (the first workaround attempt) does
+> NOT help. Fix landed in `packages/core/src/rsc.ts`: **drop the `.unref()`**,
+> keep the settle-time `clearTimeout` — verified 5/5 clean exits on a real
+> Windows machine (61 pass, EXITCODE=0 each run). Trade-off: an exit with a
+> genuinely un-settled hole now waits at most `holeTimeoutMs` for the deadline
+> to fire. The runner's pass-with-warning policy below stays as the safety net
+> for any OTHER non-exit. Remaining: minimize a standalone repro → bun issue.
 
 ## The symptom
 
