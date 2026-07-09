@@ -1,6 +1,6 @@
 import { cpus } from 'node:os'
 import * as nodePath from 'node:path'
-import { SLOW_TESTS } from './slow-tests.js'
+import { buildFastGroups, SLOW_TESTS } from './test-plan.js'
 
 const slowTestsOnly = process.env.SLOW_TESTS_ONLY === '1'
 const noSlowTests = process.env.NO_SLOW_TESTS === '1'
@@ -17,22 +17,13 @@ if (process.argv.includes('--print-slow-files')) {
   process.exit(0)
 }
 
-// Optional `--shard i/n`: run only the i-th of n round-robin groups of the PARALLEL files (CI fans the
-// fast/non-slow set across n runners so no single runner — Windows especially — carries all ~70 files).
-// Slow files are sharded separately (one file per runner via the matrix), so this only splits parallelFiles.
-const shardArg =
-  process.argv.find((a) => a.startsWith('--shard='))?.slice('--shard='.length) ??
-  (process.argv.includes('--shard') ? process.argv[process.argv.indexOf('--shard') + 1] : undefined)
-let shardIndex = 0
-let shardTotal = 0
-if (shardArg) {
-  const [i, n] = shardArg.split('/').map(Number)
-  if (!Number.isInteger(i) || !Number.isInteger(n) || i < 1 || n < 1 || i > n) {
-    throw new Error(`Invalid --shard "${shardArg}", expected "i/n" with 1 <= i <= n`)
-  }
-  shardIndex = i
-  shardTotal = n
-}
+// Optional `--group <id>`: run only the files in fast group <id> — CI's per-group fast runner. The groups
+// (pinned heavies + auto `rest-N`) are the single source of truth in scripts/test-plan.ts, so the matrix
+// self-sizes from that file; there is no round-robin here and no shard count to keep in sync. Without the
+// flag we run every non-solo file in parallel (local `bun run testf`/`testa`), then the solo phase.
+const groupId =
+  process.argv.find((a) => a.startsWith('--group='))?.slice('--group='.length) ??
+  (process.argv.includes('--group') ? process.argv[process.argv.indexOf('--group') + 1] : undefined)
 
 const cwd = nodePath.resolve(__dirname, '..', 'packages')
 const glob = new Bun.Glob('**/*.{test,spec}.{ts,tsx,js,jsx}')
@@ -83,26 +74,40 @@ const allAbsFiles = [...(await Array.fromAsync(glob.scan(cwd)))]
 throwIfFilesNotFound(allAbsFiles, slowTestsAbs)
 throwIfFilesNotFound(allAbsFiles, testUtilsTestsAbs)
 
-const parallelFiles = allAbsFiles
-  .filter((path) => {
-    // exclude all sow tests always, becouse we run it after if needed
-    if (slowTestsAbs.some((pattern) => matchPattern(path, pattern))) {
-      return false
-    }
-    if (noTestUtilsTests && testUtilsTestsAbs.some((pattern) => matchPattern(path, pattern))) {
-      return false
-    }
-    if (slowTestsOnly) {
-      return false
-    }
-    return true
-  })
-  .sort((a, b) => a.localeCompare(b))
-  // Round-robin shard split (no-op when --shard is absent). Sorted-then-indexed so every runner agrees
-  // on the partition; round-robin (vs contiguous slices) keeps groups balanced regardless of file order.
-  .filter((_file, index) => shardTotal === 0 || index % shardTotal === shardIndex - 1)
+let parallelFiles: string[]
+let pendingSlowFiles: string[]
 
-const pendingSlowFiles = noSlowTests ? [] : slowTestsAbs
+if (groupId !== undefined) {
+  // CI fast runner: exactly the files of one fast group. buildFastGroups validates the plan (no stale
+  // paths, no double-listing) and fans the unpinned "rest" files across the auto rest-N groups.
+  const relFiles = allAbsFiles.map((abs) => nodePath.relative(cwd, abs).split(nodePath.sep).join('/'))
+  const groups = buildFastGroups(relFiles)
+  const group = groups.find((g) => g.id === groupId)
+  if (!group) {
+    throw new Error(`Unknown fast group "${groupId}". Known groups: ${groups.map((g) => g.id).join(', ')}`)
+  }
+  parallelFiles = group.files.map(toAbsolute)
+  pendingSlowFiles = []
+  console.info(`Fast group "${groupId}": ${group.files.length} file(s)`)
+} else {
+  // Local / default: every non-solo file in parallel, then the solo phase (unless NO_SLOW_TESTS).
+  parallelFiles = allAbsFiles
+    .filter((path) => {
+      // exclude all slow tests always, because we run them after if needed
+      if (slowTestsAbs.some((pattern) => matchPattern(path, pattern))) {
+        return false
+      }
+      if (noTestUtilsTests && testUtilsTestsAbs.some((pattern) => matchPattern(path, pattern))) {
+        return false
+      }
+      if (slowTestsOnly) {
+        return false
+      }
+      return true
+    })
+    .sort((a, b) => a.localeCompare(b))
+  pendingSlowFiles = noSlowTests ? [] : slowTestsAbs
+}
 
 if (parallelFiles.length === 0 && pendingSlowFiles.length === 0) {
   console.info('No test files found.')

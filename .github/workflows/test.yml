@@ -24,21 +24,28 @@ on:
         description: 'JSON array of slow-test files (relative to packages/), one runner each'
         required: true
         type: string
+      fast:
+        description: 'JSON array of fast-test group ids (scripts/test-plan.ts), one runner each'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   test-fast:
-    name: fast ${{ matrix.shard }}/3 (${{ matrix.os }})
+    name: fast ${{ matrix.group }} (${{ matrix.os }})
     strategy:
       fail-fast: false
+      # Cap concurrent fast runners so a full stable-tag matrix (this job + test-slow, both OSes fired at
+      # once) doesn't flood the runner pool. See test-slow's matching cap and dev/backlog/ci-flakes.md.
+      max-parallel: 6
       matrix:
         os: ${{ fromJSON(inputs.oses) }}
-        # Fan the ~70 fast/non-slow files across 3 runners per OS — one runner (Windows especially) running
-        # them all is both slow and prone to accumulating leaked browser processes. Keep the /3 here in sync
-        # with the --shard denominator below.
-        shard: [1, 2, 3]
+        # One runner per fast GROUP. The group list — pinned heavies + auto rest-N — is built from
+        # scripts/test-plan.ts by ci-decide.ts, so this matrix self-sizes: add a group, a runner appears.
+        # No hardcoded shard count to keep in sync.
+        group: ${{ fromJSON(inputs.fast) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -69,16 +76,19 @@ jobs:
       - name: Install Playwright chromium (Windows/macOS)
         if: runner.os != 'Linux'
         run: bunx playwright install chromium
-      # This runner's third of the non-slow files (testfu = NO_SLOW_TESTS=1), run in parallel within it. The
-      # runner prints a ▶/✓/✗ breadcrumb per file and bounds each with a per-file timeout (scripts/test-parallel.ts),
-      # so a hung file fails fast and named in this step's log instead of riding the job timeout.
-      - name: Run fast tests (shard ${{ matrix.shard }}/3)
-        run: NO_SLOW_TESTS=1 bun scripts/test-parallel.ts --shard ${{ matrix.shard }}/3
+      # This group's files, run in parallel within the runner. test-parallel prints a ▶/✓/✗ breadcrumb per
+      # file and bounds each with a per-file timeout (scripts/test-parallel.ts), so a hung file fails fast
+      # and named in this step's log instead of riding the job timeout.
+      - name: Run fast tests (group ${{ matrix.group }})
+        run: bun scripts/test-parallel.ts --group ${{ matrix.group }}
 
   test-slow:
     name: slow ${{ matrix.file }} (${{ matrix.os }})
     strategy:
       fail-fast: false
+      # Cap concurrent slow runners: a stable tag fires every slow file × OS at once (~34 legs), which
+      # starves the runner pool and is the load a chunk of the flakes cluster on. See dev/backlog/ci-flakes.md.
+      max-parallel: 10
       matrix:
         os: ${{ fromJSON(inputs.oses) }}
         file: ${{ fromJSON(inputs.slow) }}

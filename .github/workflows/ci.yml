@@ -38,6 +38,7 @@ jobs:
     outputs:
       oses: ${{ steps.d.outputs.oses }}
       slow: ${{ steps.d.outputs.slow }}
+      fast: ${{ steps.d.outputs.fast }}
     steps:
       # fetch-depth: 0 so the docs-only diff below has both the PR base and head commits available.
       - uses: actions/checkout@v6
@@ -90,6 +91,7 @@ jobs:
     with:
       oses: ${{ needs.decide.outputs.oses }}
       slow: ${{ needs.decide.outputs.slow }}
+      fast: ${{ needs.decide.outputs.fast }}
 
   # The single required status check. Because check/build/test are reusable-workflow calls, skipping them (a
   # docs-only PR) makes their nested contexts NEVER report — a bare required `build / build` would then hang

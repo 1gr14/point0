@@ -32,6 +32,7 @@ jobs:
     outputs:
       oses: ${{ steps.d.outputs.oses }}
       slow: ${{ steps.d.outputs.slow }}
+      fast: ${{ steps.d.outputs.fast }}
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
@@ -64,6 +65,7 @@ jobs:
     with:
       oses: ${{ needs.decide.outputs.oses }}
       slow: ${{ needs.decide.outputs.slow }}
+      fast: ${{ needs.decide.outputs.fast }}
 
   publish:
     needs: [decide, check, build, test]

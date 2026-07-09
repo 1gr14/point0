@@ -28,6 +28,7 @@
  * `=os,os` (linux/ubuntu, windows/win, macos/mac); bare = all OSes.
  */
 import { SLOW_TESTS } from './slow-tests.js'
+import { buildFastGroupsFromDisk } from './test-plan.js'
 
 /** The default test matrix. macOS is intentionally out (×10 minutes, POSIX-identical to Linux). */
 export const FULL_OSES = ['ubuntu-latest', 'windows-latest'] as const
@@ -154,10 +155,22 @@ if (import.meta.main) {
     changedFiles,
   })
 
+  // The fast lane's runner groups (pinned + auto rest-N) — the `test-fast` matrix fans one runner per id,
+  // so it self-sizes from scripts/test-plan.ts. Globs the checked-out tree; slow files never appear here.
+  const fastGroups = await buildFastGroupsFromDisk()
+
   const lines = [
     `oses=${JSON.stringify(result.oses)}`,
     `slow=${JSON.stringify(result.slow)}`,
+    `fast=${JSON.stringify(fastGroups.map((group) => group.id))}`,
     `publish=${result.publish}`,
   ]
   for (const line of lines) console.info(line)
+
+  // Human-readable plan → stderr, so it lands in the `decide` job log WITHOUT polluting GITHUB_OUTPUT
+  // (stdout is redirected there). Surfaces which files each rest group carries — a newly-added file shows
+  // up here instead of silently unbalancing a shard.
+  for (const group of fastGroups) {
+    console.error(`[test-plan] fast group "${group.id}" (${group.files.length}): ${group.files.join(', ')}`)
+  }
 }

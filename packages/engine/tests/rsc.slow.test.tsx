@@ -794,9 +794,8 @@ const expectRscComponentChunkManifest = async (tp: TestProjectOneClient) => {
 
 // Production flow: modulepreload for referenced islands, hydration clean, islands interactive.
 const expectRscProductionFlow = async (tp: TestProjectOneClient) => {
-  const engine = await tp.importEngine()
-  tp.spawn(['bun', 'run', 'start'])
-  await tp.waitStarted(engine.server.port)
+  // The prod server is started in the describe's `beforeAll` (off this test's 60s budget) — see the build
+  // describes. This test is the browser flow only.
   const html = await tp.fetchServerHtml('/rsc')
   // per-payload modulepreload links for the referenced islands (prod-build-only feature)
   expect(html).toContain('rel="modulepreload"')
@@ -913,6 +912,12 @@ describe('rsc e2e (build)', () => {
     tp = await bootRscProject(tpf, { spawn: 'none' })
     const bp = tp.spawn(['bun', 'run', 'build'])
     await bp.exited
+    // Start the prod server HERE, not inside `production flow`: a fresh prod boot (heavier now that points
+    // load eagerly) can eat most of a per-test budget on a loaded CI runner and tip it past 60s. In beforeAll
+    // (240s) the boot is off the assertion budget — the test just drives the browser, the way the dev
+    // describes warm their server in beforeAll.
+    tp.spawn(['bun', 'run', 'start'])
+    await tp.waitStarted((await tp.importEngine()).server.port)
   }, 240000)
 
   afterAll(async () => {
@@ -1030,6 +1035,12 @@ describe('rsc e2e (vite build)', () => {
     tp = await bootRscProject(tpf, { spawn: 'none' })
     const bp = tp.spawn(['bun', 'run', 'build'])
     await bp.exited
+    // Start the prod server HERE, not inside `production flow`: a fresh prod boot (heavier now that points
+    // load eagerly) can eat most of a per-test budget on a loaded CI runner and tip it past 60s. In beforeAll
+    // (240s) the boot is off the assertion budget — the test just drives the browser, the way the dev
+    // describes warm their server in beforeAll.
+    tp.spawn(['bun', 'run', 'start'])
+    await tp.waitStarted((await tp.importEngine()).server.port)
   }, 240000)
 
   afterAll(async () => {
