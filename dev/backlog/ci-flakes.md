@@ -203,3 +203,25 @@ slow would turn a 10-min fail into a 30-min job-timeout hang.
     `N fail` with N>0, `timed out after …ms`) — never a `fail`/`error` substring
     in a passing test's NAME or a deliberately-logged error — and falls back to
     the log TAIL (where a hang ends), not the head.
+- **2026-07-09 — branch `ci-flakes` round 2
+  ([29022632062](https://github.com/1gr14/point0/actions/runs/29022632062)): 2
+  of 3 fixed, `rsc.slow` root finally found.** `core-rsc` (windows) and
+  `dev-bundler` both **passed** — the quarantines work. `rsc.slow` still failed
+  on **ubuntu only** (windows passed), but the failure MOVED: this time the
+  whole `rsc e2e (browser, vite dev)` describe timed out. The real cause in the
+  log: `TimeoutError: launch: Timeout 180000ms exceeded` +
+  `devtools_pipe_handler … Connection terminated while reading from pipe` —
+  **the Playwright chrome-headless-shell BROWSER failed to launch** on the
+  loaded ubuntu runner, so every test in that describe timed out at 60 s. Not
+  the server, not my `warmProdServe`. `rsc.slow` launches the browser **4×**
+  (one `PlaywrightBrowser.init()` per describe), so it carries 4× the
+  launch-flake exposure — which is exactly why it (and no other single-launch
+  slow file) concentrates the flake on ubuntu. → **FIX**:
+  `launchChromiumWithRetry` in
+  [`playwright.ts`](../../packages/engine/tests/utils/playwright.ts) retries
+  `chromium.launch` up to 3× with a short 40 s per-attempt timeout, so a
+  pipe-terminated launch fails fast and a fresh shell succeeds instead of
+  burning the 180 s default. `warmProdServe` (round-1 server fix) kept as
+  defense. If ubuntu still flakes after this, the fallback is to quarantine the
+  `rsc.slow` browser e2e on Linux (reliable on windows + macOS; contract also
+  pinned by `rsc.fast` in-process).

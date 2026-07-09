@@ -123,6 +123,26 @@ export interface PlaywrightBrowserConstructoeOptions {
   original: Browser
 }
 
+// chrome-headless-shell occasionally fails to launch on a loaded CI runner: the devtools pipe terminates
+// mid-handshake ("Connection terminated while reading from pipe"), and Playwright's default 180s launch
+// timeout then burns the whole beforeAll before failing. Retry with a SHORT per-attempt timeout so a bad
+// launch fails fast and a fresh chrome-headless-shell (next attempt) usually succeeds. rsc.slow launches the
+// browser 4× (one per describe), so it gets 4× the exposure — this is where the flake concentrates on ubuntu.
+// See dev/backlog/ci-flakes.md.
+const launchChromiumWithRetry = async (headless: boolean | undefined): Promise<Browser> => {
+  const attempts = 3
+  let lastError: unknown
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await chromium.launch({ headless, timeout: 40_000 })
+    } catch (error) {
+      lastError = error
+      console.warn(`[playwright] chromium.launch attempt ${attempt}/${attempts} failed; retrying`)
+    }
+  }
+  throw lastError
+}
+
 export class PlaywrightBrowser {
   original: Browser
   headless: boolean
@@ -146,9 +166,7 @@ export class PlaywrightBrowser {
       browser.cdpProcess = cdpProcess
       return browser
     }
-    const original = await chromium.launch({
-      headless: options.headless,
-    })
+    const original = await launchChromiumWithRetry(options.headless)
     return new PlaywrightBrowser({ headless: options.headless ?? true, timeout: options.timeout ?? 7000, original })
   }
 
