@@ -84,9 +84,11 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      # npm's OIDC trusted publishing needs a recent npm.
+      # npm's OIDC trusted publishing needs npm >= 11.5.1. Pin to 11.x rather than tracking @latest: npm 12.0.0
+      # shipped a broken provenance path (`Cannot find module 'sigstore'`) and `npm install -g npm@latest`
+      # adopting a brand-new major silently broke publishing. 11.x has working provenance and stays >= 11.5.1.
       - name: Update npm
-        run: npm install -g npm@latest
+        run: npm install -g npm@11
       # Publish the EXACT artifact the test matrix ran against (build.yml, ubuntu) — never a fresh rebuild, so
       # what reaches npm is byte-identical to what was tested cross-OS.
       - name: Download build artifact

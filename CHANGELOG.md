@@ -5,12 +5,20 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.2.3 — 2026-07-09
+
+- **0.2.2 never reached npm either.** Its tag was pushed and the whole test
+  matrix passed, but the publish job failed: npm `12.0.0` (just promoted to
+  `latest`) ships a broken provenance path (`Cannot find module 'sigstore'`) and
+  the release CI upgraded npm to `latest` before publishing. The publish job now
+  pins npm to 11.x, so a brand-new npm major can't break provenance again. 0.2.3
+  is the first published build of everything listed under 0.2.0 through 0.2.3.
+
 ## 0.2.2 — 2026-07-09
 
 - **0.2.1 never reached npm either.** Its release tag was pushed, but the run
   failed on the vite client-bundle leak fixed below, so npm `latest` stayed at
-  0.1.12. 0.2.2 is the first published build of everything listed under 0.2.0,
-  0.2.1, and 0.2.2.
+  0.1.12.
 - Vite production builds no longer intermittently leak server-only method
   arguments into the client bundle. Rolldown transforms modules in
   nondeterministic order: when a page compiled before the file defining its
