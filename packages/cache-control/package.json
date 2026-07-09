@@ -1,6 +1,6 @@
 {
   "name": "@point0/cache-control",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
@@ -50,8 +50,8 @@
     "format": "prettier --write ."
   },
   "peerDependencies": {
-    "@point0/core": "^0.2.1",
-    "@point0/engine": "^0.2.1"
+    "@point0/core": "^0.2.2",
+    "@point0/engine": "^0.2.2"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
