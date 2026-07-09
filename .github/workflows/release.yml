@@ -4,10 +4,10 @@ name: release
 # branch push (a fork cannot push a tag to this repo), which makes "no untrusted code ever publishes" a
 # structural guarantee, not a convention. Versions are bumped + tagged together by `bun run release`.
 #
-#   tag v1.2.3        stable      → full test matrix (MANDATORY) → publish, dist-tag `latest`
-#   tag v1.2.3-next.N prerelease  → tests unless the release commit says --skip-tests → publish, dist-tag `next`
-#
-# The dist-tag and the stable/prerelease split are derived from the version (scripts/publish.ts), and the
+# Same linear pipeline as the gate, with publish at the end: decide → build → check → test → publish.
+# EVERY tag — stable or prerelease — runs the full matrix; there is no skip flag (--skip-tests died in the
+# CI rework: when a prerelease must ship despite a broken suite, fix it locally, don't publish untested
+# bytes). The dist-tag (`latest`/`next`) is derived from the version (scripts/publish.ts), and the
 # tag↔version match is asserted before anything is published (scripts/check-channel.ts).
 on:
   push:
@@ -16,22 +16,22 @@ on:
 
 permissions:
   contents: read
-  id-token: write # OIDC: npm provenance / trusted publishing (active once packages are public)
+  id-token: write # OIDC: npm provenance / trusted publishing
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false # never cancel a publish mid-flight
 
 jobs:
-  # Same brain as the gate: decide the OS matrix. On a tag it returns the full matrix for a stable
-  # release (flags ignored) or honors --skip-tests for a prerelease. publish is gated separately below.
+  # Same brain as the gate: the OS matrix + the test plan. On a tag it always returns the full matrix.
   decide:
     name: decide
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       oses: ${{ steps.d.outputs.oses }}
-      slow: ${{ steps.d.outputs.slow }}
+      groups: ${{ steps.d.outputs.groups }}
+      solo: ${{ steps.d.outputs.solo }}
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
@@ -45,36 +45,33 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: bun scripts/ci-decide.ts >> "$GITHUB_OUTPUT"
 
-  # Prettier + ESLint (check.yml), on EVERY tag — no `needs`, no `if`, so a --skip-tests prerelease
-  # (test skipped) is still blocked from publishing unformatted/unlinted code.
-  check:
-    uses: ./.github/workflows/check.yml
-
-  # Build ONCE (ubuntu-only) → `dist` artifact, consumed by BOTH test and publish. Runs on every tag with no
-  # oses gate, so a --skip-tests prerelease (oses=[], test skipped) still has the exact artifact to publish —
-  # the publish job no longer builds its own, so what ships is byte-identical to what the matrix tested.
+  # Build ONCE (ubuntu-only) → `dist` artifact, consumed by check, test AND publish — what ships is
+  # byte-identical to what was checked and tested.
   build:
     needs: decide
     uses: ./.github/workflows/build.yml
 
+  # Prettier + ESLint on the artifact — a tag can't publish unformatted/unlinted code.
+  check:
+    needs: build
+    uses: ./.github/workflows/check.yml
+
   test:
     needs: [decide, build]
-    if: ${{ needs.decide.outputs.oses != '[]' }}
     uses: ./.github/workflows/test.yml
     with:
       oses: ${{ needs.decide.outputs.oses }}
-      slow: ${{ needs.decide.outputs.slow }}
+      groups: ${{ needs.decide.outputs.groups }}
+      solo: ${{ needs.decide.outputs.solo }}
 
   publish:
-    needs: [decide, check, build, test]
-    # Publish when `decide` + `check` + `build` succeeded AND the gate is GREEN or was deliberately SKIPPED (a
-    # prerelease with --skip-tests → the test job never runs → result 'skipped'). Unlike `test`, `check` is
-    # never legitimately skipped — it must be exactly 'success'. Never on a failed/cancelled gate, a failed
-    # build, or a failed `decide`. `!cancelled()` is required so this still evaluates when `test` was skipped
-    # (a skipped dependency would otherwise skip this job too).
+    # Publish only when the WHOLE pipeline is green — decide, build, check and test all succeeded. Tags
+    # always test (ci-decide invariant 1), so there is no legitimately-skipped stage here, and any
+    # failure/cancellation upstream blocks the publish.
+    needs: [decide, build, check, test]
     if:
-      ${{ !cancelled() && needs.decide.result == 'success' && needs.check.result == 'success' && needs.build.result ==
-      'success' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+      ${{ needs.decide.result == 'success' && needs.build.result == 'success' && needs.check.result == 'success' &&
+      needs.test.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

@@ -5,14 +5,16 @@ name: test
 # the `dist` artifact is built ONCE (build.yml, ubuntu-only) by the caller and downloaded here, so every OS —
 # Windows included — tests exactly the bytes that ship to npm.
 #
-# Sharded so no runner sits for ~an hour:
-#   test-fast → one runner per (OS × shard 1..3): the ~70 fast/parallel files, fanned 3 ways
-#   test-slow → one runner per (OS × slow file): each heavy integration file on its OWN runner
-# Fanning the slow files out also keeps Windows healthy — a single file per runner can't accumulate
-# leaked browser/dev processes to the point of starving the runner (which a full sequential run did).
-#
-# The matrices come from the caller (ci-decide.ts is the single source): `oses` is the OS list and
-# `slow` the slow-test file list — both JSON strings, fromJSON'd below.
+# Two lanes, straight from the plan (scripts/test.ts — the matrices self-size, nothing is hardcoded here):
+#   test-fast → one runner per (OS × group): unit + non-solo int files, parallel within the runner. NO browser
+#               anywhere in this lane (enforced by the plan: every browser file is .e2e ⇒ solo), so it skips
+#               the Playwright install entirely.
+#   test-solo → one runner per (OS × file): every .e2e file + the heavy solo .int files. One file per runner
+#               keeps failures attributable and stops leaked browser/dev processes from starving a runner.
+# Both lanes run through scripts/test.ts, which wraps every file in a wall-clock guard (a hung file fails
+# fast and NAMED, instead of riding the job timeout), retries a timed-out file once on a fresh process, and
+# treats "all tests green but the process would not exit" as a pass with a loud warning (the known
+# bun-on-Windows teardown hang), not a failure.
 on:
   workflow_call:
     inputs:
@@ -20,8 +22,12 @@ on:
         description: 'JSON array of runner OS labels to test on'
         required: true
         type: string
-      slow:
-        description: 'JSON array of slow-test files (relative to packages/), one runner each'
+      groups:
+        description: 'JSON array of fast-lane group ids (scripts/test.ts --plan), one runner each'
+        required: true
+        type: string
+      solo:
+        description: 'JSON array of solo files (heavy int + every e2e, repo-relative), one runner each'
         required: true
         type: string
 
@@ -30,15 +36,12 @@ permissions:
 
 jobs:
   test-fast:
-    name: fast ${{ matrix.shard }}/3 (${{ matrix.os }})
+    name: fast ${{ matrix.group }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os: ${{ fromJSON(inputs.oses) }}
-        # Fan the ~70 fast/non-slow files across 3 runners per OS — one runner (Windows especially) running
-        # them all is both slow and prone to accumulating leaked browser processes. Keep the /3 here in sync
-        # with the --shard denominator below.
-        shard: [1, 2, 3]
+        group: ${{ fromJSON(inputs.groups) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -63,25 +66,18 @@ jobs:
         uses: ./.github/actions/install
       - name: Setup (codegen for examples/templates)
         run: bun run setup
-      - name: Install Playwright chromium (Linux)
-        if: runner.os == 'Linux'
-        run: bunx playwright install --with-deps chromium
-      - name: Install Playwright chromium (Windows/macOS)
-        if: runner.os != 'Linux'
-        run: bunx playwright install chromium
-      # This runner's third of the non-slow files (testfu = NO_SLOW_TESTS=1), run in parallel within it. The
-      # runner prints a ▶/✓/✗ breadcrumb per file and bounds each with a per-file timeout (scripts/test-parallel.ts),
-      # so a hung file fails fast and named in this step's log instead of riding the job timeout.
-      - name: Run fast tests (shard ${{ matrix.shard }}/3)
-        run: NO_SLOW_TESTS=1 bun scripts/test-parallel.ts --shard ${{ matrix.shard }}/3
+      # No Playwright here — the fast lane carries no .e2e files by construction (scripts/test.ts enforces
+      # that anything importing the browser util is .e2e, and every .e2e file rides the solo lane).
+      - name: Run fast group ${{ matrix.group }}
+        run: bun scripts/test.ts --group ${{ matrix.group }}
 
-  test-slow:
-    name: slow ${{ matrix.file }} (${{ matrix.os }})
+  test-solo:
+    name: solo ${{ matrix.file }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os: ${{ fromJSON(inputs.oses) }}
-        file: ${{ fromJSON(inputs.slow) }}
+        file: ${{ fromJSON(inputs.solo) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     defaults:
@@ -105,21 +101,14 @@ jobs:
         uses: ./.github/actions/install
       - name: Setup (codegen for examples/templates)
         run: bun run setup
+      # Only the .e2e files drive a browser; the solo .int heavies (build/cli/mcp/…) never launch one.
       - name: Install Playwright chromium (Linux)
-        if: runner.os == 'Linux'
+        if: ${{ runner.os == 'Linux' && contains(matrix.file, '.e2e.') }}
         run: bunx playwright install --with-deps chromium
       - name: Install Playwright chromium (Windows/macOS)
-        if: runner.os != 'Linux'
+        if: ${{ runner.os != 'Linux' && contains(matrix.file, '.e2e.') }}
         run: bunx playwright install chromium
-      # One slow integration file, on its own runner — fast wall-clock and no cross-file process buildup.
-      # Retry the whole file once on a fresh process. A loaded runner can flake these integration shards
-      # (e.g. the point0 dev server intermittently ECONNRESETs on Windows — tracked separately); when such
-      # a crash leaves Windows file handles locked, the in-test retry can't recover, but a fresh `bun test`
-      # (new temp dirs, no locks) gets a clean shot.
-      - name: Run slow test file
-        run: |
-          for i in 1 2; do
-            bun test packages/${{ matrix.file }} && exit 0
-            echo "::warning::shard ${{ matrix.file }} attempt $i failed; retrying on a fresh process"
-          done
-          exit 1
+      # One file, its own runner, through the same guarded runner as everywhere else: wall-clock timeout,
+      # tree-kill + browser reap on a hang, one fresh-process retry, honest failure extraction in the log.
+      - name: Run solo file
+        run: bun scripts/test.ts --file ${{ matrix.file }}

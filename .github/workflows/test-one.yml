@@ -1,0 +1,75 @@
+name: test one
+
+# Point-run a SINGLE test file on a real CI runner — the flake-debugging tool. Instead of pushing a branch
+# and burning the whole matrix to reproduce one flaky file, dispatch this with the file path and the OS:
+#
+#   gh workflow run test-one.yml --ref <branch> -f file=packages/engine/tests/rsc.e2e.test.tsx -f os=ubuntu-latest
+#   gh workflow run test-one.yml --ref <branch> -f file=... -f os=... -f repeat=5   # flake hunt: N runs in one job
+#
+# Runs the same steps as a real test-solo leg (built artifact, guarded runner), so a repro here is a repro
+# of the release-matrix environment. Never publishes; plain branch permissions.
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: 'Test file to run (repo-relative, e.g. packages/engine/tests/rsc.e2e.test.tsx)'
+        required: true
+        type: string
+      os:
+        description: 'Runner OS'
+        required: true
+        type: choice
+        options: [ubuntu-latest, windows-latest, macos-latest]
+        default: ubuntu-latest
+      repeat:
+        description: 'How many times to run the file (flake hunting)'
+        required: false
+        type: string
+        default: '1'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  test-one:
+    name: ${{ inputs.file }} (${{ inputs.os }}) ×${{ inputs.repeat }}
+    needs: build
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: .
+      - name: Install dependencies
+        uses: ./.github/actions/install
+      - name: Setup (codegen for examples/templates)
+        run: bun run setup
+      - name: Install Playwright chromium (Linux)
+        if: ${{ runner.os == 'Linux' && contains(inputs.file, '.e2e.') }}
+        run: bunx playwright install --with-deps chromium
+      - name: Install Playwright chromium (Windows/macOS)
+        if: ${{ runner.os != 'Linux' && contains(inputs.file, '.e2e.') }}
+        run: bunx playwright install chromium
+      # LIVE_TEST_OUTPUT so a hang shows exactly where it stopped, unbuffered — this is a debugging run.
+      - name: Run ${{ inputs.file }} ×${{ inputs.repeat }}
+        run: |
+          for i in $(seq 1 ${{ inputs.repeat }}); do
+            echo "::group::run $i/${{ inputs.repeat }}"
+            LIVE_TEST_OUTPUT=1 bun scripts/test.ts --file '${{ inputs.file }}' || { echo "::endgroup::"; echo "::error::run $i failed"; exit 1; }
+            echo "::endgroup::"
+          done

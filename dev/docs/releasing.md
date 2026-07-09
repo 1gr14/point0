@@ -78,13 +78,12 @@ version.
 
 **Tests on a release:**
 
-- A **stable** tag always runs the full test matrix — it can never be skipped.
-- A **prerelease** tag runs it too, but you can skip it by putting
-  `--skip-tests` (or `--skip-tests=windows`) in the release commit message — the
-  commit already passed CI as a PR, so re-testing is optional. See
-  [`scripts/ci-decide.ts`](../../scripts/ci-decide.ts) for the full flag set.
-- The **format + lint check** (`check.yml`) can never be skipped — it runs on
-  every tag, `--skip-tests` or not, and `publish` requires it green.
+- **Every** tag — stable or prerelease — runs the full test matrix; there is no
+  skip flag (`--skip-tests` died in the CI rework: when a prerelease must ship
+  despite a broken suite, fix the suite locally instead of publishing untested
+  bytes). See [`scripts/ci-decide.ts`](../../scripts/ci-decide.ts).
+- The **format + lint check** (`check.yml`) runs on every tag too, and `publish`
+  requires the whole pipeline green.
 
 ## Notes
 
