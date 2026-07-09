@@ -455,25 +455,38 @@ window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientP
     // its own reader (what a plain consumer does) keeps the progressive flushes — shell first,
     // each resolved Suspense boundary as its own chunk.
     //
-    // Push scripts are PREPENDED to every chunk except the first: the first chunk is the shell and
-    // opens with `<!DOCTYPE html>` — nothing may precede it (and the store script inside it already
-    // carries everything settled up to that point).
+    // Push scripts (and heartbeats) are injected ONLY at FLUSH BOUNDARIES — before a chunk the reader actually had to
+    // WAIT for. Fizz emits one flush as a synchronous BURST of enqueues whose boundaries can fall anywhere in the
+    // markup — even mid-<script> (observed on the vite dev document: a push script prepended to a burst chunk landed
+    // inside the dehydrated-store script and killed it with a JS parse error). A read that resolves without waiting is
+    // the same burst still draining — pass it through untouched; a read we waited for starts a fresh flush, so its
+    // front is a safe injection point. A fill's reveal always arrives in a LATER flush than the fill settles
+    // (the hole slot's Suspense retry is a new Fizz task), so the fill script still precedes its boundary reveal.
+    // Nothing is ever injected before the FIRST chunk — it opens with `<!DOCTYPE html>`, and the store script inside
+    // the shell already carries everything settled up to that point.
     const reactStreamReader = reactStream.getReader()
     let firstChunkSent = false
-    // One in-flight React read survives across pulls: a heartbeat-interrupted wait must not issue a SECOND read (reads
-    // would queue and deliver chunks to different pulls out of order with the beats).
+    let atFlushBoundary = false
+    // One in-flight React read survives a heartbeat-interrupted wait — a beat must not issue a SECOND read (reads
+    // would queue and deliver chunks out of order with the beats).
     let pendingRead: ReturnType<typeof reactStreamReader.read> | undefined
     return new ReadableStream<Uint8Array>({
       async pull(controller) {
         const read = (pendingRead ??= reactStreamReader.read())
-        if (firstChunkSent) {
-          // Heartbeat while React has nothing to flush (a slow suspended query / deferred hole): a no-op script every
-          // RSC_STREAM_HEARTBEAT_MS keeps the socket non-idle past Bun's default 10s idleTimeout and proxy idle
-          // windows. Injected through the same channel as the push scripts (proven hydration-safe), and only AFTER the
-          // shell — nothing may precede `<!DOCTYPE html>` (silence BEFORE the shell is an ordinary slow request, the
-          // same class as any non-streamed slow response).
-          while (await raceIsTimeout(read, RSC_STREAM_HEARTBEAT_MS)) {
-            controller.enqueue(encoder.encode('<script></script>'))
+        // Already-queued data (a burst still draining) wins this race via its earlier-queued microtask; an empty
+        // queue means we are about to WAIT — a flush boundary.
+        const readWasQueued = await Promise.race([read.then(() => true), Promise.resolve().then(() => false)])
+        if (!readWasQueued) {
+          atFlushBoundary = true
+          if (firstChunkSent) {
+            // Heartbeat while React has nothing to flush (a slow suspended query / deferred hole): a no-op script
+            // every RSC_STREAM_HEARTBEAT_MS keeps the socket non-idle past Bun's default 10s idleTimeout and proxy
+            // idle windows. Injected through the same channel as the push scripts, and only AFTER the shell — nothing
+            // may precede `<!DOCTYPE html>` (silence BEFORE the shell is an ordinary slow request, the same class as
+            // any non-streamed slow response).
+            while (await raceIsTimeout(read, RSC_STREAM_HEARTBEAT_MS)) {
+              controller.enqueue(encoder.encode('<script></script>'))
+            }
           }
         }
         const { done, value } = await read
@@ -495,17 +508,22 @@ window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientP
         }
         if (!firstChunkSent) {
           firstChunkSent = true
+          // the shell may continue in this same burst — a pre-shell wait must not authorize an injection into it
+          atFlushBoundary = false
           sealEffectsOnFirstChunk()
           controller.enqueue(value)
           return
         }
-        const pushScripts = collectNewlySettledQueryScripts()
-        if (pushScripts) {
-          controller.enqueue(encoder.encode(pushScripts))
-        }
-        const holeScripts = collectNewlyResolvedHoleScripts()
-        if (holeScripts) {
-          controller.enqueue(encoder.encode(holeScripts))
+        if (atFlushBoundary) {
+          atFlushBoundary = false
+          const pushScripts = collectNewlySettledQueryScripts()
+          if (pushScripts) {
+            controller.enqueue(encoder.encode(pushScripts))
+          }
+          const holeScripts = collectNewlyResolvedHoleScripts()
+          if (holeScripts) {
+            controller.enqueue(encoder.encode(holeScripts))
+          }
         }
         controller.enqueue(value)
       },

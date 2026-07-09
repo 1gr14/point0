@@ -18,7 +18,11 @@ import { generateId } from './utils.js'
  *
  * The model is "elements are just data": an element returned from a loader travels to the client through the exact same
  * pipe as every other loader/query/mutation value — the data transformer — and lands in `data` like everything else. No
- * Flight protocol, no react-server module graph, no directives. Three cooperating pieces:
+ * Flight protocol, no react-server module graph, no directives. Two streaming primitives ride the same pipe:
+ * {@link defer} (a slow server SUBTREE ships as a hole and streams in) and promises as island props (a still-resolving
+ * VALUE handed straight to an island prop — `<Stats slowStats={getSlowStats()} />` — streams into the prop while the
+ * island is already live; the client reads it with React's `use()`; see `normalizeHolePromise`). Three cooperating
+ * pieces:
  *
  * - `normalizeRscOutput` — runs on the server right after the loader resolves. Walks the output to the point's `.rsc({
  *   depth })`, validates element positions, and UNFOLDS plain function components by calling them (async supported)
@@ -44,11 +48,11 @@ import { generateId } from './utils.js'
 /** The marker key carrying an encoded element on the wire. User data keys colliding with it are `$`-escaped. */
 export const RSC_MARKER_KEY = '__p0e'
 /**
- * Header that gates streamed (NDJSON) client fetches for deferred holes (see {@link defer}). Symmetric: the client sends
- * it on a data/query/mutation fetch to say "I can read a streamed body"; the server echoes it on the response to say
- * "this body IS NDJSON — line 1 is the payload, each following line fills a hole". Absent on both sides → a plain
- * single JSON body, so foreign clients, OpenAPI, and server-to-server SSR fetches are untouched (a hole degrades to
- * inline).
+ * Header that gates streamed (NDJSON) client fetches for holes — {@link defer} subtrees and promise props alike.
+ * Symmetric: the client sends it on a data/query/mutation fetch to say "I can read a streamed body"; the server echoes
+ * it on the response to say "this body IS NDJSON — line 1 is the payload, each following line fills a hole". Absent on
+ * both sides → a plain single JSON body, so foreign clients, OpenAPI, and server-to-server SSR fetches are untouched (a
+ * hole degrades to inline).
  */
 export const POINT0_STREAM_HEADER = 'x-point0-stream'
 const RSC_ESCAPED_KEY_REGEX = /^__p0e\$*$/
@@ -66,20 +70,34 @@ const RSC_REF_BRAND = '__POINT0_RSC_REF__'
  * decoding then re-encoding a tree with holes is a no-op. See {@link defer} and {@link RscHoleRegistry}.
  */
 const RSC_HOLE_BRAND = '__POINT0_RSC_HOLE__'
+/**
+ * Brand on a thenable standing in for a PROMISE PROP (promises as island props — see `normalizeHolePromise`): the hole
+ * id for a streaming prop hole, or `true` for an inline-resolved thenable (a non-streaming consumer's degradation,
+ * whose value rides ON the node as `{ t: 3, v }`). Like the other brands it keeps the codec TOTAL: decode → encode is a
+ * no-op for both variants.
+ */
+const RSC_PROMISE_BRAND = '__POINT0_RSC_PROMISE__'
 
 /**
  * Wire node type: a host tag, `0` = Fragment, `1` = Suspense, `2` = a deferred hole (its `id` names the fill pushed
- * over `__POINT0_PUSH_RSC__`), or a component-point reference `{ c: name }`.
+ * over `__POINT0_PUSH_RSC__`), `3` = a promise prop (a hole in PROP position — decodes to a thenable the island reads
+ * with React's `use()`; the fill rides the same channels as `t: 2`), or a component-point reference `{ c: name }`.
  */
-export type RscNodeType = string | 0 | 1 | 2 | { c: string }
+export type RscNodeType = string | 0 | 1 | 2 | 3 | { c: string }
 export type RscNode = {
   t: RscNodeType
   /** The element key, when set. */
   k?: string
   /** Props (children included), values encoded recursively. Omitted when empty. */
   p?: Record<string, unknown>
-  /** Hole id, set only for a hole node (`t: 2`); its fill arrives via `__POINT0_PUSH_RSC__`. */
+  /** Hole id, set for a hole node (`t: 2`) and a streaming promise prop (`t: 3`); the fill arrives by that id. */
   id?: string
+  /**
+   * The already-resolved value of an INLINED promise prop (`t: 3` without an `id`), encoded recursively — the
+   * degradation a non-streaming consumer gets: the payload is self-contained, the prop still decodes to a (fulfilled)
+   * thenable so the island's `use()` contract holds.
+   */
+  v?: unknown
 }
 
 const REACT_FRAGMENT = Symbol.for('react.fragment')
@@ -123,6 +141,54 @@ const getRscHoleName = (type: unknown): string | undefined => {
   const id = (type as unknown as Record<string, unknown>)[RSC_HOLE_BRAND]
   return typeof id === 'string' ? id : undefined
 }
+
+/**
+ * The brand of a promise-prop thenable: the hole id (streaming) or `true` (inline-resolved). See
+ * {@link RSC_PROMISE_BRAND}.
+ */
+const getRscPromiseBrand = (value: unknown): string | true | undefined => {
+  if (typeof value !== 'object' || value === null) {
+    return undefined
+  }
+  const brand = (value as Record<string, unknown>)[RSC_PROMISE_BRAND]
+  return typeof brand === 'string' || brand === true ? brand : undefined
+}
+
+/**
+ * Thenable duck-typing, matched to `await`'s: an OBJECT with a callable `then`. Functions are deliberately excluded —
+ * inside elements they answer to the function rules (rejected), and a function carrying a `then` property is
+ * pathological either way.
+ */
+const isThenableObject = (value: unknown): value is PromiseLike<unknown> =>
+  typeof value === 'object' && value !== null && typeof (value as { then?: unknown }).then === 'function'
+
+/**
+ * The React thenable protocol (what `use()` reads): a promise carrying a synchronous `status`/`value`/`reason` view.
+ * Point0's promise props implement it with LIVE getters over the backing hole state, so a prop whose fill landed before
+ * hydration reads as fulfilled the instant it filled — `use()` returns the value synchronously and the island never
+ * suspends at hydration (a suspension inside a server-revealed boundary would leave the island inert — the exact
+ * defer-hole limitation promise props exist to avoid).
+ */
+type ReactUsableThenable<T = unknown> = Promise<T> & {
+  status?: 'pending' | 'fulfilled' | 'rejected'
+  value?: T
+  reason?: unknown
+}
+
+/**
+ * A promise VALUE cannot travel through the async normalize recursion bare — `await`/async-return flattens any
+ * thenable, so returning the minted prop thenable would make normalize block on the very promise it defers (and resolve
+ * to its value instead of the promise). `normalizeHolePromise` therefore hands it back inside this box (a plain object
+ * is opaque to promise flattening), and every recursion site that assigns a normalized child unwraps it with
+ * {@link unboxThenable}.
+ */
+const RSC_BOXED_THENABLE = Symbol('point0.rsc.boxedThenable')
+type BoxedThenable = { [RSC_BOXED_THENABLE]: ReactUsableThenable }
+const boxThenable = (thenable: ReactUsableThenable): BoxedThenable => ({ [RSC_BOXED_THENABLE]: thenable })
+const unboxThenable = (value: unknown): unknown =>
+  typeof value === 'object' && value !== null && RSC_BOXED_THENABLE in value
+    ? (value as BoxedThenable)[RSC_BOXED_THENABLE]
+    : value
 
 const getFunctionName = (fn: unknown): string => {
   return (fn as { displayName?: string; name?: string }).displayName || (fn as { name?: string }).name || 'anonymous'
@@ -263,11 +329,12 @@ export type RscPointOptions = {
    */
   depth?: number
   /**
-   * Per-hole deadline for {@link defer}, in ms from the hole's registration. A subtree that has not settled by then is
-   * failed with a `POINT0_RSC_HOLE_TIMEOUT` error — delivered like any failed subtree (the per-hole error fallback or
-   * the nearest boundary renders it), so a hung `defer()` never holds the streamed response open forever (the stream's
-   * heartbeats keep idle reapers away, making this deadline the only bound). Each hole answers to the setting of the
-   * POINT whose loader deferred it. `false` disables the deadline. Default {@link DEFAULT_RSC_HOLE_TIMEOUT_MS} (60s).
+   * Per-hole deadline for {@link defer} subtrees and promise props, in ms from the hole's registration. A subtree (or a
+   * promise handed to an island prop) that has not settled by then is failed with a `POINT0_RSC_HOLE_TIMEOUT` error —
+   * delivered like any failed hole (the per-hole error fallback, the island's `use()` throw, or the nearest boundary
+   * renders it), so a hung `defer()` or promise never holds the streamed response open forever (the stream's heartbeats
+   * keep idle reapers away, making this deadline the only bound). Each hole answers to the setting of the POINT whose
+   * loader produced it. `false` disables the deadline. Default {@link DEFAULT_RSC_HOLE_TIMEOUT_MS} (60s).
    */
   holeTimeoutMs?: number | false
 }
@@ -278,8 +345,9 @@ export type NormalizeRscOutputOptions = {
   /** Point description for error messages — `point.id`, e.g. `root:page:home`. */
   label: string
   /**
-   * Per-request hole registry for {@link defer}. Present only in a streaming SSR pass; when absent (data-only, SSG, unit
-   * tests) a deferred subtree is awaited inline and the hole machinery is skipped.
+   * Per-request hole registry for {@link defer} and promise props. Present only in a streaming pass; when absent
+   * (non-streaming consumers, non-2xx responses, unit tests) a deferred subtree / promise prop is awaited inline and
+   * the hole machinery is skipped.
    */
   holes?: RscHoleRegistry
   /**
@@ -317,6 +385,12 @@ export type RscHoleEntry = {
    * fill so the client slot can render it too.
    */
   errorFallback?: React.ReactNode
+  /**
+   * Cached server-side thenable for a PROP-POSITION hole (promises as island props) — see `serverHolePromise`. Set only
+   * for holes minted from a promise prop; every server-side decode of the same `{ t: 3, id }` hands SSR this one
+   * identity.
+   */
+  promise?: Promise<unknown>
 }
 
 /** Default per-hole deadline (see {@link RscPointOptions.holeTimeoutMs}). */
@@ -431,16 +505,21 @@ export class RscHoleRegistry {
 }
 
 /**
- * Detect whether a value contains React elements anywhere a plain data walk can reach (objects/arrays — plus Map/Set,
- * walked only so normalize can reject elements hiding inside them with a clear error instead of corrupting silently).
- * Used to skip the whole normalize pass for element-free outputs — the overwhelmingly common case. Cycle-safe: circular
- * data is legal under transformers that support it (superjson), so the scan must terminate, not stack-overflow.
+ * Detect whether a value contains React elements — or thenables (promise props ride the same normalize pass; a promise
+ * in a plain DATA position must reach normalize to be rejected loudly instead of serializing as garbage) — anywhere a
+ * plain data walk can reach (objects/arrays — plus Map/Set, walked only so normalize can reject elements hiding inside
+ * them with a clear error instead of corrupting silently). Used to skip the whole normalize pass for element-free
+ * outputs — the overwhelmingly common case. Cycle-safe: circular data is legal under transformers that support it
+ * (superjson), so the scan must terminate, not stack-overflow.
  */
 export const rscDataHasElements = (value: unknown, seen?: WeakSet<object>): boolean => {
   if (isDeferred(value)) {
     return true
   }
   if (React.isValidElement(value)) {
+    return true
+  }
+  if (isThenableObject(value)) {
     return true
   }
   if (Array.isArray(value)) {
@@ -557,6 +636,16 @@ const normalizeData = async (
     }
     return await normalizeElement(value, path, options)
   }
+  if (isThenableObject(value)) {
+    if (!insideElement) {
+      throw rscError(
+        path,
+        `${options.label} returned a promise in a data position. A promise can only cross the wire as a PROP of a kept element (an island or host element), where the client reads it with React's use() — await the value in the loader, or move it into an element prop.`,
+        options,
+      )
+    }
+    return await normalizeHolePromise(value, path, options)
+  }
   if (insideElement && typeof value === 'function') {
     throw rscError(
       path,
@@ -571,7 +660,7 @@ const normalizeData = async (
       const container = value instanceof Map ? 'Map' : 'Set'
       throw rscError(
         path,
-        `React elements inside a ${container} cannot cross the wire — the RSC codec only walks plain objects and arrays. Restructure the ${container} into a plain object or array.`,
+        `React elements and promises inside a ${container} cannot cross the wire — the RSC codec only walks plain objects and arrays. Restructure the ${container} into a plain object or array.`,
         options,
       )
     }
@@ -580,7 +669,9 @@ const normalizeData = async (
   if (Array.isArray(value)) {
     let out: unknown[] | undefined
     for (let i = 0; i < value.length; i++) {
-      const normalized = await normalizeData(value[i], budget, [...path, `[${i}]`], options, insideElement)
+      const normalized = unboxThenable(
+        await normalizeData(value[i], budget, [...path, `[${i}]`], options, insideElement),
+      )
       if (normalized !== value[i]) {
         out ??= [...value]
         out[i] = normalized
@@ -591,7 +682,9 @@ const normalizeData = async (
   if (isPlainObject(value)) {
     let out: Record<string, unknown> | undefined
     for (const key in value) {
-      const normalized = await normalizeData(value[key], budget - 1, [...path, key], options, insideElement)
+      const normalized = unboxThenable(
+        await normalizeData(value[key], budget - 1, [...path, key], options, insideElement),
+      )
       if (normalized !== value[key]) {
         out ??= { ...value }
         setOwnKey(out, key, normalized)
@@ -675,7 +768,7 @@ const normalizeElement = async (
     const ErrorClass = options.ErrorClass ?? ErrorPoint0
     throw ErrorClass.from(error)
   }
-  const normalized = await normalizeData(output, Infinity, [...path, describeType(type)], options, true)
+  const normalized = unboxThenable(await normalizeData(output, Infinity, [...path, describeType(type)], options, true))
   // preserve the unfolded element's key for reconciliation
   if (element.key != null) {
     return React.createElement(React.Fragment, { key: element.key }, normalized as React.ReactNode)
@@ -719,20 +812,16 @@ const normalizeHole = async (
             typeof rawErrorFallback === 'function'
               ? rawErrorFallback(projectHoleError(error, options.ErrorClass))
               : rawErrorFallback
-          return (await normalizeData(
-            element,
-            Infinity,
-            [...path, 'defer.errorFallback'],
-            options,
-            true,
-          )) as React.ReactNode
+          return unboxThenable(
+            await normalizeData(element, Infinity, [...path, 'defer.errorFallback'], options, true),
+          ) as React.ReactNode
         }
   if (!holes) {
     if (!resolveErrorFallback) {
-      return await normalizeData(deferred.element, Infinity, [...path, 'defer'], options, true)
+      return unboxThenable(await normalizeData(deferred.element, Infinity, [...path, 'defer'], options, true))
     }
     try {
-      return await normalizeData(deferred.element, Infinity, [...path, 'defer'], options, true)
+      return unboxThenable(await normalizeData(deferred.element, Infinity, [...path, 'defer'], options, true))
     } catch (error) {
       return await resolveErrorFallback(error)
     }
@@ -740,15 +829,11 @@ const normalizeHole = async (
   const fallback =
     deferred.fallback === undefined
       ? undefined
-      : ((await normalizeData(
-          deferred.fallback,
-          Infinity,
-          [...path, 'defer.fallback'],
-          options,
-          true,
-        )) as React.ReactNode)
+      : (unboxThenable(
+          await normalizeData(deferred.fallback, Infinity, [...path, 'defer.fallback'], options, true),
+        ) as React.ReactNode)
   const entry = holes.register(
-    () => normalizeData(deferred.element, Infinity, [...path, 'defer'], options, true),
+    () => normalizeData(deferred.element, Infinity, [...path, 'defer'], options, true).then(unboxThenable),
     resolveErrorFallback,
     // the deadline is the OWNER point's setting — one request's registry carries holes from many points
     {
@@ -768,6 +853,100 @@ const normalizeHole = async (
     suspenseProps.key = deferred.element.key
   }
   return React.createElement(React.Suspense, suspenseProps, holeSlot)
+}
+
+/**
+ * Turn a promise found in a kept element's prop into a PROP-POSITION hole (promises as island props): register the
+ * (un-awaited) promise in the per-request hole registry — its resolved value is normalized like any prop data (elements
+ * allowed, functions rejected) and delivered over the same two fill channels as a `defer` hole, under the same owner
+ * deadline — and stand a branded React thenable in its place. SSR renders the island with that thenable (`use()`
+ * suspends the island's own Suspense boundary; a rejection throws at render to the nearest error boundary — Fizz
+ * handles a `use()` rejection, unlike a HAND-THROWN rejected thenable, which hangs it on Bun), the wire encodes it as
+ * `{ t: 3, id }`, and the client decodes it into a fill-driven thenable. Without a registry (a non-streaming consumer:
+ * OpenAPI/foreign clients, a non-2xx response, direct normalize) the promise is AWAITED INLINE and stands as an
+ * already-fulfilled thenable (`{ t: 3, v }` on the wire) — the prop stays a promise for `use()` on every path; a
+ * rejection there fails the loader like any thrown error.
+ *
+ * Returns the thenable BOXED (see {@link RSC_BOXED_THENABLE}) — bare, it would be flattened by the async recursion.
+ */
+const normalizeHolePromise = async (
+  value: PromiseLike<unknown>,
+  path: string[],
+  options: NormalizeRscOutputOptions,
+): Promise<BoxedThenable> => {
+  const brand = getRscPromiseBrand(value)
+  if (brand === true) {
+    // an already-inlined (fulfilled, branded) thenable re-entering normalize — its value is normalized; keep as-is
+    return boxThenable(value as ReactUsableThenable)
+  }
+  if (typeof brand === 'string' && options.holes?.entries.has(brand)) {
+    // a decoded thenable of a hole THIS request already carries (server code composing fetched data) — re-registering
+    // would mint a second hole draining the same promise; the existing one already streams
+    return boxThenable(value as ReactUsableThenable)
+  }
+  const promisePath = [...path, 'promise']
+  const normalizeResolved = async (): Promise<unknown> =>
+    unboxThenable(await normalizeData(await value, Infinity, promisePath, options, true))
+  const holes = options.holes
+  if (!holes) {
+    return boxThenable(toInlineResolvedThenable(await normalizeResolved()))
+  }
+  const entry = holes.register(normalizeResolved, undefined, {
+    // the deadline is the OWNER point's setting, same as a defer hole
+    holeTimeoutMs: options.holeTimeoutMs ?? DEFAULT_RSC_HOLE_TIMEOUT_MS,
+    ErrorClass: options.ErrorClass ?? ErrorPoint0,
+  })
+  entry.label = options.label
+  return boxThenable(serverHolePromise(entry) as ReactUsableThenable)
+}
+
+/**
+ * An already-fulfilled branded thenable standing in for an INLINED promise prop (no streaming context): `use()` reads
+ * it synchronously via the thenable protocol, `await` works, and encode carries its value ON the node (`{ t: 3, v }`)
+ * so a non-streaming consumer's payload is self-contained. Also what the client decodes a `{ t: 3, v }` node into —
+ * both sides of the inline path hand the island the same fulfilled thenable, so SSR and hydration agree.
+ */
+const toInlineResolvedThenable = (value: unknown): ReactUsableThenable => {
+  const thenable = Promise.resolve(value) as ReactUsableThenable
+  thenable.status = 'fulfilled'
+  thenable.value = value
+  ;(thenable as unknown as Record<string, unknown>)[RSC_PROMISE_BRAND] = true
+  return thenable
+}
+
+/**
+ * The server-side thenable for a prop-position hole: settles with the registry entry (never blocking the loader) and
+ * exposes the React thenable protocol through LIVE getters over the entry — the instant the promise settles, `use()`
+ * reads fulfilled/rejected SYNCHRONOUSLY, no microtask lag (the getters make ordering un-racy by construction; the noop
+ * setters keep a stray write from throwing). Its rejection is pre-observed so an island that never renders can't
+ * surface an unhandled rejection. Branded with the hole id (encode emits `{ t: 3, id }`) and cached on the entry, so
+ * every server-side decode of the hole hands SSR one identity.
+ */
+const serverHolePromise = (entry: RscHoleEntry): Promise<unknown> => {
+  if (entry.promise) {
+    return entry.promise
+  }
+  const promise = entry.throwable.then(() => {
+    const result = entry.result
+    if (result && 'error' in result) {
+      throw result.error
+    }
+    return result?.node
+  }) as ReactUsableThenable
+  void promise.catch(() => {})
+  // (defineProperties returns the promise — void it so the linter sees no floating thenable)
+  void Object.defineProperties(promise, {
+    status: {
+      get: (): 'pending' | 'fulfilled' | 'rejected' =>
+        !entry.settled ? 'pending' : entry.result && 'error' in entry.result ? 'rejected' : 'fulfilled',
+      set: () => {},
+    },
+    value: { get: () => (entry.result && 'node' in entry.result ? entry.result.node : undefined), set: () => {} },
+    reason: { get: () => (entry.result && 'error' in entry.result ? entry.result.error : undefined), set: () => {} },
+  })
+  ;(promise as unknown as Record<string, unknown>)[RSC_PROMISE_BRAND] = entry.id
+  entry.promise = promise
+  return promise
 }
 
 /**
@@ -819,7 +998,7 @@ const keepElement = async (
         options,
       )
     }
-    const normalized = await normalizeData(value, Infinity, [...path, key], options, true)
+    const normalized = unboxThenable(await normalizeData(value, Infinity, [...path, key], options, true))
     if (normalized !== value) {
       nextProps ??= { ...props }
       setOwnKey(nextProps, key, normalized)
@@ -901,6 +1080,17 @@ export const collectRscComponentNames = (value: unknown): string[] => {
 export const encodeRscData = (value: unknown): unknown => {
   if (React.isValidElement(value)) {
     return { [RSC_MARKER_KEY]: encodeElement(value) }
+  }
+  const promiseBrand = getRscPromiseBrand(value)
+  if (promiseBrand !== undefined) {
+    // a promise prop (see normalizeHolePromise): a streaming hole carries its id, an inline-resolved thenable carries
+    // its (fulfilled) value on the node — the codec stays total for both
+    return {
+      [RSC_MARKER_KEY]:
+        typeof promiseBrand === 'string'
+          ? ({ t: 3, id: promiseBrand } satisfies RscNode)
+          : ({ t: 3, v: encodeRscData((value as ReactUsableThenable).value) } satisfies RscNode),
+    }
   }
   if (Array.isArray(value)) {
     let out: unknown[] | undefined
@@ -1070,7 +1260,7 @@ export const rscComponentsRegistry = new RscComponentsRegistry()
 
 type RscClientHole = {
   filled: boolean
-  /** The decode side has built this hole's slot component (which closes over this object directly). */
+  /** The decode side has built this hole's slot component or thenable (which closes over this object directly). */
   decoded: boolean
   hasError: boolean
   node?: unknown
@@ -1079,6 +1269,8 @@ type RscClientHole = {
   errorFallback?: unknown
   promise: Promise<void>
   wake: () => void
+  /** Cached thenable for a PROP-POSITION hole (`t: 3`) — see {@link RscHolesRegistry.holePromise}. */
+  promiseValue?: Promise<unknown>
 }
 
 /**
@@ -1141,6 +1333,46 @@ export class RscHolesRegistry {
     Hole.displayName = `RscHole(${id})`
     ;(Hole as unknown as Record<string, unknown>)[RSC_HOLE_BRAND] = id
     return Hole
+  }
+
+  /**
+   * Decode side for a PROP-POSITION hole (`t: 3`, promises as island props): a branded thenable that settles when the
+   * hole's fill arrives — resolved with the decoded prop value, or rejected with the revived error (the island's
+   * `use()` throws it to the nearest error boundary; there is no error-fallback concept for a value). Exposes the React
+   * thenable protocol through LIVE getters over the slot, so a hole filled before hydration reads as fulfilled
+   * SYNCHRONOUSLY — `use()` returns the value without suspending at hydration (a suspension inside a server-revealed
+   * boundary would leave the island inert). Its rejection is pre-observed (no unhandled-rejection noise when nothing
+   * consumes the prop). Same handshake eviction as {@link RscHolesRegistry.slotComponent}, and the same drop failsafe:
+   * `failIfPending` rejects it when a stream ends before the fill.
+   */
+  holePromise(id: string): Promise<unknown> {
+    const slot = this.ensure(id)
+    if (!slot.promiseValue) {
+      const promise = slot.promise.then(() => {
+        if (slot.hasError) {
+          throw slot.error
+        }
+        return slot.node
+      }) as ReactUsableThenable
+      void promise.catch(() => {})
+      void Object.defineProperties(promise, {
+        status: {
+          get: (): 'pending' | 'fulfilled' | 'rejected' =>
+            !slot.filled ? 'pending' : slot.hasError ? 'rejected' : 'fulfilled',
+          set: () => {},
+        },
+        value: { get: () => slot.node, set: () => {} },
+        reason: { get: () => slot.error, set: () => {} },
+      })
+      ;(promise as unknown as Record<string, unknown>)[RSC_PROMISE_BRAND] = id
+      slot.promiseValue = promise
+    }
+    slot.decoded = true
+    if (slot.filled) {
+      // handshake complete (fill arrived first) — the thenable closes over `slot`, the map entry is done
+      this.slots.delete(id)
+    }
+    return slot.promiseValue
   }
 
   /** Push side: fill a hole with its decoded subtree (or error + optional per-hole error fallback) and wake it. */
@@ -1212,7 +1444,13 @@ export const decodeRscData = (value: unknown): unknown => {
   if (isPlainObject(value)) {
     const keys = Object.keys(value)
     if (keys.length === 1 && keys[0] === RSC_MARKER_KEY) {
-      return decodeElement(value[RSC_MARKER_KEY] as RscNode)
+      const node = value[RSC_MARKER_KEY] as RscNode
+      if (node.t === 3) {
+        // a promise prop, not an element: a streaming hole resolves to a fill-driven thenable, an inline-resolved one
+        // (`v` on the node) to an already-fulfilled thenable — either way the island's use() gets a promise
+        return node.id != null ? resolveHolePromise(node.id) : toInlineResolvedThenable(decodeRscData(node.v))
+      }
+      return decodeElement(node)
     }
     let out: Record<string, unknown> | undefined
     for (let i = 0; i < keys.length; i++) {
@@ -1253,7 +1491,8 @@ const decodeElement = (node: RscNode): React.ReactElement => {
           ? React.Suspense
           : node.t === 2
             ? resolveHoleSlot(node.id as string)
-            : resolveRef(node.t.c)
+            : // t: 3 never reaches here — decodeRscData resolves promise props before decodeElement
+              resolveRef((node.t as { c: string }).c)
   return createElementSpreadingChildren(type, props)
 }
 
@@ -1306,6 +1545,20 @@ const resolveHoleSlot = (id: string): React.ComponentType<any> => {
     return serverHoleComponent(serverEntry)
   }
   return rscHolesRegistry.slotComponent(id)
+}
+
+/**
+ * Resolve a decoded PROMISE-PROP hole (`t: 3`) to a thenable — environment-aware exactly like {@link resolveHoleSlot}
+ * (the loader data round-trips the transformer even server-side): on the server the still-live per-request registry
+ * backs the thenable, so the SSR island's `use()` settles from the resolving promise itself; on the client (no server
+ * registry) the fill channels drive it.
+ */
+const resolveHolePromise = (id: string): Promise<unknown> => {
+  const serverEntry = getServerHoleRegistryOrUndefined()?.entries.get(id)
+  if (serverEntry) {
+    return serverHolePromise(serverEntry)
+  }
+  return rscHolesRegistry.holePromise(id)
 }
 
 const getServerHoleRegistryOrUndefined = (): RscHoleRegistry | undefined => {

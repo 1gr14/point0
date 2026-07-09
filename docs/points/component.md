@@ -40,6 +40,11 @@ export const BestIdea = root.lets
 The component loads `bestIdea` on the server, shows the nearest loading
 component while it loads, and renders once the data is ready.
 
+The same component has a second placement: a server loader can **return it as
+data** (`return { cta: <BestIdea cta="…" /> }`) — it travels as a reference and
+hydrates as an interactive island, promise props included. Nothing about the
+component changes between the two uses. See [RSC](rsc).
+
 Stripping in brief: `.loader` and `.input` are **cut from the client bundle** —
 their bodies and the imports they use are removed, so they never ship to the
 browser (server-only). `.wrapper` and the closing `.component(render)` are **cut

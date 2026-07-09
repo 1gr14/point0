@@ -35,6 +35,7 @@ export const homePage = root.lets('page', 'home', '/').page(() => (
     <Link to="/rsc">go-rsc</Link>
     <Link to="/warm">go-warm</Link>
     <Link to="/defer-island">go-defer-island</Link>
+    <Link to="/promise-prop">go-promise-prop</Link>
   </div>
 ))
 `,
@@ -337,6 +338,47 @@ export const deferErrorFnPage = root.lets('page', 'deferErrorFnPage', '/defer-er
   .page(({ data }) => <main id="defer-error-fn-page">{data.slow}</main>)
 `,
   )
+  // Promises as island props: the loader hands still-resolving promises straight to island props; each island reads
+  // its prop with React 19 use() behind its OWN Suspense. One prop resolves before the shell (the fill is buffered and
+  // applied before hydration), one resolves ~1.5s later (the boundary reveals after hydration started) — BOTH islands
+  // must be live on the first SSR paint: the island itself is never inside a server-revealed hole, and its use()
+  // thenable is the client's own (from the t:3 decode), which is exactly why the defer-hole limitation does not apply.
+  await project.write(
+    'src/rsc/promise-prop.tsx',
+    `import { Suspense, use, useState } from 'react'
+import { root } from '../lib/root.js'
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+const StatsReader = ({ data }: { data: Promise<string> }) => <span className="pp-value">{use(data)}</span>
+
+export const PromiseWidget = root.lets<{ tag?: string; stats?: Promise<string> }>('component', 'promiseWidget')
+  .component(({ props }) => {
+    const [n, setN] = useState(0)
+    return (
+      <div id={'pp-' + props.tag}>
+        <button id={'pp-btn-' + props.tag} onClick={() => setN((c) => c + 1)}>{props.tag}-clicks={n}</button>
+        <Suspense fallback={<span id={'pp-fb-' + props.tag}>{props.tag}-loading</span>}>
+          <StatsReader data={props.stats!} />
+        </Suspense>
+      </div>
+    )
+  })
+
+export const promisePropPage = root.lets('page', 'promisePropPage', '/promise-prop')
+  .rsc({ depth: 1 })
+  .loader(async () => ({
+    fast: <PromiseWidget tag="fast" stats={Promise.resolve('PP_FAST_VALUE')} />,
+    slow: <PromiseWidget tag="slow" stats={sleep(1500).then(() => 'PP_SLOW_VALUE')} />,
+  }))
+  .page(({ data }) => (
+    <main id="promise-prop-page">
+      {data.fast}
+      {data.slow}
+    </main>
+  ))
+`,
+  )
   // A defer slower than Bun's default 10s idleTimeout (and typical proxy idle windows): only the stream heartbeats
   // keep the socket alive until the subtree lands — this page/action pair is fetched by the idle-reaper survival test.
   await project.write(
@@ -634,6 +676,57 @@ const expectNestedIslandLoadersFlow = async (tp: TestProjectOneClient) => {
   await page.close()
 }
 
+// THE promise-props thesis, SSR side: an island whose prop is a still-resolving promise is LIVE on the first SSR
+// paint — for BOTH fill orders. The fast prop settles before the shell (its fill is buffered and applied before
+// hydrateRoot, so use() reads it synchronously at hydration); the slow prop reveals its boundary AFTER hydration
+// started (React parks the dehydrated boundary and retries when the fill resolves the thenable). Neither island is
+// inside a server-revealed hole — the defer-hole inertness does not transfer, and this test is what pins that.
+const expectPromisePropSsrFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/promise-prop')
+  // the fast value rendered (pre-shell settle); the slow one streams in after its 1.5s
+  await page.waitContent('PP_FAST_VALUE', 15000)
+  await page.waitContent('fast-clicks=0', 15000)
+  await page.waitContent('slow-clicks=0', 15000)
+  await page.waitContent('PP_SLOW_VALUE', 15000)
+  await page.stable
+  // the fills rode the document stream — the client never refetched the loader
+  expect(page.requestsTale).not.toContain('page.promise-prop-page (data)')
+  const logsText = page.strlogs.join('\n')
+  expect(logsText).not.toContain('recoverable hydration/render error')
+  expect(logsText).not.toContain('Hydration')
+  expect(logsText).not.toContain('RSC:')
+  // both islands are ALIVE on the first paint — short windows so a dead island fails fast
+  await page.original.click('#pp-btn-fast')
+  await page.waitContent('fast-clicks=1', 5000)
+  await page.original.click('#pp-btn-slow')
+  await page.waitContent('slow-clicks=1', 5000)
+  await page.close()
+}
+
+// Promise props over a client navigation: the islands mount live at once (the slow prop's fallback showing), the
+// value streams in as an NDJSON fill, and the island's state SURVIVES the fill (use() re-renders the reader only —
+// the island is never remounted).
+const expectPromisePropClientNavFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/')
+  await page.waitContent('#home')
+  await page.original.getByRole('link', { name: 'go-promise-prop', exact: true }).click()
+  await page.waitContent('fast-clicks=0', 15000)
+  await page.waitContent('slow-clicks=0', 15000)
+  // click the slow island (usually while its prop is still streaming — liveness holds either way)
+  await page.original.click('#pp-btn-slow')
+  await page.waitContent('slow-clicks=1', 5000)
+  await page.waitContent('PP_SLOW_VALUE', 15000)
+  // the loader travelled over the wire as a streamed client fetch. Asserted only now: the recorder logs a request when
+  // its response FINISHES, and the NDJSON stream stays open until the slow fill drains (the defer nav test implicitly
+  // waits the same way).
+  expect(page.requestsTale).toContain('page.promise-prop-page (data)')
+  // the fill re-rendered only the suspended reader: the click count survived
+  expect(await page.original.locator('#pp-btn-slow').first().textContent()).toContain('slow-clicks=1')
+  const logsText = page.strlogs.join('\n')
+  expect(logsText).not.toContain('RSC:')
+  await page.close()
+}
+
 // defer's 3rd arg as a FUNCTION, end-to-end: a server component throws a TYPED error; the function fallback renders its
 // \`code\`. Proves the error-class fix in a browser — the typed throw is preserved (not flattened to the RSC hint) and
 // reaches the fallback projected with its code intact.
@@ -671,12 +764,14 @@ const expectRscComponentChunkManifest = async (tp: TestProjectOneClient) => {
     byComponent?: Record<string, string[]>
   }
   // every component point declared in its own fixture file gets a per-component manifest entry pointing at a real chunk
-  // (rscCta, the clientOnly lonelyBadge, the two nested-loaders islands, and the self-suspend island — five in all,
-  // one chunk each; innerLoaderIsland + outerLoaderIsland share nested-loaders' chunk since they live in one file)
+  // (rscCta, the clientOnly lonelyBadge, the two nested-loaders islands, the self-suspend island, and the promise-prop
+  // widget — one chunk each; innerLoaderIsland + outerLoaderIsland share nested-loaders' chunk since they live in one
+  // file)
   expect(Object.keys(manifest.byComponent ?? {}).sort()).toEqual([
     'innerLoaderIsland',
     'lonelyBadge',
     'outerLoaderIsland',
+    'promiseWidget',
     'rscCta',
     'selfSuspendIsland',
   ])
@@ -795,6 +890,14 @@ describe('rsc e2e (browser, dev)', () => {
   it("SSR: defer()'s 3rd arg as a FUNCTION renders the typed error's code (error-class fix, browser)", async () => {
     await expectDeferErrorFnFlow(tp)
   })
+
+  it('promise props: an island with a streaming promise prop is LIVE on the first SSR paint (both fill orders)', async () => {
+    await expectPromisePropSsrFlow(tp)
+  })
+
+  it('promise props: on a client navigation the island mounts live, the value streams in, state survives the fill', async () => {
+    await expectPromisePropClientNavFlow(tp)
+  })
 })
 
 describe('rsc e2e (build)', () => {
@@ -902,6 +1005,14 @@ describe('rsc e2e (browser, vite dev)', () => {
 
   it("SSR: defer()'s 3rd arg as a FUNCTION renders the typed error's code (error-class fix, browser)", async () => {
     await expectDeferErrorFnFlow(tp)
+  })
+
+  it('promise props: an island with a streaming promise prop is LIVE on the first SSR paint (both fill orders)', async () => {
+    await expectPromisePropSsrFlow(tp)
+  })
+
+  it('promise props: on a client navigation the island mounts live, the value streams in, state survives the fill', async () => {
+    await expectPromisePropClientNavFlow(tp)
   })
 })
 

@@ -2,25 +2,16 @@
 
 `defer()` progressive in-tree streaming shipped (initial SSR load AND client
 fetches — navigation, mutations, refetches), with heartbeats, per-hole
-deadlines, and the full validation pass. How it all works — the codec, the hole
-registry, the two delivery channels, the gotchas — lives in
-[dev/docs/rsc.md](../docs/rsc.md). The public framing of the same list (edges,
-planned, non-goals) is the "The model's edges" section of
+deadlines, and the full validation pass — and promises as island props shipped
+on top of the same machinery (`<Stats slowStats={promise} />` — a `{ t: 3 }`
+hole in prop position the client reads with React 19 `use()`). How it all works
+— the codec, the hole registry, the two delivery channels, the gotchas — lives
+in [dev/docs/rsc.md](../docs/rsc.md). The public framing of the same list
+(edges, planned, non-goals) is the "The model's edges" section of
 [docs/core/rsc.md](../../docs/core/rsc.md) — keep the two in sync. Benchmarks
 live in their own repo (`point0-benchmarks`, see its `PLAN.md`); the React-minor
 release guard sits in the release checklist
 ([dev/docs/releasing.md](../docs/releasing.md)).
-
-## Doing later
-
-- [ ] **Promises as props to component points.** A hole in _prop_ position (same
-      registry, a prop-slot decode): `<Stats data={promise} />` — the island
-      mounts live at once, the prop streams in (pairs with React 19 `use()` on
-      the client). **Gives:** the one expressiveness gap the current model has —
-      "live island + streaming ad-hoc value that is not a query"; today that
-      takes a `suspend: 'server'` query (query values) or `defer` (markup,
-      island dead on the first SSR paint). Most of the machinery (registry,
-      fills, drop failsafe, deadline) is already generic.
 
 ## Not doing — recorded for information
 

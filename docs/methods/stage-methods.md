@@ -260,10 +260,10 @@ The point's RSC knobs (elements as data), merged per key down the chain. `depth`
 — how deep in the loader output React elements are allowed: `0` (the default)
 allows an element only as the whole output; `1` also allows elements in
 first-level fields; arrays don't consume a level. `holeTimeoutMs` — the deadline
-for the point's `defer()` holes (default 60 000, `false` disables). On **every
-point type** (and root/base/plugin — set an app default once).
-**Server-and-client** — not cut from either bundle (isomorphic config). Full
-page: [RSC](rsc).
+for the point's streamed holes, `defer()` subtrees and promises handed to island
+props alike (default 60 000, `false` disables). On **every point type** (and
+root/base/plugin — set an app default once). **Server-and-client** — not cut
+from either bundle (isomorphic config). Full page: [RSC](rsc).
 
 ```tsx
 .rsc({ depth: 1 })

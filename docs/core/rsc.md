@@ -165,6 +165,12 @@ export const HomeCta = root.lets
   ))
 ```
 
+An island is not an RSC-only thing — it's a perfectly ordinary
+[component point](component). The same `<HomeCta label="Join" />` mounts
+directly in any page or component markup, exactly as the
+[component page](component) shows; returning it from a loader is just a second
+way to place the same component. Nothing about it changes between the two uses.
+
 - **Declared in a separate file**, the component stays out of every page's chunk
   — the browser downloads it only when a payload references it.
 - **During SSR** the server renders the real component, so the first paint is
@@ -257,20 +263,24 @@ Element-containing query data opts out of TanStack's deep merge automatically �
 Point0's default [`structuralSharing`](query-client) hands such payloads back
 fresh, so a refetch never tries to merge two element trees.
 
-## Streaming a slow part: `defer` and `suspend`
+## Streaming a slow part: `defer`, `suspend`, and promise props
 
 Point0 awaits every async server component in the output before the payload
 ships, so one slow `<Analytics />` holds back the **whole** loader output — the
-SSR shell and the client-fetch response alike. Two tools stream the slow part
+SSR shell and the client-fetch response alike. Three tools stream the slow part
 instead of blocking on it, and the choice between them is simple:
 
 - **`defer`** — for slow server **markup** (a server component with no query of
   its own);
-- **a `suspend: 'server'` query** — for slow **interactive** content (an
-  island).
+- **a `suspend: 'server'` query** — for slow **interactive** content whose value
+  is a **query** (an island);
+- **a promise as an island prop** — for slow **interactive** content fed an
+  **ad-hoc value**: hand the still-resolving promise straight to the island's
+  prop and read it there with React's
+  [`use()`](https://react.dev/reference/react/use).
 
-Both ship the shell first and push the rest into the **same** response, with
-zero client refetch. Everything you need at the RSC level is here; the full
+All three ship the shell first and push the rest into the **same** response,
+with zero client refetch. Everything you need at the RSC level is here; the full
 `suspend` reference (all the modes, positional fallbacks) lives in
 [SSR → the `ssr` and `suspend` query options](ssr#the-ssr-and-suspend-query-options).
 
@@ -414,6 +424,100 @@ Drop `<LiveStats />` anywhere: the shell ships with its `.loading()`, the loader
 streams into the same response, and the button works on the first paint — a
 **live** island, not just markup.
 
+### Promises as island props
+
+A `suspend` query streams a **query** value. When the slow value is ad-hoc — a
+computation, an aggregation, anything you would not model as a query — hand the
+still-resolving promise **straight to the island's prop**:
+
+```tsx
+export const dashboardPage = root.lets
+  .page('/dashboard')
+  .loader(async () => ({
+    user: await getUser(), // fast — ships in the shell
+    stats: <Stats slowStats={getSlowStats()} />, // getSlowStats() returns a Promise — NOT awaited
+  }))
+  .page(({ data }) => (
+    <main>
+      <h1>{data.user.name}</h1>
+      {data.stats}
+    </main>
+  ))
+```
+
+The island mounts **live at once** — its buttons work while the value is still
+in flight — and reads the prop with React 19's `use()` behind its own
+`Suspense`. The prop is declared like any other [component](component) prop —
+the generic on `.component<…>()` — just typed as a `Promise`:
+
+```tsx
+import { Suspense, use, useState } from 'react'
+
+const StatsValue = ({ slowStats }: { slowStats: Promise<StatsData> }) => {
+  const stats = use(slowStats) // suspends until the value streams in, then re-renders
+  return (
+    <p>
+      {stats.views} views · {stats.likes} likes
+    </p>
+  )
+}
+
+export const Stats = root.lets
+  .component<{ slowStats: Promise<StatsData> }>() // declares the outer prop, typed as the promise
+  .component(({ props }) => {
+    const [period, setPeriod] = useState('week')
+    return (
+      <section>
+        {/* live at once — clickable while the value is still in flight */}
+        <button onClick={() => setPeriod(period === 'week' ? 'month' : 'week')}>
+          Period: {period}
+        </button>
+        <Suspense fallback={<p>Loading…</p>}>
+          <StatsValue slowStats={props.slowStats} />
+        </Suspense>
+      </section>
+    )
+  })
+```
+
+`StatsValue` is not ceremony around `use()` — it is the **waiting boundary**,
+and you draw it yourself: everything outside the `Suspense` (the period button)
+works immediately; the part inside is exactly what waits for the value.
+
+The prop travels as a hole in the payload; the resolved value streams into it on
+the **same** response — the SSR document or the client fetch — and `use()`
+re-renders just the suspended reader. The island is never remounted: state it
+accumulated while the value streamed (a toggled filter, a typed input) survives
+the arrival.
+
+Everything `defer` says about delivery applies verbatim, because promise props
+ride the same machinery: streaming on the initial SSR load and on every client
+fetch, heartbeats, the `.rsc({ holeTimeoutMs })` deadline (a promise that misses
+it rejects with `POINT0_RSC_HOLE_TIMEOUT`), `Cache-Control: private, no-store`
+on framed bodies, and the inline degrade for consumers that can't read a stream
+— there the promise is awaited on the server and its value rides the payload,
+still decoding to an (already-resolved) promise, so the island's `use()`
+contract holds for every consumer.
+
+Two things differ from `defer`:
+
+- **The island is live on the first SSR paint.** The island itself is a regular
+  reference in the payload — never inside a server-revealed hole — and the
+  promise its `use()` reads is the client's own, filled by the stream. So the
+  defer-hole limitation (below) does not apply: the island hydrates interactive,
+  whether the value arrived before hydration or after.
+- **A rejected promise has no per-hole fallback** — `use()` throws the error at
+  render, and the nearest error boundary catches it, exactly like on the client.
+  The error crosses the wire projected through your
+  [`.errorClass()`](loading-error) — public fields in production, everything in
+  dev. Put a boundary inside the island if you want the failure scoped to it.
+
+A promise is accepted **only as a prop of a kept element** — an island or a host
+element (anywhere inside the prop's value, arrays and objects included). A
+promise in a plain data position fails the loader with an error naming the path:
+data is for values, streaming is for props — `await` it or move it into an
+island prop.
+
 ### Or split the data into a query, injected with `.with`
 
 Prefer the data in a standalone [query](query) and the island in the page? Wire
@@ -472,15 +576,19 @@ renders the subtree fresh on the client, so everything is live there.
 | top-level island               | 🟢 live            | 🟢 live                       |
 | island inside a `defer` hole   | 🔴 shows, but dead | 🟢 live                       |
 | island via `suspend: 'server'` | 🟢 live            | 🟢 live                       |
+| island reading a promise prop  | 🟢 live            | 🟢 live                       |
 
-So the rule is one line: **`defer` for server markup, `suspend: 'server'` for
-interactive islands.** On the first SSR paint an island revealed inside a
-`defer` hole displays but its handlers stay unwired — the browser completes the
-server-revealed `Suspense` boundary from the stream and never re-enters the
-suspended child. A `suspend` query dodges this because its data rides
-react-query: when it streams in, the observer re-renders the subscriber and
-mounts the island fresh. After the first paint (any client navigation) the limit
-is gone — a `defer` hole then renders fresh on the client too.
+So the rule is one line: **`defer` for server markup; for interactive islands, a
+`suspend: 'server'` query (query values) or a promise prop (ad-hoc values).** On
+the first SSR paint an island revealed inside a `defer` hole displays but its
+handlers stay unwired — the browser completes the server-revealed `Suspense`
+boundary from the stream and never re-enters the suspended child. A `suspend`
+query dodges this because its data rides react-query: when it streams in, the
+observer re-renders the subscriber and mounts the island fresh. A promise prop
+dodges it too: the island is an ordinary reference (never inside a
+server-revealed hole), and the streamed value only settles the promise its
+`use()` reads. After the first paint (any client navigation) the limit is gone —
+a `defer` hole then renders fresh on the client too.
 
 The full `suspend` semantics — `'auto' | 'server' | 'client' | true | false`,
 positional fallbacks, point-vs-query level — are in
@@ -537,12 +645,14 @@ Elements encode into plain JSON markers inside the regular payload:
 `t` is the node type — a host tag string like `"section"`, or `0` (Fragment),
 `1` (Suspense), `2` (a deferred hole whose `id` names the fill streamed over
 `__POINT0_PUSH_RSC__` — see
-[`defer`](#streaming-a-slow-part-defer-and-suspend)), or `{ c: name }` (a
-component-point reference); `k` is the key, `p` the props. User data keys that
-collide with `__p0e` are `$`-escaped and restored on decode. Because the codec
-wraps your [transformer](transformer), custom types keep working **inside
-element props** — a `Date` in `<Hero since={date} />` round-trips like any other
-`Date`.
+[`defer`](#streaming-a-slow-part-defer-suspend-and-promise-props)), `3` (a
+[promise prop](#promises-as-island-props) — decodes to a promise the island
+reads with `use()`; a streaming one carries the fill's `id`, an inlined one its
+resolved value as `v`), or `{ c: name }` (a component-point reference); `k` is
+the key, `p` the props. User data keys that collide with `__p0e` are `$`-escaped
+and restored on decode. Because the codec wraps your [transformer](transformer),
+custom types keep working **inside element props** — a `Date` in
+`<Hero since={date} />` round-trips like any other `Date`.
 
 Decoding is one-way by design: the server encodes elements into responses, the
 SSR-embedded state, and streamed pushes, but **never decodes elements from
@@ -581,9 +691,12 @@ The rest are genuinely malformed, and the error names the exact path:
   functions; write it as one;
 - a **page, layout, or provider point** in data — only **component points** can
   be referenced;
-- an element **inside a `Map` or `Set`** — the codec walks plain objects and
-  arrays; put element-carrying data in those (an element-free `Map`/`Set` passes
-  through to the transformer untouched);
+- an element or promise **inside a `Map` or `Set`** — the codec walks plain
+  objects and arrays; put element-carrying data in those (an element-free
+  `Map`/`Set` passes through to the transformer untouched);
+- a **promise in a data position** — a promise streams only as a
+  [prop of a kept element](#promises-as-island-props); `await` the value in the
+  loader or move it into an island prop;
 - an element **deeper than `.rsc({ depth: n })`** — raise the depth (the error
   tells you which).
 
@@ -593,15 +706,11 @@ Point0's RSC is deliberately smaller than Flight, and its edges are explicit:
 
 - **An island inside a `defer` hole is not interactive on the first SSR paint**
   (the matrix above). This is a known trade of the model, and the answer is not
-  "wait for a fix": slow interactive content goes through `suspend: 'server'` or
-  a top-level island — first-class patterns, covered on this page. Lifting the
-  limit would take a Flight-style client reconciler, and that machinery is
-  exactly what this model trades away, so don't plan around it changing.
-- **Planned: promises as island props.** Hand a still-resolving value straight
-  to an island — `<Stats data={promise} />` — and let it stream into the prop
-  while the island is already live. Today the same result goes through a
-  `suspend: 'server'` query (when the value is a query) or `defer` (when the
-  block is markup).
+  "wait for a fix": slow interactive content goes through `suspend: 'server'`, a
+  [promise prop](#promises-as-island-props), or a top-level island — first-class
+  patterns, covered on this page. Lifting the limit would take a Flight-style
+  client reconciler, and that machinery is exactly what this model trades away,
+  so don't plan around it changing.
 - **Not planned: Flight compatibility, `'use server'` actions, a second
   react-server module graph.** Elements ride the normal data pipe — that is the
   point. Server work goes in loaders, mutations are mutations.

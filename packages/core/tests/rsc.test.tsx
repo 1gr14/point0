@@ -11,6 +11,7 @@ import {
   rscDataHasElements,
   rscHolesRegistry,
   wrapTransformerWithRsc,
+  type RscNode,
 } from '../src/rsc.js'
 import { Point0 } from '../src/point0.js'
 import { ClientPoints } from '../src/client-points.js'
@@ -833,5 +834,189 @@ describe('rsc defer / holes', () => {
     expect(seen?.message).toBe('kaput')
     expect(seen?.code).toBe('POINT0_NOT_FOUND')
     expect(seen?.meta).toBeUndefined() // the private (dev) projection carries meta — the public one strips it
+  })
+})
+
+describe('rsc promise props', () => {
+  type UsableThenable = Promise<unknown> & { status?: string; value?: unknown; reason?: unknown }
+
+  it('a promise in an island prop registers a hole (not awaited) and encodes as { t: 3, id }', async () => {
+    const holes = new RscHoleRegistry()
+    const root = Point0.lets('root', 'pp-roundtrip').root()
+    const Stats = root.lets<{ data?: Promise<string> }>('component', 'stats').component(() => <div />)
+    let release!: (value: string) => void
+    const slow = new Promise<string>((resolve) => (release = resolve))
+    const out = (await normalizeRscOutput({ widget: <Stats data={slow} /> }, { depth: 1, label: 'p', holes })) as {
+      widget: React.ReactElement
+    }
+    // resolves immediately: the promise is registered, not awaited
+    const [entry] = [...holes.entries.values()]
+    expect(entry!.settled).toBe(false)
+    // SSR gets a live React-protocol thenable in the prop's place — pending until the user promise settles
+    const prop = (out.widget.props as { data: UsableThenable }).data
+    expect(typeof prop.then).toBe('function')
+    expect(prop.status).toBe('pending')
+    // the wire carries a prop-position hole node
+    const encoded = encodeRscData(out) as {
+      widget: { __p0e: { t: unknown; p: { data: { __p0e: { t: number; id: string } } } } }
+    }
+    expect(encoded.widget.__p0e.p.data.__p0e.t).toBe(3)
+    expect(encoded.widget.__p0e.p.data.__p0e.id).toBe(entry!.id)
+    // once the user promise resolves, the entry drains like any hole and the server thenable reads fulfilled
+    release('42-stats')
+    await entry!.throwable
+    expect((holes.takeResolved()[0]!.result as { node: string }).node).toBe('42-stats')
+    expect(prop.status).toBe('fulfilled')
+    expect(prop.value).toBe('42-stats')
+    expect(await prop).toBe('42-stats')
+  })
+
+  it('a decoded { t: 3, id } thenable settles from its fill — either order — and re-encodes to the same node (totality)', async () => {
+    // fill AFTER decode
+    const afterDecode = decodeRscData({ x: { [RSC_MARKER_KEY]: { t: 3, id: 'ppAfter' } } }) as { x: UsableThenable }
+    expect(afterDecode.x.status).toBe('pending')
+    rscHolesRegistry.fill('ppAfter', { node: 'late-value' })
+    // the live getters read fulfilled the INSTANT the fill lands — no microtask lag (what keeps use() from
+    // suspending at hydration inside a server-revealed boundary)
+    expect(afterDecode.x.status).toBe('fulfilled')
+    expect(afterDecode.x.value).toBe('late-value')
+    expect(await afterDecode.x).toBe('late-value')
+    // fill BEFORE decode (the buffered-push order)
+    rscHolesRegistry.fill('ppBefore', { node: 'early-value' })
+    const beforeDecode = decodeRscData({ x: { [RSC_MARKER_KEY]: { t: 3, id: 'ppBefore' } } }) as { x: UsableThenable }
+    expect(beforeDecode.x.status).toBe('fulfilled')
+    expect(await beforeDecode.x).toBe('early-value')
+    // totality: the decoded thenable encodes back to its exact wire node
+    expect(encodeRscData(afterDecode)).toEqual({ x: { [RSC_MARKER_KEY]: { t: 3, id: 'ppAfter' } } })
+  })
+
+  it('an error fill rejects the prop thenable with the revived error (use() throws it to the boundary)', async () => {
+    const decoded = decodeRscData({ x: { [RSC_MARKER_KEY]: { t: 3, id: 'ppErr' } } }) as { x: UsableThenable }
+    rscHolesRegistry.fill('ppErr', { error: new ErrorPoint0('prop-boom', { code: 'POINT0_NOT_FOUND' }) })
+    expect(decoded.x.status).toBe('rejected')
+    expect((decoded.x.reason as ErrorPoint0).code).toBe('POINT0_NOT_FOUND')
+    expect(decoded.x).rejects.toThrow('prop-boom')
+  })
+
+  it('a promise in a DATA position is rejected loudly, naming the path — and the scan sees it without any element', async () => {
+    // the scan detects bare thenables, so normalize runs (and rejects) even for an element-free output
+    expect(rscDataHasElements({ stats: Promise.resolve(1) })).toBe(true)
+    await expect(normalizeRscOutput({ stats: Promise.resolve(1) }, { depth: 1, label: 'p' })).rejects.toThrow(
+      /promise in a data position/,
+    )
+    // nested in plain data — same reject, deeper path
+    await expect(normalizeRscOutput({ a: { b: [Promise.resolve(1)] } }, { depth: 5, label: 'p' })).rejects.toThrow(
+      /at a\.b\.\[0\]/,
+    )
+  })
+
+  it('a promise inside a Map/Set is rejected like an element there', async () => {
+    await expect(
+      normalizeRscOutput({ hero: <b />, m: new Map([['k', Promise.resolve(1)]]) }, { depth: 1, label: 'p' }),
+    ).rejects.toThrow(/Map/)
+  })
+
+  it('without a registry the promise is awaited inline as a FULFILLED thenable — { t: 3, v } on the wire, a promise on both sides', async () => {
+    const out = (await normalizeRscOutput(<div data-stats={Promise.resolve({ n: 7 })} />, {
+      depth: 0,
+      label: 'p',
+    })) as React.ReactElement
+    const prop = (out.props as { 'data-stats': UsableThenable })['data-stats']
+    // the prop stays a promise — the island's use() contract holds on the inline path too
+    expect(prop.status).toBe('fulfilled')
+    expect(prop.value).toEqual({ n: 7 })
+    // the value rides ON the node, so a non-streaming consumer's payload is self-contained
+    const encoded = encodeRscData({ el: out }) as { el: { __p0e: { p: { 'data-stats': { __p0e: RscNode } } } } }
+    const node = encoded.el.__p0e.p['data-stats'].__p0e
+    expect(node.t).toBe(3)
+    expect(node.id).toBeUndefined()
+    expect(node.v).toEqual({ n: 7 })
+    // decode mirrors it into the same fulfilled thenable; re-encode is a no-op (totality)
+    const decoded = decodeRscData(JSON.parse(JSON.stringify(encoded))) as {
+      el: React.ReactElement
+    }
+    const decodedProp = (decoded.el.props as { 'data-stats': UsableThenable })['data-stats']
+    expect(decodedProp.status).toBe('fulfilled')
+    expect(await decodedProp).toEqual({ n: 7 })
+    expect(JSON.parse(JSON.stringify(encodeRscData(decoded)))).toEqual(JSON.parse(JSON.stringify(encoded)))
+  })
+
+  it('on the inline path a REJECTING promise fails the loader like any thrown error', async () => {
+    await expect(
+      normalizeRscOutput(<div data-stats={Promise.reject(new Error('inline-boom'))} />, { depth: 0, label: 'p' }),
+    ).rejects.toThrow('inline-boom')
+  })
+
+  it('the resolved value is normalized like prop data — elements allowed, functions rejected, nested islands survive', async () => {
+    const holes = new RscHoleRegistry()
+    const root = Point0.lets('root', 'pp-nested').root()
+    const Cta = root.lets('component', 'ppCta').component(() => <button>go</button>)
+    const out = (await normalizeRscOutput(<div data-slot={Promise.resolve({ inner: <Cta /> })} />, {
+      depth: 0,
+      label: 'p',
+      holes,
+    })) as React.ReactElement
+    expect(React.isValidElement(out)).toBe(true)
+    const [entry] = [...holes.entries.values()]
+    await entry!.throwable
+    const node = (entry!.result as { node: { inner: React.ReactElement } }).node
+    // the island inside the resolved value stays a live reference — it encodes as { c: name } in the fill
+    const encodedFill = encodeRscData(node) as { inner: { __p0e: { t: { c: string } } } }
+    expect(encodedFill.inner.__p0e.t).toEqual({ c: 'ppCta' })
+    // a function inside the resolved value fails the HOLE (the entry settles to an error), naming the path
+    const badHoles = new RscHoleRegistry()
+    await normalizeRscOutput(<div data-slot={Promise.resolve({ cb: () => 1 })} />, {
+      depth: 0,
+      label: 'p',
+      holes: badHoles,
+    })
+    const [badEntry] = [...badHoles.entries.values()]
+    await badEntry!.throwable
+    expect(String((badEntry!.result as { error: unknown }).error)).toContain('functions cannot travel')
+  })
+
+  it("a promise prop that misses the owner point's deadline rejects with RSC_HOLE_TIMEOUT", async () => {
+    const holes = new RscHoleRegistry()
+    const out = (await normalizeRscOutput(<div data-slow={new Promise(() => {})} />, {
+      depth: 0,
+      label: 'p',
+      holes,
+      holeTimeoutMs: 20,
+    })) as React.ReactElement
+    const prop = (out.props as { 'data-slow': UsableThenable })['data-slow']
+    const [entry] = [...holes.entries.values()]
+    await entry!.throwable
+    expect((entry!.result as { error: ErrorPoint0 }).error.code).toBe('POINT0_RSC_HOLE_TIMEOUT')
+    expect(prop.status).toBe('rejected')
+    expect((prop.reason as ErrorPoint0).code).toBe('POINT0_RSC_HOLE_TIMEOUT')
+  })
+
+  it('failIfPending rejects a pending prop thenable; a filled one keeps its value', async () => {
+    const pending = decodeRscData({ x: { [RSC_MARKER_KEY]: { t: 3, id: 'ppDrop' } } }) as { x: UsableThenable }
+    rscHolesRegistry.failIfPending('ppDrop', new ErrorPoint0('stream-ended', { code: 'POINT0_RSC_STREAM_INCOMPLETE' }))
+    expect(pending.x.status).toBe('rejected')
+    expect((pending.x.reason as ErrorPoint0).code).toBe('POINT0_RSC_STREAM_INCOMPLETE')
+    rscHolesRegistry.fill('ppKept', { node: 'kept-value' })
+    const kept = decodeRscData({ x: { [RSC_MARKER_KEY]: { t: 3, id: 'ppKept' } } }) as { x: UsableThenable }
+    rscHolesRegistry.failIfPending('ppKept', new Error('too-late'))
+    expect(await kept.x).toBe('kept-value')
+  })
+
+  // NOTE: the server-side decode of a `{ t: 3, id }` node against the LIVE per-request registry (the resolveHoleSlot
+  // environment-awareness, promise-prop edition) is pinned by the in-process SSR test in
+  // packages/engine/tests/rsc.fast.test.tsx — a superstore-backed unit here is not hermetic (the bundle-global client
+  // state other test files touch shadows a raw `runWithServerStorageState` for clientServerIsolated items).
+
+  it('re-normalizing data that carries a branded thenable of the SAME request keeps it as-is (no double hole)', async () => {
+    const holes = new RscHoleRegistry()
+    const normalized = (await normalizeRscOutput(<div data-x={Promise.resolve(1)} />, {
+      depth: 0,
+      label: 'p',
+      holes,
+    })) as React.ReactElement
+    expect(holes.entries.size).toBe(1)
+    const again = (await normalizeRscOutput(normalized, { depth: 0, label: 'p', holes })) as React.ReactElement
+    expect((again.props as { 'data-x': unknown })['data-x']).toBe((normalized.props as { 'data-x': unknown })['data-x'])
+    expect(holes.entries.size).toBe(1) // nothing re-registered
   })
 })

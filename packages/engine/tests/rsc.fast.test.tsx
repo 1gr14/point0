@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { ClientOnly, defer, Point0, POINT0_STREAM_HEADER } from '@point0/core'
+import { ClientOnly, defer, Point0, POINT0_STREAM_HEADER, rscHolesRegistry } from '@point0/core'
 import * as React from 'react'
 import superjson from 'superjson'
 import { createTestThings } from './utils/internal-testing.js'
@@ -1449,6 +1449,243 @@ describe('rsc', () => {
       "
     `)
   })
+
+  it('promise prop: a stream-capable fetch frames it as NDJSON — line 1 holds a { t: 3, id } hole, the value lands as a fill line; no header → inline { t: 3, v }', async () => {
+    // Promises as island props ride the exact defer machinery: the hole registry, the NDJSON framing, the fill drain.
+    // Line 1 carries the island reference with a `{ t: 3, id }` node in the prop's place (no value inlined); the
+    // resolved value follows as a fill line. A consumer that never advertised streaming gets a single JSON body where
+    // the promise was awaited inline and its value rides ON the node (`{ t: 3, v }`) — the prop decodes to a fulfilled
+    // thenable there too, so the island's use() contract holds for every consumer.
+    const root = createRoot()
+    const Stats = root.lets<{ data?: Promise<string> }>('component', 'ppStats').component(() => <div />)
+    const thing = root
+      .lets('action', 'thing', 'GET', '/api/thing')
+      .rsc({ depth: 1 })
+      .loader(async () => ({ widget: <Stats data={Promise.resolve('PP-STATS-42')} /> }))
+      .action()
+    const { engine } = await createTestThings({ ssr: true, points: [root, Stats, thing] })
+    // The PLAIN (non-RSC) transformer keeps wire nodes visible as data instead of decoding them.
+    const transformer = thing.point._getTransformer()
+
+    const streamed = await engine.fetch(
+      new Request('http://localhost:3000/api/thing', { headers: { [POINT0_STREAM_HEADER]: 'true' } }),
+    )
+    expect(streamed.headers.get(POINT0_STREAM_HEADER)).toBe('true')
+    expect(streamed.headers.get('Content-Type')).toBe('application/x-ndjson')
+    const lines = (await streamed.text()).split('\n').filter((line) => line.length > 0)
+    expect(lines.length).toBeGreaterThanOrEqual(2)
+    const streamedNodes = collectWireNodes(transformer.parse(lines[0]!)).filter((node) => node.t === 3)
+    expect(streamedNodes).toHaveLength(1)
+    expect(typeof streamedNodes[0]!.id).toBe('string') // a streaming hole — the fill arrives by this id
+    expect('v' in streamedNodes[0]!).toBe(false)
+    expect(lines[0]!).not.toContain('PP-STATS-42')
+    const fillLine = lines.slice(1).find((line) => line.includes('PP-STATS-42'))
+    expect(fillLine).toBeDefined()
+
+    const plain = await engine.fetch(new Request('http://localhost:3000/api/thing'))
+    expect(plain.headers.get(POINT0_STREAM_HEADER)).toBeNull()
+    const plainBody = await plain.text()
+    expect(plainBody).toContain('PP-STATS-42')
+    const plainNodes = collectWireNodes(transformer.parse(plainBody)).filter((node) => node.t === 3)
+    expect(plainNodes).toHaveLength(1)
+    expect(plainNodes[0]!.v).toBe('PP-STATS-42') // inline-resolved: the value rides ON the node
+    expect('id' in plainNodes[0]!).toBe(false)
+  })
+
+  it('promise prop: the island mounts LIVE at once — clickable while the prop streams — and keeps its state when the value lands', async () => {
+    // THE value thesis of the feature: "a live island + a streaming ad-hoc value that is not a query". The island
+    // mounts immediately (its own Suspense holds only the use() part), responds to clicks while the prop is still in
+    // flight, and the fill re-renders just the suspended reader — the island is never remounted (its state survives).
+    const root = createRoot()
+    const gate = createGate()
+    const StatsValue = ({ data }: { data: Promise<string> }) => <span id="stats-value">{React.use(data)}</span>
+    const Widget = root.lets<{ stats?: Promise<string> }>('component', 'ppWidget').component(({ props }) => {
+      const [n, setN] = React.useState(0)
+      return (
+        <div id="widget">
+          <button id="pp-counter" onClick={() => setN((value) => value + 1)}>
+            count={n}
+          </button>
+          <React.Suspense fallback={<span id="stats-fb">stats-loading</span>}>
+            <StatsValue data={props.stats!} />
+          </React.Suspense>
+        </div>
+      )
+    })
+    const q = root
+      .lets('query', 'stuff')
+      .rsc({ depth: 1 })
+      .loader(async () => ({ widget: <Widget stats={gate.promise.then(() => 'STATS-ARRIVED')} /> }))
+      .query()
+    const page = root.lets('page', 'home', '/').page(() => {
+      const query = q.useQuery()
+      return <div id="page">{query.data?.widget ?? 'no-data'}</div>
+    })
+    const { render } = await createTestThings({ ssr: true, points: [root, Widget, q, page] })
+    await render(page.route(), async ({ waitContent, click, tale }) => {
+      // the island mounts at once with the prop still pending — its own Suspense shows the fallback
+      await waitContent('#pp-counter')
+      await waitContent('#stats-fb')
+      // …and it is LIVE while the prop streams
+      await click('#pp-counter')
+      expect(await tale()).toContain('count=1')
+      // release the value and wait for the fill to land in the client hole registry
+      const pendingAtMount = [...rscHolesRegistry.pendingIds()]
+      expect(pendingAtMount.length).toBeGreaterThan(0)
+      gate.release()
+      const deadline = Date.now() + 3000
+      while (pendingAtMount.some((id) => rscHolesRegistry.pendingIds().has(id)) && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      }
+      // HARNESS LIMITATION, probed in isolation: in a @testing-library act environment a use()-suspended component is
+      // not resumed by the thenable's resolution alone (pure React and a real browser resume fine, and the
+      // thrown-thenable defer slot resumes even here) — so nudge React with a state update (a click), which doubles as
+      // the liveness assertion after the fill. The browser e2e (rsc.slow) pins the unassisted resume.
+      await click('#pp-counter')
+      await waitContent('STATS-ARRIVED')
+      // the island was never remounted: its local state (two clicks) survived the fill
+      expect(await tale()).toContain('count=2')
+    })
+  })
+
+  it('promise prop: on the SSR document the island suspends on use(), the shell ships its fallback, and the value pushes over __POINT0_PUSH_RSC__', async () => {
+    // The SSR side, which also pins the server-side decode against the LIVE per-request registry: the page loader's
+    // data round-trips the transformer server-side, so the outer render decodes `{ t: 3, id }` back — were that to fall
+    // to the client (push-fed) path, use() would never settle on the server and the boundary could not reveal.
+    const root = createRoot()
+    const gate = createGate()
+    const StatsValue = ({ data }: { data: Promise<string> }) => <b id="stats-ssr">{React.use(data)}</b>
+    const Widget = root.lets<{ stats?: Promise<string> }>('component', 'ppSsrWidget').component(({ props }) => (
+      <div id="widget-ssr">
+        <React.Suspense fallback={<span id="ssr-fb">ssr-stats-loading</span>}>
+          <StatsValue data={props.stats!} />
+        </React.Suspense>
+      </div>
+    ))
+    const page = root
+      .lets('page', 'home', '/')
+      .rsc({ depth: 1 })
+      .loader(async () => ({ widget: <Widget stats={gate.promise.then(() => 'SSR-STATS-ARRIVED')} /> }))
+      .page(({ data }) => (
+        <div id="page">
+          <div id="static">static-content</div>
+          {data.widget}
+        </div>
+      ))
+    const { client } = await createTestThings({ ssr: true, points: [root, Widget, page] })
+    await (client as { run: <T>(fn: () => Promise<T>) => Promise<T> }).run(async () => {
+      const response = await (client as unknown as { fetch: (url: string) => Promise<Response> }).fetch(
+        'http://localhost/',
+      )
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      // the shell ships at once: the island server-rendered with use() suspended → its fallback, no value, still open
+      let html = await readUntil(reader, decoder, '', 'ssr-stats-loading')
+      expect(html).toContain('static-content')
+      expect(html).not.toContain('SSR-STATS-ARRIVED')
+      expect(html).not.toContain('</html>')
+      // release the value → Fizz reveals the boundary with the real content AND the fill rides the RSC push channel
+      gate.release()
+      html = await readToEnd(reader, decoder, html)
+      expect(html).toContain('SSR-STATS-ARRIVED')
+      expect(html).toContain('__POINT0_PUSH_RSC__(')
+      expect(html).toContain('</html>')
+    })
+  }, 15000)
+
+  it('promise prop: a REJECTING promise never hangs the SSR stream — use() throws at render, the error fill is pushed, the stream closes', async () => {
+    // Gotcha #3 (a rejected suspense thenable hangs Fizz on Bun) does NOT apply to use(): React registers proper
+    // rejection handling, the boundary errors to client-retry, and the response closes. Verified against a raw Fizz
+    // probe before building the feature; this pins it through the whole point0 pipeline.
+    const root = createRoot()
+    const StatsValue = ({ data }: { data: Promise<string> }) => <b>{React.use(data)}</b>
+    const Widget = root.lets<{ stats?: Promise<string> }>('component', 'ppBoomWidget').component(({ props }) => (
+      <div id="widget-boom">
+        <React.Suspense fallback={<span>boom-loading</span>}>
+          <StatsValue data={props.stats!} />
+        </React.Suspense>
+      </div>
+    ))
+    const page = root
+      .lets('page', 'home', '/')
+      .rsc({ depth: 1 })
+      .loader(async () => ({
+        widget: (
+          <Widget stats={new Promise((_, reject) => setTimeout(() => reject(new Error('pp-boom-message')), 30))} />
+        ),
+      }))
+      .page(({ data }) => <div id="page">{data.widget}</div>)
+    const { client } = await createTestThings({ ssr: true, points: [root, Widget, page] })
+    await (client as { run: <T>(fn: () => Promise<T>) => Promise<T> }).run(async () => {
+      const response = await (client as unknown as { fetch: (url: string) => Promise<Response> }).fetch(
+        'http://localhost/',
+      )
+      const html = await response.text() // resolving at all proves the stream closed
+      expect(html).toContain('</html>')
+      // the error fill rode the push channel so the client thenable rejects too (dev projection carries the message)
+      expect(html).toContain('__POINT0_PUSH_RSC__(')
+      expect(html).toContain('pp-boom-message')
+    })
+  }, 15000)
+
+  it('promise prop: a loader that sets a non-2xx status inlines the promise — an error response never rides the framing', async () => {
+    const root = createRoot()
+    const Stats = root.lets<{ data?: Promise<string> }>('component', 'ppMissStats').component(() => <div />)
+    const missing = root
+      .lets('action', 'missing', 'GET', '/api/missing')
+      .rsc({ depth: 1 })
+      .loader(async ({ set }) => {
+        set.status(404)
+        return { widget: <Stats data={Promise.resolve('PP-INLINE-ON-ERROR')} /> }
+      })
+      .action()
+    const { engine } = await createTestThings({ ssr: true, points: [root, Stats, missing] })
+    const res = await engine.fetch(
+      new Request('http://localhost:3000/api/missing', { headers: { [POINT0_STREAM_HEADER]: 'true' } }),
+    )
+    expect(res.status).toBe(404)
+    expect(res.headers.get(POINT0_STREAM_HEADER)).toBeNull()
+    const body = await res.text()
+    expect(body).toContain('PP-INLINE-ON-ERROR')
+    const nodes = collectWireNodes(missing.point._getTransformer().parse(body)).filter((node) => node.t === 3)
+    expect(nodes).toHaveLength(1)
+    expect(nodes[0]!.v).toBe('PP-INLINE-ON-ERROR') // inlined — no streaming hole on an error response
+    expect('id' in nodes[0]!).toBe(false)
+  })
+
+  it('promise prop: client navigation (queryClientDehydratedState) frames a page-loader promise as NDJSON', async () => {
+    const root = createRoot()
+    const Stats = root.lets<{ data?: Promise<string> }>('component', 'ppNavStats').component(() => <div />)
+    const page = root
+      .lets('page', 'home', '/')
+      .rsc({ depth: 1 })
+      .loader(async () => ({ widget: <Stats data={Promise.resolve('PP-NAV-VALUE')} /> }))
+      .page(({ data }) => <div id="page">{data.widget}</div>)
+    const { engine } = await createTestThings({ ssr: true, points: [root, Stats, page] })
+    const endpoint = (page.point as { _endpoint?: { route: { get: (i: unknown, o: unknown) => string } } })._endpoint!
+    const url = endpoint.route.get({}, { origin: 'http://localhost' })
+    const res = await engine.fetch(
+      new Request(url, {
+        headers: {
+          'x-point0-output-type': 'queryClientDehydratedState',
+          'x-point0-transform': 'true',
+          [POINT0_STREAM_HEADER]: 'true',
+          Accept: 'application/json',
+        },
+      }),
+    )
+    expect(res.headers.get(POINT0_STREAM_HEADER)).toBe('true')
+    const lines = (await res.text()).split('\n').filter((line) => line.length > 0)
+    expect(lines.length).toBeGreaterThanOrEqual(2)
+    // Line 1 — the dehydrated query state carries the `{ t: 3, id }` prop hole, no inlined value.
+    // The dehydrated state is nested as stringified JSON, so match the node structurally after a full parse.
+    const line1Nodes = collectWireNodes(JSON.parse(lines[0]!)).filter((node) => node.t === 3)
+    expect(line1Nodes).toHaveLength(1)
+    expect(typeof line1Nodes[0]!.id).toBe('string')
+    expect(lines[0]!).not.toContain('PP-NAV-VALUE')
+    // A later line — the fill with the resolved prop value.
+    expect(lines.slice(1).find((line) => line.includes('PP-NAV-VALUE'))).toBeDefined()
+  })
 })
 
 const createGate = () => {
@@ -1457,6 +1694,27 @@ const createGate = () => {
     release = resolve
   })
   return { promise, release }
+}
+
+// Collect every `__p0e` wire node in a parsed (plain-transformer) payload — assertions on node SHAPE stay stable no
+// matter how a serializer orders keys (`{"id":…,"t":3}` vs `{"t":3,"id":…}`).
+const collectWireNodes = (value: unknown, out: Array<Record<string, unknown>> = []): Array<Record<string, unknown>> => {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectWireNodes(item, out)
+    }
+    return out
+  }
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    if (record['__p0e'] && typeof record['__p0e'] === 'object') {
+      out.push(record['__p0e'] as Record<string, unknown>)
+    }
+    for (const key of Object.keys(record)) {
+      collectWireNodes(record[key], out)
+    }
+  }
+  return out
 }
 
 const readUntil = async (

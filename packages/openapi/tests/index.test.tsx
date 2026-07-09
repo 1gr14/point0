@@ -783,18 +783,23 @@ describe('openapi', () => {
     })
   })
 
-  it('an RSC loader with defer() keeps the schema generating and serves OpenAPI consumers an inline body', async () => {
+  it('an RSC loader with defer() and a promise prop keeps the schema generating and serves OpenAPI consumers an inline body', async () => {
     // OpenAPI consumers never advertise streaming (no x-point0-stream header), so a `defer()` in the loader must
-    // degrade to a single JSON body with the subtree awaited inline — and a loader returning elements must not break
-    // schema generation.
+    // degrade to a single JSON body with the subtree awaited inline — same for a promise handed to an island prop,
+    // whose resolved value rides ON the node (`{ t: 3, v }`) — and a loader returning elements must not break schema
+    // generation.
     const root = createRoot()
     const Slow = async () => <b>OPENAPI-INLINE</b>
+    const Stats = root.lets<{ data?: Promise<string> }>('component', 'openapiStats').component(() => <div />)
     const report = root
       .lets('action', 'report', 'GET', '/api/report')
       .rsc({ depth: 1 })
-      .loader(async () => ({ x: defer(<Slow />, <span>fb</span>) }))
+      .loader(async () => ({
+        x: defer(<Slow />, <span>fb</span>),
+        w: <Stats data={Promise.resolve('OPENAPI-PP-INLINE')} />,
+      }))
       .action()
-    const { fetch } = await createTestThings({ points: [root, report] })
+    const { fetch } = await createTestThings({ points: [root, Stats, report] })
     // schema generation walks the RSC point without choking (built directly — the served /openapi.json reflects the
     // process-global root, which belongs to the first test in this file)
     const schema = getOpenapiSchemaFromPoints([root, report], { info: { title: 'T', version: '1.0.0' } })
@@ -805,5 +810,7 @@ describe('openapi', () => {
     const body = await dataRes.text()
     expect(body).toContain('OPENAPI-INLINE')
     expect(body).not.toContain('"t":2')
+    // the promise prop inlined too: the value is IN the body, and no streaming hole id is advertised
+    expect(body).toContain('OPENAPI-PP-INLINE')
   })
 })

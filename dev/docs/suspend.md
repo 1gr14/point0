@@ -237,8 +237,11 @@ kicks the fetch from the cache marker.
   A redirect a streamed subtree renders POST-shell is not covered — the client
   hops after hydration.
 - Manual pull pump instead of `pipeThrough` — see gotcha #2. Push scripts are
-  PREPENDED to every chunk except the first: the first chunk is the shell and
-  opens with `<!DOCTYPE html>`.
+  injected only at FLUSH BOUNDARIES — before a chunk the reader actually had to
+  WAIT for (Fizz emits one flush as a synchronous burst of enqueues whose
+  boundaries can fall mid-markup, even mid-`<script>` — observed on the vite dev
+  document; see "Promises as island props" in rsc.md for the full story), and
+  never before the first chunk, which opens with `<!DOCTYPE html>`.
 - `onError` on `renderToReadableStream` first recovers the throw's SSR effects
   (`executor.applyRenderThrowSsrEffects` — see "Throw/return parity" below),
   then logs through `executor.logStreamRenderError` — UNLESS the throw carries a

@@ -44,6 +44,46 @@ describe('rsc stream units', () => {
     expect(typeof devError.stack).toBe('string')
   })
 
+  it('a promise-prop hole drains exactly like a defer hole — a value fill line, and a PUBLIC error projection when it rejects in production', async () => {
+    // Promise props register plain promises in the same registry (no element normalize step) — pin that the framing
+    // treats them identically: the resolved VALUE rides a fill line, and a rejection serializes with the same
+    // public-in-production projection a failed defer subtree gets.
+    const holes = new RscHoleRegistry()
+    const good = holes.register(() => Promise.resolve({ n: 42, label: 'pp-late-value' }))
+    const bad = holes.register(() =>
+      Promise.reject(new ErrorPoint0('pp-kaput', { code: 'POINT0_NOT_FOUND', meta: { secretDsn: 'postgres://x' } })),
+    )
+    await Promise.all([good.throwable, bad.throwable])
+    const prevNodeEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+    let text: string
+    try {
+      // constructed inside the production window — the stream's start() drains the settled holes immediately
+      const stream = createHoleNdjsonStream({
+        firstLine: '{"a":1}',
+        holeRegistry: holes,
+        transformer: jsonTransformer,
+        ErrorClass: ErrorPoint0,
+        emit: undefined,
+      })
+      text = await new Response(stream).text()
+    } finally {
+      process.env.NODE_ENV = prevNodeEnv
+    }
+    const lines = text.split('\n').filter((line) => line.length > 0)
+    expect(lines).toHaveLength(3)
+    const fills = lines.slice(1).map((line) => JSON.parse(line) as Record<string, unknown>)
+    const valueFill = fills.find((fill) => fill.id === good.id)!
+    expect(valueFill.data).toEqual({ n: 42, label: 'pp-late-value' })
+    const errorFill = fills.find((fill) => fill.id === bad.id)!
+    const error = errorFill.error as Record<string, unknown>
+    expect(error.message).toBe('pp-kaput')
+    expect(error.code).toBe('POINT0_NOT_FOUND')
+    expect(error.meta).toBeUndefined()
+    expect(error.stack).toBeUndefined()
+    expect(text).not.toContain('secretDsn')
+  })
+
   it('cancelling the stream mid-drain (client disconnected) stops delivery without erroring', async () => {
     const holes = new RscHoleRegistry()
     let release!: () => void

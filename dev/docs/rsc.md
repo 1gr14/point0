@@ -262,10 +262,11 @@ The moving parts:
   via the shared `buildHolePushPayload(entry, ErrorClass)` (engine
   `rsc-stream.ts`) — the encoded subtree, or an error via `serializeStateError`.
   - **SSR push** (`render.ts` pump): `collectNewlyResolvedHoleScripts` drains
-    the registry's `takeResolved()` each flush and prepends
-    `<script>window.__POINT0_PUSH_RSC__(…)</script>` — the exact
-    `__POINT0_PUSH_QUERY__` pattern, incl. the shell bootstrap stub and the
-    final drain. `mount()` installs `installPushedRscReceiver` (core
+    the registry's `takeResolved()` at each FLUSH BOUNDARY (a read the pump had
+    to wait for — never mid-burst; see the pump note in "Promises as island
+    props") and prepends `<script>window.__POINT0_PUSH_RSC__(…)</script>` — the
+    exact `__POINT0_PUSH_QUERY__` pattern, incl. the shell bootstrap stub and
+    the final drain. `mount()` installs `installPushedRscReceiver` (core
     `query-client.ts`): parse (decodes elements + starts island chunk imports),
     drain `rscComponentsRegistry`, then `rscHolesRegistry.fill(id, …)`. It
     returns a promise for the BUFFERED fills; `mount()` awaits it before
@@ -420,8 +421,8 @@ The moving parts:
   `.on('error')` aggregates it. Normalize/encode failures DO propagate as loader
   errors and are deliberately NOT re-emitted (no double report).
 - **Still open (Phase 3)**: in-hole island hydration on the SSR path (needs a
-  Flight-style client reconciler or a client-reveal mode), promises-as-props,
-  and dedup/backrefs.
+  Flight-style client reconciler or a client-reveal mode) and dedup/backrefs.
+  (Promises-as-props SHIPPED — see the next section.)
 
 Tests:
 
@@ -466,9 +467,106 @@ Tests:
 - `examples/basic` `defer-demo` page runs both a `suspend: 'server'` query block
   and a `defer()` server component.
 
+## Promises as island props (`t: 3`)
+
+`<Stats slowStats={getSlowStats()} />` in a loader: the promise is registered as
+a hole in the SAME per-request `RscHoleRegistry` (deadline, label, fills, drop
+failsafe all inherited), a branded React-protocol thenable stands in the prop's
+place, the wire carries `{ t: 3, id }` in prop position, and the client decodes
+it into a fill-driven thenable the island reads with React 19 `use()` behind its
+own Suspense. The island is a regular payload reference — never inside a
+server-revealed hole — which is why it is LIVE on the first SSR paint (pinned by
+`rsc.slow` on both bundlers, both fill orders), closing the expressiveness gap
+defer couldn't ("live island + streaming ad-hoc value that is not a query").
+Zero new chain methods; delivery, framing, heartbeats, deadlines, `rscError`,
+non-2xx/no-header degradations are all the defer machinery unchanged.
+
+The load-bearing decisions:
+
+- **Scope: props of kept elements only.** A thenable at `insideElement=true`
+  (island/host props, children, nested in prop objects/arrays) mints a hole; a
+  thenable in a plain DATA position is REJECTED loudly, naming the path (data is
+  for values). `rscDataHasElements` therefore detects thenables too — without
+  that, an element-free output with a stray promise would skip normalize and
+  serialize as garbage instead of erroring. Thenable duck-typing is `await`'s
+  (object with callable `then`), functions excluded (function rules win).
+  Promises inside `Map`/`Set` reject like elements there. A promise passed to an
+  UNFOLDED server component stays legal (consumed server-side, same as render
+  props).
+- **The async-flattening box.** A promise VALUE cannot travel bare through the
+  async normalize recursion — `await`/async-return flattens any thenable, so
+  normalize would block on the very promise it defers (found the hard way: the
+  first implementation hung). `normalizeHolePromise` returns the thenable inside
+  `{ [RSC_BOXED_THENABLE]: thenable }` and every recursion site that assigns a
+  normalized child unwraps with `unboxThenable` (array/object loops,
+  `keepElement`'s prop loop, unfold output, defer's fallback/errorFallback
+  normalize).
+- **React-protocol thenables with LIVE getters.** Server (`serverHolePromise`,
+  cached on the entry as `entry.promise`) and client
+  (`RscHolesRegistry.holePromise`, cached on the slot as `promiseValue`)
+  thenables expose `status`/`value`/`reason` as getters over the backing hole
+  state (plus noop setters so a stray write can't throw). The getters make the
+  settle synchronously readable the INSTANT the fill lands — `use()` returns the
+  value without suspending at hydration for an already-filled hole (a
+  hydration-time suspension inside a server-revealed boundary = the defer
+  inertness this feature exists to avoid). Both are branded
+  (`__POINT0_RSC_PROMISE__` = hole id) for codec totality, and both pre-observe
+  their rejection (noop catch) so an unrendered island never surfaces an
+  unhandled rejection.
+- **Inline degrade keeps the promise contract.** A non-streaming consumer
+  (OpenAPI/foreign client, non-2xx, direct normalize) gets the promise AWAITED
+  INLINE — but the prop still decodes to an already-fulfilled thenable: the wire
+  node carries the value ON itself (`{ t: 3, v }`, no id; brand `true`), decode
+  builds `toInlineResolvedThenable`, so the island's `use()` works on every
+  path. A rejecting promise there fails the loader like any thrown error.
+- **Errors: no per-hole fallback for a value.** A rejected promise crosses as
+  the standard error fill (public projection in prod via `serializeStateError`);
+  the client thenable rejects with the revived error and `use()` throws it to
+  the nearest error boundary at render — same as client-side React. The
+  `errorFallback` machinery simply isn't wired for promise holes (there is no
+  markup to swap in for a VALUE).
+- **`use()` + a rejecting promise does NOT hang Fizz on Bun.** Probed raw before
+  building (pre-rejected, late-rejected, control) and pinned through the full
+  pipeline in `rsc.fast`: React registers proper rejection handling for `use()`
+  — the boundary errors to client-retry and the stream closes. Gotcha #3 (a
+  rejected suspense thenable hangs Fizz) applies to HAND-THROWN thenables only,
+  so `serverHoleComponent`'s never-rejecting settle stays as-is while the
+  promise thenable rejects honestly.
+- **Server-side decode env-awareness** mirrors `resolveHoleSlot`:
+  `resolveHolePromise` reads the live server registry first (the outer SSR
+  render decodes the nested-fetch response — the thenable must settle from the
+  resolving promise, not wait for a browser-only push), falling to the
+  bundle-wide client registry otherwise. Re-normalizing data that carries a
+  branded thenable of the SAME request keeps it as-is (no double hole); an
+  inline-resolved (brand `true`) thenable also passes through normalize
+  untouched.
+- **The pump injects only at FLUSH BOUNDARIES — a real bug this feature
+  exposed.** Fizz emits one flush as a synchronous BURST of enqueues whose
+  boundaries can fall anywhere in the markup: on the vite dev document the shell
+  arrived as several chunks with a boundary INSIDE the dehydrated-store script,
+  and the old "prepend pushes to every chunk after the first" rule injected the
+  fast promise's fill mid-`<script>` — JS parse error, dead store, empty cache,
+  hydration mismatch, ghost refetch (bun dev just got lucky with its chunk
+  sizes; any fill settling before/inside a multi-chunk flush could corrupt defer
+  and suspend pushes the same way). The pump (render.ts) now classifies each
+  read with a microtask race — already-queued data = same burst, pass through
+  untouched; a read it had to WAIT for starts a fresh flush, a safe injection
+  front. A fill's reveal always lands in a LATER flush than the fill settles
+  (the hole slot's Suspense retry is a new Fizz task), so fills still precede
+  their reveals; a fully-buffered render degrades to the done-drain (everything
+  appended at document end, buffered by the stubs, applied before hydration).
+- **@testing-library act-environment gotcha (harness-only).** In the in-process
+  harness a `use()`-suspended component is NOT resumed by its thenable resolving
+  — probed in isolation: pure React + happy-dom resumes fine, the thrown-
+  thenable defer slot resumes even under rtl, but rtl's act environment strands
+  the use() ping. The `rsc.fast` island-live test nudges React with a click
+  after the fill (doubling as the liveness assertion); the browser e2e pins the
+  unassisted resume. Do not "fix" the harness for this — real browsers are
+  unaffected.
+
 ## Tests & docs inventory
 
-- `packages/core/tests/rsc.test.tsx` — 49 units: the codec (roundtrips,
+- `packages/core/tests/rsc.test.tsx` — 61 units: the codec (roundtrips,
   escaping, `__proto__` safety, undefined-prop drop), normalize (unfolding,
   depth budget, every rejection incl. `ref`, `React.lazy`, nested-in-prop
   functions, elements inside `Map`/`Set`, cycle-safe scan), the registries
@@ -477,29 +575,47 @@ Tests:
   production error projection of the fallback), the fill pipeline
   (`applyPushedRscFill` swallows a bad line, drains chunks before filling;
   heartbeat blank lines skipped; two concurrent streams, one dropped, isolated
-  failure).
-- `packages/engine/tests/rsc.fast.test.tsx` — 38 in-process (incl. the NDJSON
+  failure), and promise props (hole registration + `{ t: 3, id }` encode +
+  totality, the thenable protocol's live getters through fills in both orders,
+  error-fill rejection, the data-position and in-`Map` rejects, the scan seeing
+  bare thenables, the inline `{ t: 3, v }` roundtrip, inline rejection failing
+  the loader, resolved-value normalization (nested islands survive, functions
+  reject the hole), the deadline, `failIfPending`, and same-request re-normalize
+  idempotency).
+- `packages/engine/tests/rsc.fast.test.tsx` — 44 in-process (incl. the NDJSON
   response headers `no-store` + `Vary` + `X-Accel-Buffering`, the
   `.rsc({ holeTimeoutMs })` deadline through the point chain, the non-2xx inline
-  degrade, the no-header mutation inline degrade). NOTE: the harness `render()`
-  is a PURE CLIENT MOUNT (no SSR request, no hydration); SSR-boundary assertions
-  go through `fetchSsr`. `fetchPreview` of a streaming page may parse oddly —
-  the rendered end state via `render()`/`waitContent` is the reliable signal.
+  degrade, the no-header mutation inline degrade; promise props: NDJSON framing
+  with the `{ t: 3, id }` line-1 node vs the no-header `{ t: 3, v }` inline, the
+  island clickable while the prop streams with state surviving the fill, the SSR
+  push channel (also pinning server-side decode against the live registry), the
+  rejecting-promise SSR no-hang, the non-2xx inline, and the client-nav
+  dehydrated-state framing). NOTE: the harness `render()` is a PURE CLIENT MOUNT
+  (no SSR request, no hydration); SSR-boundary assertions go through `fetchSsr`.
+  `fetchPreview` of a streaming page may parse oddly — the rendered end state
+  via `render()`/`waitContent` is the reliable signal. And the act-environment
+  gotcha above: a `use()` resume needs a state-update nudge in this harness.
 - `packages/engine/tests/rsc-stream.test.tsx` — 5 units on the NDJSON framing
   driven directly (no server): a failed hole's wire payload is the PUBLIC
-  projection in production (meta/stack never cross), cancel mid-drain stops
-  delivery cleanly, blank-line heartbeats while a hole pends, a multi-line
-  stringify fails loud.
-- `packages/engine/tests/rsc.slow.test.tsx` — 15 browser e2e on both bundlers
-  (registered in `scripts/slow-tests.ts`), incl. the 12s real-socket idle-reaper
-  survival test (dev describe only — channel behavior is bundler-independent; it
-  costs ~12s wall-clock and runs both channels concurrently). Gotcha: the slow
-  projects run the BUILT dists — rebuild core+engine before a focused run or you
-  test stale code.
+  projection in production (meta/stack never cross) — for defer subtrees AND
+  promise-prop holes (value fill + projected error fill in one stream), cancel
+  mid-drain stops delivery cleanly, blank-line heartbeats while a hole pends, a
+  multi-line stringify fails loud.
+- `packages/engine/tests/rsc.slow.test.tsx` — 37 browser e2e across the four
+  describes (registered in `scripts/slow-tests.ts`), incl. the 12s real-socket
+  idle-reaper survival test (dev describe only — channel behavior is
+  bundler-independent; it costs ~12s wall-clock and runs both channels
+  concurrently) and, per dev describe on both bundlers, the promise-props pair:
+  the SSR first-paint LIVENESS of islands with streaming promise props (both
+  fill orders — pre-shell and ~1.5s post-hydration) and the client-nav flow
+  (island live while the prop streams, state survives the fill, zero hydration
+  errors). Gotcha: the slow projects run the BUILT dists — rebuild core+engine
+  before a focused run or you test stale code.
 - `packages/compress/tests/index.test.tsx` — the x-ndjson content-type skip is
   pinned (unit) and a real-chain defer stream is proven progressive and
-  uncompressed; `packages/openapi/tests/index.test.tsx` — an RSC/defer loader
-  keeps the schema generating and serves foreign clients the inline body.
+  uncompressed; `packages/openapi/tests/index.test.tsx` — an RSC loader with
+  `defer()` AND a promise prop keeps the schema generating and serves foreign
+  clients the inline body (the promise's value on the node).
 - User docs: [docs/core/rsc.md](../../docs/core/rsc.md) (+ loader,
   stage-methods, component, query-client, ssr pages). Component-point JSX in
   tests and docs uses the instance directly (`<Stats input={…} />`) — `.X` is
