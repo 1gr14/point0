@@ -191,7 +191,7 @@ class). `toJsonErrorResponse` stays raw on purpose. Naming per review:
 
 Proven on the `rsc-vite` branch: the SAME shared e2e assertions run as four
 describes (bun dev / bun build / vite dev / vite build) in
-`packages/engine/tests/rsc.slow.test.tsx`, ports 4100-4199 (moved off 3950-3999,
+`packages/engine/tests/rsc.e2e.test.tsx`, ports 4100-4199 (moved off 3950-3999,
 which collided with suspend.slow's vite smoke under parallel slow shards). Why
 parity is free: the codec/executor/fetcher are runtime; the aggregator's lazy
 records split natively under rolldown; the vite compiler plugin shares the strip
@@ -426,15 +426,15 @@ The moving parts:
 
 Tests:
 
-- `packages/core/tests/rsc.test.tsx` — defer normalize (Suspense + hole node,
-  not awaited), hole codec roundtrip, fill either order, error re-throw, depth
-  guard, no-registry inline degradation; a **function** error fallback runs with
-  the failed subtree's error and lands normalized on the entry; a fallback that
-  itself throws is dropped so the original bubbles; a server component throwing
-  a **typed** point0 error preserves it whole (code kept), not the RSC hint
-  wrapper; `failIfPending` fails only an unfilled hole (a delivered one keeps
-  its content).
-- `packages/engine/tests/rsc.fast.test.tsx` — **SSR push**: single hole streams
+- `packages/core/tests/rsc.unit.test.tsx` — defer normalize (Suspense + hole
+  node, not awaited), hole codec roundtrip, fill either order, error re-throw,
+  depth guard, no-registry inline degradation; a **function** error fallback
+  runs with the failed subtree's error and lands normalized on the entry; a
+  fallback that itself throws is dropped so the original bubbles; a server
+  component throwing a **typed** point0 error preserves it whole (code kept),
+  not the RSC hint wrapper; `failIfPending` fails only an unfilled hole (a
+  delivered one keeps its content).
+- `packages/engine/tests/rsc.int.test.tsx` — **SSR push**: single hole streams
   (shell fallback → fill + island ref over `__POINT0_PUSH_RSC__`), THREE holes
   at different speeds stream out of order into one response (each pushed once),
   a throwing subtree never hangs the stream, no-fallback hole. **Client fetch
@@ -450,15 +450,15 @@ Tests:
   caught by the drain loop and streams in after it (nested holes, one response);
   and a failed subtree emits the `rscError` event (server-side, aggregated by
   `.on('error')`).
-- `packages/engine/tests/rsc.slow.test.tsx` — browser e2e on both bundlers:
-  three deferred markup blocks stream in, display, and hydrate with zero
-  refetch; the strip test proves a deferred server component's code
-  (DEFER_SERVER_MARKER) never ships to the client; and — the Phase 2 payoff — on
-  a client navigation an interactive island INSIDE a streamed hole is clickable
-  (what an SSR hole can't hydrate). **The SSR interactivity matrix** is pinned
-  too: an island inside a `defer` hole is DEAD on the first SSR paint, while the
-  same island streamed via a `suspend: 'server'` query — or with its own suspend
-  loader — is LIVE (the `defer`-vs-`suspend` division proven, not asserted).
+- `packages/engine/tests/rsc.e2e.test.tsx` — browser e2e on both bundlers: three
+  deferred markup blocks stream in, display, and hydrate with zero refetch; the
+  strip test proves a deferred server component's code (DEFER_SERVER_MARKER)
+  never ships to the client; and — the Phase 2 payoff — on a client navigation
+  an interactive island INSIDE a streamed hole is clickable (what an SSR hole
+  can't hydrate). **The SSR interactivity matrix** is pinned too: an island
+  inside a `defer` hole is DEAD on the first SSR paint, while the same island
+  streamed via a `suspend: 'server'` query — or with its own suspend loader — is
+  LIVE (the `defer`-vs-`suspend` division proven, not asserted).
   Islands-within-islands each with their OWN loader hydrate and stay interactive
   (nesting is not the limitation); and `defer`'s function error fallback renders
   a **typed** error's `code` in the browser — `ErrorClass.from` preserves the
@@ -566,7 +566,7 @@ The load-bearing decisions:
 
 ## Tests & docs inventory
 
-- `packages/core/tests/rsc.test.tsx` — 61 units: the codec (roundtrips,
+- `packages/core/tests/rsc.unit.test.tsx` — 61 units: the codec (roundtrips,
   escaping, `__proto__` safety, undefined-prop drop), normalize (unfolding,
   depth budget, every rejection incl. `ref`, `React.lazy`, nested-in-prop
   functions, elements inside `Map`/`Set`, cycle-safe scan), the registries
@@ -582,7 +582,7 @@ The load-bearing decisions:
   the loader, resolved-value normalization (nested islands survive, functions
   reject the hole), the deadline, `failIfPending`, and same-request re-normalize
   idempotency).
-- `packages/engine/tests/rsc.fast.test.tsx` — 44 in-process (incl. the NDJSON
+- `packages/engine/tests/rsc.int.test.tsx` — 44 in-process (incl. the NDJSON
   response headers `no-store` + `Vary` + `X-Accel-Buffering`, the
   `.rsc({ holeTimeoutMs })` deadline through the point chain, the non-2xx inline
   degrade, the no-header mutation inline degrade; promise props: NDJSON framing
@@ -595,13 +595,13 @@ The load-bearing decisions:
   `fetchPreview` of a streaming page may parse oddly — the rendered end state
   via `render()`/`waitContent` is the reliable signal. And the act-environment
   gotcha above: a `use()` resume needs a state-update nudge in this harness.
-- `packages/engine/tests/rsc-stream.test.tsx` — 5 units on the NDJSON framing
-  driven directly (no server): a failed hole's wire payload is the PUBLIC
-  projection in production (meta/stack never cross) — for defer subtrees AND
-  promise-prop holes (value fill + projected error fill in one stream), cancel
-  mid-drain stops delivery cleanly, blank-line heartbeats while a hole pends, a
-  multi-line stringify fails loud.
-- `packages/engine/tests/rsc.slow.test.tsx` — 37 browser e2e across the four
+- `packages/engine/tests/rsc-stream.unit.test.tsx` — 5 units on the NDJSON
+  framing driven directly (no server): a failed hole's wire payload is the
+  PUBLIC projection in production (meta/stack never cross) — for defer subtrees
+  AND promise-prop holes (value fill + projected error fill in one stream),
+  cancel mid-drain stops delivery cleanly, blank-line heartbeats while a hole
+  pends, a multi-line stringify fails loud.
+- `packages/engine/tests/rsc.e2e.test.tsx` — 37 browser e2e across the four
   describes (registered in `scripts/slow-tests.ts`), incl. the 12s real-socket
   idle-reaper survival test (dev describe only — channel behavior is
   bundler-independent; it costs ~12s wall-clock and runs both channels
@@ -611,9 +611,9 @@ The load-bearing decisions:
   (island live while the prop streams, state survives the fill, zero hydration
   errors). Gotcha: the slow projects run the BUILT dists — rebuild core+engine
   before a focused run or you test stale code.
-- `packages/compress/tests/index.test.tsx` — the x-ndjson content-type skip is
-  pinned (unit) and a real-chain defer stream is proven progressive and
-  uncompressed; `packages/openapi/tests/index.test.tsx` — an RSC loader with
+- `packages/compress/tests/index.int.test.tsx` — the x-ndjson content-type skip
+  is pinned (unit) and a real-chain defer stream is proven progressive and
+  uncompressed; `packages/openapi/tests/index.int.test.tsx` — an RSC loader with
   `defer()` AND a promise prop keeps the schema generating and serves foreign
   clients the inline body (the promise's value on the node).
 - User docs: [docs/core/rsc.md](../../docs/core/rsc.md) (+ loader,

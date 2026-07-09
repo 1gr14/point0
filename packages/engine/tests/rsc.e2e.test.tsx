@@ -7,7 +7,7 @@ setDefaultTimeout(60000)
 
 // RSC e2e — a real dev server + a real Chromium, then a real production build, ON BOTH BUNDLERS
 // (ports 4100-4199, one sub-range per describe). Covers what the in-process harness
-// (rsc.fast.test.tsx) cannot: hydration of SSR-shipped element payloads (zero refetch, zero
+// (rsc.int.test.tsx) cannot: hydration of SSR-shipped element payloads (zero refetch, zero
 // hydration errors), interactive islands, `.clientOnly()` islands, a component point living in
 // its OWN FILE (aggregator lazy record → its own chunk, loaded on demand), and the compiler strip
 // guarantees (server code out of the client bundle, client-only render out of the server bundle).
@@ -656,7 +656,7 @@ const expectDeferErrorFallbackSsrFlow = async (tp: TestProjectOneClient) => {
 // "islands within islands, each with its OWN loader": an outer component point (its own loader) wraps an inner component
 // point (its own loader). Both loaders resolve server-side and ship dehydrated, both hydrate, and BOTH stay interactive
 // — nested islands each carrying independent data is not a limitation. (The DATA side of this is also pinned in-process
-// in rsc.fast.test.tsx; here we prove hydration + interactivity in a real browser.)
+// in rsc.int.test.tsx; here we prove hydration + interactivity in a real browser.)
 const expectNestedIslandLoadersFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/nested-loaders')
   await page.waitContent('OUTER_LOADER_DATA', 15000) // the outer island's own loader resolved

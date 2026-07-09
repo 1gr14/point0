@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { Point0 } from '@point0/core'
 import { createTestThings } from './utils/internal-testing.js'
 
-// The fast (in-process) half of the SSR coverage — the browser e2e is in ssr.slow.test.tsx next door. Two describes:
+// The fast (in-process) half of the SSR coverage — the browser e2e is in ssr.e2e.test.tsx next door. Two describes:
 // the render-to-HTML loop over `createTestThings`, and the per-point `.ssr()` / `.clientOnly()` switch semantics.
 
 describe('ssr', () => {

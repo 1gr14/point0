@@ -13,7 +13,7 @@ setDefaultTimeout(45000)
 // with the mountable's `.loading()` fallback; a streamed query's content arrives in the same
 // response when its loader resolves, together with a `window.__POINT0_PUSH_QUERY__("…")` script
 // that seeds the client query cache. This file is the IN-PROCESS half (createTestThings
-// harness); the browser/vite e2e half lives in suspend.slow.test.tsx (the slow shard; the fast/slow
+// harness); the browser/vite e2e half lives in suspend.e2e.test.tsx (the slow shard; the fast/slow
 // suffix pair is a deliberate one-off — one feature split by speed).
 //
 // The tests are SERIAL on purpose (`it`, not `it.concurrent`): most of them hold a response

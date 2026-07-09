@@ -2,7 +2,7 @@
 
 **Status:** open · **Area:** test infra / vite dev startup · **Blocks:**
 trustworthy full runs of `packages/engine/tests/dev.test.ts` (vite half) and
-occasionally `build.test.ts` / `two-clients.test.ts`.
+occasionally `build.int.test.ts` / `two-clients.e2e.test.ts`.
 
 ## Symptom
 

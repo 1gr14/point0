@@ -255,11 +255,11 @@ Two mechanisms keep a long session bounded:
 
 ## Test coverage
 
-`packages/engine/tests/dev-hot-reload.test.ts` →
+`packages/engine/tests/dev-hot-reload.e2e.test.ts` →
 `describe('server hot reload (bun-native, --hot)')` is the e2e suite (plus the
-pure-unit `server-hot-store.test.ts` for the SCC and sweep primitives). A point
-edit keeps the server `process.pid` (hot-swap) while a `@point0/core/cold` edit
-changes it (restart). It covers: a page edit (hot-swap, pid stable), a
+pure-unit `server-hot-store.unit.test.ts` for the SCC and sweep primitives). A
+point edit keeps the server `process.pid` (hot-swap) while a `@point0/core/cold`
+edit changes it (restart). It covers: a page edit (hot-swap, pid stable), a
 `@point0/core/cold` marker edit (restart), a config-glob cold file (restart),
 cold/boot syntax-error keep-alive + recovery, a layout + server loader +
 shared-lib cascade + page all hot-swapping, a **mutation** hot-resolving (a

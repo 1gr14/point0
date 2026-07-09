@@ -51,8 +51,8 @@ never kills a port holder — lives in [dev-lifecycle](./dev-lifecycle.md).
 
 ## How to re-verify (stress recipe)
 
-Unit: `bun test packages/engine/tests/watcher.test.ts`. Integration: the
-bun-native half of `packages/engine/tests/dev-hot-reload.test.ts` (its
+Unit: `bun test packages/engine/tests/watcher.unit.test.ts`. Integration: the
+bun-native half of `packages/engine/tests/dev-hot-reload.e2e.test.ts` (its
 `server hot reload (bun-native, --hot)` suite asserts hot-swap keeps the child
 pid). Real-world: run an app (start0) with `bun dev --hot`, then script
 agent-style bursts — 2–4 edits per burst, 30–150 ms apart, ~60 % written via
@@ -63,10 +63,10 @@ restart, zero `Failed to restart entry` / `Tearing down dev` / `*.tmp.*`
 mentions, no `[xN]` duplicate growth; after SIGTERM — zero
 `bun run --no-orphans` leftovers, ports free.
 
-Caveat for the vite half of `dev-bundler.test.ts` (the one `dev-*.test.ts` suite
-that runs both bundlers, via `describe.each(bundlers)` — `dev-source-maps` and
-`dev-hot-reload` are bun-native only): it saturates the machine (every test gets
-a fresh project, a cold compile, vite, and Playwright) and starts timing out en
-masse (`Timeout waiting for output: started http://…`) regardless of code under
-test — compare against a paired baseline run in the same conditions before
+Caveat for the vite half of `dev-bundler.e2e.test.ts` (the one `dev-*.test.ts`
+suite that runs both bundlers, via `describe.each(bundlers)` — `dev-source-maps`
+and `dev-hot-reload` are bun-native only): it saturates the machine (every test
+gets a fresh project, a cold compile, vite, and Playwright) and starts timing
+out en masse (`Timeout waiting for output: started http://…`) regardless of code
+under test — compare against a paired baseline run in the same conditions before
 believing a regression.

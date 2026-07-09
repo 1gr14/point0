@@ -4,7 +4,7 @@ import { ErrorPoint0, RscHoleRegistry, type DataTransformerExtended } from '@poi
 import { buildHolePushPayload, createHoleNdjsonStream } from '../src/rsc-stream.js'
 
 // Unit tests for the NDJSON hole framing — no server: a hand-fed RscHoleRegistry drives the exported stream factory
-// directly. The full in-process flows (framing over a real fetch, fills, boundaries) live in rsc.fast.test.tsx.
+// directly. The full in-process flows (framing over a real fetch, fills, boundaries) live in rsc.int.test.tsx.
 
 const jsonTransformer = {
   serialize: (value: unknown) => value,

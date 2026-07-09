@@ -179,12 +179,12 @@ for zod defaults are fine, no validation), `engine.ts` imports only shapes
 
 ## Facts pinned by tests
 
-`packages/engine/tests/env-files.test.ts` spawns real bun children per scenario
-(clean-shebang style and legacy style) and asserts against what Bun actually
-loaded — if Bun's dotenv semantics or preload behavior drift, these fail and
-point at the drift. The build/dev integration tests run the whole thing through
-the test templates (`packages/engine/tests/templates/*`), which follow the same
-app conventions as the examples.
+`packages/engine/tests/env-files.int.test.ts` spawns real bun children per
+scenario (clean-shebang style and legacy style) and asserts against what Bun
+actually loaded — if Bun's dotenv semantics or preload behavior drift, these
+fail and point at the drift. The build/dev integration tests run the whole thing
+through the test templates (`packages/engine/tests/templates/*`), which follow
+the same app conventions as the examples.
 
 ## Runtime (out of scope here)
 

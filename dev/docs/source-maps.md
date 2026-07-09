@@ -145,8 +145,8 @@ map does NOT reach your real line. Investigated live (`examples/basic`, bun dev,
     `re-chained 12/18 client chunk maps`, and `chunk-*.js.map`'s
     `sourcesContent` for home.tsx went from the 417-line intermediate (markers)
     to the **189-line real original, zero markers**. Unit test:
-    `engine/tests/sourcemap-chain.test.ts` (a bundle position resolves to the
-    original line, sources relativized, null when nothing to chain).
+    `engine/tests/sourcemap-chain.unit.test.ts` (a bundle position resolves to
+    the original line, sources relativized, null when nothing to chain).
   - **DEV — investigated, intentionally NOT done (blocked cleanly; will
     self-heal via Bun #6173).** The build-time gate is `NODE_ENV`-independent
     now (`chainBundledSourceMaps` handles BOTH external `*.js.map` and
@@ -176,14 +176,14 @@ map does NOT reach your real line. Investigated live (`examples/basic`, bun dev,
   (complex/modified page) and `src/pages/smin.tsx:4` (minimal/unmodified page
   via the identity map), 0 store-path mentions — for both `--hot` and non-hot
   dev.
-- Tests: `dev-source-maps.test.ts` → `describe('dev source maps (bun-native)')`
-  (hot + non-hot guards), and `dev-bundler.test.ts` → **`'keeps error stack'`,
-  un-gated for bun** (runs for both bundlers). The proof is its **page2** case —
-  a loader (SERVER-side) throw: with SMS _disabled_ the bun SSR stack reports
-  the COMPILED line `page.tsx:18`, with SMS it remaps to the original
-  `page.tsx:23`. That 18→23 delta (confirmed by a one-off `POINT0_DISABLE_SMS`
-  probe) is the genuine, non-coincidental evidence the onLoad+registry pipeline
-  works under bun.
+- Tests: `dev-source-maps.e2e.test.ts` →
+  `describe('dev source maps (bun-native)')` (hot + non-hot guards), and
+  `dev-bundler.e2e.test.ts` → **`'keeps error stack'`, un-gated for bun** (runs
+  for both bundlers). The proof is its **page2** case — a loader (SERVER-side)
+  throw: with SMS _disabled_ the bun SSR stack reports the COMPILED line
+  `page.tsx:18`, with SMS it remaps to the original `page.tsx:23`. That 18→23
+  delta (confirmed by a one-off `POINT0_DISABLE_SMS` probe) is the genuine,
+  non-coincidental evidence the onLoad+registry pipeline works under bun.
   - **page1** (a client React _render_ `new Error()`) is only existence-checked,
     NOT line-asserted. The compiler hoists the render fn to the bottom of the
     file (`addHmrFix` → `externalizeFirstArrowFunctionArg`), so `new Error`

@@ -201,8 +201,8 @@ locked by unit tests, not just integration ones.
   `preloadPageSources`, emits the manifest after each build, and reads it at
   serve time.
 - [`render.ts`](../../packages/engine/src/render.ts) — injects the links.
-- [`module-preload-manifest.test.ts`](../../packages/engine/tests/module-preload-manifest.test.ts)
+- [`module-preload-manifest.unit.test.ts`](../../packages/engine/tests/module-preload-manifest.unit.test.ts)
   (unit) and
-  [`module-preload-serve.test.ts`](../../packages/engine/tests/module-preload-serve.test.ts)
+  [`module-preload-serve.int.test.ts`](../../packages/engine/tests/module-preload-serve.int.test.ts)
   (integration: builds an app under **both** bundlers, asserts the served HTML
   preloads the entry closure + the requested page, and only the requested page).

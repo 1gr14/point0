@@ -7,7 +7,7 @@ setDefaultTimeout(45000)
 
 // Streamed SSR, end-to-end: a temp dev project (bun bundler, ports 3900-3949) driven through
 // real Chromium, plus a vite smoke (ports 3950-3999). The in-process half of the suspend
-// coverage lives in suspend.fast.test.tsx — this file is the SLOW shard (dev server boot + browser),
+// coverage lives in suspend.int.test.tsx — this file is the SLOW shard (dev server boot + browser),
 // see scripts/slow-tests.ts.
 
 const readUntil = async (

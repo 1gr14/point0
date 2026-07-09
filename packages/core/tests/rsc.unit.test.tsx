@@ -1004,7 +1004,7 @@ describe('rsc promise props', () => {
 
   // NOTE: the server-side decode of a `{ t: 3, id }` node against the LIVE per-request registry (the resolveHoleSlot
   // environment-awareness, promise-prop edition) is pinned by the in-process SSR test in
-  // packages/engine/tests/rsc.fast.test.tsx — a superstore-backed unit here is not hermetic (the bundle-global client
+  // packages/engine/tests/rsc.int.test.tsx — a superstore-backed unit here is not hermetic (the bundle-global client
   // state other test files touch shadows a raw `runWithServerStorageState` for clientServerIsolated items).
 
   it('re-normalizing data that carries a branded thenable of the SAME request keeps it as-is (no double hole)', async () => {

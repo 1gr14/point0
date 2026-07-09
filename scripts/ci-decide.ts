@@ -3,7 +3,7 @@
  * ci-decide — the single, auditable home for "what should this CI run do?". Given the GitHub event context + the
  * tip/release commit message, it decides which OSes to test on and whether to publish, and prints the result as
  * GITHUB_OUTPUT lines (`oses`, `slow`, `publish`) consumed by ci.yml / release.yml. Keeping the policy here (not spread
- * across brittle `if:` expressions) makes the safety invariants testable — see scripts/ci-decide.test.ts.
+ * across brittle `if:` expressions) makes the safety invariants testable — see scripts/ci-decide.unit.test.ts.
  *
  * Branch model is classic OSS: one `main` trunk, releases driven by `v*` tags.
  *

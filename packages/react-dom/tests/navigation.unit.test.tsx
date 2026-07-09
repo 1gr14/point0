@@ -22,7 +22,7 @@ type ButtonProps = ButtonOwnProps & typeof InferNavigation.LinkProps
 
 // A real component built the intended way: merge `InferNavigation.LinkProps` into its
 // own props, then `splitLinkProps` at runtime. (Renders a plain element here so the
-// test needs no Router context; Link rendering itself is covered in main.test.tsx.)
+// test needs no Router context; Link rendering itself is covered in main.int.test.tsx.)
 const Button = (props: ButtonProps) => {
   const [linkProps, rest] = splitLinkProps(props)
   const target = linkProps.route ?? linkProps.to ?? linkProps.href

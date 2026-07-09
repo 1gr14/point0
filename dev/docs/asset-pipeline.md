@@ -245,8 +245,8 @@ full dev/build apps + Playwright.
 
 ```sh
 cd packages/engine
-bun test tests/assets.test.tsx -t "unit"          # 23 fast unit tests (no app spawn)
-bun test tests/assets.test.tsx -t "integration"   # 4 integration tests: {bun,vite} × {dev,build}
+bun test tests/assets.int.test.tsx -t "unit"          # 23 fast unit tests (no app spawn)
+bun test tests/assets.int.test.tsx -t "integration"   # 4 integration tests: {bun,vite} × {dev,build}
 ```
 
 Without a `FOCUS_BUN`/`FOCUS_VITE` focus, integration runs for **both** bundlers

@@ -838,7 +838,7 @@ describe('redirect', () => {
       `)
       // you can notice that in input on redirect we have no search, but we pass it in location
       // and below inside {} you see query key input, which has only prepared to parse search params
-      // it is only testing purposes, we have separate tests on it in search.test.tsx
+      // it is only testing purposes, we have separate tests on it in search.int.test.tsx
       expect(await fetchesTale()).toMatchInlineSnapshot(`
         "
         page.page1 (client) (page) < {}

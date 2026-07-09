@@ -814,7 +814,7 @@ describe('setSearch', () => {
   // pipeline (a "soft" URL update), so here it writes the URL without re-rendering
   // the tree. The URL write is the contract; the re-render-on-setSearch path works
   // in a real browser (history patched) and the updater / short-circuit / replace
-  // behaviors are covered as a unit in packages/core/tests/navigation.test.ts.
+  // behaviors are covered as a unit in packages/core/tests/navigation.unit.test.ts.
   const createSearchT = async () => {
     const root = Point0.lets('root', 'root')
       .loading(() => <div id="loading">...</div>)

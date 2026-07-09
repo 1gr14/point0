@@ -34,8 +34,8 @@ never releases. Five workflow files, one decision script.
 
 [`scripts/ci-decide.ts`](../../scripts/ci-decide.ts) maps the event + the commit
 message to `{ oses, slow, publish }`. It's unit-tested
-([`ci-decide.test.ts`](../../scripts/ci-decide.test.ts)) so the invariants can't
-silently regress. The full table:
+([`ci-decide.unit.test.ts`](../../scripts/ci-decide.unit.test.ts)) so the
+invariants can't silently regress. The full table:
 
 | event                        | tests                           | publish        |
 | ---------------------------- | ------------------------------- | -------------- |
@@ -101,11 +101,11 @@ the channel/dist-tag rules, and the tag↔version guard:
   fork code runs without repository secrets. Publishing is reachable only from
   the tag-triggered publish job, which authenticates via OIDC — there is no
   long-lived npm token for fork code to reach.
-- **One Windows exception.** `assets.test.tsx`'s "dev" sub-test is quarantined
-  on Windows (`it.skipIf(process.platform === 'win32')`) — the dev server
-  intermittently ECONNRESETs mid-request on the `--hot` path there. Build mode
-  and the unit cases still run; macOS/Linux run everything. Re-enable once the
-  dev-server crash is fixed.
+- **One Windows exception.** `assets.int.test.tsx`'s "dev" sub-test is
+  quarantined on Windows (`it.skipIf(process.platform === 'win32')`) — the dev
+  server intermittently ECONNRESETs mid-request on the `--hot` path there. Build
+  mode and the unit cases still run; macOS/Linux run everything. Re-enable once
+  the dev-server crash is fixed.
 - **Cost.** GitHub-hosted runners are free for this public repo. A full
   Linux+Windows run is ~32 jobs; macOS stays opt-in (×10 multiplier on billed
   minutes).

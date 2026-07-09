@@ -76,7 +76,7 @@ describe('on', () => {
       expect(successEvent?.meta.response).toBeUndefined()
       // settled-family meta carries request.renders only when the SSR loop actually ran;
       // this engineFetch served the query endpoint (no SSR), so the key is absent — the
-      // rendered case is covered in ssr-store.test.tsx
+      // rendered case is covered in ssr-store.int.test.tsx
       expect(successEvent?.meta.request).not.toHaveProperty('renders')
 
       // the envelope `error` is present on every event and stays `undefined` outside error events

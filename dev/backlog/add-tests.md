@@ -7,21 +7,21 @@ stay assertive instead of hedging.
 
 ## High value (a real guarantee, currently unpinned)
 
-- **env — a non-whitelisted secret never reaches the client.** `build.test.ts`
-  asserts that whitelisted vars (`VAR1`/`CONST1`) appear in the served HTML, but
-  never that an un-whitelisted secret is _absent_. Add a negative assertion: set
-  a secret env var, leave it out of `client.env.vars`, build, and assert its
-  value appears in neither the client bundle nor the served HTML. (Server
-  injects only the resolved whitelist via `render.ts buildEnvVarsScriptBody`;
-  the client `getEnvVars` reads only `__POINT0_ENV_VARS__` /
-  `__POINT0_ENV_CONSTS__`.)
+- **env — a non-whitelisted secret never reaches the client.**
+  `build.int.test.ts` asserts that whitelisted vars (`VAR1`/`CONST1`) appear in
+  the served HTML, but never that an un-whitelisted secret is _absent_. Add a
+  negative assertion: set a secret env var, leave it out of `client.env.vars`,
+  build, and assert its value appears in neither the client bundle nor the
+  served HTML. (Server injects only the resolved whitelist via
+  `render.ts buildEnvVarsScriptBody`; the client `getEnvVars` reads only
+  `__POINT0_ENV_VARS__` / `__POINT0_ENV_CONSTS__`.)
 
 - **error-handling — a thrown error's `response` / `headers` shape the emitted
   `Response`.** `fetcher.ts` uses `error.response` verbatim (else builds a JSON
   response from `status`) and merges `error.headers` via effects, but
-  `error.test.tsx` only checks message/code/status/meta. Add a case: a loader
-  throws an `AppError` carrying a `response` (and `headers`); assert the emitted
-  `Response` body / status / headers.
+  `error.int.test.tsx` only checks message/code/status/meta. Add a case: a
+  loader throws an `AppError` carrying a `response` (and `headers`); assert the
+  emitted `Response` body / status / headers.
 
 - **loading-error — a render-phase throw is NOT caught by `.error`.** The docs
   (mapper, loading-error) state this as a contract: `.error` handles a
@@ -41,9 +41,9 @@ stay assertive instead of hedging.
 
 - **file-upload — an action File round-trip at runtime.** Only the OpenAPI
   output for an action file body is tested
-  (`packages/openapi/tests/index.test.tsx`); the encode→FormData→decode executor
-  path is verified for mutations only. Add an action upload round-trip, plus a
-  nested / array-of-files case (`{ profile: { avatar: File } }`,
+  (`packages/openapi/tests/index.int.test.tsx`); the encode→FormData→decode
+  executor path is verified for mutations only. Add an action upload round-trip,
+  plus a nested / array-of-files case (`{ profile: { avatar: File } }`,
   `{ files: [File, File] }`) — `isContainsBinary` recurses but has no test.
 
 - **assets — the edited-asset HMR cycle in dev.** `dev.test.ts` proves an asset
@@ -130,7 +130,7 @@ stay assertive instead of hedging.
 Surfaced by the pre-PR validation of the ssr-batch pack — documented behavior
 with no test. (The `transform:false`-element decode and the nested-hole
 stream-drop failsafe that landed in that review are now pinned by real tests:
-`rsc.test.tsx` + `rsc.fast.test.tsx`.)
+`rsc.unit.test.tsx` + `rsc.int.test.tsx`.)
 
 - **get-reads — GET round-trip + both POST fallbacks.** Only the malformed-input
   400 is tested. Add: a valid `?input={"id":"x"}` GET whose loader receives
@@ -144,9 +144,9 @@ stream-drop failsafe that landed in that review are now pinned by real tests:
   `Client.isClientBuildAssetPath` (dev → false, absent/unparsable file, exact vs
   miss).
 - **stale — `stale: 'error'` surfaces `POINT0_STALE_CLIENT_BUILD`.**
-  `client-build-stale.test.ts` covers `'navigate'`, a custom handler, and the
-  network-error path, but never `createNavigation({ stale: 'error' })`. Add an
-  e2e variant asserting the target page's `.error()` receives a
+  `client-build-stale.e2e.test.ts` covers `'navigate'`, a custom handler, and
+  the network-error path, but never `createNavigation({ stale: 'error' })`. Add
+  an e2e variant asserting the target page's `.error()` receives a
   `POINT0_STALE_CLIENT_BUILD`-coded error and the SPA is NOT document-navigated.
 - **stale — a layout chunk failing on its own triggers recovery (fix landed).**
   `_loadPage` now warms the page + layout FCs with `rethrowLoadError` BEFORE

@@ -2,7 +2,7 @@
 
 **Status:** open · **Area:** vite dev / engine.dev / dep-optimizer · **Blocks:**
 the `two-clients > vite > serve two ssr clients on different hosts in dev` test
-(`packages/engine/tests/two-clients.test.ts`).
+(`packages/engine/tests/two-clients.e2e.test.ts`).
 
 ## Symptom
 
@@ -36,7 +36,7 @@ Scope of the breakage — it is specific to the **two-hosts vite topology**:
   identically with and without the watcher/respawn fixes (paired stash/build
   runs, same machine, same conditions).
 - Not load flakiness: reproduces in isolation on a calm machine
-  (`bun test tests/two-clients.test.ts -t "serve two ssr clients on different hosts in dev"`
+  (`bun test tests/two-clients.e2e.test.ts -t "serve two ssr clients on different hosts in dev"`
   — bun variant passes, vite variant fails every attempt).
 - `POINT0_LOG_LEVEL=debug` adds nothing after the optimizer line — the hang
   gives no error anywhere.
