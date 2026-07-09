@@ -1,9 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
-import { PlaywrightBrowser } from './utils/playwright.js'
-import type { TestProjectOneClient } from './utils/project.one-client.js'
-import { TestProjectOneClientFactory } from './utils/project.one-client.js'
-
-setDefaultTimeout(60000)
+import { expect } from 'bun:test'
+import type { TestProjectOneClient } from './project.one-client.js'
+import type { TestProjectOneClientFactory } from './project.one-client.js'
 
 // RSC e2e — a real dev server + a real Chromium, then a real production build, ON BOTH BUNDLERS
 // (ports 4100-4199, one sub-range per describe). Covers what the in-process harness
@@ -406,7 +403,7 @@ export const slowStreamAction = root.lets('action', 'slowStreamAction', 'GET', '
   )
 }
 
-const bootRscProject = async (
+export const bootRscProject = async (
   tpf: TestProjectOneClientFactory,
   options: { spawn?: 'dev' | 'none' } = {},
 ): Promise<TestProjectOneClient> => {
@@ -442,7 +439,7 @@ const bootRscProject = async (
 // to die mid-stream on a real socket. 12 seconds of real wall-clock against a real server is the whole point; the two
 // channels (SSR document push and NDJSON data fetch) run concurrently, so the test costs ~12s, not 24. Channel
 // behavior is bundler-independent — this runs in ONE describe (dev) rather than all four.
-const expectSlowStreamsSurviveIdleReapers = async (tp: TestProjectOneClient) => {
+export const expectSlowStreamsSurviveIdleReapers = async (tp: TestProjectOneClient) => {
   const [html, ndjson] = await Promise.all([
     tp.fetchServerHtml('/slow-stream'),
     (async () => {
@@ -459,7 +456,7 @@ const expectSlowStreamsSurviveIdleReapers = async (tp: TestProjectOneClient) => 
 }
 
 // SSR html: server component and island rendered, clientOnly island absent, payload encoded.
-const expectRscSsrHtml = async (tp: TestProjectOneClient) => {
+export const expectRscSsrHtml = async (tp: TestProjectOneClient) => {
   const html = await tp.fetchServerHtml('/rsc')
   // the server component rendered on the server
   expect(html).toContain('SERVER_ONLY_MARKER')
@@ -475,7 +472,7 @@ const expectRscSsrHtml = async (tp: TestProjectOneClient) => {
 
 // Direct load: hydration is clean, no refetch, islands interactive, clientOnly appears after
 // hydration.
-const expectRscDirectLoadFlow = async (tp: TestProjectOneClient) => {
+export const expectRscDirectLoadFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/rsc')
   await page.waitContent('#hero', 15000)
   await page.waitContent('clicks=0', 15000)
@@ -498,7 +495,7 @@ const expectRscDirectLoadFlow = async (tp: TestProjectOneClient) => {
 // onPrefetchPage warm-up: the RSC query ships warm — zero client refetch. Also the sharpest probe
 // of the server-side client-points collection (eager on the server): the warmed payload survives
 // a server-cache decode → encode roundtrip into the SSR embed without suspending.
-const expectRscWarmFlow = async (tp: TestProjectOneClient) => {
+export const expectRscWarmFlow = async (tp: TestProjectOneClient) => {
   // the warmed query renders into the SSR html — no pending fallback anywhere
   const warmHtml = await tp.fetchServerHtml('/warm')
   expect(warmHtml).toContain('hero-w')
@@ -520,7 +517,7 @@ const expectRscWarmFlow = async (tp: TestProjectOneClient) => {
 }
 
 // Client navigation: the loader is fetched over the wire, elements decode, the island lives.
-const expectRscClientNavigationFlow = async (tp: TestProjectOneClient) => {
+export const expectRscClientNavigationFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/')
   await page.waitContent('#home')
   await page.original.getByRole('link', { name: 'go-rsc', exact: true }).click()
@@ -539,7 +536,7 @@ const expectRscClientNavigationFlow = async (tp: TestProjectOneClient) => {
 // land, with ZERO client refetch and clean hydration (their code never shipped — rendered on the
 // server). Progressive out-of-order ordering is pinned by the in-process suite (rsc.fast); this proves
 // the browser sees every block and the page hydrates without a mismatch or a refetch.
-const expectRscDeferFlow = async (tp: TestProjectOneClient) => {
+export const expectRscDeferFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/defer')
   await page.waitContent('FAST_DEFER', 15000)
   await page.waitContent('MED_DEFER', 15000)
@@ -557,7 +554,7 @@ const expectRscDeferFlow = async (tp: TestProjectOneClient) => {
 
 // An island NESTED inside a server component (plain RSC, no defer) hydrates and stays interactive —
 // nesting is irrelevant, only defer holes have the hydration limitation.
-const expectRscNestedIslandFlow = async (tp: TestProjectOneClient) => {
+export const expectRscNestedIslandFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/nested-island')
   // the server component rendered its markup on the server…
   await page.waitContent('NESTED_SERVER_MARKER', 15000)
@@ -577,7 +574,7 @@ const expectRscNestedIslandFlow = async (tp: TestProjectOneClient) => {
 // Phase 2 payoff: on a CLIENT navigation a deferred hole streams over the wire (NDJSON) and renders fresh on the client
 // — no Fizz `$RC` — so an interactive island INSIDE the hole is LIVE (clickable), the exact thing an SSR hole can't
 // hydrate. The fast field paints first, the slow subtree streams in, and its island responds to clicks.
-const expectRscDeferIslandClientNavFlow = async (tp: TestProjectOneClient) => {
+export const expectRscDeferIslandClientNavFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/')
   await page.waitContent('#home')
   await page.original.getByRole('link', { name: 'go-defer-island', exact: true }).click()
@@ -604,7 +601,7 @@ const expectRscDeferIslandClientNavFlow = async (tp: TestProjectOneClient) => {
 // query — unlike a defer hole. Its data streams over the query channel and its subscriber carries a react-query
 // observer, which drives a client re-render when the data lands, mounting the island fresh with its handlers attached.
 // That observer is exactly what a defer hole lacks (it relies on the Fizz reveal, which React never re-hydrates).
-const expectSuspendIslandSsrFlow = async (tp: TestProjectOneClient) => {
+export const expectSuspendIslandSsrFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/suspend-island')
   await page.waitContent('SUSPEND_ISLAND', 15000)
   await page.waitContent('clicks=0', 15000)
@@ -617,7 +614,7 @@ const expectSuspendIslandSsrFlow = async (tp: TestProjectOneClient) => {
 
 // PIN the documented Phase-1 limitation as a real test: an interactive island INSIDE a `defer` hole displays on the
 // first SSR load but its handlers are NOT wired — React completes the server-revealed boundary and never re-enters.
-const expectDeferIslandSsrDeadFlow = async (tp: TestProjectOneClient) => {
+export const expectDeferIslandSsrDeadFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/defer-island')
   await page.waitContent('DEFER_ISLAND_MARKER', 15000)
   await page.waitContent('clicks=0', 15000)
@@ -632,7 +629,7 @@ const expectDeferIslandSsrDeadFlow = async (tp: TestProjectOneClient) => {
 // CONFIRMED (both bundlers): the "loader on the island itself" pattern — an island fetching its OWN slow data with
 // suspend:'server' inside its body (top-level, no defer) — is also live on the first SSR load, same observer rescue. So
 // the rule holds both ways: interactive slow content on SSR → suspend (island or query), never defer.
-const expectSelfSuspendIslandSsrFlow = async (tp: TestProjectOneClient) => {
+export const expectSelfSuspendIslandSsrFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/self-suspend')
   await page.waitContent('SELF_SUSPEND', 15000)
   await page.waitContent('DATA_READY', 15000)
@@ -645,7 +642,7 @@ const expectSelfSuspendIslandSsrFlow = async (tp: TestProjectOneClient) => {
 
 // defer's 3rd arg on SSR: the deferred subtree throws on the server, its per-hole error fallback streams into the hole,
 // the fast field survives, and the page never falls to the root error boundary (both markers rendering proves it).
-const expectDeferErrorFallbackSsrFlow = async (tp: TestProjectOneClient) => {
+export const expectDeferErrorFallbackSsrFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/defer-error')
   await page.waitContent('DEFER_ERROR_OK', 15000) // fast field, in the shell
   await page.waitContent('DEFER_ERROR_FALLBACK', 15000) // the per-hole error fallback replaced the failed subtree
@@ -657,7 +654,7 @@ const expectDeferErrorFallbackSsrFlow = async (tp: TestProjectOneClient) => {
 // point (its own loader). Both loaders resolve server-side and ship dehydrated, both hydrate, and BOTH stay interactive
 // — nested islands each carrying independent data is not a limitation. (The DATA side of this is also pinned in-process
 // in rsc.int.test.tsx; here we prove hydration + interactivity in a real browser.)
-const expectNestedIslandLoadersFlow = async (tp: TestProjectOneClient) => {
+export const expectNestedIslandLoadersFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/nested-loaders')
   await page.waitContent('OUTER_LOADER_DATA', 15000) // the outer island's own loader resolved
   await page.waitContent('INNER_LOADER_DATA', 15000) // the inner island's own loader resolved too
@@ -681,7 +678,7 @@ const expectNestedIslandLoadersFlow = async (tp: TestProjectOneClient) => {
 // hydrateRoot, so use() reads it synchronously at hydration); the slow prop reveals its boundary AFTER hydration
 // started (React parks the dehydrated boundary and retries when the fill resolves the thenable). Neither island is
 // inside a server-revealed hole — the defer-hole inertness does not transfer, and this test is what pins that.
-const expectPromisePropSsrFlow = async (tp: TestProjectOneClient) => {
+export const expectPromisePropSsrFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/promise-prop')
   // the fast value rendered (pre-shell settle); the slow one streams in after its 1.5s
   await page.waitContent('PP_FAST_VALUE', 15000)
@@ -706,7 +703,7 @@ const expectPromisePropSsrFlow = async (tp: TestProjectOneClient) => {
 // Promise props over a client navigation: the islands mount live at once (the slow prop's fallback showing), the
 // value streams in as an NDJSON fill, and the island's state SURVIVES the fill (use() re-renders the reader only —
 // the island is never remounted).
-const expectPromisePropClientNavFlow = async (tp: TestProjectOneClient) => {
+export const expectPromisePropClientNavFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/')
   await page.waitContent('#home')
   await page.original.getByRole('link', { name: 'go-promise-prop', exact: true }).click()
@@ -730,7 +727,7 @@ const expectPromisePropClientNavFlow = async (tp: TestProjectOneClient) => {
 // defer's 3rd arg as a FUNCTION, end-to-end: a server component throws a TYPED error; the function fallback renders its
 // \`code\`. Proves the error-class fix in a browser — the typed throw is preserved (not flattened to the RSC hint) and
 // reaches the fallback projected with its code intact.
-const expectDeferErrorFnFlow = async (tp: TestProjectOneClient) => {
+export const expectDeferErrorFnFlow = async (tp: TestProjectOneClient) => {
   const page = await tp.gotoServer('/defer-error-fn')
   await page.waitContent('DEFER_TYPED_CODE', 15000) // the function fallback rendered the REAL typed error's code
   await page.stable
@@ -739,7 +736,7 @@ const expectDeferErrorFnFlow = async (tp: TestProjectOneClient) => {
 
 // Strip guarantees: server code never in the client bundle, clientOnly render never in the server
 // bundle.
-const expectRscStripGuarantees = async (tp: TestProjectOneClient) => {
+export const expectRscStripGuarantees = async (tp: TestProjectOneClient) => {
   const distServer = await tp.getDistServerFilesContent()
   const distClient = await tp.getDistClientFilesContent()
   // the server component (and the whole loader) exists on the server…
@@ -758,7 +755,7 @@ const expectRscStripGuarantees = async (tp: TestProjectOneClient) => {
 }
 
 // A component point in its own file becomes its own chunk, listed in the preload manifest.
-const expectRscComponentChunkManifest = async (tp: TestProjectOneClient) => {
+export const expectRscComponentChunkManifest = async (tp: TestProjectOneClient) => {
   const manifest = (await Bun.file(tp.resolve('dist/client/_point0/root/preload-manifest.json')).json()) as {
     entry: string | null
     byComponent?: Record<string, string[]>
@@ -792,11 +789,26 @@ const expectRscComponentChunkManifest = async (tp: TestProjectOneClient) => {
   expect(ctaChunksContent).toContain('clicks=')
 }
 
+// Poll a freshly-started prod server until it actually serves `/rsc`, bounding each attempt so a transient
+// cold-serve reset (on a loaded CI runner the "started" log fires, but the first request can hang/reset) can't
+// stall the flow. Called from the build files' beforeAll, so the tests hit a proven-serving server — without
+// it `production flow` was bimodal on loaded CI: ~730ms when warm, a full 60s hang when not.
+export const warmProdServe = async (tp: TestProjectOneClient) => {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    try {
+      await tp.fetchServerHtml('/rsc', { signal: AbortSignal.timeout(5000) })
+      return
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+    }
+  }
+  throw new Error('prod server did not serve /rsc within ~30s after start')
+}
+
 // Production flow: modulepreload for referenced islands, hydration clean, islands interactive.
-const expectRscProductionFlow = async (tp: TestProjectOneClient) => {
-  const engine = await tp.importEngine()
-  tp.spawn(['bun', 'run', 'start'])
-  await tp.waitStarted(engine.server.port)
+// The prod server is started + warmed in the build files' `beforeAll` (off this test's 60s budget) — see
+// rsc-build.e2e.test.tsx / rsc-vite-build.e2e.test.tsx. This test is the browser flow only.
+export const expectRscProductionFlow = async (tp: TestProjectOneClient) => {
   const html = await tp.fetchServerHtml('/rsc')
   // per-payload modulepreload links for the referenced islands (prod-build-only feature)
   expect(html).toContain('rel="modulepreload"')
@@ -815,236 +827,3 @@ const expectRscProductionFlow = async (tp: TestProjectOneClient) => {
   await page.waitContent('clicks=1', 10000)
   await page.close()
 }
-
-describe('rsc e2e (browser, dev)', () => {
-  const tpf = TestProjectOneClientFactory.create({
-    namespace: 'rsc',
-    portsRange: [4100, 4124],
-  })
-  let tp: TestProjectOneClient
-
-  beforeAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-    tpf.setBrowser(await PlaywrightBrowser.init())
-    tp = await bootRscProject(tpf)
-    // warm the dev bundler so hydration timings never race a cold compile
-    await tp.fetchServerHtml('/rsc')
-  }, 180000)
-
-  afterAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-  })
-
-  it('SSR html: server component and island rendered, clientOnly island absent, payload encoded', async () => {
-    await expectRscSsrHtml(tp)
-  })
-
-  it('slow streams survive idle reapers: a 12s defer arrives over SSR and NDJSON on a real socket (heartbeats)', async () => {
-    await expectSlowStreamsSurviveIdleReapers(tp)
-  })
-
-  it('direct load: hydration is clean, no refetch, islands interactive, clientOnly appears after hydration', async () => {
-    await expectRscDirectLoadFlow(tp)
-  })
-
-  it('onPrefetchPage warm-up: the RSC query ships warm — zero client refetch', async () => {
-    await expectRscWarmFlow(tp)
-  })
-
-  it('client navigation: the loader is fetched over the wire, elements decode, the island lives', async () => {
-    await expectRscClientNavigationFlow(tp)
-  })
-
-  it('deferred holes: three server subtrees stream into the shell, display, and hydrate with no refetch', async () => {
-    await expectRscDeferFlow(tp)
-  })
-
-  it('an island nested inside a server component hydrates and is interactive (nesting is not the limitation)', async () => {
-    await expectRscNestedIslandFlow(tp)
-  })
-
-  it('client-fetch defer hole: an interactive island inside a streamed hole is live (clickable) on client navigation', async () => {
-    await expectRscDeferIslandClientNavFlow(tp)
-  })
-
-  it('SSR: an island streamed via a suspend:server query IS interactive on first load (unlike a defer hole)', async () => {
-    await expectSuspendIslandSsrFlow(tp)
-  })
-
-  it('SSR limitation: an island inside a defer hole is NOT interactive on first load', async () => {
-    await expectDeferIslandSsrDeadFlow(tp)
-  })
-
-  it('SSR: an island with its OWN suspend:server loader IS interactive on first load', async () => {
-    await expectSelfSuspendIslandSsrFlow(tp)
-  })
-
-  it("SSR: defer()'s 3rd arg renders a per-hole error fallback when the subtree throws (page survives)", async () => {
-    await expectDeferErrorFallbackSsrFlow(tp)
-  })
-
-  it('islands within islands: an island with its own loader, nested in an island with its own loader, both hydrate and stay interactive', async () => {
-    await expectNestedIslandLoadersFlow(tp)
-  })
-
-  it("SSR: defer()'s 3rd arg as a FUNCTION renders the typed error's code (error-class fix, browser)", async () => {
-    await expectDeferErrorFnFlow(tp)
-  })
-
-  it('promise props: an island with a streaming promise prop is LIVE on the first SSR paint (both fill orders)', async () => {
-    await expectPromisePropSsrFlow(tp)
-  })
-
-  it('promise props: on a client navigation the island mounts live, the value streams in, state survives the fill', async () => {
-    await expectPromisePropClientNavFlow(tp)
-  })
-})
-
-describe('rsc e2e (build)', () => {
-  const tpf = TestProjectOneClientFactory.create({
-    namespace: 'rsc-build',
-    portsRange: [4125, 4149],
-  })
-  let tp: TestProjectOneClient
-
-  beforeAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-    tpf.setBrowser(await PlaywrightBrowser.init())
-    tp = await bootRscProject(tpf, { spawn: 'none' })
-    const bp = tp.spawn(['bun', 'run', 'build'])
-    await bp.exited
-  }, 240000)
-
-  afterAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-  })
-
-  it('strip guarantees: server code never in the client bundle, clientOnly render never in the server bundle', async () => {
-    await expectRscStripGuarantees(tp)
-  })
-
-  it('a component point in its own file becomes its own chunk, listed in the preload manifest', async () => {
-    await expectRscComponentChunkManifest(tp)
-  })
-
-  it('production flow: modulepreload for referenced islands, hydration clean, islands interactive', async () => {
-    await expectRscProductionFlow(tp)
-  })
-})
-
-// The vite bundler runs the same contract: the client (and, in vite mode, the server too) is
-// bundled by vite, SSR in dev runs through the vite module runner, chunk splitting comes from the
-// aggregator's dynamic imports, and the preload manifest is fed by the rollup chunk graph.
-describe('rsc e2e (browser, vite dev)', () => {
-  const tpf = TestProjectOneClientFactory.create({
-    namespace: 'rsc-vite',
-    portsRange: [4150, 4174],
-    vite: true,
-  })
-  let tp: TestProjectOneClient
-
-  beforeAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-    tpf.setBrowser(await PlaywrightBrowser.init())
-    tp = await bootRscProject(tpf)
-    // warm the dev bundler so hydration timings never race a cold compile
-    await tp.fetchServerHtml('/rsc')
-  }, 180000)
-
-  afterAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-  })
-
-  it('SSR html: server component and island rendered, clientOnly island absent, payload encoded', async () => {
-    await expectRscSsrHtml(tp)
-  })
-
-  it('direct load: hydration is clean, no refetch, islands interactive, clientOnly appears after hydration', async () => {
-    await expectRscDirectLoadFlow(tp)
-  })
-
-  it('onPrefetchPage warm-up: the RSC query ships warm — zero client refetch', async () => {
-    await expectRscWarmFlow(tp)
-  })
-
-  it('client navigation: the loader is fetched over the wire, elements decode, the island lives', async () => {
-    await expectRscClientNavigationFlow(tp)
-  })
-
-  it('deferred holes: three server subtrees stream into the shell, display, and hydrate with no refetch', async () => {
-    await expectRscDeferFlow(tp)
-  })
-
-  it('an island nested inside a server component hydrates and is interactive (nesting is not the limitation)', async () => {
-    await expectRscNestedIslandFlow(tp)
-  })
-
-  it('client-fetch defer hole: an interactive island inside a streamed hole is live (clickable) on client navigation', async () => {
-    await expectRscDeferIslandClientNavFlow(tp)
-  })
-
-  it('SSR: an island streamed via a suspend:server query IS interactive on first load (unlike a defer hole)', async () => {
-    await expectSuspendIslandSsrFlow(tp)
-  })
-
-  it('SSR limitation: an island inside a defer hole is NOT interactive on first load', async () => {
-    await expectDeferIslandSsrDeadFlow(tp)
-  })
-
-  it('SSR: an island with its OWN suspend:server loader IS interactive on first load', async () => {
-    await expectSelfSuspendIslandSsrFlow(tp)
-  })
-
-  it("SSR: defer()'s 3rd arg renders a per-hole error fallback when the subtree throws (page survives)", async () => {
-    await expectDeferErrorFallbackSsrFlow(tp)
-  })
-
-  it('islands within islands: an island with its own loader, nested in an island with its own loader, both hydrate and stay interactive', async () => {
-    await expectNestedIslandLoadersFlow(tp)
-  })
-
-  it("SSR: defer()'s 3rd arg as a FUNCTION renders the typed error's code (error-class fix, browser)", async () => {
-    await expectDeferErrorFnFlow(tp)
-  })
-
-  it('promise props: an island with a streaming promise prop is LIVE on the first SSR paint (both fill orders)', async () => {
-    await expectPromisePropSsrFlow(tp)
-  })
-
-  it('promise props: on a client navigation the island mounts live, the value streams in, state survives the fill', async () => {
-    await expectPromisePropClientNavFlow(tp)
-  })
-})
-
-describe('rsc e2e (vite build)', () => {
-  const tpf = TestProjectOneClientFactory.create({
-    namespace: 'rsc-vite-build',
-    portsRange: [4175, 4199],
-    vite: true,
-  })
-  let tp: TestProjectOneClient
-
-  beforeAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-    tpf.setBrowser(await PlaywrightBrowser.init())
-    tp = await bootRscProject(tpf, { spawn: 'none' })
-    const bp = tp.spawn(['bun', 'run', 'build'])
-    await bp.exited
-  }, 240000)
-
-  afterAll(async () => {
-    await tpf.cleanup({ files: true, processes: true, ports: true, browser: true })
-  })
-
-  it('strip guarantees: server code never in the client bundle, clientOnly render never in the server bundle', async () => {
-    await expectRscStripGuarantees(tp)
-  })
-
-  it('a component point in its own file becomes its own chunk, listed in the preload manifest', async () => {
-    await expectRscComponentChunkManifest(tp)
-  })
-
-  it('production flow: modulepreload for referenced islands, hydration clean, islands interactive', async () => {
-    await expectRscProductionFlow(tp)
-  })
-})

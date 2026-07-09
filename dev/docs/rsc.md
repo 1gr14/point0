@@ -189,15 +189,17 @@ class). `toJsonErrorResponse` stays raw on purpose. Naming per review:
 
 ## Bundler parity — zero bundler-specific code
 
-Proven on the `rsc-vite` branch: the SAME shared e2e assertions run as four
-describes (bun dev / bun build / vite dev / vite build) in
-`packages/engine/tests/rsc.e2e.test.tsx`, ports 4100-4199 (moved off 3950-3999,
-which collided with suspend.slow's vite smoke under parallel slow shards). Why
-parity is free: the codec/executor/fetcher are runtime; the aggregator's lazy
-records split natively under rolldown; the vite compiler plugin shares the strip
-logic (`Compiler`) with the bun plugin; in vite mode the server is vite-built
-too and eager client points resolve through vite SSR (dev) / the vite server
-bundle (prod).
+Proven on the `rsc-vite` branch: the SAME shared e2e assertions (in
+`packages/engine/tests/utils/rsc-e2e.tsx`) run against four projects (bun dev /
+bun build / vite dev / vite build) in the four
+`packages/engine/tests/rsc-*.e2e.test.tsx` files — one file per project, so each
+solo CI runner launches exactly one browser — ports 4100-4199 (moved off
+3950-3999, which collided with suspend.slow's vite smoke under parallel slow
+shards). Why parity is free: the codec/executor/fetcher are runtime; the
+aggregator's lazy records split natively under rolldown; the vite compiler
+plugin shares the strip logic (`Compiler`) with the bun plugin; in vite mode the
+server is vite-built too and eager client points resolve through vite SSR (dev)
+/ the vite server bundle (prod).
 
 ## Types gotcha
 
@@ -450,15 +452,15 @@ Tests:
   caught by the drain loop and streams in after it (nested holes, one response);
   and a failed subtree emits the `rscError` event (server-side, aggregated by
   `.on('error')`).
-- `packages/engine/tests/rsc.e2e.test.tsx` — browser e2e on both bundlers: three
-  deferred markup blocks stream in, display, and hydrate with zero refetch; the
-  strip test proves a deferred server component's code (DEFER_SERVER_MARKER)
-  never ships to the client; and — the Phase 2 payoff — on a client navigation
-  an interactive island INSIDE a streamed hole is clickable (what an SSR hole
-  can't hydrate). **The SSR interactivity matrix** is pinned too: an island
-  inside a `defer` hole is DEAD on the first SSR paint, while the same island
-  streamed via a `suspend: 'server'` query — or with its own suspend loader — is
-  LIVE (the `defer`-vs-`suspend` division proven, not asserted).
+- the `packages/engine/tests/rsc-*.e2e.test.tsx` files — browser e2e on both
+  bundlers: three deferred markup blocks stream in, display, and hydrate with
+  zero refetch; the strip test proves a deferred server component's code
+  (DEFER_SERVER_MARKER) never ships to the client; and — the Phase 2 payoff — on
+  a client navigation an interactive island INSIDE a streamed hole is clickable
+  (what an SSR hole can't hydrate). **The SSR interactivity matrix** is pinned
+  too: an island inside a `defer` hole is DEAD on the first SSR paint, while the
+  same island streamed via a `suspend: 'server'` query — or with its own suspend
+  loader — is LIVE (the `defer`-vs-`suspend` division proven, not asserted).
   Islands-within-islands each with their OWN loader hydrate and stay interactive
   (nesting is not the limitation); and `defer`'s function error fallback renders
   a **typed** error's `code` in the browser — `ErrorClass.from` preserves the
@@ -601,9 +603,10 @@ The load-bearing decisions:
   AND promise-prop holes (value fill + projected error fill in one stream),
   cancel mid-drain stops delivery cleanly, blank-line heartbeats while a hole
   pends, a multi-line stringify fails loud.
-- `packages/engine/tests/rsc.e2e.test.tsx` — 37 browser e2e across the four
-  describes (e2e = solo lane, planned by `scripts/test.ts`), incl. the 12s
-  real-socket idle-reaper survival test (dev describe only — channel behavior is
+- the four `packages/engine/tests/rsc-*.e2e.test.tsx` files — 37 browser e2e
+  (shared assertion bodies in `tests/utils/rsc-e2e.tsx`; e2e = solo lane, one
+  file per CI runner, planned by `scripts/test.ts`), incl. the 12s real-socket
+  idle-reaper survival test (dev describe only — channel behavior is
   bundler-independent; it costs ~12s wall-clock and runs both channels
   concurrently) and, per dev describe on both bundlers, the promise-props pair:
   the SSR first-paint LIVENESS of islands with streaming promise props (both
