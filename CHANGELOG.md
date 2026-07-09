@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.2.0 — 2026-07-09
+
 - Streamed SSR, rebuilt end to end. React renders the whole document (no
   wrapper div, no string splicing), the shell flushes immediately, and slow
   parts stream into the same response. Per-query `ssr` and `suspend` options
