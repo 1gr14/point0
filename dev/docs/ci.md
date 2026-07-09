@@ -129,7 +129,7 @@ the channel/dist-tag rules, and the tag↔version guard:
   fork code runs without repository secrets. Publishing is reachable only from
   the tag-triggered publish job, which authenticates via OIDC — there is no
   long-lived npm token for fork code to reach.
-- **One Windows exception.** `assets.int.test.tsx`'s "dev" sub-test is
+- **One Windows exception.** `assets.e2e.test.tsx`'s "dev" sub-test is
   quarantined on Windows (`it.skipIf(process.platform === 'win32')`) — the dev
   server intermittently ECONNRESETs mid-request on the `--hot` path there. Build
   mode and the unit cases still run; macOS/Linux run everything. Re-enable once

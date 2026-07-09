@@ -39,7 +39,7 @@ import { resolveTempDirPath } from './utils.js'
  * - `import Icon from './x.svg?react'` → **react mode**: an SVGR-generated React component (svg only). SVGR options come
  *   from `compiler.assets.svgr`. `@svgr/core` is lazy-imported so it stays out of the module graph otherwise.
  *
- * Bun constraints we work within (verified empirically, see assets.int.test.tsx):
+ * Bun constraints we work within (verified empirically, see assets.e2e.test.tsx):
  *
  * - Import attributes (`import x from './x.png' with { type: 'text' }`) are NOT exposed to plugins and don't change a
  *   module's identity, so a path-filter plugin can't honor them — for a _managed_ extension this plugin wins. Hence the

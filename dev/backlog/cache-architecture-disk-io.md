@@ -52,7 +52,7 @@ Facts verified 2026-06-11, useful to the implementer:
    the nearest `node_modules` from cwd, so a monorepo-root prune misses
    `packages/*/node_modules/.cache`. Also closes the stale-partition bug class
    (a poisoned old entry produced wrong build output in tests on 2026-06-11 —
-   the "Hi!" failures in build.int.test.ts).
+   the "Hi!" failures in build.e2e.test.ts).
 3. **Hot-store manifest micro-fix.** `manifest.json` is rewritten (tmp+rename)
    on EVERY store rebuild because the `version` counter bumps, while the child
    reads only `aggregators` (server-hot-store.ts) — skip the write when the

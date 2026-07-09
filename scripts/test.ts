@@ -56,8 +56,6 @@ const IGNORED_DIR_NAMES = ['node_modules', 'dist', 'packages-dist-npm', '.git']
  * exist and be `.int` — {@link buildPlan} validates, so a stale path is an error, not a silent hole.
  */
 export const SOLO_INT = [
-  'packages/engine/tests/assets.int.test.tsx',
-  'packages/engine/tests/build.int.test.ts',
   'packages/engine/tests/cli.int.test.tsx',
   'packages/engine/tests/mcp.int.test.ts',
   'packages/engine/tests/module-preload-serve.int.test.ts',
@@ -113,7 +111,12 @@ const stripComments = (src: string): string =>
 
 // Any import of the real-browser util (absolute `…/utils/playwright.js` or the relative `../playwright.js` its own
 // test uses) or of playwright itself.
-const BROWSER_RE = /from\s+'(?:[^']*\/)?playwright(?:\.js)?'/
+const BROWSER_IMPORT_RE = /from\s+'(?:[^']*\/)?playwright(?:\.js)?'/
+// …or a TRANSITIVE launch through the project utils: `tp.gotoServer()`/`gotoClient()` lazily init a real
+// PlaywrightBrowser (project.one-client's initBrowser), no direct import needed — this is exactly how the
+// build file slipped past an import-only check and hit a CI runner that had no Playwright installed.
+const BROWSER_TRANSITIVE_RE = /\.gotoServer\(|\.gotoClient\(|initBrowser\(|setBrowser\(/
+const usesBrowser = (src: string): boolean => BROWSER_IMPORT_RE.test(src) || BROWSER_TRANSITIVE_RE.test(src)
 const INT_MARKERS_RE =
   /createTestThings|internal-testing|project\.one-client|project\.two-clients|TestProject|TestProcess|Bun\.spawn|spawnSync/
 
@@ -122,7 +125,8 @@ const INT_MARKERS_RE =
  * one silently misroutes the file (a browser test in a shared parallel group is exactly the flake source the plan
  * exists to prevent). Checks, on comment-stripped source:
  *
- * - imports the real-browser util ⇒ must be `.e2e`; is `.e2e` ⇒ must import it (else it's just an int file),
+ * - drives a real browser (imports the browser util, or launches one transitively via `gotoServer`/`gotoClient`) ⇒ must
+ *   be `.e2e`; is `.e2e` ⇒ must actually touch the browser (else it's just an int file),
  * - uses int machinery (createTestThings / TestProject / Bun.spawn) ⇒ must not be `.unit`.
  */
 export const verifyClasses = async (files: readonly string[]): Promise<void> => {
@@ -130,10 +134,9 @@ export const verifyClasses = async (files: readonly string[]): Promise<void> => 
   for (const file of files) {
     const cls = classOf(file)
     const src = stripComments(await Bun.file(nodePath.join(ROOT, file)).text())
-    const browser = BROWSER_RE.test(src)
-    if (browser && cls !== 'e2e') problems.push(`${file}: imports the real browser util — must be .e2e, is .${cls}`)
-    if (!browser && cls === 'e2e')
-      problems.push(`${file}: is .e2e but never imports the real browser util — demote to .int`)
+    const browser = usesBrowser(src)
+    if (browser && cls !== 'e2e') problems.push(`${file}: drives a real browser — must be .e2e, is .${cls}`)
+    if (!browser && cls === 'e2e') problems.push(`${file}: is .e2e but never touches the real browser — demote to .int`)
     if (!browser && cls === 'unit' && INT_MARKERS_RE.test(src)) {
       problems.push(`${file}: boots real machinery (createTestThings/TestProject/spawn) — must be .int, is .unit`)
     }

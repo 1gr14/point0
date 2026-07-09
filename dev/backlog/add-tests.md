@@ -8,7 +8,7 @@ stay assertive instead of hedging.
 ## High value (a real guarantee, currently unpinned)
 
 - **env — a non-whitelisted secret never reaches the client.**
-  `build.int.test.ts` asserts that whitelisted vars (`VAR1`/`CONST1`) appear in
+  `build.e2e.test.ts` asserts that whitelisted vars (`VAR1`/`CONST1`) appear in
   the served HTML, but never that an un-whitelisted secret is _absent_. Add a
   negative assertion: set a secret env var, leave it out of `client.env.vars`,
   build, and assert its value appears in neither the client bundle nor the

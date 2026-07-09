@@ -2,7 +2,7 @@
 
 **Status:** open · **Area:** test infra / vite dev startup · **Blocks:**
 trustworthy full runs of `packages/engine/tests/dev-bundler.e2e.test.ts` (vite
-half) and occasionally `build.int.test.ts` / `two-clients.e2e.test.ts`.
+half) and occasionally `build.e2e.test.ts` / `two-clients.e2e.test.ts`.
 
 ## Symptom
 
