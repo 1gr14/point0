@@ -602,8 +602,8 @@ The load-bearing decisions:
   cancel mid-drain stops delivery cleanly, blank-line heartbeats while a hole
   pends, a multi-line stringify fails loud.
 - `packages/engine/tests/rsc.e2e.test.tsx` — 37 browser e2e across the four
-  describes (registered in `scripts/slow-tests.ts`), incl. the 12s real-socket
-  idle-reaper survival test (dev describe only — channel behavior is
+  describes (e2e = solo lane, planned by `scripts/test.ts`), incl. the 12s
+  real-socket idle-reaper survival test (dev describe only — channel behavior is
   bundler-independent; it costs ~12s wall-clock and runs both channels
   concurrently) and, per dev describe on both bundlers, the promise-props pair:
   the SSR first-paint LIVENESS of islands with streaming promise props (both

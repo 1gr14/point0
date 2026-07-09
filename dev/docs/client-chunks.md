@@ -174,12 +174,12 @@ check resolves to "unknown" and nothing reacts.
   flattening regression this session fixed (client scopes used to enter the list
   as one nested array element and were silently dropped by
   `scopes.includes(...)`).
-- `packages/engine/tests/client-build-stale.e2e.test.ts` — SLOW shard
-  (registered in scripts/slow-tests.ts): a real redeploy under two Playwright
-  tabs, per bundler — reactive (dead chunk → document nav lands on the target,
-  new build) and proactive (mutation response header → next nav leaves the SPA);
-  plus bun-only: the custom handler owning the situation (context delivered, no
-  commit), and a genuine network failure NOT reloading.
+- `packages/engine/tests/client-build-stale.e2e.test.ts` — e2e, solo lane (own
+  process/runner, planned by scripts/test.ts): a real redeploy under two
+  Playwright tabs, per bundler — reactive (dead chunk → document nav lands on
+  the target, new build) and proactive (mutation response header → next nav
+  leaves the SPA); plus bun-only: the custom handler owning the situation
+  (context delivered, no commit), and a genuine network failure NOT reloading.
 
 ## Still open (the goal is to KNOW, not to fix)
 

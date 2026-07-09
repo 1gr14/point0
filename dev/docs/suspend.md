@@ -578,13 +578,14 @@ navigation, see "Lazy points don't flash" above). React-dom: `mount.ts`
 `file.ts` (folds `env.ssr.active/phase/target` to constants on the client —
 replaces the old `env.side.is.ssr` fold). Tests:
 `packages/engine/tests/suspend.int.test.tsx` (see Tests below), 6 test files
-with updated error-path snapshots, `scripts/slow-tests.ts` (the suspend file is
-a slow shard), `packages/core/tests/env.unit.test.ts` (the `env.ssr` union),
-`packages/core/tests/effects.unit.test.ts` (sealed idempotency),
-`packages/core/tests/point0-no-loader-guard.unit.test.ts` (new — the loaderless
-throw on every query surface), `packages/compiler/tests/file.unit.test.tsx`
-(`env.ssr` folds), `packages/engine/tests/with.int.test.tsx` (a throw inside
-`.with` is contained server-side + the thrown-status parity test),
+with updated error-path snapshots (the suspend e2e file rides the solo lane,
+planned by `scripts/test.ts`), `packages/core/tests/env.unit.test.ts` (the
+`env.ssr` union), `packages/core/tests/effects.unit.test.ts` (sealed
+idempotency), `packages/core/tests/point0-no-loader-guard.unit.test.ts` (new —
+the loaderless throw on every query surface),
+`packages/compiler/tests/file.unit.test.tsx` (`env.ssr` folds),
+`packages/engine/tests/with.int.test.tsx` (a throw inside `.with` is contained
+server-side + the thrown-status parity test),
 `packages/engine/tests/redirect.int.test.tsx` ("by with": thrown render-phase
 redirect → real HTTP 302). Docs/example: `docs/core/ssr.md`, `docs/core/env.md`
 (`env.ssr` section), `docs/points/query.md` + `infinite-query.md` + `page.md` +
@@ -605,10 +606,10 @@ surfaces), `docs/methods/loading-error.md` (fallbacks-above-loaders habit;
 
 Two files since the retryOnMount session: `tests/suspend.int.test.tsx` — the
 IN-PROCESS half (fast, runs with `testf`), and `tests/suspend.e2e.test.tsx` —
-the browser + vite half, the SLOW file (`scripts/slow-tests.ts`: its own process
-locally, its own CI shard). Both roots pin the RECOMMENDED `retryOnMount: false`
-config (as do the e2e template roots and every example root); the
-`…default retryOnMount…` tests use a dedicated default-mode root.
+the browser + vite half — e2e, so the solo lane (`scripts/test.ts`: its own
+process locally, its own CI runner). Both roots pin the RECOMMENDED
+`retryOnMount: false` config (as do the e2e template roots and every example
+root); the `…default retryOnMount…` tests use a dedicated default-mode root.
 
 - `suspend` (suspend.int.test.tsx) — in-process harness (`createTestThings`):
   shell-before-resolve (incremental stream reads with a gated loader), `.with()`

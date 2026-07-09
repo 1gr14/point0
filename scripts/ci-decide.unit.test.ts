@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'bun:test'
 import { decide, FULL_OSES, isDocsOnly, type DecideInput } from './ci-decide.js'
-import { SLOW_TESTS } from './slow-tests.js'
 
 const FULL = [...FULL_OSES]
 const LINUX = ['ubuntu-latest']
@@ -13,10 +12,6 @@ const run = (over: Partial<DecideInput>): DecideInput => ({
 })
 
 describe('ci-decide', () => {
-  it('always emits the slow-file list', () => {
-    expect(decide(run({})).slow).toEqual([...SLOW_TESTS])
-  })
-
   describe('gate (no publish ever)', () => {
     it('pull_request → full matrix', () => {
       expect(decide(run({ event: 'pull_request', ref: '7/merge' }))).toMatchObject({
@@ -30,10 +25,6 @@ describe('ci-decide', () => {
         oses: FULL,
         publish: false,
       })
-    })
-
-    it('--skip-tests does NOT skip the main-push gate', () => {
-      expect(decide(run({ ref: 'main', message: 'x --skip-tests' })).oses).toEqual(FULL)
     })
 
     it('--skip-ci short-circuits a branch run', () => {
@@ -99,33 +90,21 @@ describe('ci-decide', () => {
       })
     })
 
-    it('INVARIANT: a stable tag can never skip tests', () => {
-      for (const message of ['--skip-tests', '--skip-tests=linux,windows', '--skip-ci']) {
-        expect(decide(run({ refType: 'tag', ref: 'v2.0.0', message })).oses).toEqual(FULL)
-      }
-      // …not even a docs-only file set (which skips on a PR) weakens a stable-tag release.
-      expect(decide(run({ refType: 'tag', ref: 'v2.0.0', changedFiles: ['docs/x.md'] })).oses).toEqual(FULL)
-    })
-
-    it('prerelease tag → full matrix + publish by default', () => {
+    it('prerelease tag → full matrix + publish, same as stable', () => {
       expect(decide(run({ refType: 'tag', ref: 'v0.1.0-next.3', message: 'release' }))).toMatchObject({
         oses: FULL,
         publish: true,
       })
     })
 
-    it('prerelease tag: --skip-tests skips all but still publishes', () => {
-      expect(decide(run({ refType: 'tag', ref: 'v0.1.0-next.3', message: 'release --skip-tests' }))).toMatchObject({
-        oses: [],
-        publish: true,
-      })
-    })
-
-    it('prerelease tag: --skip-tests=os skips only that OS', () => {
-      expect(decide(run({ refType: 'tag', ref: 'v0.1.0-next.3', message: '--skip-tests=windows' })).oses).toEqual(LINUX)
-      expect(decide(run({ refType: 'tag', ref: 'v0.1.0-next.3', message: '--skip-tests=linux,windows' })).oses).toEqual(
-        [],
-      )
+    it('INVARIANT: a tag can never skip tests — stable or prerelease, no flag works', () => {
+      for (const ref of ['v2.0.0', 'v0.1.0-next.3']) {
+        for (const message of ['--skip-tests', '--skip-tests=linux,windows', '--skip-ci']) {
+          expect(decide(run({ refType: 'tag', ref, message })).oses).toEqual(FULL)
+        }
+      }
+      // …not even a docs-only file set (which skips on a PR) weakens a tag release.
+      expect(decide(run({ refType: 'tag', ref: 'v2.0.0', changedFiles: ['docs/x.md'] })).oses).toEqual(FULL)
     })
   })
 

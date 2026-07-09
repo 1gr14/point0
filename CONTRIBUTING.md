@@ -24,8 +24,8 @@ and the fast/slow test split. Read it before a non-trivial change.
 2. Make your change. Keep it focused; match the surrounding code's style.
 3. Run the relevant checks locally (the narrowest run that proves your change):
    ```sh
-   bun run testf                       # fast test subset
-   bun test packages/<pkg>/tests/x.test.ts   # one file
+   bun run testf                       # fast test subset (unit + int, no browser e2e)
+   bun test packages/<pkg>/tests/x.int.test.ts   # one file
    bun run types && bun run lint       # typecheck + lint
    ```
 4. Add a bullet under `## Unreleased` in [CHANGELOG.md](CHANGELOG.md) if your

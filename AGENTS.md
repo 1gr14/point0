@@ -42,9 +42,11 @@ bun run setup # codegen across the workspace: prisma generate + point0 generate
   (yours alone) rebuild freely. Either way, a fresh tree needs the bootstrap
   above.
 - **Never run the full suite.** `bun test` / `bun run testa` is slow
-  (integration-heavy). Use `bun run testf`, `bun test path/to/file.test.ts`, or
-  `bun --filter '@point0/<pkg>' test` — the narrowest run that proves the
-  change.
+  (integration-heavy). Use `bun run testf`, `bun test path/to/file.int.test.ts`,
+  or `bun --filter '@point0/<pkg>' test` — the narrowest run that proves the
+  change. Every test file carries its class in the name — `.unit` (pure logic),
+  `.int` (real processes/servers, no browser), `.e2e` (real browser) — and
+  `scripts/test.ts` is the single runner/planner (`--list` / `--plan`).
 - **Never commit, push, publish, tag, or release on your own** — no
   `git commit/push`, `npm/bun publish`, `bun run release`/`publish:packages`,
   unless asked in the current chat. Prior approval doesn't carry over.
@@ -71,7 +73,7 @@ packages/
   docs/        docs content + search/embeddings; owns the `point0-docs-mcp` bin.
 examples/      basic (canonical: Prisma + tailwind + wouter), better-auth, capacitor, expo, vite.
 docs/          user-facing docs (don't write here unless asked).
-scripts/       repo tooling (publish, local-registry, test-parallel, setup, release).
+scripts/       repo tooling (publish, local-registry, test runner/planner, setup, release).
 ```
 
 ## Fast navigation
@@ -95,8 +97,9 @@ From repo root unless noted.
 ```sh
 bun run build         # build all packages in dependency order
 bun run build:watch   # parallel watch (usually already running in main checkout)
-bun run testf         # fast subset (no slow, no test-utils) — default while iterating
-bun run testa         # all tests in parallel (slow); `tests` = only slow
+bun run testf         # fast: unit + int minus the solo heavies — default while iterating
+bun run testa         # everything incl. e2e (slow); `tests` = solo lane only (heavy int + e2e)
+bun run test:unit     # one class; also test:int, test:e2e; test:plan prints the CI plan
 bun run types         # tsgo (native-preview) --noEmit; `types:6` = tsc
 bun run lint          # eslint --fix; `format` = prettier --write
 ```

@@ -2,17 +2,19 @@
 /**
  * ci-decide — the single, auditable home for "what should this CI run do?". Given the GitHub event context + the
  * tip/release commit message, it decides which OSes to test on and whether to publish, and prints the result as
- * GITHUB_OUTPUT lines (`oses`, `slow`, `publish`) consumed by ci.yml / release.yml. Keeping the policy here (not spread
- * across brittle `if:` expressions) makes the safety invariants testable — see scripts/ci-decide.unit.test.ts.
+ * GITHUB_OUTPUT lines (`oses`, `groups`, `solo`, `publish`) consumed by ci.yml / release.yml. Keeping the policy here
+ * (not spread across brittle `if:` expressions) makes the safety invariants testable — see ci-decide.unit.test.ts.
+ *
+ * The policy decides WHAT runs (OS matrix, publish); HOW the test files are distributed across runners is the test
+ * plan's job (scripts/test.ts, `--plan`) — this script just forwards the plan to the workflows.
  *
  * Branch model is classic OSS: one `main` trunk, releases driven by `v*` tags.
  *
  *     pull_request → main      full matrix, no publish        (the merge gate)
  *       …docs-only diff        empty matrix, no publish        (every changed file is *.md)
- *     push tag v* stable       full matrix (MANDATORY), publish→latest
- *     push tag v* prerelease   full unless --skip-tests[=os], publish→next
+ *     push tag v*              full matrix (MANDATORY), publish→latest/next by version
  *     push        feature      tests only if --run-tests[=os], never publish
- *     any         --skip-ci    nothing (ignored on a stable tag)
+ *     any         --skip-ci    nothing (ignored on a tag)
  *
  * Note: ci.yml does NOT gate pushes to `main` (the PR is the gate; main only changes via an already-tested PR or a
  * release commit, and the release commit is gated by its tag). So a push to `main` isn't normally fed here; the
@@ -20,14 +22,15 @@
  *
  * Invariants (pinned by tests):
  *
- * 1. A stable tag always tests — no flag can skip it.
+ * 1. A tag always tests — no flag can skip it. (--skip-tests died in the CI rework: prereleases test like stables; when a
+ *    broken prerelease must ship anyway, fix it locally instead of publishing untested bytes.)
  * 2. `publish` is true only for tags — structurally unreachable from PRs, forks, branch pushes.
  * 3. The gate stays green-or-skipped before publish (enforced by the workflow `if:`, not here).
  *
- * Commit-message flags (dash style, matching the existing --skip-ci): --skip-tests, --run-tests, each optionally
- * `=os,os` (linux/ubuntu, windows/win, macos/mac); bare = all OSes.
+ * Commit-message flags (dash style): --run-tests, optionally `=os,os` (linux/ubuntu, windows/win, macos/mac; bare = all
+ * OSes), and --skip-ci.
  */
-import { SLOW_TESTS } from './slow-tests.js'
+import { buildPlan, discoverTestFiles, verifyClasses } from './test.js'
 
 /** The default test matrix. macOS is intentionally out (×10 minutes, POSIX-identical to Linux). */
 export const FULL_OSES = ['ubuntu-latest', 'windows-latest'] as const
@@ -95,45 +98,31 @@ export type DecideInput = {
   changedFiles?: string[]
 }
 
-export type DecideResult = { oses: string[]; slow: string[]; publish: boolean }
-
-const withoutOses = (oses: readonly string[], drop: string[]): string[] => oses.filter((os) => !drop.includes(os))
+export type DecideResult = { oses: string[]; publish: boolean }
 
 /** Pure policy. See the module header for the truth table. */
 export function decide({ event, refType, ref, message, changedFiles }: DecideInput): DecideResult {
-  const slow = [...SLOW_TESTS]
   const full = [...FULL_OSES]
-  const msg = message
 
-  // RELEASE — a tag is the only thing that publishes (invariant 2).
-  if (refType === 'tag') {
-    const prerelease = ref.includes('-')
-    let oses: string[]
-    if (!prerelease) {
-      oses = full // stable: always test, flags ignored (invariant 1)
-    } else {
-      const skip = parseFlag(msg, 'skip-tests')
-      oses = skip.present ? (skip.oses ? withoutOses(full, skip.oses) : []) : full
-    }
-    return { oses, slow, publish: true }
-  }
+  // RELEASE — a tag is the only thing that publishes (invariant 2), and it ALWAYS tests (invariant 1).
+  if (refType === 'tag') return { oses: full, publish: true }
 
   // --skip-ci short-circuits any non-tag run.
-  if (hasSkipCi(msg)) return { oses: [], slow, publish: false }
+  if (hasSkipCi(message)) return { oses: [], publish: false }
 
   // GATE — never publishes (invariant 2).
   if (event === 'pull_request') {
     // A PR that touches only prose has nothing to build or test → skip the matrix. The `gate` job in
     // ci.yml stays green on the skip, so the required check still reports (a bare skip would hang the PR).
-    if (isDocsOnly(changedFiles ?? [])) return { oses: [], slow, publish: false }
-    return { oses: full, slow, publish: false }
+    if (isDocsOnly(changedFiles ?? [])) return { oses: [], publish: false }
+    return { oses: full, publish: false }
   }
-  if (ref === MAIN_BRANCH) return { oses: full, slow, publish: false } // push to trunk
+  if (ref === MAIN_BRANCH) return { oses: full, publish: false } // push to trunk
 
   // Any other branch: tests are opt-in via --run-tests (all, or a specific OS).
-  const run = parseFlag(msg, 'run-tests')
-  if (run.present) return { oses: run.oses ?? full, slow, publish: false }
-  return { oses: [], slow, publish: false }
+  const runTests = parseFlag(message, 'run-tests')
+  if (runTests.present) return { oses: runTests.oses ?? full, publish: false }
+  return { oses: [], publish: false }
 }
 
 if (import.meta.main) {
@@ -154,10 +143,27 @@ if (import.meta.main) {
     changedFiles,
   })
 
+  // The distribution plan (scripts/test.ts): parallel-lane group ids for the `test-fast` matrix, solo files
+  // (heavy int + every e2e) for the one-runner-per-file `test-solo` matrix. Built from the checked-out tree
+  // and validated (class suffixes vs file contents, no stale plan entries) — a broken plan fails the run
+  // HERE, in `decide`, loudly and before a single test runner spins up.
+  const files = await discoverTestFiles()
+  await verifyClasses(files)
+  const plan = buildPlan(files)
+
   const lines = [
     `oses=${JSON.stringify(result.oses)}`,
-    `slow=${JSON.stringify(result.slow)}`,
+    `groups=${JSON.stringify(plan.groups.map((group) => group.id))}`,
+    `solo=${JSON.stringify(plan.solo)}`,
     `publish=${result.publish}`,
   ]
   for (const line of lines) console.info(line)
+
+  // Human-readable plan → stderr, so it lands in the `decide` job log WITHOUT polluting GITHUB_OUTPUT
+  // (stdout is redirected there). Surfaces which files each group carries — a newly-added file shows up
+  // here instead of silently unbalancing a group.
+  for (const group of plan.groups) {
+    console.error(`[plan] group "${group.id}" (${group.files.length}): ${group.files.join(', ')}`)
+  }
+  console.error(`[plan] solo (${plan.solo.length}): ${plan.solo.join(', ')}`)
 }
