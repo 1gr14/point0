@@ -99,11 +99,11 @@
   "peerDependencies": {
     "@1gr14/route0": "^0.1.0",
     "@point0/core": "^0.2.3",
-    "@1gr14/flat": "^0.1.0",
+    "@1gr14/flat": "^0.1.4",
     "typescript": "^6.0.3"
   },
   "devDependencies": {
-    "@1gr14/flat": "^0.1.0",
+    "@1gr14/flat": "^0.1.4",
     "@point0/engine": "^0.2.3",
     "@types/babel__core": "^7.20.5",
     "@types/babel__generator": "^7.27.0",

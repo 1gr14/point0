@@ -22,7 +22,7 @@
     "android": "bun run build && cap sync android && cap open android"
   },
   "dependencies": {
-    "@1gr14/error0": "^0.4.6",
+    "@1gr14/error0": "^0.4.7",
     "@1gr14/route0": "^0.1.0",
     "@point0/compiler": "^0.2.3",
     "@point0/core": "^0.2.3",

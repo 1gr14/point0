@@ -5,8 +5,8 @@
     "": {
       "name": "point0",
       "dependencies": {
-        "@1gr14/error0": "^0.4.6",
-        "@1gr14/flat": "^0.1.0",
+        "@1gr14/error0": "^0.4.7",
+        "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.1.0",
       },
       "devDependencies": {
@@ -34,19 +34,19 @@
     },
     "examples/basic": {
       "name": "@point0/example-basic",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "dependencies": {
-        "@1gr14/error0": "^0.4.6",
-        "@1gr14/flat": "^0.1.0",
+        "@1gr14/error0": "^0.4.7",
+        "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.1.0",
-        "@point0/basic-auth": "^0.1.12",
-        "@point0/cache-control": "^0.1.12",
-        "@point0/compiler": "^0.1.12",
-        "@point0/compress": "^0.1.12",
-        "@point0/core": "^0.1.12",
-        "@point0/engine": "^0.1.12",
-        "@point0/openapi": "^0.1.12",
-        "@point0/react-dom": "^0.1.12",
+        "@point0/basic-auth": "^0.2.3",
+        "@point0/cache-control": "^0.2.3",
+        "@point0/compiler": "^0.2.3",
+        "@point0/compress": "^0.2.3",
+        "@point0/core": "^0.2.3",
+        "@point0/engine": "^0.2.3",
+        "@point0/openapi": "^0.2.3",
+        "@point0/react-dom": "^0.2.3",
         "@prisma/adapter-libsql": "^7.8.0",
         "@prisma/client": "^7.8.0",
         "@tanstack/react-query": "^5.101.0",
@@ -80,19 +80,19 @@
     },
     "examples/better-auth": {
       "name": "@point0/example-better-auth",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "dependencies": {
-        "@1gr14/error0": "^0.4.6",
-        "@1gr14/flat": "^0.1.0",
+        "@1gr14/error0": "^0.4.7",
+        "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.1.0",
-        "@point0/basic-auth": "^0.1.12",
-        "@point0/cache-control": "^0.1.12",
-        "@point0/compiler": "^0.1.12",
-        "@point0/compress": "^0.1.12",
-        "@point0/core": "^0.1.12",
-        "@point0/engine": "^0.1.12",
-        "@point0/openapi": "^0.1.12",
-        "@point0/react-dom": "^0.1.12",
+        "@point0/basic-auth": "^0.2.3",
+        "@point0/cache-control": "^0.2.3",
+        "@point0/compiler": "^0.2.3",
+        "@point0/compress": "^0.2.3",
+        "@point0/core": "^0.2.3",
+        "@point0/engine": "^0.2.3",
+        "@point0/openapi": "^0.2.3",
+        "@point0/react-dom": "^0.2.3",
         "@prisma/adapter-libsql": "^7.8.0",
         "@prisma/client": "^7.8.0",
         "@tanstack/react-query": "^5.101.0",
@@ -126,15 +126,15 @@
     },
     "examples/capacitor": {
       "name": "@point0/example-capacitor",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "dependencies": {
-        "@1gr14/error0": "^0.4.6",
+        "@1gr14/error0": "^0.4.7",
         "@1gr14/route0": "^0.1.0",
         "@capacitor/core": "^8.4.0",
-        "@point0/compiler": "^0.1.2",
-        "@point0/core": "^0.1.2",
-        "@point0/engine": "^0.1.2",
-        "@point0/react-dom": "^0.1.2",
+        "@point0/compiler": "^0.2.3",
+        "@point0/core": "^0.2.3",
+        "@point0/engine": "^0.2.3",
+        "@point0/react-dom": "^0.2.3",
         "@prisma/adapter-libsql": "^7.8.0",
         "@prisma/client": "^7.8.0",
         "prisma": "^7.8.0",
@@ -160,7 +160,7 @@
     },
     "examples/expo": {
       "name": "@point0/example-expo",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "dependencies": {
         "@babel/core": "^7.29.7",
         "@babel/plugin-transform-flow-strip-types": "^7.29.7",
@@ -190,19 +190,19 @@
     },
     "examples/vite": {
       "name": "@point0/example-vite",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "dependencies": {
-        "@1gr14/error0": "^0.4.6",
-        "@1gr14/flat": "^0.1.0",
+        "@1gr14/error0": "^0.4.7",
+        "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.1.0",
-        "@point0/basic-auth": "^0.1.12",
-        "@point0/cache-control": "^0.1.12",
-        "@point0/compiler": "^0.1.12",
-        "@point0/compress": "^0.1.12",
-        "@point0/core": "^0.1.12",
-        "@point0/engine": "^0.1.12",
-        "@point0/openapi": "^0.1.12",
-        "@point0/react-dom": "^0.1.12",
+        "@point0/basic-auth": "^0.2.3",
+        "@point0/cache-control": "^0.2.3",
+        "@point0/compiler": "^0.2.3",
+        "@point0/compress": "^0.2.3",
+        "@point0/core": "^0.2.3",
+        "@point0/engine": "^0.2.3",
+        "@point0/openapi": "^0.2.3",
+        "@point0/react-dom": "^0.2.3",
         "@prisma/adapter-libsql": "^7.8.0",
         "@prisma/client": "^7.8.0",
         "@tailwindcss/vite": "^4.3.0",
@@ -241,7 +241,7 @@
     },
     "packages/basic-auth": {
       "name": "@point0/basic-auth",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "devDependencies": {
         "@scalar/types": "^0.12.3",
         "@types/bun": "^1.3.14",
@@ -250,13 +250,13 @@
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@point0/core": "^0.1.12",
-        "@point0/engine": "^0.1.12",
+        "@point0/core": "^0.2.3",
+        "@point0/engine": "^0.2.3",
       },
     },
     "packages/cache-control": {
       "name": "@point0/cache-control",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "devDependencies": {
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
@@ -264,13 +264,13 @@
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@point0/core": "^0.1.12",
-        "@point0/engine": "^0.1.12",
+        "@point0/core": "^0.2.3",
+        "@point0/engine": "^0.2.3",
       },
     },
     "packages/compiler": {
       "name": "@point0/compiler",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "dependencies": {
         "@babel/core": "^7.29.7",
         "@babel/generator": "^7.29.7",
@@ -291,8 +291,8 @@
         "safe-stable-stringify": "^2.5.0",
       },
       "devDependencies": {
-        "@1gr14/flat": "^0.1.0",
-        "@point0/engine": "^0.1.12",
+        "@1gr14/flat": "^0.1.4",
+        "@point0/engine": "^0.2.3",
         "@types/babel__core": "^7.20.5",
         "@types/babel__generator": "^7.27.0",
         "@types/babel__traverse": "^7.28.0",
@@ -304,15 +304,15 @@
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@1gr14/flat": "^0.1.0",
+        "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.1.0",
-        "@point0/core": "^0.1.12",
+        "@point0/core": "^0.2.3",
         "typescript": "^6.0.3",
       },
     },
     "packages/compress": {
       "name": "@point0/compress",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "devDependencies": {
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
@@ -320,20 +320,20 @@
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@point0/core": "^0.1.12",
-        "@point0/engine": "^0.1.12",
+        "@point0/core": "^0.2.3",
+        "@point0/engine": "^0.2.3",
       },
     },
     "packages/core": {
       "name": "@point0/core",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "dependencies": {
         "@standard-schema/spec": "^1.1.0",
         "safe-stable-stringify": "^2.5.0",
         "use-context-selector": "^2.0.0",
       },
       "devDependencies": {
-        "@1gr14/flat": "^0.1.0",
+        "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.1.0",
         "@sinclair/typebox": "^0.34.49",
         "@types/bun": "^1.3.14",
@@ -354,7 +354,7 @@
         "zod": "^4.4.3",
       },
       "peerDependencies": {
-        "@1gr14/flat": "^0.1.0",
+        "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.1.0",
         "@sinclair/typebox": "^0.34.49",
         "@sodaru/yup-to-json-schema": "^2.0.1",
@@ -381,7 +381,7 @@
     },
     "packages/cors": {
       "name": "@point0/cors",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "devDependencies": {
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
@@ -395,7 +395,7 @@
     },
     "packages/create-app": {
       "name": "create-point0-app",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "bin": {
         "create-point0-app": "dist/index.js",
       },
@@ -413,19 +413,19 @@
     },
     "packages/create-app/template": {
       "name": "my-app",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "dependencies": {
-        "@1gr14/error0": "^0.4.6",
-        "@1gr14/flat": "^0.1.0",
+        "@1gr14/error0": "^0.4.7",
+        "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.1.0",
-        "@point0/basic-auth": "^0.1.12",
-        "@point0/cache-control": "^0.1.12",
-        "@point0/compiler": "^0.1.12",
-        "@point0/compress": "^0.1.12",
-        "@point0/core": "^0.1.12",
-        "@point0/engine": "^0.1.12",
-        "@point0/openapi": "^0.1.12",
-        "@point0/react-dom": "^0.1.12",
+        "@point0/basic-auth": "^0.2.3",
+        "@point0/cache-control": "^0.2.3",
+        "@point0/compiler": "^0.2.3",
+        "@point0/compress": "^0.2.3",
+        "@point0/core": "^0.2.3",
+        "@point0/engine": "^0.2.3",
+        "@point0/openapi": "^0.2.3",
+        "@point0/react-dom": "^0.2.3",
         "@prisma/adapter-libsql": "^7.8.0",
         "@prisma/client": "^7.8.0",
         "@tailwindcss/typography": "^0.5.19",
@@ -445,7 +445,7 @@
       },
       "devDependencies": {
         "@faker-js/faker": "^10.4.0",
-        "@point0/docs": "^0.1.12",
+        "@point0/docs": "^0.2.3",
         "@svgr/core": "^8.1.0",
         "@svgr/plugin-jsx": "^8.1.0",
         "@tanstack/react-query-devtools": "^5.101.0",
@@ -468,7 +468,7 @@
     },
     "packages/docs": {
       "name": "@point0/docs",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "bin": {
         "point0-docs-mcp": "dist/mcp.js",
       },
@@ -489,7 +489,7 @@
     },
     "packages/engine": {
       "name": "@point0/engine",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "bin": {
         "point0": "dist/cli.js",
         "point0-project-mcp": "dist/mcp.js",
@@ -513,10 +513,10 @@
         "zod": "^4.4.3",
       },
       "devDependencies": {
-        "@1gr14/error0": "^0.4.6",
-        "@1gr14/flat": "^0.1.0",
+        "@1gr14/error0": "^0.4.7",
+        "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.1.0",
-        "@point0/docs": "^0.1.12",
+        "@point0/docs": "^0.2.3",
         "@tanstack/query-core": "^5.101.0",
         "@testing-library/react": "^16.3.1",
         "@types/babel__traverse": "^7.28.0",
@@ -540,10 +540,10 @@
         "vite-tsconfig-paths": "^6.1.1",
       },
       "peerDependencies": {
-        "@1gr14/flat": "^0.1.0",
+        "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.1.0",
-        "@point0/compiler": "^0.1.12",
-        "@point0/core": "^0.1.12",
+        "@point0/compiler": "^0.2.3",
+        "@point0/core": "^0.2.3",
         "@tanstack/react-query": "^5.101.0",
         "@unhead/react": "^3.1.1",
         "react": "^19.2.7",
@@ -552,7 +552,7 @@
     },
     "packages/engine/tests/templates/one-client": {
       "name": "@point0/test-one-client",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "dependencies": {
         "@1gr14/route0": "^0.1.0",
         "@point0/compiler": "^0.1.0-next.3",
@@ -579,7 +579,7 @@
     },
     "packages/engine/tests/templates/two-clients": {
       "name": "@point0/test-two-clients",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "dependencies": {
         "@1gr14/route0": "^0.1.0",
         "@point0/compiler": "^0.1.0-next.3",
@@ -606,9 +606,9 @@
     },
     "packages/openapi": {
       "name": "@point0/openapi",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "devDependencies": {
-        "@point0/basic-auth": "^0.1.12",
+        "@point0/basic-auth": "^0.2.3",
         "@scalar/types": "^0.12.3",
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
@@ -618,8 +618,8 @@
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@point0/core": "^0.1.12",
-        "@point0/engine": "^0.1.12",
+        "@point0/core": "^0.2.3",
+        "@point0/engine": "^0.2.3",
         "@scalar/types": "^0.12.3",
         "@types/swagger-ui": "^5.32.0",
         "openapi-types": "^12.0.0",
@@ -628,10 +628,10 @@
     },
     "packages/react-dom": {
       "name": "@point0/react-dom",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "devDependencies": {
         "@1gr14/route0": "^0.1.0",
-        "@point0/core": "^0.2.0",
+        "@point0/core": "^0.2.3",
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
         "@types/react": "^19.2.16",
@@ -644,7 +644,7 @@
       },
       "peerDependencies": {
         "@1gr14/route0": "^0.1.0",
-        "@point0/core": "^0.2.0",
+        "@point0/core": "^0.2.3",
         "@types/react": "^19.2.16",
         "@types/react-dom": "^19.2.3",
         "react": "^19.2.7",
@@ -660,8 +660,8 @@
     "zod": "^4.4.3",
   },
   "catalog": {
-    "@1gr14/error0": "^0.4.6",
-    "@1gr14/flat": "^0.1.0",
+    "@1gr14/error0": "^0.4.7",
+    "@1gr14/flat": "^0.1.4",
     "@1gr14/route0": "^0.1.0",
     "@huggingface/transformers": "^4.2.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -706,7 +706,7 @@
     "zod": "^4.4.3",
   },
   "packages": {
-    "@1gr14/error0": ["@1gr14/error0@0.4.6", "", {}, "sha512-O+zX1mpc2SNheL/wSPRkUbtifHgGwMXpCdajlG85MfKZq1b8Jg9u5rqyOSLQaHTFinAo+/VtgKTAw8zrpS6uDw=="],
+    "@1gr14/error0": ["@1gr14/error0@0.4.7", "", {}, "sha512-woqhB4vLAotyBHlMwQAceD80JRJV/lRliebHe9bCqaOLGBzlTmNPOW4eT0AqtLyvh5smtw5+X3jca8Nvoq6ZkQ=="],
 
     "@1gr14/flat": ["@1gr14/flat@0.1.4", "", {}, "sha512-M5QU8ShQojb/bI6I/otPOmENWLtp07fmE9jusKaLjmc9LUj9Owbrwk3JhbK47sMD10RrIkiJ+tuv3cW4Nh3SkQ=="],
 
