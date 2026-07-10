@@ -151,7 +151,7 @@ describe('openapi', () => {
                 {
                   "description": "Transform the response body by transformer or not",
                   "in": "header",
-                  "name": "X-Point0-Transform",
+                  "name": "x-point0-transform",
                   "required": false,
                   "schema": {
                     "enum": [
@@ -175,7 +175,7 @@ describe('openapi', () => {
                 {
                   "description": "Transform the response body by transformer or not",
                   "in": "header",
-                  "name": "X-Point0-Transform",
+                  "name": "x-point0-transform",
                   "required": false,
                   "schema": {
                     "enum": [
@@ -234,7 +234,7 @@ describe('openapi', () => {
                 {
                   "description": "Transform the response body by transformer or not",
                   "in": "header",
-                  "name": "X-Point0-Transform",
+                  "name": "x-point0-transform",
                   "required": false,
                   "schema": {
                     "enum": [
@@ -320,7 +320,7 @@ describe('openapi', () => {
                 {
                   "description": "Transform the response body by transformer or not",
                   "in": "header",
-                  "name": "X-Point0-Transform",
+                  "name": "x-point0-transform",
                   "required": false,
                   "schema": {
                     "enum": [
@@ -485,7 +485,7 @@ describe('openapi', () => {
                 {
                   "description": "Transform the response body by transformer or not",
                   "in": "header",
-                  "name": "X-Point0-Transform",
+                  "name": "x-point0-transform",
                   "required": false,
                   "schema": {
                     "enum": [
@@ -666,7 +666,7 @@ describe('openapi', () => {
     })
   })
 
-  it('hideTransformHeader drops X-Point0-Transform and never leaks the option into the document', async () => {
+  it('hideTransformHeader drops x-point0-transform and never leaks the option into the document', async () => {
     const root = Point0.lets('root', 'root')
       .transformer(superjson)
       .middleware(
@@ -686,7 +686,7 @@ describe('openapi', () => {
     expect(response.status).toBe(200)
     const text = await response.text()
     // the auto-added transform header parameter is suppressed everywhere in the spec
-    expect(text).not.toContain('X-Point0-Transform')
+    expect(text).not.toContain('x-point0-transform')
     // and the flag itself does not bleed into the emitted document
     const json = JSON.parse(text)
     expect('hideTransformHeader' in json).toBe(false)
@@ -725,7 +725,7 @@ describe('openapi', () => {
   // only make sense when the owning client SSRs, so the enum must resolve by the point's scope via the engine-supplied
   // `ssrByScope` map, not the ambient value. Each page carries a server loader so its endpoint survives regardless of
   // the ambient SSR (that would otherwise strip `_endpoint` at authoring time and drop the page from the spec).
-  describe('X-Point0-Output-Type reflects the owning scope SSR, not the ambient one', () => {
+  describe('x-point0-output-type reflects the owning scope SSR, not the ambient one', () => {
     const scopedPage = ({ scope, name, clientOnly }: { scope: string; name: string; clientOnly?: boolean }) => {
       const root = Point0.lets('root', scope).root()
       const base = root.lets('page', name, `/${name}`).loader(() => ({ ok: true }))
@@ -738,7 +738,7 @@ describe('openapi', () => {
       for (const [pathKey, pathItem] of Object.entries<any>(spec.paths ?? {})) {
         for (const operation of Object.values<any>(pathItem)) {
           const parameters: any[] = operation?.parameters ?? []
-          if (parameters.some((p) => p.in === 'header' && p.name === 'X-Point0-Output-Type')) {
+          if (parameters.some((p) => p.in === 'header' && p.name === 'x-point0-output-type')) {
             paths.push(pathKey)
           }
         }

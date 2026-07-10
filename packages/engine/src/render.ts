@@ -4,6 +4,14 @@ import {
   collectRscComponentNames,
   getDehydratedStateFromQueryClientDehydratedStateQuery,
   isQueryClientDehydratedStateQuery,
+  POINT0_CLIENT_BUILD_VERSION_GLOBAL,
+  POINT0_DEHYDRATED_SUPER_STORE_GLOBAL,
+  POINT0_ENV_CONSTS_GLOBAL,
+  POINT0_ENV_VARS_GLOBAL,
+  POINT0_PUSH_QUERY_BUFFER_GLOBAL,
+  POINT0_PUSH_QUERY_GLOBAL,
+  POINT0_PUSH_RSC_BUFFER_GLOBAL,
+  POINT0_PUSH_RSC_GLOBAL,
   serializeErrorsInDehydratedState,
   superstore,
 } from '@point0/core'
@@ -18,6 +26,7 @@ import { resolveTags } from 'unhead/utils'
 import type { SsrOptionsResolved } from './config.js'
 import { buildDocumentElement, parseDocumentTemplate } from './document.js'
 import type { Executor } from './executor.js'
+import { POINT0_ENV_EXTEND_FN_GLOBAL } from './protocol.js'
 import { buildHolePushPayload, emitHoleError, raceIsTimeout, RSC_STREAM_HEARTBEAT_MS } from './rsc-stream.js'
 import { readableStreamToString } from './utils.js'
 
@@ -30,8 +39,12 @@ import { readableStreamToString } from './utils.js'
  * instead of string splicing.
  */
 
-export const ENV_CONSTS_SCRIPT_ID = '__POINT0_ENV_CONSTS__'
-export const ENV_VARS_SCRIPT_ID = '__POINT0_ENV_VARS__'
+// A script's `id` attribute and the global it installs are two different contracts — the id is how a later render finds
+// and replaces the script it baked into a template, the global is how the client bundle reads its payload. For the env
+// scripts they happen to be the same string, so they are bound rather than spelled twice; the super-store script's id
+// deliberately differs from its global, which is why it carries its own literal.
+export const ENV_CONSTS_SCRIPT_ID = POINT0_ENV_CONSTS_GLOBAL
+export const ENV_VARS_SCRIPT_ID = POINT0_ENV_VARS_GLOBAL
 export const DEHYDRATED_SUPER_STORE_SCRIPT_ID = '__POINT0_DEHYDRATED_SUPER_STORE_SCRIPT__'
 
 /**
@@ -56,20 +69,20 @@ function toJsonCompatibleEnv(env?: EnvValues): Record<string, string | number | 
  * build step that bakes build-time consts into the emitted `dist/client/index.html` for static hosting.
  */
 export function buildEnvConstsScriptBody(envConsts?: EnvValues): string {
-  return `const ${ENV_CONSTS_SCRIPT_ID} = ${uneval(toJsonCompatibleEnv(envConsts))};
-window.${ENV_CONSTS_SCRIPT_ID} = ${ENV_CONSTS_SCRIPT_ID};
-window.__POINT0_ENV_EXTEND_FN__ = function(values) {
+  return `const ${POINT0_ENV_CONSTS_GLOBAL} = ${uneval(toJsonCompatibleEnv(envConsts))};
+window.${POINT0_ENV_CONSTS_GLOBAL} = ${POINT0_ENV_CONSTS_GLOBAL};
+window.${POINT0_ENV_EXTEND_FN_GLOBAL} = function(values) {
   window.process = window.process || {};
   window.process.env = { ...(window.process.env || {}), ...values };
 }
-window.__POINT0_ENV_EXTEND_FN__(${ENV_CONSTS_SCRIPT_ID});`
+window.${POINT0_ENV_EXTEND_FN_GLOBAL}(${POINT0_ENV_CONSTS_GLOBAL});`
 }
 
 /** The env-vars script body — runtime values; consts win on key conflicts, so they are spread last. */
 export function buildEnvVarsScriptBody(envVars?: EnvValues): string {
-  return `const ${ENV_VARS_SCRIPT_ID} = ${uneval(toJsonCompatibleEnv(envVars))};
-window.${ENV_VARS_SCRIPT_ID} = ${ENV_VARS_SCRIPT_ID};
-window.__POINT0_ENV_EXTEND_FN__({ ...${ENV_VARS_SCRIPT_ID}, ...(window.${ENV_CONSTS_SCRIPT_ID} || {}) });`
+  return `const ${POINT0_ENV_VARS_GLOBAL} = ${uneval(toJsonCompatibleEnv(envVars))};
+window.${POINT0_ENV_VARS_GLOBAL} = ${POINT0_ENV_VARS_GLOBAL};
+window.${POINT0_ENV_EXTEND_FN_GLOBAL}({ ...${POINT0_ENV_VARS_GLOBAL}, ...(window.${POINT0_ENV_CONSTS_GLOBAL} || {}) });`
 }
 
 /**
@@ -95,7 +108,7 @@ function envScriptElements({ envVars, envConsts }: { envVars?: EnvValues; envCon
 
 /**
  * Inject the client build identity into a document: `window.__POINT0_CLIENT_BUILD_VERSION__` (read by `@point0/core`'s
- * stale module to compare against the server's `X-Point0-Client-Build` header and the `build-version.json` handshake)
+ * stale module to compare against the server's `x-point0-client-build` header and the `build-version.json` handshake)
  * plus, when the entry chunk is known, a reload-once guard for the initial load.
  *
  * Injected ONLY into the BUILT `dist` index.html (see `EngineClient.buildByBun` / `buildByVite`) — and from there it
@@ -110,7 +123,7 @@ function envScriptElements({ envVars, envConsts }: { envVars?: EnvValues; envCon
  * per build version (sessionStorage-guarded; when storage is unavailable it does nothing rather than risk a reload
  * loop). Third-party scripts failing never trigger it — only the exact entry path.
  */
-export const CLIENT_BUILD_VERSION_SCRIPT_ID = '__POINT0_CLIENT_BUILD_VERSION__'
+export const CLIENT_BUILD_VERSION_SCRIPT_ID = POINT0_CLIENT_BUILD_VERSION_GLOBAL
 export const STALE_ENTRY_GUARD_SCRIPT_ID = '__POINT0_STALE_ENTRY_GUARD__'
 export async function addClientBuildToDocumentHtml({
   html,
@@ -121,7 +134,7 @@ export async function addClientBuildToDocumentHtml({
   buildVersion: string
   entryPublicPath: string | null
 }): Promise<string> {
-  const versionScript = `<script id="${CLIENT_BUILD_VERSION_SCRIPT_ID}">window.${CLIENT_BUILD_VERSION_SCRIPT_ID} = ${JSON.stringify(buildVersion)};</script>`
+  const versionScript = `<script id="${CLIENT_BUILD_VERSION_SCRIPT_ID}">window.${POINT0_CLIENT_BUILD_VERSION_GLOBAL} = ${JSON.stringify(buildVersion)};</script>`
   const guardScript = entryPublicPath
     ? `<script id="${STALE_ENTRY_GUARD_SCRIPT_ID}">(function () {
   var entry = ${JSON.stringify(entryPublicPath)};
@@ -315,11 +328,11 @@ export async function renderAppAsReadableStream({
       return createElement('script', {
         id: DEHYDRATED_SUPER_STORE_SCRIPT_ID,
         dangerouslySetInnerHTML: {
-          __html: `window.__POINT0_PUSH_QUERY_BUFFER__ = [];
-window.__POINT0_PUSH_QUERY__ = function (pushedQuery) { window.__POINT0_PUSH_QUERY_BUFFER__.push(pushedQuery) };
-window.__POINT0_PUSH_RSC_BUFFER__ = [];
-window.__POINT0_PUSH_RSC__ = function (pushedRsc) { window.__POINT0_PUSH_RSC_BUFFER__.push(pushedRsc) };
-window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientPoints.transformer))};`,
+          __html: `window.${POINT0_PUSH_QUERY_BUFFER_GLOBAL} = [];
+window.${POINT0_PUSH_QUERY_GLOBAL} = function (pushedQuery) { window.${POINT0_PUSH_QUERY_BUFFER_GLOBAL}.push(pushedQuery) };
+window.${POINT0_PUSH_RSC_BUFFER_GLOBAL} = [];
+window.${POINT0_PUSH_RSC_GLOBAL} = function (pushedRsc) { window.${POINT0_PUSH_RSC_BUFFER_GLOBAL}.push(pushedRsc) };
+window.${POINT0_DEHYDRATED_SUPER_STORE_GLOBAL} = ${uneval(superstore.stringify(clientPoints.transformer))};`,
         },
       })
     }
@@ -405,7 +418,7 @@ window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientP
           ErrorClass,
         ).queries[0]
         scripts.push(
-          `<script>window.__POINT0_PUSH_QUERY__(${uneval(clientPoints.transformer.stringify(payload))})</script>`,
+          `<script>window.${POINT0_PUSH_QUERY_GLOBAL}(${uneval(clientPoints.transformer.stringify(payload))})</script>`,
         )
       }
       return scripts.length > 0 ? scripts.join('') : undefined
@@ -430,7 +443,7 @@ window.__POINT0_DEHYDRATED_SUPER_STORE__ = ${uneval(superstore.stringify(clientP
         // projection so the client hole slot re-throws it to the nearest boundary) — here wrapped in an inline script.
         const payload = buildHolePushPayload(entry, ErrorClass)
         scripts.push(
-          `<script>window.__POINT0_PUSH_RSC__(${uneval(clientPoints.transformer.stringify(payload))})</script>`,
+          `<script>window.${POINT0_PUSH_RSC_GLOBAL}(${uneval(clientPoints.transformer.stringify(payload))})</script>`,
         )
       }
       return scripts.length > 0 ? scripts.join('') : undefined

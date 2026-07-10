@@ -2,6 +2,7 @@ import type { DehydratedState, Mutation, Query, UseInfiniteQueryResult, UseQuery
 import { stringify } from 'safe-stable-stringify'
 import type { ErrorPoint0 } from './error.js'
 import type { Props, QuerySuccess, UseQueryOrInfiniteQueryResult } from './mountable.js'
+import { POINT0_QUERY_KEY_NAMESPACE } from './protocol.js'
 import type {
   Data,
   DataTransformer,
@@ -135,14 +136,6 @@ export const getWindowScrollPositionGetterBySelector = (selector: string) => {
 export const getWindowScrollPositionSetterBySelector = (selector: string) => {
   return getWindowScrollPositionSetterByElementGetter(() => document.querySelector(selector))
 }
-
-/**
- * Search-param name that carries a query endpoint's input on a GET request. Query-family reads (query, infiniteQuery,
- * and the queries behind component and provider loaders) default to GET so a CDN can cache them; the input rides in the
- * URL as `?<this>=<json>` — the exact transformer-serialized JSON a POST would put in the body, moved to the URL.
- * Shared between the client that writes it (core) and the server that reads it (engine), so the two never drift.
- */
-export const POINT0_QUERY_GET_INPUT_SEARCH_PARAM = 'input'
 
 export const isContainsBinary = (value: unknown): boolean => {
   if (value instanceof File || value instanceof Blob) {
@@ -549,14 +542,14 @@ const mergeOptionsWithCallbacks = <TOptions extends Record<string, any>>(
 }
 
 export const parseQueryKey = (queryKey: readonly unknown[]): QueryKey[1] | undefined => {
-  if (queryKey.at(0) !== 'point0') {
+  if (queryKey.at(0) !== POINT0_QUERY_KEY_NAMESPACE) {
     return undefined
   }
   return queryKey[1] as QueryKey[1]
 }
 
 export const parseMutationKey = (mutationKey: readonly unknown[] | undefined): MutationKey[1] | undefined => {
-  if (mutationKey?.at(0) !== 'point0') {
+  if (mutationKey?.at(0) !== POINT0_QUERY_KEY_NAMESPACE) {
     return undefined
   }
   return mutationKey[1] as MutationKey[1]

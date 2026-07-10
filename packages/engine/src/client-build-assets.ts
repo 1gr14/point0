@@ -1,3 +1,5 @@
+import { ASSET_URL_PREFIX } from '@point0/compiler'
+import { POINT0_BUILD_ASSETS_FILE_NAME, POINT0_INTERNAL_PATH_PREFIX, POINT0_INTERNAL_URL_PREFIX } from '@point0/core'
 import type { PointsScope } from '@point0/core'
 import { toPublicPath } from './utils.js'
 
@@ -19,9 +21,9 @@ export type ClientBuildAssetsFile = {
 
 /** Outdir-relative path segments of a client's build assets file (posix-joined they form its public URL path). */
 export const getClientBuildAssetsPathSegments = (scope: PointsScope): string[] => [
-  '_point0',
+  POINT0_INTERNAL_PATH_PREFIX,
   scope,
-  'build-assets.json',
+  POINT0_BUILD_ASSETS_FILE_NAME,
 ]
 
 /**
@@ -35,7 +37,7 @@ const identifiesBuild = (publicPath: string): boolean => {
   if (publicPath.endsWith('.html') || publicPath.endsWith('.map')) {
     return false
   }
-  if (publicPath.startsWith('/_point0/') && !publicPath.startsWith('/_point0/assets/')) {
+  if (publicPath.startsWith(POINT0_INTERNAL_URL_PREFIX) && !publicPath.startsWith(ASSET_URL_PREFIX)) {
     return false
   }
   return true

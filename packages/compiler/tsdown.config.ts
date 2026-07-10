@@ -13,6 +13,7 @@ export default defineConfig({
     'src/importer.ts',
     'src/index.ts',
     'src/point.ts',
+    'src/protocol.ts',
     'src/resolver.ts',
     'src/utils.ts',
     'src/walker.ts',

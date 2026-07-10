@@ -25,6 +25,7 @@ export default defineConfig({
     'src/mountable.ts',
     'src/point0.ts',
     'src/points-manager.ts',
+    'src/protocol.ts',
     'src/query-client.ts',
     'src/redirect.ts',
     'src/request0.ts',

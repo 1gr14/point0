@@ -180,7 +180,7 @@ wins.
 
 The framework writes effects too: a request-id header, input-validation `422`, a
 `404` for an unknown point, a `500` for a point with no server loader, and (in
-dev only) an `X-Point0-Discovery-Renders` header — all land in the same
+dev only) an `x-point0-discovery-renders` header — all land in the same
 collector.
 
 ## Returning a Response (actions and mutations only)

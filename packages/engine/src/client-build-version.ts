@@ -1,3 +1,4 @@
+import { POINT0_BUILD_VERSION_FILE_NAME, POINT0_INTERNAL_PATH_PREFIX } from '@point0/core'
 import type { PointsScope } from '@point0/core'
 import { collectClientBuildHashedFiles } from './client-build-assets.js'
 
@@ -11,7 +12,7 @@ import { collectClientBuildHashedFiles } from './client-build-assets.js'
  *
  * - The CLIENT fetches it (never cached — the fetch itself is `cache: 'no-store'`) when a page chunk fails to load, to
  *   confirm whether a newer build was deployed.
- * - The SERVER reads it at serve time to echo the version on every response (the `X-Point0-Client-Build` handshake).
+ * - The SERVER reads it at serve time to echo the version on every response (the `x-point0-client-build` handshake).
  *
  * Kept to a single field so the browser-polled file stays tiny; the content-hashed file list the version is derived
  * from lives separately, server-only, in `build-assets.json` (see `client-build-assets.ts`).
@@ -29,9 +30,9 @@ export type ClientBuildVersionFile = {
 
 /** Outdir-relative path segments of a client's build version file (posix-joined they form its public URL path). */
 export const getClientBuildVersionPathSegments = (scope: PointsScope): string[] => [
-  '_point0',
+  POINT0_INTERNAL_PATH_PREFIX,
   scope,
-  'build-version.json',
+  POINT0_BUILD_VERSION_FILE_NAME,
 ]
 
 /**

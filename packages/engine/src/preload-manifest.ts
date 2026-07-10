@@ -1,3 +1,4 @@
+import { POINT0_INTERNAL_PATH_PREFIX, POINT0_PRELOAD_MANIFEST_FILE_NAME } from '@point0/core'
 import * as nodePath from 'node:path'
 import { toPublicPath } from './utils.js'
 
@@ -43,7 +44,11 @@ export type PreloadManifest = {
  * publicdirs are merged into one static root (the manifest is per-client data, unlike the shared content-addressed,
  * unscoped `_point0/assets/`).
  */
-export const getPreloadManifestPathSegments = (scope: string): string[] => ['_point0', scope, 'preload-manifest.json']
+export const getPreloadManifestPathSegments = (scope: string): string[] => [
+  POINT0_INTERNAL_PATH_PREFIX,
+  scope,
+  POINT0_PRELOAD_MANIFEST_FILE_NAME,
+]
 
 /**
  * Global env kill switch for per-page modulepreload: `POINT0_MODULE_PRELOAD=false` (also `0`/`off`) disables the

@@ -3,7 +3,14 @@ import type { Node } from '@babel/types'
 import * as t from '@babel/types'
 import { Route0 } from '@1gr14/route0'
 import type { AnyRoute } from '@1gr14/route0'
-import { type PointName, type PointsScope, type ReadyPointType, toPascalCase } from '@point0/core'
+import {
+  getPointEndpointRoutePath,
+  toKebabCase,
+  toPascalCase,
+  type PointName,
+  type PointsScope,
+  type ReadyPointType,
+} from '@point0/core'
 import * as nodeFsPath from 'node:path'
 import type { CompilerFile } from './file.js'
 import type { Walker } from './walker.js'
@@ -822,7 +829,16 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       if (this.type !== 'action') {
         // pages always has endpoint, becouse they can be called to get queryClientDehydratedState
         if ((this.type === 'page' && this.ssr) || this.hasLoaders()) {
-          const endpointRouteBase = Route0.create(`/_point0/${this.scope}/${this.type}/${this.name}`)
+          // Segment casing must mirror core's endpoint construction in point0.ts — the server mounts the KEBAB path,
+          // so a meta that carries any other casing describes a URL that 404s. (`scope` is typed optional until the
+          // point validates; a missing one was already collected as a compile error above, so that stringification
+          // never reaches a served route.)
+          const scopeKebab = toKebabCase(`${this.scope}`)
+          const typeKebab = this.type === 'infiniteQuery' ? 'infinite-query' : this.type
+          const nameKebab = toKebabCase(this.name)
+          const endpointRouteBase = Route0.create(
+            getPointEndpointRoutePath({ scope: scopeKebab, type: typeKebab, name: nameKebab }),
+          )
           const endpointRoute =
             !this.route?.definition || this.route.definition === '/'
               ? endpointRouteBase

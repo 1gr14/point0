@@ -1,4 +1,11 @@
-import { _getSsItemsWithRestErrors, _ssRunWithServerStorageState, generateId, superstore } from '@point0/core'
+import {
+  _getSsItemsWithRestErrors,
+  _ssRunWithServerStorageState,
+  generateId,
+  POINT0_ENV_CONSTS_GLOBAL,
+  POINT0_ENV_VARS_GLOBAL,
+  superstore,
+} from '@point0/core'
 import type { ClientPoints, ClientRuntime, PointsScope, RichFetchFn } from '@point0/core'
 import { Effects, type CookieOptionsInput } from '@point0/core/effects'
 import fetchCookie from 'fetch-cookie'
@@ -309,10 +316,10 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
     })
     const globalsWithClientEnv = {
       ...globals,
-      __POINT0_ENV_VARS__: {
+      [POINT0_ENV_VARS_GLOBAL]: {
         ...client.envVars,
       },
-      __POINT0_ENV_CONSTS__: {
+      [POINT0_ENV_CONSTS_GLOBAL]: {
         ...client.envConsts,
       },
     }

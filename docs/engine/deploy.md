@@ -300,7 +300,7 @@ its content-hashed file names — and emits it in two places:
 
 The built server then:
 
-- sends `X-Point0-Client-Build: <scope>:<version>` on every response it can
+- sends `x-point0-client-build: <scope>:<version>` on every response it can
   attribute to a client scope — the running clients compare it against their own
   version and switch to full document navigations once a new build appears;
 - answers a request for a missing chunk with an honest JSON 404 — never an html

@@ -7,6 +7,7 @@ import { Compiler } from '../compiler.js'
 import type { CompilerOptions } from '../compiler.js'
 import { CriticalCompilerError } from '../error.js'
 import { virtualModulePathRegex } from '../importer.js'
+import { POINT0_COMPILER_PLUGIN_NAME } from '../protocol.js'
 
 export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin {
   const compiler =
@@ -75,7 +76,7 @@ export function compilerVitePlugin(options: CompilerOptions | Compiler): Plugin 
   }
 
   return {
-    name: 'point0-compiler',
+    name: POINT0_COMPILER_PLUGIN_NAME,
     enforce: 'pre',
     resolveId(source) {
       if (!virtualModulePathRegex.test(source)) return null

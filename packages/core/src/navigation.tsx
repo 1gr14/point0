@@ -882,7 +882,7 @@ export async function navigateWithTransitions<
     return { location, error: undefined }
   }
   // Deploy invalidation, the proactive branch: a newer client build was already noticed (via the
-  // X-Point0-Client-Build response header — see stale.ts), so don't even try to client-navigate with
+  // x-point0-client-build response header — see stale.ts), so don't even try to client-navigate with
   // the old chunks — leave with a full document navigation to the SAME target. `'error'` deliberately
   // proceeds: the old chunks may still load fine (or are already loaded), and if they don't, the
   // reactive branch in the catch below classifies the failure.

@@ -13,7 +13,14 @@ import type {
   RequiredCtx,
   PagePoint,
 } from '@point0/core'
-import { _point0_env, ClientPoints, PointsSourceNotReadyError } from '@point0/core'
+import {
+  _point0_env,
+  ClientPoints,
+  POINT0_ASSETS_DIR_NAME,
+  POINT0_ENV_VARS_GLOBAL,
+  POINT0_INTERNAL_PATH_PREFIX,
+  PointsSourceNotReadyError,
+} from '@point0/core'
 import type { SsrTarget } from '@point0/core'
 import type { Request0 } from '@point0/core/request0'
 import { toFetchResponse, toReqRes } from 'fetch-to-node'
@@ -33,6 +40,7 @@ import type {
 } from './config.js'
 import type { Executor } from './executor.js'
 import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './dev-shutdown.js'
+import { POINT0_FORWARDED_FROM_DEV_CLIENT_HEADER, POINT0_MIDDLEWARE_CHECK_FROM_SERVER_HEADER } from './protocol.js'
 import type { PublicdirDefinition } from './publicdir.js'
 import { Publicdir } from './publicdir.js'
 import {
@@ -555,7 +563,7 @@ try {
       '/index.html': indexHtml,
     },
     fetch: async (request) => {
-      if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
+      if (request.headers.get('${POINT0_MIDDLEWARE_CHECK_FROM_SERVER_HEADER}') === 'true') {
         return new Response('__NO_RESPONSE__', {
           headers: {
             'Content-Type': 'text/plain',
@@ -565,7 +573,7 @@ try {
       }
       const url = new URL(request.url)
       const forwardedHeaders = new Headers(request.headers)
-      forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', '${this.scope}')
+      forwardedHeaders.set('${POINT0_FORWARDED_FROM_DEV_CLIENT_HEADER}', '${this.scope}')
       // Server may be mid-restart — retry connection-refused quietly instead of logging a noisy stack.
       return await fetchRetryingConnectionRefused(
         \`http://localhost:${this.server.port}\${url.pathname}\${url.search}\`,
@@ -807,7 +815,7 @@ try {
         if (middlewareResponse) {
           return middlewareResponse
         }
-        if (request.headers.get('X-Point0-Middleware-Check-From-Server') === 'true') {
+        if (request.headers.get(POINT0_MIDDLEWARE_CHECK_FROM_SERVER_HEADER) === 'true') {
           return new Response('__NO_RESPONSE__', {
             headers: {
               'Content-Type': 'text/plain',
@@ -816,7 +824,7 @@ try {
           })
         }
         const forwardedHeaders = new Headers(request.headers)
-        forwardedHeaders.set('X-Point0-Forwarded-From-Dev-Client', this.scope)
+        forwardedHeaders.set(POINT0_FORWARDED_FROM_DEV_CLIENT_HEADER, this.scope)
         // Server may be mid-restart — retry connection-refused quietly instead of logging a noisy stack.
         const res = await fetchRetryingConnectionRefused(
           `http://localhost:${this.server.port}${location.pathname}${location.searchString}`,
@@ -896,7 +904,7 @@ try {
     if (pathname.startsWith('/_bun/')) {
       const bunDevServerUrl = `http://localhost:${this.port}${pathname}${url.search}`
       const middlewareRequestHeaders = new Headers(request.headers)
-      middlewareRequestHeaders.set('X-Point0-Middleware-Check-From-Server', 'true')
+      middlewareRequestHeaders.set(POINT0_MIDDLEWARE_CHECK_FROM_SERVER_HEADER, 'true')
       return await fetch(bunDevServerUrl, {
         method: request.method,
         headers: middlewareRequestHeaders,
@@ -917,7 +925,7 @@ try {
     if (viteDevServer === true) {
       const middlewareRequestHeaders = new Headers(request.headers)
       const url = new URL(request.url)
-      middlewareRequestHeaders.set('X-Point0-Middleware-Check-From-Server', 'true')
+      middlewareRequestHeaders.set(POINT0_MIDDLEWARE_CHECK_FROM_SERVER_HEADER, 'true')
       const middlewareResponse = await fetch(`http://localhost:${this.port}${url.pathname}${url.search}`, {
         method: request.method,
         headers: middlewareRequestHeaders,
@@ -1133,7 +1141,7 @@ try {
         // sets neither.)
         compilerOptions.assets = {
           ...compilerOptions.assets,
-          urlDir: nodePath.join(buildPaths.outdir, '_point0', 'assets'),
+          urlDir: nodePath.join(buildPaths.outdir, POINT0_INTERNAL_PATH_PREFIX, POINT0_ASSETS_DIR_NAME),
           fileDir: buildPaths.outdir,
         }
       }
@@ -1273,7 +1281,7 @@ try {
       ...Object.fromEntries(
         Object.entries(envVarsWithBuild).map(([key]) => [
           `process.env.${key}`,
-          `globalThis.__POINT0_ENV_VARS__.${key}`,
+          `globalThis.${POINT0_ENV_VARS_GLOBAL}.${key}`,
         ]),
       ),
       ...Object.fromEntries(

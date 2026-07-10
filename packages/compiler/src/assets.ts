@@ -1,4 +1,4 @@
-import { log } from '@point0/core'
+import { log, POINT0_ASSETS_DIR_NAME, POINT0_INTERNAL_URL_PREFIX } from '@point0/core'
 import type { Config } from '@svgr/core'
 import type { BunPlugin, OnLoadResult } from 'bun'
 import crypto from 'node:crypto'
@@ -56,7 +56,7 @@ import { resolveTempDirPath } from './utils.js'
 // ---------------------------------------------------------------------------
 
 /** App-absolute URL prefix every managed asset resolves under (`/_point0/assets/<hash>.<ext>`). */
-export const ASSET_URL_PREFIX = '/_point0/assets/'
+export const ASSET_URL_PREFIX = `${POINT0_INTERNAL_URL_PREFIX}${POINT0_ASSETS_DIR_NAME}/`
 
 /** Content-addressed dev cache the plugin writes to and the engine dev route serves from. Stable across processes. */
 export const resolveAssetsCacheDir = (): string => resolveTempDirPath(['assets'])

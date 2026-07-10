@@ -1,4 +1,5 @@
 import type { EnvVars, NormalizedNodeEnv } from './env.types.js'
+import { POINT0_ENV_CONSTS_GLOBAL, POINT0_ENV_VARS_GLOBAL } from './protocol.js'
 import { superstore } from './super-store.js'
 import type { IsAny } from './types.js'
 
@@ -15,8 +16,8 @@ export const getEnvVars = (): EnvVars => {
   const env = Object.create(null)
   const processEnvHolder = (() => {
     if (typeof globalThis !== 'undefined' && isSideClient()) {
-      const point0EnvVars = (globalThis as unknown as Record<string, unknown>).__POINT0_ENV_VARS__
-      const point0EnvConsts = (globalThis as unknown as Record<string, unknown>).__POINT0_ENV_CONSTS__
+      const point0EnvVars = (globalThis as unknown as Record<string, unknown>)[POINT0_ENV_VARS_GLOBAL]
+      const point0EnvConsts = (globalThis as unknown as Record<string, unknown>)[POINT0_ENV_CONSTS_GLOBAL]
       if (point0EnvVars || point0EnvConsts) {
         return {
           ...(point0EnvVars ?? {}),

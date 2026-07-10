@@ -5,6 +5,30 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- Every string two independently compiled sides must agree on — the `x-point0-*`
+  headers, the `/_point0/` path family, the globals the SSR html injects — now
+  lives in one `protocol.ts` module per package (`@point0/core` for the wire
+  contract, engine/compiler for their internal ids), imported by both sides and
+  pinned by tests. No wire behavior changes; the only visible difference is that
+  the generated OpenAPI document now spells its header parameters lowercase
+  (`x-point0-transform`, `x-point0-output-type`) — header names are
+  case-insensitive per spec, so existing clients keep working.
+- The generated points meta (what `point0-project-mcp` serves) now carries the
+  endpoint URLs the server actually mounts. The compiler used to bake raw
+  camelCase segments (`/_point0/root/mutation/ideaCreate`) while the server
+  mounts kebab (`/_point0/root/mutation/idea-create`), so anything trusting the
+  meta called a 404. Both sides now kebab-case identically.
+- Two type-guard copy-paste fixes: the validate-fn overload of `.cookies()`
+  checked the new schema against the HEADERS schema instead of the cookies one,
+  and `.use()` checked a plugin's search/body/headers/cookies schemas against
+  the point's PARAMS schema. The guards now compare like with like — plugin code
+  whose schema mismatch previously slipped through (or was falsely rejected) may
+  see its type errors change accordingly. Types only, no runtime change.
+- Removed the dead `_endpointPrefix` option on `Point0`. It reached one of the
+  nine places that build `/_point0/` paths, so setting it silently broke the
+  other eight; nothing ever set it. The prefix is a constant
+  (`POINT0_INTERNAL_PATH_PREFIX`), not an option.
+
 ## 0.2.3 — 2026-07-09
 
 - **0.2.2 never reached npm either.** Its tag was pushed and the whole test

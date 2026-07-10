@@ -496,7 +496,7 @@ re-render forever. Default `25`.
 
 If both caps are set, the hard cap is checked first.
 
-> **Dev only:** a server render sets an `X-Point0-Discovery-Renders` response
+> **Dev only:** a server render sets an `x-point0-discovery-renders` response
 > header with the discovery-render count (the final render is not counted — it
 > always happens exactly once), so you can eyeball how many passes a page took
 > straight from the network tab. It's not set in production.

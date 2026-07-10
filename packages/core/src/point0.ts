@@ -294,7 +294,6 @@ import {
   mergeQueryOptions,
   parseMutationKey,
   parseQueryKey,
-  POINT0_QUERY_GET_INPUT_SEARCH_PARAM,
   resolveQuery,
   sanitizeForLog,
   setByPath,
@@ -305,7 +304,20 @@ import {
   windowScrollPositionSetter,
   withLetsSugar,
 } from './utils.js'
-import { POINT0_STREAM_HEADER, rscComponentsRegistry, wrapTransformerWithRsc, type RscPointOptions } from './rsc.js'
+import {
+  getPointEndpointRoutePath,
+  POINT0_CLIENT_REQUEST_ID_HEADER,
+  POINT0_FROM_SCOPE_HEADER,
+  POINT0_NOT_JSON_DATA_HEADER,
+  POINT0_OUTPUT_TYPE_HEADER,
+  POINT0_QUERY_GET_INPUT_SEARCH_PARAM,
+  POINT0_QUERY_KEY_NAMESPACE,
+  POINT0_REDIRECT_HEADER,
+  POINT0_STREAM_HEADER,
+  POINT0_TO_SCOPE_HEADER,
+  POINT0_TRANSFORM_HEADER,
+} from './protocol.js'
+import { rscComponentsRegistry, wrapTransformerWithRsc, type RscPointOptions } from './rsc.js'
 
 export class Point0<
   in out TPointType extends PointType,
@@ -432,7 +444,6 @@ export class Point0<
       ? WideRequestMethod
       : undefined
   }
-  readonly _endpointPrefix: string | undefined
   /**
    * The point's kind — `'page' | 'layout' | 'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation' |
    * 'action' | 'root' | 'base' | 'plugin'`. Read it to branch on what a point is.
@@ -707,7 +718,6 @@ export class Point0<
     _description?: string
     _basePath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
-    _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | undefined
     _ssr?: PointSsrState | undefined
     _clientOnly?: boolean | undefined
@@ -802,7 +812,6 @@ export class Point0<
     this._description = options._description ?? undefined
     this._basePath = options._basePath ?? undefined
     this._endpoint = options._endpoint ?? undefined
-    this._endpointPrefix = options._endpointPrefix ?? undefined
     this.type = options.type
     this._letsReadyPointType = options._letsReadyPointType
     this._defaultMutationOptions = options._defaultMutationOptions ?? undefined
@@ -899,7 +908,6 @@ export class Point0<
     _description?: string | undefined
     _basePath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
-    _endpointPrefix?: string | undefined
     _transformer?: DataTransformerExtended | null
     _ssr?: PointSsrState | undefined
     _clientOnly?: boolean | undefined
@@ -1044,7 +1052,6 @@ export class Point0<
       _description: set('_description'),
       _basePath: set('_basePath'),
       _endpoint: set('_endpoint'),
-      _endpointPrefix: set('_endpointPrefix'),
       _transformer: set('_transformer'),
       _ssr: set('_ssr'),
       _clientOnly: set('_clientOnly'),
@@ -1379,13 +1386,15 @@ export class Point0<
           }
           return newRoute
         }
+        // Segment casing is mirrored by the compiler's endpoint construction in @point0/compiler's point.ts — the
+        // generated meta must carry the same URL this mounts. Change one side only and the meta starts lying.
         const scopeKebab = toKebabCase(this.scope)
         const typeKebab = letsReadyPointType === 'infiniteQuery' ? 'infinite-query' : letsReadyPointType
         const nameKebab = toKebabCase(normalizedPointName)
         // the endpoint route is always served by the server, so unlike the point's public route (clientUrl for
         // pages/layouts) its origin is serverUrl regardless of point kind; extend below inherits it
         const routeGeneral = Route0.create(
-          `/${this._endpointPrefix || '_point0'}/${scopeKebab}/${typeKebab}/${nameKebab}`,
+          getPointEndpointRoutePath({ scope: scopeKebab, type: typeKebab, name: nameKebab }),
           this._serverUrl ? { origin: this._serverUrl } : undefined,
         )
         if (isPage || isLayout) {
@@ -6280,7 +6289,7 @@ export class Point0<
     TInputRaw extends InputRaw,
     TInputParsed extends InputParsed = TInputRaw,
     TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'cookies'> &
-      AssertSchemaNotWider<RecordValidationSchema<TInputRaw, TInputParsed>, THeadersSchema, 'cookies'>,
+      AssertSchemaNotWider<RecordValidationSchema<TInputRaw, TInputParsed>, TCookiesSchema, 'cookies'>,
   >(
     // it is typeguard for overload
     ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
@@ -7176,10 +7185,10 @@ export class Point0<
       AssertInputSchemaNotWider<T['Infer']['ServerInputSchema'], TServerInputSchema, TClientInputSchema> &
       AssertInputSchemaNotWider<T['Infer']['ClientInputSchema'], TServerInputSchema, TClientInputSchema> &
       AssertSchemaNotWider<T['Infer']['ParamsSchema'], TParamsSchema, 'params'> &
-      AssertSchemaNotWider<T['Infer']['SearchSchema'], TParamsSchema, 'search'> &
-      AssertSchemaNotWider<T['Infer']['BodySchema'], TParamsSchema, 'body'> &
-      AssertSchemaNotWider<T['Infer']['HeadersSchema'], TParamsSchema, 'headers'> &
-      AssertSchemaNotWider<T['Infer']['CookiesSchema'], TParamsSchema, 'cookies'> &
+      AssertSchemaNotWider<T['Infer']['SearchSchema'], TSearchSchema, 'search'> &
+      AssertSchemaNotWider<T['Infer']['BodySchema'], TBodySchema, 'body'> &
+      AssertSchemaNotWider<T['Infer']['HeadersSchema'], THeadersSchema, 'headers'> &
+      AssertSchemaNotWider<T['Infer']['CookiesSchema'], TCookiesSchema, 'cookies'> &
       AsserNotMashInputSchemas<
         MergeRecordValidationSchemas<TServerInputSchema, T['Infer']['ServerInputSchema']>,
         MergeRecordValidationSchemas<TClientInputSchema, T['Infer']['ClientInputSchema']>,
@@ -8873,11 +8882,11 @@ export class Point0<
     const baseHeaders = mergeHeaders(baseFetchOptions.headers, _fetchOptions?.headers)
     const headers = mergeHeaders(baseHeaders, {
       ...(baseHeaders.has('Accept') ? {} : { Accept: 'application/json' }),
-      ...(fromScope ? { 'X-Point0-From-Scope': fromScope } : {}),
-      'X-Point0-To-Scope': this.scope,
-      'X-Point0-Client-Request-Id': generateId(),
-      ...(outputType === 'queryClientDehydratedState' ? { 'X-Point0-Output-Type': outputType } : {}),
-      ...(transform ? { 'X-Point0-Transform': 'true' } : {}),
+      ...(fromScope ? { [POINT0_FROM_SCOPE_HEADER]: fromScope } : {}),
+      [POINT0_TO_SCOPE_HEADER]: this.scope,
+      [POINT0_CLIENT_REQUEST_ID_HEADER]: generateId(),
+      ...(outputType === 'queryClientDehydratedState' ? { [POINT0_OUTPUT_TYPE_HEADER]: outputType } : {}),
+      ...(transform ? { [POINT0_TRANSFORM_HEADER]: 'true' } : {}),
       // Advertise that this fetch can read a streamed (NDJSON) body, so a loader/mutation `defer()` streams its holes
       // in (see `defer`). Client-only: a server-to-server SSR nested fetch must keep getting a single JSON body (the
       // outer render's pump drains its holes). Needs the transformer to decode the streamed subtrees, so gated on it.
@@ -9143,7 +9152,7 @@ export class Point0<
       // this.modifyEffectsCookiesAfterServerFetchIfRequired(res)
 
       // Deploy invalidation: every server response echoes the client build version it serves
-      // (X-Point0-Client-Build). A mismatch against the version this tab runs marks the build stale — the next
+      // (x-point0-client-build). A mismatch against the version this tab runs marks the build stale — the next
       // client navigation becomes a full document navigation (see stale.ts). Client-only and free when absent.
       if (_point0_env.side.is.client) {
         noticeClientBuildHeaderFromResponse({
@@ -9164,7 +9173,7 @@ export class Point0<
         }
       }
 
-      if (res.headers.get('X-Point0-Not-Json-Data') === 'true') {
+      if (res.headers.get(POINT0_NOT_JSON_DATA_HEADER) === 'true') {
         const result = {
           response: res,
           data: undefined,
@@ -9223,7 +9232,7 @@ export class Point0<
         const result = {
           response: res,
           error: undefined,
-          ...(res.headers.get('X-Point0-Redirect') === 'true'
+          ...(res.headers.get(POINT0_REDIRECT_HEADER) === 'true'
             ? {
                 redirect: RedirectTask.from(data as never),
                 data: undefined,
@@ -9344,7 +9353,7 @@ export class Point0<
     isInfiniteQuery: boolean
   }): QueryKey {
     return [
-      'point0',
+      POINT0_QUERY_KEY_NAMESPACE,
       {
         scope: this.scope,
         type: this.type,
@@ -9368,7 +9377,7 @@ export class Point0<
     isInfiniteQuery: boolean
   }): QueryKey {
     return [
-      'point0',
+      POINT0_QUERY_KEY_NAMESPACE,
       {
         scope: this.scope,
         type: this.type,
@@ -10402,7 +10411,7 @@ export class Point0<
    * Full reference: https://1gr14.dev/point0/latest/mutation
    */
   getMutationKey(): MutationKey {
-    return ['point0', { scope: this.scope, type: this.type, name: this.name, tags: this.tags }]
+    return [POINT0_QUERY_KEY_NAMESPACE, { scope: this.scope, type: this.type, name: this.name, tags: this.tags }]
   }
 
   /**

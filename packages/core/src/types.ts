@@ -32,6 +32,7 @@ import type {
 } from './mountable.js'
 import type { RedirectTask } from './navigation.js'
 import type { Point0 } from './point0.js'
+import type { POINT0_QUERY_KEY_NAMESPACE } from './protocol.js'
 import type {
   Request0,
   RequestVariantAsset,
@@ -79,7 +80,7 @@ export type QueryResultTypeOrNever<TQueryResultType extends QueryResultType | Un
 
 // export type QueryKey = readonly [string, ...string[]]
 export type QueryKey = readonly [
-  point0: 'point0',
+  point0: typeof POINT0_QUERY_KEY_NAMESPACE,
   {
     scope: PointsScope
     type: PointType
@@ -93,7 +94,7 @@ export type QueryKey = readonly [
 ]
 
 export type MutationKey = readonly [
-  point0: 'point0',
+  point0: typeof POINT0_QUERY_KEY_NAMESPACE,
   { scope: PointsScope; type: PointType; name: PointName; tags: string[] },
 ]
 

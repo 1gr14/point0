@@ -157,11 +157,11 @@ JSON variant is dropped:
 
 Two header parameters can appear that you did not declare:
 
-- **`X-Point0-Transform`** — added to every endpoint when a
+- **`x-point0-transform`** — added to every endpoint when a
   [transformer](transformer) (e.g. `superjson`) is set on the root. It is
   `enum: ['true', 'false']`, optional, and controls whether the response body is
   run through the transformer. Suppress it with `hideTransformHeader: true`.
-- **`X-Point0-Output-Type`** — added to a **page** endpoint when SSR is on for
+- **`x-point0-output-type`** — added to a **page** endpoint when SSR is on for
   the client that owns the page (`enum` of `data` / `queryClientDehydratedState`
   / `html`), selecting the output format of the page response. SSR resolves per
   client, so the spec advertises this header by the owning client's SSR, not the
@@ -395,7 +395,7 @@ Request schemas come from the [validation](validation) methods (`.params`,
 - **Mapped:** path/method, request parameters and body (from validation
   schemas), `requestBody.required`, multipart detection for file bodies,
   responses (from `.response()`), `$ref` dedup against `.models()`, the
-  `X-Point0-Transform` and `X-Point0-Output-Type` headers, and every operation
+  `x-point0-transform` and `x-point0-output-type` headers, and every operation
   field you pass to `.openapi()` (`summary`, `description`, `operationId`,
   `tags`, `deprecated`, …).
 - **Auto-derived:** `summary` (point id, non-actions only), `operationId`

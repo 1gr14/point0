@@ -68,7 +68,7 @@ everything same-origin for the browser:
 - **The client dev server is the only origin the browser talks to.** It serves
   the page and its assets, and it **forwards every other request through to the
   server** — including the query/mutation POSTs your code fires. Each forwarded
-  request is tagged `X-Point0-Forwarded-From-Dev-Client` so the server answers
+  request is tagged `x-point0-forwarded-from-dev-client` so the server answers
   it instead of bouncing it back. So there are **no CORS preflights and no
   [`@point0/cors`](cors) needed** in dev. The proxy is byte-transparent, too — a
   `Content-Encoding` your server sets (a gzip/brotli compression middleware)

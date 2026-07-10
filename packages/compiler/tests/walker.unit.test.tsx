@@ -601,7 +601,7 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
         expect(simplified[5]).toMatchObject({
           type: 'infiniteQuery',
           name: 'infiniteQuery1',
-          endpoint: { method: 'GET', route: '/_point0/root/infiniteQuery/infiniteQuery1', methods: ['GET', 'POST'] },
+          endpoint: { method: 'GET', route: '/_point0/root/infinite-query/infinite-query1', methods: ['GET', 'POST'] },
         })
         expect(simplified[6]).toMatchObject({
           type: 'infiniteQuery',

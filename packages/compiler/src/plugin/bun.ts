@@ -7,6 +7,7 @@ import type { CompilerOptions } from '../compiler.js'
 import { appendInlineSourceMap, getDevSourceMapRegistry } from '../sourcemap.js'
 import { CriticalCompilerError } from '../error.js'
 import { virtualModulePathRegex } from '../importer.js'
+import { POINT0_COMPILER_PLUGIN_NAME, POINT0_VIRTUAL_MODULE_NAMESPACE } from '../protocol.js'
 
 export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugin {
   const compiler =
@@ -17,7 +18,7 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
         })
 
   return {
-    name: 'point0-compiler',
+    name: POINT0_COMPILER_PLUGIN_NAME,
     setup(build) {
       // everything may be easy if namespaces will correctly works on server side
       // but they works only while build or static site runtime
@@ -70,10 +71,10 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
         build.onResolve({ filter: virtualModulePathRegex }, (args) => {
           return {
             path: args.path,
-            namespace: 'point0-virtual',
+            namespace: POINT0_VIRTUAL_MODULE_NAMESPACE,
           }
         })
-        build.onLoad({ filter: virtualModulePathRegex, namespace: 'point0-virtual' }, (args) => {
+        build.onLoad({ filter: virtualModulePathRegex, namespace: POINT0_VIRTUAL_MODULE_NAMESPACE }, (args) => {
           return loader(args.path)
         })
       }

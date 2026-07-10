@@ -3,8 +3,14 @@ import nodePath from 'node:path'
 import { Route0, type AnyLocation, type AnyRoute, type ExactLocation, type KnownLocation } from '@1gr14/route0'
 import { ASSET_URL_PREFIX, assetNameRegex, resolveAssetsCacheDir } from '@point0/compiler'
 import {
+  POINT0_CLIENT_REQUEST_ID_HEADER,
   POINT0_ERROR_CODES_MAP,
+  POINT0_NOT_JSON_DATA_HEADER,
+  POINT0_OUTPUT_TYPE_HEADER,
   POINT0_QUERY_GET_INPUT_SEARCH_PARAM,
+  POINT0_REDIRECT_HEADER,
+  POINT0_REQUEST_ID_HEADER,
+  POINT0_TRANSFORM_HEADER,
   _getSsItemsWithRestErrors,
   _point0_env,
   _ss,
@@ -291,11 +297,11 @@ export class Fetcher<TError extends ErrorPoint0> {
       isFromServer,
       prev: prevRequest,
     })
-    const transform = request.original.headers.get('x-point0-transform') === 'true'
-    const clientRequestId = request.original.headers.get('x-point0-client-request-id')
+    const transform = request.original.headers.get(POINT0_TRANSFORM_HEADER) === 'true'
+    const clientRequestId = request.original.headers.get(POINT0_CLIENT_REQUEST_ID_HEADER)
     if (clientRequestId) {
-      effects.set.headers('x-point0-request-id', request.id)
-      effects.set.headers('x-point0-client-request-id', clientRequestId)
+      effects.set.headers(POINT0_REQUEST_ID_HEADER, request.id)
+      effects.set.headers(POINT0_CLIENT_REQUEST_ID_HEADER, clientRequestId)
     }
     try {
       const redirectToDifferentDevClientIfNotThatPort = (scope: string): Response | undefined => {
@@ -387,7 +393,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       })
 
       if (endpoint) {
-        const outputTypeRaw = (request.original.headers.get('x-point0-output-type') ?? undefined) as
+        const outputTypeRaw = (request.original.headers.get(POINT0_OUTPUT_TYPE_HEADER) ?? undefined) as
           | 'html'
           | 'data'
           | 'queryClientDehydratedState'
@@ -826,13 +832,13 @@ export class Fetcher<TError extends ErrorPoint0> {
         ErrorClass,
       })
 
-      if (executeResult.redirect && request.original.headers.get('x-point0-client-request-id')) {
+      if (executeResult.redirect && request.original.headers.get(POINT0_CLIENT_REQUEST_ID_HEADER)) {
         // it is page redirect, not repsonse redirect
         // if request was sent from point0 cleint we send in with usual response 200 and special header (in this block), but will recoginze as error in query itself
         // if it was requested via foreign client, then it is unexpected and we return response as error (in next block: if (executeResult.error) ...)
 
         const response = new Response(transformer.stringify(executeResult.redirect.serialize()), {
-          headers: { 'Content-Type': 'application/json', 'X-Point0-Redirect': 'true' },
+          headers: { 'Content-Type': 'application/json', [POINT0_REDIRECT_HEADER]: 'true' },
           status: executeResult.effects.status ?? 200,
         })
         return {
@@ -864,8 +870,8 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (executeResult.output instanceof Response) {
-        if (request.original.headers.get('x-point0-client-request-id')) {
-          executeResult.output.headers.set('X-Point0-Not-Json-Data', 'true')
+        if (request.original.headers.get(POINT0_CLIENT_REQUEST_ID_HEADER)) {
+          executeResult.output.headers.set(POINT0_NOT_JSON_DATA_HEADER, 'true')
         }
         return {
           ...partialResult,
@@ -1311,7 +1317,7 @@ export class Fetcher<TError extends ErrorPoint0> {
   }
 
   /**
-   * Deploy invalidation: a BUILT server (dev has no build to be stale against) sets `X-Point0-Client-Build:
+   * Deploy invalidation: a BUILT server (dev has no build to be stale against) sets `x-point0-client-build:
    * <scope>:<version>` on every response attributable to a client scope. The client fetch layer compares it against its
    * own version; a mismatch marks the running build stale and the next client navigation becomes a full document
    * navigation (see `@point0/core`'s stale module). Cache headers are deliberately NOT set here — caching policy

@@ -1,6 +1,7 @@
 import { minimatch } from 'minimatch'
 import nodeFs from 'node:fs'
 import nodePath from 'node:path'
+import { POINT0_VIRTUAL_MODULE_OPTIONS_PREFIX, virtualModulePathRegex } from './protocol.js'
 import { getHash, toPosixPath } from './utils.js'
 
 export type ImporterOptionsInput = {
@@ -394,7 +395,7 @@ export const writeVirtualModulePath = (options: VirtualModuleOptions, { tempDir 
 }
 
 export const createVirtualModulePath = (options: VirtualModuleOptions): string => {
-  return `@point0/virtual?options=${encodeURIComponent(JSON.stringify(options))}`
+  return `${POINT0_VIRTUAL_MODULE_OPTIONS_PREFIX}${encodeURIComponent(JSON.stringify(options))}`
 }
 
 export const writeOrCreateVirtualModulePath = (
@@ -408,7 +409,9 @@ export const writeOrCreateVirtualModulePath = (
 }
 
 export const parseVirtualModulePath = (path: string): VirtualModuleOptions => {
-  return JSON.parse(decodeURIComponent(path.split('@point0/virtual?options=')[1])) as VirtualModuleOptions
+  return JSON.parse(decodeURIComponent(path.split(POINT0_VIRTUAL_MODULE_OPTIONS_PREFIX)[1])) as VirtualModuleOptions
 }
 
-export const virtualModulePathRegex = /^@point0\/virtual\?/
+// Lives in `protocol.ts` with the rest of the virtual-module vocabulary; re-exported here because that is where the
+// plugins have always imported it from.
+export { virtualModulePathRegex }

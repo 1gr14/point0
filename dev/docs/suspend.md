@@ -191,7 +191,7 @@ kicks the fetch from the cache marker.
   branches never rendered). `0` skips discovery entirely: the preamble
   (onPrefetch hooks + `prefetchLoadersBeforePageRender`) still runs, the guard
   sets `discoveryCutShort` and jumps to the loop tail (a mirrored early exit —
-  cookie flush, page dehydrated-state snapshot, `X-Point0-Discovery-Renders`
+  cookie flush, page dehydrated-state snapshot, `x-point0-discovery-renders`
   header, which reports 0). The data-only path is NOT clamped: at `0` it serves
   whatever the warm-up prefetched — a client-navigation prefetch then matches a
   direct visit.
@@ -557,7 +557,7 @@ discriminated union — `active`/`phase`/`target`; `__POINT0_SSR_TARGET__` item;
 `POINT0_SSR_STREAM_RENDER_ERROR` error with the original as `cause`,
 `applyRenderThrowSsrEffects` — throw/return parity, wired as the discovery
 renders' onError and called first by the final render's onError, pending
-excluded from dehydrate, the dev `X-Point0-Discovery-Renders` header — renamed
+excluded from dehydrate, the dev `x-point0-discovery-renders` header — renamed
 from `X-Point0-Renders-Count`), `render.ts` (auto waitForAllReady, full-document
 React render — the template parsed by `document.ts`, manual pump, per-flush push
 collector, shell receiver stub, onError — effects recovery first, no error log

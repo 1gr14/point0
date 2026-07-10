@@ -233,10 +233,10 @@ response there's no `data`. A returned `Error` is thrown; a returned
 `RedirectTask` redirects.
 
 Whether the transformer runs is decided by one request header,
-`X-Point0-Transform`, not by who's calling — so any caller, point0 or not, can
+`x-point0-transform`, not by who's calling — so any caller, point0 or not, can
 opt in or out:
 
-- **`X-Point0-Transform: true`** — point0 serializes the response with your
+- **`x-point0-transform: true`** — point0 serializes the response with your
   [`.transformer`](transformer), and a client that deserializes with the same
   transformer gets `Date` / `bigint` back as real values. point0's own client
   sets this header automatically when it fetches the endpoint.

@@ -5,6 +5,12 @@ import type { ClassLikeError0, ErrorPoint0 } from './error.js'
 import { log } from './logger.js'
 import type { DataTransformerExtended } from './types.js'
 import { getClientPoints } from './helpers.js'
+import {
+  POINT0_PUSH_QUERY_BUFFER_GLOBAL,
+  POINT0_PUSH_QUERY_GLOBAL,
+  POINT0_PUSH_RSC_BUFFER_GLOBAL,
+  POINT0_PUSH_RSC_GLOBAL,
+} from './protocol.js'
 import { RedirectTask } from './redirect.js'
 import { rscComponentsRegistry, rscDataHasElements, rscHolesRegistry } from './rsc.js'
 import { superstore } from './super-store.js'
@@ -182,8 +188,8 @@ export const installPushedQueriesReceiver = (transformer: DataTransformerExtende
     return
   }
   const w = window as unknown as {
-    __POINT0_PUSH_QUERY__?: (serialized: string) => void
-    __POINT0_PUSH_QUERY_BUFFER__?: string[]
+    [POINT0_PUSH_QUERY_GLOBAL]?: (serialized: string) => void
+    [POINT0_PUSH_QUERY_BUFFER_GLOBAL]?: string[]
   }
   const receive = (serialized: string): void => {
     const logFailure = (error: unknown): void => {
@@ -239,9 +245,9 @@ export const installPushedQueriesReceiver = (transformer: DataTransformerExtende
       logFailure(error)
     }
   }
-  const buffered = w.__POINT0_PUSH_QUERY_BUFFER__ ?? []
-  w.__POINT0_PUSH_QUERY__ = receive
-  w.__POINT0_PUSH_QUERY_BUFFER__ = []
+  const buffered = w[POINT0_PUSH_QUERY_BUFFER_GLOBAL] ?? []
+  w[POINT0_PUSH_QUERY_GLOBAL] = receive
+  w[POINT0_PUSH_QUERY_BUFFER_GLOBAL] = []
   for (const serialized of buffered) {
     receive(serialized)
   }
@@ -306,12 +312,12 @@ export const installPushedRscReceiver = (transformer: DataTransformerExtended): 
     return Promise.resolve()
   }
   const w = window as unknown as {
-    __POINT0_PUSH_RSC__?: (serialized: string) => void
-    __POINT0_PUSH_RSC_BUFFER__?: string[]
+    [POINT0_PUSH_RSC_GLOBAL]?: (serialized: string) => void
+    [POINT0_PUSH_RSC_BUFFER_GLOBAL]?: string[]
   }
-  const buffered = w.__POINT0_PUSH_RSC_BUFFER__ ?? []
-  w.__POINT0_PUSH_RSC__ = (serialized: string) => void applyPushedRscFill(transformer, serialized)
-  w.__POINT0_PUSH_RSC_BUFFER__ = []
+  const buffered = w[POINT0_PUSH_RSC_BUFFER_GLOBAL] ?? []
+  w[POINT0_PUSH_RSC_GLOBAL] = (serialized: string) => void applyPushedRscFill(transformer, serialized)
+  w[POINT0_PUSH_RSC_BUFFER_GLOBAL] = []
   // The buffered pushes arrived BEFORE hydration; `mount()` awaits the returned promise before
   // hydrateRoot so these holes are FILLED when React hydrates their boundaries. A hole still
   // suspended at hydration would leave the server-streamed content INERT — React abandons a

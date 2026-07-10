@@ -17,6 +17,7 @@ export default defineConfig({
     'src/mcp.ts',
     'src/port.ts',
     'src/meta.ts',
+    'src/protocol.ts',
     'src/publicdir.ts',
     'src/render.ts',
     'src/server-hot-store.ts',

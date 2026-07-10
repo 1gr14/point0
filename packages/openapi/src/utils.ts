@@ -1,4 +1,9 @@
-import { POINT0_QUERY_GET_INPUT_SEARCH_PARAM, toCamelCase } from '@point0/core'
+import {
+  POINT0_OUTPUT_TYPE_HEADER,
+  POINT0_QUERY_GET_INPUT_SEARCH_PARAM,
+  POINT0_TRANSFORM_HEADER,
+  toCamelCase,
+} from '@point0/core'
 import type {
   InputSchema,
   PointSsrResolved,
@@ -26,7 +31,7 @@ type OpenapiOptionsGeneral = {
  * Document-level options for {@link getOpenapiSchemaFromPoints} and the {@link openapi} middleware: any top-level OpenAPI
  * document field (`info`, `servers`, `tags`, `security`, `components`, …) merged into the output with your values
  * overriding the generated ones, plus a few Point0 extras — `models` (named schemas for `components.schemas` and `$ref`
- * dedup), `helpers` (schema helpers), and `hideTransformHeader` (drop the auto-added `X-Point0-Transform` header). The
+ * dedup), `helpers` (schema helpers), and `hideTransformHeader` (drop the auto-added `x-point0-transform` header). The
  * `openapi` version string discriminates: a `'3.1...'` value selects the OpenAPI 3.1 types.
  *
  * Full reference: https://1gr14.dev/point0/latest/openapi
@@ -357,16 +362,17 @@ const getOpenapiSchemaFromPoint = (
     options?.ssrDefaultOptionsByScope?.get(normalizedPoint.scope)?.enabled ??
     normalizedPoint._getSsrEnabled()
   if (normalizedPoint.type === 'page' && pointSsr) {
-    const outputTypeParameterName = 'X-Point0-Output-Type'
     const outputTypeEnum = normalizedPoint._hasServerLoader
       ? ['data', 'queryClientDehydratedState', 'html']
       : ['queryClientDehydratedState', 'html']
+    // Header names are case-insensitive, so a hand-written parameter spelled `X-Point0-Output-Type` describes the same
+    // header we are about to add — drop it either way rather than emitting the parameter twice.
     const normalizedParameters = parameters.filter((parameter) => {
-      return !(parameter.in === 'header' && parameter.name === outputTypeParameterName)
+      return !(parameter.in === 'header' && parameter.name.toLowerCase() === POINT0_OUTPUT_TYPE_HEADER)
     })
     normalizedParameters.push({
       in: 'header',
-      name: outputTypeParameterName,
+      name: POINT0_OUTPUT_TYPE_HEADER,
       // Inside this branch the page SSRs, so the header is required exactly when there is no server loader (no default
       // `data` output to fall back to).
       required: !normalizedPoint._hasServerLoader,
@@ -381,7 +387,7 @@ const getOpenapiSchemaFromPoint = (
   if (showTransformHeader) {
     parameters.push({
       in: 'header',
-      name: 'X-Point0-Transform',
+      name: POINT0_TRANSFORM_HEADER,
       required: false,
       schema: { type: 'string', enum: ['true', 'false'] },
       description: 'Transform the response body by transformer or not',

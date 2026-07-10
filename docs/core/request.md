@@ -246,7 +246,7 @@ real client IP, not the server's loopback. (`from.server` is the exception: it's
   request came from.
 - `from.scope` is the scope of the **client** that sent the request — usually
   `root`. With several clients it's whichever client the request came from.
-  point0 carries it in the internal `X-Point0-From-Scope` header on its own
+  point0 carries it in the internal `x-point0-from-scope` header on its own
   server-to-server fetch; `null` when no client scope is attached.
 - `from.server` is `true` for an internal request point0 made on the server
   during SSR (see [Server-to-server chains](#server-to-server-chains)).
@@ -409,7 +409,7 @@ prefetched on the first pass reads `1` — and the final total once discovery
 settles; `0` for a plain endpoint request with no SSR (or with
 `ssr.allowedDiscoveryRenders: 0`). It's **read-only**: assigning to it throws
 (getter with no setter). The engine also emits the final total as a dev-only
-`X-Point0-Discovery-Renders` response header.
+`x-point0-discovery-renders` response header.
 
 ### `request.id`
 

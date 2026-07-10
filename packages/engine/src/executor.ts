@@ -38,6 +38,7 @@ import type {
 } from '@point0/core'
 import {
   POINT0_ERROR_CODES_MAP,
+  POINT0_QUERY_KEY_NAMESPACE,
   _point0_env,
   _ss,
   _ssRunWithServerStorageState,
@@ -61,6 +62,7 @@ import { stringify } from 'safe-stable-stringify'
 import type { SsrTarget } from '@point0/core'
 import type { SsrOptionsResolved } from './config.js'
 import type { Engine } from './engine.js'
+import { POINT0_DISCOVERY_RENDERS_HEADER } from './protocol.js'
 
 export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError extends ErrorPoint0 = ErrorPoint0> {
   engine: Engine<RequiredCtx, TError, true>
@@ -1030,7 +1032,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
 
       // Live render-pass counter on the request: while pass N is in flight `request.renders`
       // reads N (in loaders, ctx, middlewares), and once the loop ends it equals the final
-      // total — the same number the dev-only X-Point0-Discovery-Renders header reports. Backed
+      // total — the same number the dev-only x-point0-discovery-renders header reports. Backed
       // by the request cache, so the whole prev/first request chain sees one counter. With a
       // zero budget no render runs, so the counter stays at the passed-in total.
       this.request.cache[REQUEST0_RENDERS_CACHE_KEY] = discoveryRenderAllowed ? rendersCount + 1 : rendersCount
@@ -1095,7 +1097,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         }
         if (!_point0_env.mode.is.production) {
           getEffects().set.headers({
-            'X-Point0-Discovery-Renders': rendersCount.toString(),
+            [POINT0_DISCOVERY_RENDERS_HEADER]: rendersCount.toString(),
           })
         }
         return { rendersCount }
@@ -1352,7 +1354,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       const finalRendersCount = rendersCount + 1
       if (!_point0_env.mode.is.production) {
         getEffects().set.headers({
-          'X-Point0-Discovery-Renders': finalRendersCount.toString(),
+          [POINT0_DISCOVERY_RENDERS_HEADER]: finalRendersCount.toString(),
         })
       }
 
@@ -1421,7 +1423,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       })
       if (redirectTask) {
         const redirectQueryKey: QueryKey = [
-          'point0',
+          POINT0_QUERY_KEY_NAMESPACE,
           {
             ...queryKey[1],
             output: 'queryClientDehydratedStateRedirect',

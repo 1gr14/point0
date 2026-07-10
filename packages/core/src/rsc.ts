@@ -47,14 +47,6 @@ import { generateId } from './utils.js'
 
 /** The marker key carrying an encoded element on the wire. User data keys colliding with it are `$`-escaped. */
 export const RSC_MARKER_KEY = '__p0e'
-/**
- * Header that gates streamed (NDJSON) client fetches for holes — {@link defer} subtrees and promise props alike.
- * Symmetric: the client sends it on a data/query/mutation fetch to say "I can read a streamed body"; the server echoes
- * it on the response to say "this body IS NDJSON — line 1 is the payload, each following line fills a hole". Absent on
- * both sides → a plain single JSON body, so foreign clients, OpenAPI, and server-to-server SSR fetches are untouched (a
- * hole degrades to inline).
- */
-export const POINT0_STREAM_HEADER = 'x-point0-stream'
 const RSC_ESCAPED_KEY_REGEX = /^__p0e\$*$/
 /**
  * Brand on the lazy-reference slot wrapper (see {@link RscComponentsRegistry.resolve}), carrying the component-point

@@ -1,6 +1,11 @@
 import { _point0_env } from './env.js'
 import type { ErrorPoint0 } from './error.js'
 import { log } from './logger.js'
+import {
+  getClientBuildVersionRoutePath,
+  POINT0_CLIENT_BUILD_HEADER,
+  POINT0_CLIENT_BUILD_VERSION_GLOBAL,
+} from './protocol.js'
 
 /**
  * Stale client build — deploy invalidation.
@@ -25,20 +30,9 @@ import { log } from './logger.js'
  * resolves to "unknown" and the navigation behaves exactly as before.
  */
 
-/**
- * Response header carrying the serving client build version, set by the engine on every response attributable to a
- * client scope (SSR HTML, endpoint JSON, static files). Value format: `<scope>:<buildVersion>` — self-describing, so a
- * client runtime only reacts to headers of its OWN scope (a cross-scope fetch must not mark this client stale).
- */
-export const POINT0_CLIENT_BUILD_HEADER = 'X-Point0-Client-Build'
-
-/**
- * URL path (and outdir-relative file path) of a client's build version file. It is emitted INTO the client build output
- * at build time, so it travels with the chunks wherever they are hosted — the point0 server, a static host, or a CDN —
- * and is always fetchable from the same base the chunks load from. Lives under `_point0/<scope>/` — the same reserved
- * namespace family as the `/_point0/<scope>/<type>/<name>` endpoints.
- */
-export const getClientBuildVersionRoutePath = (scope: string): string => `/_point0/${scope}/build-version.json`
+// The wire vocabulary this module speaks lives in `protocol.ts`; re-exported here (and so through
+// `@point0/core/navigation`) because that is where consumers have always imported it from.
+export { getClientBuildVersionRoutePath, POINT0_CLIENT_BUILD_HEADER }
 
 /** Build the {@link POINT0_CLIENT_BUILD_HEADER} value — the parsing counterpart is {@link compareClientBuildHeaderValue}. */
 export const buildClientBuildHeaderValue = ({ scope, buildVersion }: { scope: string; buildVersion: string }): string =>
@@ -108,7 +102,7 @@ export const resolveStaleReaction = async ({
 declare global {
   interface Window {
     /** The client build version injected into the HTML by the build / SSR render. Absent in dev. */
-    __POINT0_CLIENT_BUILD_VERSION__?: string
+    [POINT0_CLIENT_BUILD_VERSION_GLOBAL]?: string
   }
 }
 
@@ -117,7 +111,7 @@ export const getClientBuildVersion = (): string | undefined => {
   if (typeof window === 'undefined') {
     return undefined
   }
-  const version = window.__POINT0_CLIENT_BUILD_VERSION__
+  const version = window[POINT0_CLIENT_BUILD_VERSION_GLOBAL]
   return typeof version === 'string' && version.length > 0 ? version : undefined
 }
 

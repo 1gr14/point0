@@ -1,6 +1,7 @@
 import { Route0 } from '@1gr14/route0'
 import type { AnyLocation, ExactLocation } from '@1gr14/route0'
 import type { ErrorPoint0 } from './error.js'
+import { POINT0_FROM_SCOPE_HEADER } from './protocol.js'
 import type { IsAny, PagePoint, RequestableReadyPoint } from './types.js'
 import { generateId } from './utils.js'
 
@@ -175,7 +176,7 @@ export class Request0<
           if (cachedScope !== undefined) {
             return cachedScope
           }
-          cachedScope = original.headers.get('X-Point0-From-Scope') || null
+          cachedScope = original.headers.get(POINT0_FROM_SCOPE_HEADER) || null
           return cachedScope
         },
         get server(): boolean {
@@ -254,7 +255,7 @@ export class Request0<
    * How many SSR DISCOVERY renders the engine has run for this request — the passes that discover queries and stabilize
    * SSR stores/cookies. The final render (the one that becomes the response) is not counted: it always happens exactly
    * once. Live during SSR (the pass currently in flight — a loader prefetched on the first pass reads `1`), the final
-   * total once discovery settles (the same number the dev-only `X-Point0-Discovery-Renders` header reports). `0` when
+   * total once discovery settles (the same number the dev-only `x-point0-discovery-renders` header reports). `0` when
    * nothing was SSR-rendered (plain endpoint requests) or with `ssr.allowedDiscoveryRenders: 0`. Read-only from the
    * outside: backed by `cache[REQUEST0_RENDERS_CACHE_KEY]` and written only by the engine.
    */

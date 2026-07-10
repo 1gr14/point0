@@ -14,6 +14,7 @@ import type { BunPlugin, Serve } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
 import type { ViteDevServer } from 'vite'
+import { POINT0_FORWARDED_FROM_DEV_CLIENT_HEADER } from './protocol.js'
 import type { EngineClient } from './client.js'
 import type {
   EngineOptionsCompilerSpecificParsed,
@@ -558,7 +559,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     if (this.itWasBuilt) {
       return undefined
     }
-    const forwardedFromClientScope = request.headers.get('X-Point0-Forwarded-From-Dev-Client')
+    const forwardedFromClientScope = request.headers.get(POINT0_FORWARDED_FROM_DEV_CLIENT_HEADER)
     if (forwardedFromClientScope) {
       return undefined
     }

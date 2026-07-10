@@ -4,6 +4,7 @@ import {
   installPushedRscReceiver,
   log,
   markClientHydrationFinished,
+  POINT0_DEHYDRATED_SUPER_STORE_GLOBAL,
   rscComponentsRegistry,
   superstore,
 } from '@point0/core'
@@ -34,15 +35,15 @@ export function mount(
 
   const clientPoints = ClientPoints.createFromDefintion(points)
   clientPoints.mount()
-  const __POINT0_DEHYDRATED_SUPER_STORE__ =
+  const dehydratedSuperStore =
     typeof window !== 'undefined' &&
     (
       window as unknown as {
-        __POINT0_DEHYDRATED_SUPER_STORE__: string | undefined
+        [POINT0_DEHYDRATED_SUPER_STORE_GLOBAL]: string | undefined
       }
-    ).__POINT0_DEHYDRATED_SUPER_STORE__
-  if (__POINT0_DEHYDRATED_SUPER_STORE__) {
-    superstore.prepare(__POINT0_DEHYDRATED_SUPER_STORE__, clientPoints.transformer)
+    )[POINT0_DEHYDRATED_SUPER_STORE_GLOBAL]
+  if (dehydratedSuperStore) {
+    superstore.prepare(dehydratedSuperStore, clientPoints.transformer)
   }
   // Streamed suspense-query pushes: replace the prefix's buffering stub with the real receiver and
   // drain what already arrived — before hydrateRoot, so pushed data is in the cache when React

@@ -15,7 +15,7 @@ docs/engine/deploy.md ("Stale clients after a deploy").
    dist index.html (`window.__POINT0_CLIENT_BUILD_VERSION__` + an entry-load
    reload guard).
 2. The SERVER echoes the version on every response it can attribute to a client
-   scope: `X-Point0-Client-Build: <scope>:<version>`.
+   scope: `x-point0-client-build: <scope>:<version>`.
 3. The CLIENT compares the header against its own version on every point0 fetch
    — a mismatch marks the tab stale (proactive channel) — and classifies a
    failed page-chunk import during navigation (reactive channel), confirming
@@ -75,7 +75,7 @@ check resolves to "unknown" and nothing reacts.
 - `packages/engine/src/fetcher.ts` → `setClientBuildHeaderEffect` — called in
   `fetchDetailed` right before `effects.apply(...)`, the one choke point every
   response passes. Finds the client by `prepareFetchResult.scope`, sets
-  `X-Point0-Client-Build: <scope>:<version>` (value built by core's
+  `x-point0-client-build: <scope>:<version>` (value built by core's
   `buildClientBuildHeaderValue`; the scope prefix makes it self-describing, so a
   cross-scope fetch never marks the wrong client stale). Off in dev
   (`itWasBuilt` gate).

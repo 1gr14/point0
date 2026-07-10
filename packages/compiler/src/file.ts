@@ -29,6 +29,7 @@ import remarkMdxFrontmatter from 'remark-mdx-frontmatter'
 import type { Compiler, CompilerEnvConsts, ImportsTraceResult } from './compiler.js'
 import { resolveImporterRule, writeOrCreateVirtualModulePath, type ImporterOptionsParsed } from './importer.js'
 import { CompilerPoint, POINT_METHOD_TO_TYPE_MAP } from './point.js'
+import { POINT0_INTERMEDIATE_SOURCE_LABEL_PREFIX } from './protocol.js'
 import { FileResolver } from './resolver.js'
 import { getHash, normalizeEnvConsts, toPosixPath } from './utils.js'
 import type { Walker } from './walker.js'
@@ -643,11 +644,8 @@ export class CompilerFile<THasContent extends boolean> {
   private _preUserBabelMap: GeneratorResult['map'] | undefined = undefined
   // A synthetic label distinct from this.abs, used as the intermediate file's identity in
   // map2's `sources` array. Remapping uses this to know when to recurse into map1.
-  // We use a `\0`-prefixed scheme so downstream source-map consumers (Vite, bun, devtools)
-  // treat it as an opaque identifier rather than a file path: anything that tries to URL-
-  // decode, normalize, or resolve the path will leave a `\0`-prefixed string alone.
   private get intermediateSourceLabel(): string {
-    return `\0point0-pre-user-babel:${this.abs}`
+    return `${POINT0_INTERMEDIATE_SOURCE_LABEL_PREFIX}${this.abs}`
   }
 
   private _applyUserBabelPlugins: { ok: boolean; errors: unknown[]; modified: boolean } | undefined = undefined

@@ -7,7 +7,7 @@ setDefaultTimeout(45000)
 
 // The per-point SSR switch, end-to-end: a temp dev project (bun bundler, ports 4000-4049) driven
 // through real Chromium plus raw `fetch()` of the page URLs for the server HTML + the dev-only
-// `X-Point0-Discovery-Renders` header. Proves three things the in-process harness cannot observe
+// `x-point0-discovery-renders` header. Proves three things the in-process harness cannot observe
 // from HTTP: a plain page is server-rendered (SSR on), `.ssr(false)` ships the bare shell and lets
 // the browser render the body (an SPA section), and `.ssr({ allowedDiscoveryRenders })` caps the
 // SSR discovery-pass count per page. See scripts/slow-tests.ts — this is a SLOW shard (dev boot +

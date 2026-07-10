@@ -313,7 +313,7 @@ produced:
   runs.
 - **From a mutation or query** (a point fetched by the point0 client) — there is
   no HTTP redirect. The redirect comes back to the client as a serialized
-  instruction (tagged with an `X-Point0-Redirect` header), and the client
+  instruction (tagged with an `x-point0-redirect` header), and the client
   performs the navigation itself — client-side, SPA-style, no full page reload.
 
 `<Redirect>` also takes a `task` prop directly:
@@ -599,7 +599,7 @@ gone — exactly what a fresh deploy requires.
 
 Detection is always on and free:
 
-- **Every server response** carries an `X-Point0-Client-Build` header with the
+- **Every server response** carries an `x-point0-client-build` header with the
   build version it serves. The client compares it with its own version (injected
   into the HTML at build time); a mismatch marks the tab stale, and the next
   navigation goes as a document navigation without even trying the old chunks.
