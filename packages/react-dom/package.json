@@ -56,7 +56,7 @@
     "format": "prettier --write ."
   },
   "peerDependencies": {
-    "@1gr14/route0": "^0.1.0",
+    "@1gr14/route0": "^0.1.3",
     "@point0/core": "^0.2.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -69,7 +69,7 @@
     "react-dom": "^19.2.7",
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
-    "@1gr14/route0": "^0.1.0",
+    "@1gr14/route0": "^0.1.3",
     "@point0/core": "^0.2.3",
     "wouter": "^3.10.0",
     "@types/bun": "^1.3.14",

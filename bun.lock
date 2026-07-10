@@ -7,7 +7,7 @@
       "dependencies": {
         "@1gr14/error0": "^0.4.7",
         "@1gr14/flat": "^0.1.4",
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
       },
       "devDependencies": {
         "@commitlint/cli": "^21.0.2",
@@ -38,7 +38,7 @@
       "dependencies": {
         "@1gr14/error0": "^0.4.7",
         "@1gr14/flat": "^0.1.4",
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@point0/basic-auth": "^0.2.3",
         "@point0/cache-control": "^0.2.3",
         "@point0/compiler": "^0.2.3",
@@ -84,7 +84,7 @@
       "dependencies": {
         "@1gr14/error0": "^0.4.7",
         "@1gr14/flat": "^0.1.4",
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@point0/basic-auth": "^0.2.3",
         "@point0/cache-control": "^0.2.3",
         "@point0/compiler": "^0.2.3",
@@ -129,7 +129,7 @@
       "version": "0.2.3",
       "dependencies": {
         "@1gr14/error0": "^0.4.7",
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@capacitor/core": "^8.4.0",
         "@point0/compiler": "^0.2.3",
         "@point0/core": "^0.2.3",
@@ -194,7 +194,7 @@
       "dependencies": {
         "@1gr14/error0": "^0.4.7",
         "@1gr14/flat": "^0.1.4",
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@point0/basic-auth": "^0.2.3",
         "@point0/cache-control": "^0.2.3",
         "@point0/compiler": "^0.2.3",
@@ -305,7 +305,7 @@
       },
       "peerDependencies": {
         "@1gr14/flat": "^0.1.4",
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@point0/core": "^0.2.3",
         "typescript": "^6.0.3",
       },
@@ -334,7 +334,7 @@
       },
       "devDependencies": {
         "@1gr14/flat": "^0.1.4",
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@sinclair/typebox": "^0.34.49",
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
@@ -355,7 +355,7 @@
       },
       "peerDependencies": {
         "@1gr14/flat": "^0.1.4",
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@sinclair/typebox": "^0.34.49",
         "@sodaru/yup-to-json-schema": "^2.0.1",
         "@tanstack/react-query": "^5.101.0",
@@ -389,8 +389,8 @@
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@point0/core": "^0.1.12",
-        "@point0/engine": "^0.1.12",
+        "@point0/core": "^0.2.3",
+        "@point0/engine": "^0.2.3",
       },
     },
     "packages/create-app": {
@@ -417,7 +417,7 @@
       "dependencies": {
         "@1gr14/error0": "^0.4.7",
         "@1gr14/flat": "^0.1.4",
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@point0/basic-auth": "^0.2.3",
         "@point0/cache-control": "^0.2.3",
         "@point0/compiler": "^0.2.3",
@@ -515,7 +515,7 @@
       "devDependencies": {
         "@1gr14/error0": "^0.4.7",
         "@1gr14/flat": "^0.1.4",
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@point0/docs": "^0.2.3",
         "@tanstack/query-core": "^5.101.0",
         "@testing-library/react": "^16.3.1",
@@ -541,7 +541,7 @@
       },
       "peerDependencies": {
         "@1gr14/flat": "^0.1.4",
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@point0/compiler": "^0.2.3",
         "@point0/core": "^0.2.3",
         "@tanstack/react-query": "^5.101.0",
@@ -554,12 +554,12 @@
       "name": "@point0/test-one-client",
       "version": "0.2.3",
       "dependencies": {
-        "@1gr14/route0": "^0.1.0",
-        "@point0/compiler": "^0.1.0-next.3",
-        "@point0/core": "^0.1.0-next.3",
-        "@point0/cors": "^0.1.0-next.3",
-        "@point0/engine": "^0.1.0-next.3",
-        "@point0/react-dom": "^0.1.0-next.3",
+        "@1gr14/route0": "^0.1.3",
+        "@point0/compiler": "^0.2.3",
+        "@point0/core": "^0.2.3",
+        "@point0/cors": "^0.2.3",
+        "@point0/engine": "^0.2.3",
+        "@point0/react-dom": "^0.2.3",
         "react": "^19.2.7",
         "react-dom": "^19.2.7",
         "server-only": "^0.0.1",
@@ -581,12 +581,12 @@
       "name": "@point0/test-two-clients",
       "version": "0.2.3",
       "dependencies": {
-        "@1gr14/route0": "^0.1.0",
-        "@point0/compiler": "^0.1.0-next.3",
-        "@point0/core": "^0.1.0-next.3",
-        "@point0/cors": "^0.1.0-next.3",
-        "@point0/engine": "^0.1.0-next.3",
-        "@point0/react-dom": "^0.1.0-next.3",
+        "@1gr14/route0": "^0.1.3",
+        "@point0/compiler": "^0.2.3",
+        "@point0/core": "^0.2.3",
+        "@point0/cors": "^0.2.3",
+        "@point0/engine": "^0.2.3",
+        "@point0/react-dom": "^0.2.3",
         "react": "^19.2.7",
         "react-dom": "^19.2.7",
         "server-only": "^0.0.1",
@@ -630,7 +630,7 @@
       "name": "@point0/react-dom",
       "version": "0.2.3",
       "devDependencies": {
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@point0/core": "^0.2.3",
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
@@ -643,7 +643,7 @@
         "wouter": "^3.10.0",
       },
       "peerDependencies": {
-        "@1gr14/route0": "^0.1.0",
+        "@1gr14/route0": "^0.1.3",
         "@point0/core": "^0.2.3",
         "@types/react": "^19.2.16",
         "@types/react-dom": "^19.2.3",
@@ -662,7 +662,7 @@
   "catalog": {
     "@1gr14/error0": "^0.4.7",
     "@1gr14/flat": "^0.1.4",
-    "@1gr14/route0": "^0.1.0",
+    "@1gr14/route0": "^0.1.3",
     "@huggingface/transformers": "^4.2.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@orama/orama": "^3.1.18",
@@ -710,7 +710,7 @@
 
     "@1gr14/flat": ["@1gr14/flat@0.1.4", "", {}, "sha512-M5QU8ShQojb/bI6I/otPOmENWLtp07fmE9jusKaLjmc9LUj9Owbrwk3JhbK47sMD10RrIkiJ+tuv3cW4Nh3SkQ=="],
 
-    "@1gr14/route0": ["@1gr14/route0@0.1.2", "", { "peerDependencies": { "@1gr14/flat": "^0.1.0", "@standard-schema/spec": "^1.0.0" }, "optionalPeers": ["@standard-schema/spec"] }, "sha512-YbbxkbSuNY82ITyaU4bhkqsTlJfMsiq7+98w/XMOYVNIpUdk0jQMEYxaLxytUXJI4VFCvwIho790UFqF36FZ/g=="],
+    "@1gr14/route0": ["@1gr14/route0@0.1.3", "", { "peerDependencies": { "@1gr14/flat": "^0.1.0", "@standard-schema/spec": "^1.0.0" }, "optionalPeers": ["@standard-schema/spec"] }, "sha512-/eMOzgH8B8eWic7JLUux/74Jh6uRoVDyTQR2LJgNwCUKaUnK1zQQ5elSZI1dFd69S9H5kq5o57/yvAU1e1iRZA=="],
 
     "@adobe/css-tools": ["@adobe/css-tools@4.5.0", "", {}, "sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q=="],
 

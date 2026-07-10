@@ -13,7 +13,7 @@
     "types:6": "tsc --noEmit -p tsconfig.build.json"
   },
   "dependencies": {
-    "@1gr14/route0": "^0.1.0",
+    "@1gr14/route0": "^0.1.3",
     "@point0/compiler": "^0.2.3",
     "@point0/core": "^0.2.3",
     "@point0/cors": "^0.2.3",
