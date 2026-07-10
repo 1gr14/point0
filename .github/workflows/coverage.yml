@@ -1,0 +1,114 @@
+name: coverage
+
+# Line coverage → Codecov. Ubuntu only, and NEVER a gate.
+#
+# What runs: exactly the classes Bun can instrument — `unit` and `int`, i.e. code executed inside the `bun test`
+# process. The `.e2e` files are absent on purpose: they spawn `point0 dev|build|start` as child processes and drive a
+# real browser, and Bun instruments neither. See dev/docs/coverage.md.
+#
+# Shape: the same plan the test matrix uses (scripts/test.ts --plan, forwarded by scripts/ci-decide.ts), so nothing is
+# hardcoded twice — one runner per fast-lane group, plus one runner per solo `.int` heavy. Every shard uploads its own
+# lcov and Codecov merges the uploads for the commit, which is why there is no merge job here.
+#
+# Auth is OIDC, not a token — same posture as the npm publish. That needs `id-token: write`, which a fork PR never gets,
+# so the caller skips this workflow for forks rather than letting it fail.
+#
+# Cross-OS is pointless here: coverage measures which LINES ran, and that doesn't change with the runner.
+on:
+  workflow_call:
+    inputs:
+      groups:
+        description: 'JSON array of fast-lane group ids (scripts/test.ts --plan), one runner each'
+        required: true
+        type: string
+      soloInt:
+        description: 'JSON array of solo .int files (the heavies), one runner each'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  coverage:
+    name: coverage ${{ matrix.shard }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.groups) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # The tests resolve `@point0/*` to src (tsconfig paths), but `bun run setup` and the temp test projects run the
+      # real `point0` bin — so the shared dist artifact is still required.
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: .
+      - name: Install dependencies
+        uses: ./.github/actions/install
+      - name: Setup (codegen for examples/templates)
+        run: bun run setup
+      - name: Run group ${{ matrix.shard }} with coverage
+        run: bun scripts/test.ts --group ${{ matrix.shard }} --coverage
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: ./coverage/lcov.info
+          flags: ${{ matrix.shard }}
+          disable_search: true
+          # Coverage is a read-out, not a verdict: a Codecov hiccup must never fail a run.
+          fail_ci_if_error: false
+
+  coverage-solo:
+    name: coverage ${{ matrix.file }}
+    strategy:
+      fail-fast: false
+      matrix:
+        file: ${{ fromJSON(inputs.soloInt) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: .
+      - name: Install dependencies
+        uses: ./.github/actions/install
+      - name: Setup (codegen for examples/templates)
+        run: bun run setup
+      # No Playwright: these are the heavy `.int` files (cli, mcp, publicdir, module-preload-serve), never `.e2e`.
+      - name: Run solo file with coverage
+        run: bun scripts/test.ts --file ${{ matrix.file }} --coverage
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: ./coverage/lcov.info
+          flags: solo
+          disable_search: true
+          fail_ci_if_error: false

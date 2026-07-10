@@ -7,3 +7,22 @@ linkWorkspacePackages = true
 
 [run]
 noOrphans = true
+
+# Coverage SHAPE only — this does not turn coverage on. It stays off for the fast dev loop and is
+# switched on per run by `scripts/test.ts --coverage` (see dev/docs/coverage.md).
+#
+# `dist` is deliberately NOT ignored. A sibling package should always be loaded from its `src` (each
+# package's tsconfig.json maps `@point0/*` there), so a dist file appearing in a report means that
+# mapping is missing — scripts/coverage.ts drops those hits and names the package. Ignoring dist here
+# would hide the mistake instead.
+[test]
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "**/node_modules/**",
+  "**/tests/**",
+  "**/*.test.*",
+  "**/*.spec.*",
+  "**/generated/**",
+  "examples/**",
+  "scripts/**",
+]

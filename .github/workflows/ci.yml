@@ -45,6 +45,7 @@ jobs:
       oses: ${{ steps.d.outputs.oses }}
       groups: ${{ steps.d.outputs.groups }}
       solo: ${{ steps.d.outputs.solo }}
+      soloInt: ${{ steps.d.outputs.soloInt }}
     steps:
       # fetch-depth: 0 so the docs-only diff below has both the PR base and head commits available.
       - uses: actions/checkout@v6
@@ -79,7 +80,8 @@ jobs:
 
   # Build ONCE (ubuntu-only) → `dist` artifact. Runs on EVERY gate run — `check` needs it even on a
   # docs-only PR (type-aware lint resolves @point0/* from dist), and the test shards download it instead
-  # of each building per-OS, so every runner exercises the exact bytes that ship.
+  # of each building per-OS, so the bytes that ship are the ones the e2e/heavy-int lane and the lint ran
+  # against (the unit/int lane runs src on purpose — see build.yml's header).
   build:
     needs: decide
     uses: ./.github/workflows/build.yml
@@ -99,6 +101,25 @@ jobs:
       oses: ${{ needs.decide.outputs.oses }}
       groups: ${{ needs.decide.outputs.groups }}
       solo: ${{ needs.decide.outputs.solo }}
+
+  # Line coverage → Codecov (dev/docs/coverage.md). Deliberately OUTSIDE `gate`'s `needs`: a flake in the coverage
+  # lane must never turn a green PR red. Skipped when `test` is (a docs-only PR has no coverage to report) and on
+  # fork PRs, which get no `id-token` for Codecov's OIDC upload and would only fail at the last step.
+  #
+  # OFF by default — it re-runs the whole unit+int suite on ubuntu, and there's nowhere to upload to until the
+  # repo is enabled on codecov.io. Turn it on by creating the repository variable ENABLE_COVERAGE=1
+  # (Settings → Secrets and variables → Actions → Variables); no code change needed. Locally `bun run cov`
+  # works regardless. Why coverage doesn't piggyback on the gating test matrix: dev/docs/coverage.md.
+  coverage:
+    needs: [decide, build]
+    if: vars.ENABLE_COVERAGE == '1' && needs.decide.outputs.oses != '[]' && !github.event.pull_request.head.repo.fork
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/coverage.yml
+    with:
+      groups: ${{ needs.decide.outputs.groups }}
+      soloInt: ${{ needs.decide.outputs.soloInt }}
 
   # The single required status check. Because build/check/test are reusable-workflow calls, skipping one (a
   # docs-only PR skips `test`) makes its nested contexts NEVER report — a bare required `test / fast …` would

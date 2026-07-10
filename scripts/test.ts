@@ -32,15 +32,23 @@
  *     bun scripts/test.ts slow            # the solo lane only: SOLO_INT + e2e
  *     bun scripts/test.ts --file <path>   # specific file(s), guard included (repeatable)
  *     bun scripts/test.ts --group <id>    # one planned CI group (what a fast-lane runner executes)
+ *     bun scripts/test.ts --coverage      # ...also collect line coverage (see below, and dev/docs/coverage.md)
  *     bun scripts/test.ts --plan          # print the CI plan as JSON (consumed by scripts/ci-decide.ts)
  *     bun scripts/test.ts --list          # print every file with its class and lane
+ *
+ * Coverage: every file already runs in its own process, so `--coverage` gives each one its own
+ * `coverage/raw/<slug>/lcov.info` and hands the pile to {@link generateCoverageReport}, which merges them. It is
+ * meaningful only for `unit`/`int` — `.e2e` files do their work in spawned child processes and a browser, neither of
+ * which Bun can instrument.
  *
  * Env: TEST_PARALLEL_LIMIT (parallel-phase concurrency, default cpus), TEST_FILE_TIMEOUT_MS (default 5 min),
  * TEST_SOLO_FILE_TIMEOUT_MS (solo/e2e lane, default 15 min), TEST_FILE_RETRIES (default 1), LIVE_TEST_OUTPUT=1 (stream
  * output instead of buffering).
  */
+import * as nodeFs from 'node:fs'
 import { cpus } from 'node:os'
 import * as nodePath from 'node:path'
+import { generateCoverageReport, printCoverageSummary } from './coverage.js'
 
 export type TestClass = 'unit' | 'int' | 'e2e'
 
@@ -264,7 +272,11 @@ const reapTestBrowsers = async () => {
 
 type RunResult = { code: number; output: string; timedOut: boolean }
 
-const runOnce = async (file: string, timeoutMs: number): Promise<RunResult> => {
+/** Where a file's own `bun test --coverage` writes its lcov shard. One dir per file — processes never share. */
+export const COVERAGE_RAW_DIR = 'coverage/raw'
+const coverageDirOf = (file: string) => `${COVERAGE_RAW_DIR}/${file.replace(/[^a-zA-Z0-9]+/g, '-')}`
+
+const runOnce = async (file: string, timeoutMs: number, coverage: boolean): Promise<RunResult> => {
   let output = ''
   const decoder = new TextDecoder()
   const terminal = liveTestOutput
@@ -277,8 +289,12 @@ const runOnce = async (file: string, timeoutMs: number): Promise<RunResult> => {
         },
       })
 
+  // `lcov` only, never `text`: the per-file text table would drown the run's own log, and coverage.ts reads lcov.
+  const coverageArgs = coverage
+    ? ['--coverage', '--coverage-reporter=lcov', `--coverage-dir=${coverageDirOf(file)}`]
+    : []
   const proc = Bun.spawn({
-    cmd: ['bun', 'test', file],
+    cmd: ['bun', 'test', ...coverageArgs, file],
     cwd: ROOT,
     stdout: liveTestOutput ? 'inherit' : undefined,
     stderr: liveTestOutput ? 'inherit' : undefined,
@@ -319,18 +335,18 @@ const runOnce = async (file: string, timeoutMs: number): Promise<RunResult> => {
 
 type FileOutcome = { file: string; code: number; output: string; warning?: string }
 
-const runFile = async (file: string, timeoutMs: number): Promise<FileOutcome> => {
+const runFile = async (file: string, timeoutMs: number, coverage: boolean): Promise<FileOutcome> => {
   const started = Date.now()
   // START breadcrumb, flushed immediately (NOT buffered into the per-file Terminal): if the phase hangs, the
   // log shows every ▶ with no matching ✓/✗ — that's the file that froze the runner.
   process.stdout.write(`▶ ${file}\n`)
 
-  let result = await runOnce(file, timeoutMs)
+  let result = await runOnce(file, timeoutMs, coverage)
   // "Passed but the process wouldn't exit" is NOT a failure and NOT worth a retry — the assertions ran green.
   let hungAfterPass = result.timedOut && passedButWouldNotExit(result.output)
   for (let attempt = 1; result.timedOut && !hungAfterPass && attempt <= FILE_RETRIES; attempt++) {
     process.stdout.write(`⟲ ${file} timed out — retry ${attempt}/${FILE_RETRIES} on a fresh process\n`)
-    result = await runOnce(file, timeoutMs)
+    result = await runOnce(file, timeoutMs, coverage)
     hungAfterPass = result.timedOut && passedButWouldNotExit(result.output)
   }
 
@@ -345,7 +361,7 @@ const runFile = async (file: string, timeoutMs: number): Promise<FileOutcome> =>
   return { file, code, output: result.output, warning }
 }
 
-const runParallel = async (files: readonly string[]): Promise<FileOutcome[]> => {
+const runParallel = async (files: readonly string[], coverage: boolean): Promise<FileOutcome[]> => {
   const maxParallel = Number(process.env.TEST_PARALLEL_LIMIT ?? cpus().length)
   const limit = Number.isFinite(maxParallel) && maxParallel > 0 ? maxParallel : 1
   if (files.length === 0) return []
@@ -355,26 +371,26 @@ const runParallel = async (files: readonly string[]): Promise<FileOutcome[]> => 
   const runNext = async (): Promise<void> => {
     const i = index++
     if (i >= files.length) return
-    outcomes.push(await runFile(files[i], FILE_TIMEOUT_MS))
+    outcomes.push(await runFile(files[i], FILE_TIMEOUT_MS, coverage))
     await runNext()
   }
   await Promise.all(Array.from({ length: Math.min(limit, files.length) }, runNext))
   return outcomes
 }
 
-const runSolo = async (files: readonly string[]): Promise<FileOutcome[]> => {
+const runSolo = async (files: readonly string[], coverage: boolean): Promise<FileOutcome[]> => {
   // Solo files run STRICTLY one per process, sequentially — never a combined `bun test`. Each boots a full
   // dev/build tree (and the e2e ones a browser); sharing a process bleeds module-level state and ports, and
   // running them concurrently stacks resource pressure — the documented CI flake source.
   const outcomes: FileOutcome[] = []
   for (const file of files) {
-    outcomes.push(await runFile(file, SOLO_FILE_TIMEOUT_MS))
+    outcomes.push(await runFile(file, SOLO_FILE_TIMEOUT_MS, coverage))
     await reapTestBrowsers() // between files, never during one — Windows accumulates leaked headless shells
   }
   return outcomes
 }
 
-const report = async (outcomes: readonly FileOutcome[], startTime: number): Promise<never> => {
+const report = async (outcomes: readonly FileOutcome[], startTime: number, coverage: boolean): Promise<never> => {
   const failed = outcomes.filter((o) => o.code !== 0)
   if (!liveTestOutput) {
     for (const o of outcomes) process.stdout.write(`\n===== ${o.file} =====\n${o.output}`)
@@ -396,6 +412,15 @@ const report = async (outcomes: readonly FileOutcome[], startTime: number): Prom
   await new Promise<void>((resolve) => {
     process.stdout.write(`\n===== Total time: ${formatDuration(Date.now() - startTime)} =====\n`, () => resolve())
   })
+  // Merge the shards LAST, so the coverage summary is the final thing on screen. A merge failure never turns a green
+  // run red: the tests are the verdict, coverage is a read-out.
+  if (coverage) {
+    try {
+      printCoverageSummary(generateCoverageReport())
+    } catch (error) {
+      process.stdout.write(`\n⚠ coverage report failed: ${error instanceof Error ? error.message : String(error)}\n`)
+    }
+  }
   process.exit(failed.length > 0 ? 1 : 0)
 }
 
@@ -428,7 +453,8 @@ if (import.meta.main) {
   const args = process.argv.slice(2)
   const plan_ = args.includes('--plan')
   const list = args.includes('--list')
-  const rest = args.filter((a) => a !== '--plan' && a !== '--list')
+  const coverage = args.includes('--coverage')
+  const rest = args.filter((a) => a !== '--plan' && a !== '--list' && a !== '--coverage')
   const groupIds = collectFlag(rest, 'group')
   const fileArgs = collectFlag(rest, 'file').map((f) => toPosix(nodePath.relative(ROOT, nodePath.resolve(ROOT, f))))
   const selections = rest.filter((a) => !a.startsWith('-')) as Selection[]
@@ -503,6 +529,9 @@ if (import.meta.main) {
     process.exit(0)
   }
 
-  const outcomes = [...(await runParallel(parallelFiles)), ...(await runSolo(soloFiles))]
-  await report(outcomes, startTime)
+  // A stale shard from an earlier run would silently inflate the merge, so the raw dir is rebuilt from scratch.
+  if (coverage) nodeFs.rmSync(nodePath.join(ROOT, COVERAGE_RAW_DIR), { recursive: true, force: true })
+
+  const outcomes = [...(await runParallel(parallelFiles, coverage)), ...(await runSolo(soloFiles, coverage))]
+  await report(outcomes, startTime, coverage)
 }

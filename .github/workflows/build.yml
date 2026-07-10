@@ -1,8 +1,13 @@
 name: build
 
 # Build the framework ONCE — on ubuntu — and publish the result as the single `dist` artifact that every
-# downstream job consumes: the cross-OS test runners AND the publish job. So we test exactly the bytes we
-# ship, the published package is byte-identical to the tested one, and the same code is never built twice.
+# downstream job consumes: the cross-OS test runners AND the publish job. The published package is therefore
+# byte-identical to the artifact the pipeline ran against, and the same code is never built twice.
+#
+# Which jobs actually exercise those bytes: the `.e2e` files and the heavy `.int` ones (they spawn the real
+# `point0` bin and boot temp projects that resolve `@point0/*` through node_modules), plus the type-aware lint.
+# The parallel-lane `unit`/`int` files deliberately do NOT — each package's tsconfig.json maps `@point0/*` onto
+# the sibling's src, so they run the source you edited rather than whatever was last built (dev/docs/coverage.md).
 #
 # Why ubuntu-only is correct (not just cheaper): @point0/* are platform-agnostic JS + .d.ts (tsdown), and what
 # npm receives is this ubuntu build. Users install that prebuilt dist — they never build @point0/* on Windows

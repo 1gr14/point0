@@ -30,7 +30,7 @@
  * Commit-message flags (dash style): --run-tests, optionally `=os,os` (linux/ubuntu, windows/win, macos/mac; bare = all
  * OSes), and --skip-ci.
  */
-import { buildPlan, discoverTestFiles, verifyClasses } from './test.js'
+import { buildPlan, classOf, discoverTestFiles, verifyClasses } from './test.js'
 
 /** The default test matrix. macOS is intentionally out (×10 minutes, POSIX-identical to Linux). */
 export const FULL_OSES = ['ubuntu-latest', 'windows-latest'] as const
@@ -153,10 +153,16 @@ if (import.meta.main) {
   await verifyClasses(files)
   const plan = buildPlan(files)
 
+  // The solo lane minus its e2e files. Coverage instruments only what runs in the test process, and an .e2e file
+  // does its work in a spawned `point0` and a browser — so the coverage matrix takes these four heavies and skips
+  // the rest of the lane. Derived from the plan, never a second hardcoded list.
+  const soloInt = plan.solo.filter((file) => classOf(file) === 'int')
+
   const lines = [
     `oses=${JSON.stringify(result.oses)}`,
     `groups=${JSON.stringify(plan.groups.map((group) => group.id))}`,
     `solo=${JSON.stringify(plan.solo)}`,
+    `soloInt=${JSON.stringify(soloInt)}`,
     `publish=${result.publish}`,
   ]
   for (const line of lines) console.info(line)
