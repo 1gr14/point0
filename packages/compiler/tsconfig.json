@@ -1,3 +1,19 @@
 {
-  "extends": "./tsconfig.build.json"
+  "extends": "./tsconfig.build.json",
+  "compilerOptions": {
+    // Bun applies the tsconfig NEAREST to the importing file, so these decide what `bun test` actually loads for a
+    // sibling package: without them `@point0/core` resolves through node_modules to core's BUILT dist, and the
+    // compiler's tests silently run against whatever core was last built. Every other package that imports a sibling
+    // (engine, openapi, cors, react-dom, …) already maps to src — compiler was the one that didn't. The build is
+    // unaffected: tsdown and `types` both use `tsconfig.build.json`, which has no paths.
+    //
+    // Only the four specifiers the compiler actually IMPORTS are listed. `@point0/core/cold` is absent on purpose:
+    // the compiler matches it as a string marker inside someone else's source, and never resolves it as a module.
+    "paths": {
+      "@point0/core": ["../core/src/index.ts"],
+      "@point0/core/client-only": ["../core/src/client-only.ts"],
+      "@point0/core/server-only": ["../core/src/server-only.ts"],
+      "@point0/core/virtual": ["../core/src/virtual.ts"]
+    }
+  }
 }
