@@ -4869,13 +4869,28 @@ Read more in the docs [about deploy](deploy).
 
 ## Size
 
-The size of Point0's files inside the client bundle.
+What Point0 adds to your client bundle.
 
-- `@point0/core` itself: raw 169.8 KB, gzip 44.4 KB, brotli 38.4 KB
-- Peer dependency `@1gr14/route0`: raw 15.5 KB, gzip 4.9 KB, brotli 4.4 KB
-- Peer dependency `@1gr14/error0`: raw 10.9 KB, gzip 3.2 KB, brotli 2.9 KB
-- Peer dependency `@tanstack/react-query`: raw 49.0 KB, gzip 14.8 KB, brotli
-  13.2
+<!-- point0:size:start -->
+
+Every package a Point0 app ships to the browser, measured as npm delivers it:
+bundled, minified, with `react` and `react-dom` left out because you pay for
+those either way. Each row imports the whole surface of its package, so nothing
+tree-shakes away — these are ceilings, not best cases. **Total** is one bundle
+holding every non-optional row at once: what the browser actually downloads.
+
+| package                 | role                                         |          raw |        gzip |      brotli |
+| ----------------------- | -------------------------------------------- | -----------: | ----------: | ----------: |
+| `@point0/core`          | the framework itself                         |     169.5 KB |     44.1 KB |     38.2 KB |
+| `@point0/react-dom`     | React/DOM bindings — `mount` and the router  |      13.4 KB |      4.9 KB |      4.4 KB |
+| `@1gr14/route0`         | peer — typed routes and URL building         |      19.0 KB |      6.1 KB |      5.5 KB |
+| `@tanstack/react-query` | peer — the cache every loader rides on       |      46.9 KB |     13.9 KB |     12.5 KB |
+| `wouter`                | peer — history and route matching            |       5.6 KB |      2.7 KB |      2.5 KB |
+| `unhead`                | peer — the `<head>`                          |      15.6 KB |      6.2 KB |      5.6 KB |
+| `@1gr14/error0`         | optional peer — typed errors across the wire |      10.8 KB |      3.1 KB |      2.8 KB |
+| **total**               | everything above, minus the optional peer    | **277.3 KB** | **78.5 KB** | **67.5 KB** |
+
+<!-- point0:size:end -->
 
 ## Examples
 

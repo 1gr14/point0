@@ -2,12 +2,13 @@
 
 point0 follows the classic OSS shape: one `main` trunk, contributors fork → PR →
 `main`, and **a `v*` git tag is the only thing that publishes**. Pushing code
-never releases. Six workflow files, one policy script, one test planner.
+never releases. Seven workflow files, one policy script, one test planner.
 
 The pipeline is a single linear path on every trigger:
 
 ```
 decide → build → check → test → gate (ci.yml) / publish (release.yml)
+                     └→ coverage (ci.yml, off to the side — never gates)
 ```
 
 ## Workflows (`.github/workflows/`)
@@ -21,19 +22,29 @@ decide → build → check → test → gate (ci.yml) / publish (release.yml)
 - **`build.yml`** — builds the framework once (ubuntu-only) and uploads the
   single `dist` artifact. Runs on **every** run of the gate and the release —
   `check` and `test` consume the artifact, and on a release so does `publish`,
-  so the checked/tested bytes are the published bytes and the code is never
-  built twice.
+  so the published bytes are the ones the pipeline ran against and the code is
+  never built twice. (Which jobs really exercise those bytes: the `.e2e` and
+  heavy `.int` files, which spawn the real `point0` bin, plus the type-aware
+  lint. The `unit`/`int` lane runs `src` on purpose — see
+  [coverage](./coverage.md).)
 - **`check.yml`** — the reusable format + lint gate (`workflow_call`):
   **downloads the `dist` artifact** (no second build), runs codegen (ESLint is
   type-aware, so it needs the real dist + generated code), then
-  `bun run format:check` (prettier) and `bun run lint:check` (eslint, no fix).
-  Runs on **every** path — including a docs-only PR, where the test matrix is
-  skipped. The pre-commit hook is advisory (`--no-verify` exists); this is the
-  hard gate.
+  `bun run format:check` (prettier), `bun run lint:check` (eslint, no fix) and
+  `bun run size:audit` — which fails if a package reached the browser without a
+  row in [`scripts/size.ts`](../../scripts/size.ts), i.e. if the docs now
+  under-report what a Point0 app downloads. Runs on **every** path — including a
+  docs-only PR, where the test matrix is skipped. The pre-commit hook is
+  advisory (`--no-verify` exists); this is the hard gate.
 - **`test.yml`** — the reusable cross-OS matrix (`workflow_call`, inputs
   `oses` + `groups` + `solo`). Downloads the `dist` artifact rather than
   building. Shared by the gate and the release. See
   [the matrix](#the-test-matrix).
+- **`coverage.yml`** — line coverage → Codecov (`workflow_call`, inputs `groups`
+  and `soloInt`). Ubuntu-only, called from `ci.yml` **outside** the `gate` job's
+  `needs`, so it can never redden a PR. Only `unit`/`int` run: Bun instruments
+  nothing that happens in a spawned `point0` or a browser. **Off by default** —
+  gated on the repo variable `ENABLE_COVERAGE=1`. See [coverage](./coverage.md).
 - **`test-one.yml`** — point-run a SINGLE test file on a real runner
   (`workflow_dispatch`, inputs `file` + `os` + `repeat`) — the flake-debugging
   tool. Reproduces a release-matrix leg (built artifact, guarded runner) without

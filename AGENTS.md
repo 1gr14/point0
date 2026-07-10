@@ -89,6 +89,8 @@ scripts/       repo tooling (publish, local-registry, test runner/planner, setup
 | Bun/Vite/Babel plugin glue                | [packages/compiler/src/plugin/](packages/compiler/src/plugin/)                                                                           |
 | Schema adapters (zod/valibot/…)           | [packages/core/src/schema/](packages/core/src/schema/)                                                                                   |
 | Test patterns                             | [packages/core/tests/](packages/core/tests/), [packages/compiler/tests/](packages/compiler/tests/)                                       |
+| What's untested / what to test next       | [dev/docs/coverage.md](dev/docs/coverage.md), then `bun run cov` → `coverage/coverage.md`                                                |
+| Client bundle size + its client deps      | [scripts/size.ts](scripts/size.ts) — measures, audits, and rewrites the numbers in the docs                                              |
 
 ## Commands
 
@@ -100,6 +102,8 @@ bun run build:watch   # parallel watch (usually already running in main checkout
 bun run testf         # fast: unit + int minus the solo heavies — default while iterating
 bun run testa         # everything incl. e2e (slow); `tests` = solo lane only (heavy int + e2e)
 bun run test:unit     # one class; also test:int, test:e2e; test:plan prints the CI plan
+bun run cov           # `testf` with line coverage → coverage/coverage.md (what to test next); `cov:all` adds the heavies
+bun run size          # measure Point0's client-bundle weight; `size:write` syncs the docs, `size:audit` gates in CI
 bun run types         # tsgo (native-preview) --noEmit; `types:6` = tsc
 bun run lint          # eslint --fix; `format` = prettier --write
 ```
@@ -114,6 +118,13 @@ Inside an example: `bun run dev | build | start | generate`.
   in the package's `package.json` and its `tsdown.config.ts`.
 - Workspace deps use `"workspace:*"`; external deps use `"catalog:"`, declared
   once in the root.
+- A package that imports a sibling maps it to source in its **`tsconfig.json`**
+  `paths` (`"@point0/core": ["../core/src/index.ts"]`) — Bun uses the tsconfig
+  nearest the importing file, so without it the tests run against a stale built
+  `dist`. `tsconfig.build.json` stays path-less on purpose.
+- Added or removed something the browser downloads? `bun run size:write` — it
+  re-measures, rewrites the numbers in README + the two overviews, and fails if
+  a third-party package reached the client bundle without being declared.
 - Tests live in each package's `tests/` (`bun test`), fixtures under
   `tests/fixtures/`. Generated code (`examples/*/src/generated/point0/`) is
   never hand-edited.

@@ -47,3 +47,9 @@ jobs:
         run: bun run format:check
       - name: Lint (eslint)
         run: bun run lint:check
+      # Fail if a package reached the browser without a row in scripts/size.ts — i.e. if the docs now under-report
+      # what a Point0 app downloads. This is `size:audit`, not `size:check`: the audit compares the module GRAPH
+      # (deterministic), while `size:check` compares minified BYTES, and `bun-version: latest` above means any Bun
+      # release could shift them and redden an unrelated PR. The numbers are refreshed with `bun run size:write`.
+      - name: Audit client bundle dependencies
+        run: bun run size:audit
