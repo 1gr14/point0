@@ -1235,7 +1235,10 @@ export const createRouter = <
         : typeof window !== 'undefined'
           ? window.location.origin
           : undefined
-      return routes._.getLocation(origin + pathnameWithSearchParams + hash)
+      // No origin → a relative href, never the string "undefined" glued in front of the path. An origin-less location
+      // is a legitimate state (a page location rebuilt from a route with no origin to resolve against), and stringifying
+      // `undefined` into it used to corrupt the pathname itself — "/undefined/ideas/42".
+      return routes._.getLocation(`${origin ?? ''}${pathnameWithSearchParams}${hash}`)
     }, [])
 
     const aroundNav = useCallback<AroundNavHandler>((navigate, to, options) => {

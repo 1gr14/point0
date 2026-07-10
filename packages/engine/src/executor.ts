@@ -126,7 +126,13 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       __POINT0_SSR_REDIRECT_TASK__: undefined,
       __POINT0_SSR_PHASE__: 'none',
       __POINT0_SSR_TARGET__: 'none',
-      __POINT0_CURRENT_LOCATION__: new Error('Current location will exists only on ssr phase') as never,
+      // Inherit the parent run's page location, like the hole registry above: a page/layout loader's data
+      // is fetched in a NESTED executor, but it serves the SAME page the outer run renders or prefetches,
+      // so `getLocation()` must answer there — in the loader and in every server component it returns.
+      // Absent outside a page run (a standalone query/mutation hit) → the sentinel stays.
+      __POINT0_CURRENT_LOCATION__:
+        _ss.__POINT0_CURRENT_LOCATION__.getOrUndefined() ??
+        (new Error('Current location will exists only on ssr phase') as never),
       __POINT0_NAVIGATION_HELPERS__: new Error('Navigation helpers will exists only on ssr phase') as never,
       __POINT0_NAVIGATION_PAGE_STATE__: new Error('Navigation page state will exists only on ssr phase') as never,
       __POINT0_CURRENT_NAVIGATE_ID__: new Error('Current navigate id will exists only on ssr phase') as never,

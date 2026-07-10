@@ -556,6 +556,9 @@ export const useNavigationLocationContext = (): NavigationLocationContextValue =
  *     location.search // parsed query object
  *     location.params // parsed route params
  *
+ * It is a hook, so it needs a React render: it works in pages, layouts and component points (islands), and **not** in a
+ * server component, which Point0 unfolds as one plain function call. Read `getLocation()` there.
+ *
  * For an imperative read outside React, use `getLocation()` (throws if the router hasn't mounted yet).
  *
  * Full reference: https://1gr14.dev/point0/latest/navigation
@@ -572,8 +575,25 @@ export function useLocation<TRouteDefinition extends AnyRouteOrDefinition = AnyR
 }
 /**
  * Reads the current location imperatively (no React subscription, no re-render) — for use outside components, e.g. in a
- * loader or an event handler. Throws `"Current location is not yet initialized"` if called before the router mounts;
- * inside a component prefer the reactive `useLocation()`.
+ * loader, an event handler, or a **server component** (where hooks cannot run). Inside a component prefer the reactive
+ * `useLocation()`.
+ *
+ * On the **client** it answers once the router has mounted, and throws `"Current location is not yet initialized"`
+ * before that.
+ *
+ * On the **server** it answers whenever the request stands for a page, and a **page**'s own loader always does — the
+ * SSR render, the navigation data-fetch, a plain refetch of its query, `ssr(false)` — as do the server components its
+ * data returns. A **layout**'s loader answers while a page is rendered or prefetched around it, but a layout has no
+ * route of its own: the moment its query is fetched on its own — a client-side navigation that misses the cache, an
+ * invalidation, a `staleTime` refetch — there is no page to name, and it throws. A **query** or **mutation** point
+ * never has one.
+ *
+ * Where it can throw, keep the dependency in the query input instead: the value then keys the cache, which an ambient
+ * read never does.
+ *
+ * One caveat on the server: `origin` and `href` may come from the browser's `Referer`, so never build a
+ * security-sensitive absolute url out of them (a link in an email, an outbound redirect). `pathname`, `params` and
+ * `search` derive from the route and the validated input, and cannot be spoofed.
  *
  * Full reference: https://1gr14.dev/point0/latest/navigation
  */
@@ -582,7 +602,11 @@ export const getLocation = <TRouteDefinition extends AnyRouteOrDefinition = AnyR
   | UnknownLocation => {
   const location = _ss.__POINT0_CURRENT_LOCATION__.getOrUndefined()
   if (!location) {
-    throw new Error('Current location is not yet initialized')
+    throw new Error(
+      _point0_env.side.is.server
+        ? 'Current location is not available: this request does not stand for a page. A query, a mutation, and a layout whose query is fetched on its own have no page — pass the value you need through the query input instead.'
+        : 'Current location is not yet initialized',
+    )
   }
   return location as ExactLocation<TRouteDefinition> | UnknownLocation
 }

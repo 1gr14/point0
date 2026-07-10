@@ -137,6 +137,26 @@ Server components run as plain function calls — hooks and context are not
 available (the same rule as React's own server components). A component that
 needs state or effects belongs on the client: make it a component point.
 
+That includes `useLocation()`: it is a hook, so it throws here, and it would be
+meaningless anyway — a server component runs once and never re-renders, which is
+the whole contract of a reactive hook. The location is still yours,
+imperatively:
+
+```tsx
+import { getLocation } from '@point0/core/navigation'
+
+const Breadcrumbs = async () => <nav>{getLocation().pathname}</nav>
+```
+
+`getLocation()` (and `getSearch()`) answer wherever the request stands for a
+page — so in a **page**'s loader, and in the server components its data carries,
+they always do: SSR, the client-navigation data fetch, a refetch, `ssr(false)`.
+A **layout** answers while a page renders around it; a **query** or **mutation**
+never has a page and throws. The full table, and why a value like this belongs
+in the query input, is on
+[reading the location on the server](navigation#reading-the-location-on-the-server).
+Inside an island every hook works as usual, `useLocation()` included.
+
 Event handlers cannot travel over the wire, so a function anywhere in a host
 element's or island's props — a direct prop or nested inside a prop object or
 array — fails the loader with the path:

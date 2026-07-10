@@ -28,6 +28,33 @@ release` promotes that section to the new version.
   nine places that build `/_point0/` paths, so setting it silently broke the
   other eight; nothing ever set it. The prefix is a constant
   (`POINT0_INTERNAL_PATH_PREFIX`), not an option.
+- `getLocation()` and `getSearch()` now answer on the server wherever the request
+  stands for a page. A **page**'s loader — and every RSC server component its data
+  returns, `defer`red subtrees included — can read them on any path: the SSR
+  render, the client-navigation data fetch, a plain refetch of its query, and
+  `ssr(false)`. A **layout**'s loader can only while a page renders or prefetches
+  around it — a layout has no route of its own, so its query fetched alone (an
+  invalidation, a `staleTime` refetch, a navigation that misses the cache) still
+  throws. Before, the nested run that executes a page's loader dropped the page
+  location, and the plain data fetch never had one, so both threw
+  `"Current location is not yet initialized"`. A **query** or **mutation** point
+  still has no page and still throws — there, keep the value in the query input,
+  which also keys the cache. On the server `origin`/`href` may come from the
+  browser's `Referer`, so don't build security-sensitive absolute urls from them;
+  `pathname`, `params` and `search` cannot be spoofed. `useLocation()` is unchanged: it is a hook, so it
+  belongs to pages, layouts and component points (islands), never to a server
+  component, which runs as one plain function call.
+- A page fetched through its endpoint no longer loses its origin. The page url was
+  built from the `Referer` alone, so a request without one
+  (`Referrer-Policy: no-referrer`, a privacy extension) produced an origin-less
+  page location. On the client-navigation prefetch that location matched no page:
+  the response carried an empty dehydrated state and the browser refetched
+  everything after hydration. The origin now falls back to the root's
+  `.clientUrl()` / `.serverUrl()`, and then to the request's own.
+- An origin-less location no longer corrupts its own pathname. The router read it
+  back by string-concatenating the origin, so a missing one became the literal
+  segment `"/undefined/…"` — e.g. `/undefined/ideas/42`. It now yields a relative
+  href, which is what an origin-less location means.
 
 ## 0.2.3 — 2026-07-09
 

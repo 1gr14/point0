@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { ClientOnly, defer, Point0, POINT0_STREAM_HEADER, rscHolesRegistry } from '@point0/core'
+import { getLocation, getSearch } from '@point0/core/navigation'
 import * as React from 'react'
 import superjson from 'superjson'
 import { createTestThings } from './utils/internal-testing.js'
@@ -1685,6 +1686,156 @@ describe('rsc', () => {
     expect(lines[0]!).not.toContain('PP-NAV-VALUE')
     // A later line — the fill with the resolved prop value.
     expect(lines.slice(1).find((line) => line.includes('PP-NAV-VALUE'))).toBeDefined()
+  })
+
+  // A server component is one plain function call, so hooks cannot run in it — `useLocation()` throws there. The
+  // imperative `getLocation()` is the read that works, because the page location is inherited into the nested run
+  // that executes a page/layout loader. It answers wherever the request serves a page, and throws where it does not.
+  describe('getLocation() inside a server component', () => {
+    const createLocationPage = () => {
+      const root = createRoot()
+      const Where = async () => (
+        <span id="where">
+          {getLocation().pathname}?{getSearch<{ tab?: string }>().tab}
+        </span>
+      )
+      const page = root
+        .lets('page', 'idea', '/ideas/:id')
+        .loader(async () => ({ where: <Where /> }))
+        .rsc({ depth: 1 })
+        .page(({ data }) => <div id="page">{data.where}</div>)
+      return { root, page }
+    }
+
+    it('answers with the page location on the SSR render', async () => {
+      const { root, page } = createLocationPage()
+      const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
+      expect(await fetchPreview(page, { id: '123', '?': { tab: 'votes' } })).toMatchInlineSnapshot(`
+        "
+        #page:
+          #where: /ideas/123?votes
+        "
+      `)
+    })
+
+    it('answers inside a defer()ed subtree', async () => {
+      const root = createRoot()
+      const Slow = async () => <b id="slow">{getLocation().pathname}</b>
+      const page = root
+        .lets('page', 'idea', '/ideas/:id')
+        .rsc({ depth: 1 })
+        .loader(async () => ({ slow: defer(<Slow />, <span id="fb">…</span>) }))
+        .page(({ data }) => <div id="page">{data.slow}</div>)
+      const { fetchPreview } = await createTestThings({ ssr: true, points: [root, page] })
+      expect(await fetchPreview(page, { id: '77' })).toContain('/ideas/77')
+    })
+
+    it('answers on the client-navigation data fetch (queryClientDehydratedState), with no Referer to lean on', async () => {
+      // No `Referer` header here — the page origin falls back to the request's own, so the page location is real.
+      // Before that fallback existed the url was built as the literal "undefined/", the prefetch matched no page,
+      // and the dehydrated state came back empty.
+      const { root, page } = createLocationPage()
+      const { fetchQueryClientDehydratedState } = await createTestThings({ ssr: true, points: [root, page] })
+      const { response, queryClientQueriesPreview } = await fetchQueryClientDehydratedState(page, {
+        id: '42',
+        '?': { tab: 'new' },
+      })
+      expect(response.status).toBe(200)
+      // the server component's children, still unrendered on the wire: pathname, "?", the parsed search value
+      expect(queryClientQueriesPreview).toContain('["/ideas/42","?","new"]')
+    })
+
+    it('answers on a plain data fetch of the page endpoint — the default client navigation', async () => {
+      // Without a `pageDehydratedState` prefetch policy (the default) a navigation mounts the page and fetches its
+      // loader straight through the page endpoint. No page is rendered server-side on that path, so nothing else
+      // seeds the location — the request itself has to.
+      const { root, page } = createLocationPage()
+      const { engine } = await createTestThings({ ssr: true, points: [root, page] })
+      const endpoint = (page.point as { _endpoint?: { route: { get: (i: unknown, o: unknown) => string } } })._endpoint!
+      const url = endpoint.route.get({ id: '42', '?': { tab: 'new' } }, { origin: 'http://localhost' })
+      const res = await engine.fetch(new Request(url, { headers: { Accept: 'application/json' } }))
+      expect(res.status).toBe(200)
+      expect(await res.text()).toContain('["/ideas/42","?","new"]')
+    })
+
+    describe('the page origin, in the order of who knows best', () => {
+      const createOriginPage = () => {
+        const root = Point0.lets('root', 'root')
+          .serverUrl('http://api.internal')
+          .clientUrl('https://app.example.com')
+          .loading(() => <div id="loading">...</div>)
+          .error(({ error }) => <div id="error">{error.message}</div>)
+          .queryOptions({ retry: false, refetchOnMount: false, refetchOnWindowFocus: false })
+          .root()
+        const Where = async () => <span id="where">{getLocation().href}</span>
+        const page = root
+          .lets('page', 'idea', '/ideas/:id')
+          .rsc({ depth: 1 })
+          .loader(async () => ({ where: <Where /> }))
+          .page(({ data }) => <div id="page">{data.where}</div>)
+        return { root, page }
+      }
+      const fetchWhere = async (headers: Record<string, string>) => {
+        const { root, page } = createOriginPage()
+        const { engine } = await createTestThings({ ssr: true, points: [root, page] })
+        const endpoint = (page.point as { _endpoint?: { route: { get: (i: unknown, o: unknown) => string } } })
+          ._endpoint!
+        const url = endpoint.route.get({ id: '7' }, { origin: 'http://localhost' })
+        const res = await engine.fetch(new Request(url, { headers: { Accept: 'application/json', ...headers } }))
+        expect(res.status).toBe(200)
+        return await res.text()
+      }
+
+      it('the Referer wins — only the browser knows which host it navigates on', async () => {
+        expect(await fetchWhere({ Referer: 'https://eu.example.com/ideas/7' })).toContain(
+          'https://eu.example.com/ideas/7',
+        )
+      })
+
+      it('no Referer — the root .clientUrl() wins over the request origin, and serverUrl is for endpoints', async () => {
+        expect(await fetchWhere({})).toContain('https://app.example.com/ideas/7')
+      })
+    })
+
+    it('throws on a layout fetched on its own — a layout has no route to rebuild a location from', async () => {
+      // The layout trap: it reads the location happily while a page renders around it, but its own query fetched
+      // alone — an invalidation, a staleTime refetch, a navigation that misses the cache — has no page.
+      const root = createRoot()
+      const Where = async () => <span id="where">{getLocation().pathname}</span>
+      const layout = root
+        .lets('layout', 'main')
+        .rsc({ depth: 1 })
+        .loader(async () => ({ where: <Where /> }))
+        .layout(({ children }) => <div id="layout">{children}</div>)
+      const page = root.lets('page', 'home', '/').page(() => <div id="page">home</div>)
+      const { engine } = await createTestThings({ ssr: true, points: [root, layout, page] })
+      const endpoint = (layout.point as { _endpoint?: { route: { get: (i: unknown, o: unknown) => string } } })
+        ._endpoint!
+      const url = endpoint.route.get({}, { origin: 'http://localhost' })
+      const res = await engine.fetch(new Request(url, { headers: { Accept: 'application/json' } }))
+      expect(res.ok).toBe(false)
+      expect(await res.text()).toContain('Current location is not available')
+    })
+
+    it('throws on a standalone query hit — there is no page to take a location from', async () => {
+      // The trap this guards: a page's query refetched from the browser hits the query endpoint directly, with no
+      // page around it. A loader that reads the location must keep that dependency in its input instead.
+      const root = createRoot()
+      const Where = async () => <span id="where">{getLocation().pathname}</span>
+      const query = root
+        .lets('query', 'where')
+        .rsc({ depth: 1 })
+        .loader(async () => ({ where: <Where /> }))
+        .query()
+      const page = root.lets('page', 'home', '/').page(() => <div id="page">home</div>)
+      const { engine } = await createTestThings({ ssr: true, points: [root, page, query] })
+      const endpoint = (query.point as { _endpoint?: { route: { get: (i: unknown, o: unknown) => string } } })
+        ._endpoint!
+      const url = endpoint.route.get({}, { origin: 'http://localhost' })
+      const res = await engine.fetch(new Request(url, { headers: { Accept: 'application/json' } }))
+      expect(res.ok).toBe(false)
+      expect(await res.text()).toContain('Current location is not available')
+    })
   })
 })
 

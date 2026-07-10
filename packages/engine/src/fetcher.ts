@@ -279,6 +279,47 @@ export class Fetcher<TError extends ErrorPoint0> {
     return result
   }
 
+  /**
+   * The location of the page a request stands for, rebuilt from the page's own route and the input parsed out of its
+   * endpoint url. The request's own url can't stand in: it addresses the endpoint (`/_point0/<scope>/page/<name>/…`),
+   * not the page.
+   *
+   * The origin is picked in the order of how much each source knows about where the page actually lives:
+   *
+   * 1. the **referrer** — the browser tells us the page it navigates from, and in a split-origin deploy (pages and api on
+   *    different hosts) it is the only source that carries the page's origin at all;
+   * 2. the root's **`.clientUrl()` / `.serverUrl()`** — the origin the app itself declares its pages live on, the same one
+   *    page routes already resolve `route.abs()` against;
+   * 3. this **request's** origin — the endpoint answered here, so a single-origin app is served from it too.
+   *
+   * Leave the origin out and `route.get()` returns a relative url, whose location carries no origin — and an
+   * origin-less page location is not harmless: it loses the prefetch's page match, and the router's own location read
+   * concatenates it into the literal path `"/undefined/…"`. A missing `Referer` (`Referrer-Policy: no-referrer`, a
+   * privacy extension) is enough to get there, which is why the two fallbacks exist.
+   */
+  private readonly _getPageLocationFromEndpointRequest = ({
+    route,
+    input,
+    point,
+    request,
+  }: {
+    route: AnyRoute
+    input: ExecuteOptionsKnownInput
+    point: ReadyPoint
+    request: Request0<any, any>
+  }): ExactLocation | AnyLocation => {
+    // The same pair, in the same order, that the point itself resolves its page route's origin against (see
+    // `_getRoutes`): pages are web pages, so they live on `clientUrl` when it differs from `serverUrl`.
+    const configuredUrl = point._clientUrl ?? point._serverUrl
+    const pageUrl = route.get({ ...input.params, '?': input.search } as never, {
+      origin: request.from.location?.origin ?? configuredUrl ?? request.location.origin,
+    })
+    return Object.assign(Route0.getLocation(pageUrl), {
+      params: input.params,
+      route: route.definition,
+    } satisfies Partial<KnownLocation>) as ExactLocation | AnyLocation
+  }
+
   prepareFetch = async ({
     originalRequest,
     bunServer,
@@ -690,13 +731,7 @@ export class Fetcher<TError extends ErrorPoint0> {
             meta: { point: point.id },
           })
         }
-        const pageUrl = route.get({ ...input.params, '?': input.search } as never, {
-          origin: request.from.location?.origin,
-        })
-        const pageLocation = Object.assign(Route0.getLocation(pageUrl), {
-          params: input.params,
-          route: route.definition,
-        } satisfies Partial<KnownLocation>)
+        const pageLocation = this._getPageLocationFromEndpointRequest({ route, input, point, request })
         const result = await this.fetchPage({
           client,
           point: point as PagePoint | undefined,
@@ -745,17 +780,11 @@ export class Fetcher<TError extends ErrorPoint0> {
             meta: { point: point.id },
           })
         }
-        const pageUrl = route.get({ ...input.params, '?': input.search } as never, {
-          origin: request.from.location?.origin,
-        })
-        const pageLocation = Object.assign(Route0.getLocation(pageUrl), {
-          params: input.params,
-          route: route.definition,
-        } satisfies Partial<KnownLocation>)
+        const pageLocation = this._getPageLocationFromEndpointRequest({ route, input, point, request })
         await client.prefetchAppPagePointDeep({
           executor,
           pagePoint: point as PagePoint,
-          pageLocation: pageLocation as ExactLocation | AnyLocation,
+          pageLocation,
           redirectPolicy: 'continue',
           target: 'data',
           // Data-only render: there is no stream to push a streamed result into — don't even
@@ -822,6 +851,22 @@ export class Fetcher<TError extends ErrorPoint0> {
       // must keep it; a foreign / non-streaming client never sends the header, so its `defer` degrades to inline.
       if (clientWantsStream && !executor.serverStorageState.__POINT0_RSC_HOLES__) {
         executor.serverStorageState.__POINT0_RSC_HOLES__ = new RscHoleRegistry()
+      }
+
+      // A page's own loader, fetched straight through its endpoint: the default client navigation (no
+      // `pageDehydratedState` prefetch policy), a refetch, an `ssr(false)` first load. No page is rendered here, so
+      // nothing else seeds the location — but the request does stand for a page, and the parsed input already carries
+      // the params and search that identify it. Seed it, so `getLocation()` answers in the loader and in the server
+      // components its data returns, exactly as it does under SSR. Every other point — a query, a mutation, a layout
+      // reached standalone (a layout has no display route) — genuinely has no page, and the sentinel stays.
+      const pageRoute = point.type === 'page' ? (point.route as AnyRoute | undefined) : undefined
+      if (pageRoute) {
+        executor.serverStorageState.__POINT0_CURRENT_LOCATION__ = this._getPageLocationFromEndpointRequest({
+          route: pageRoute,
+          input,
+          point,
+          request,
+        })
       }
 
       const executeResult = await executor.execute({
@@ -1392,6 +1437,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       scope: prepareFetchResult.scope,
     })
 
+    const parentCurrentLocation = _ss.__POINT0_CURRENT_LOCATION__.getOrUndefined()
     const serverStorageState = _getSsItemsWithRestErrors(
       {
         __POINT0_SSR_STORE_PENDING__: _ss.__POINT0_SSR_STORE_PENDING__.getOrUndefined() || new Map(),
@@ -1409,6 +1455,10 @@ export class Fetcher<TError extends ErrorPoint0> {
         // nested run, but its holes must land in the OUTER render's per-request registry so the render
         // pump streams and drains them. Absent outside an SSR render (a plain data fetch) → undefined.
         __POINT0_RSC_HOLES__: _ss.__POINT0_RSC_HOLES__.getOrUndefined(),
+        // …and the page location, so `getLocation()` answers inside a page/layout loader and the server
+        // components it returns. Spread conditionally: outside a page run there is no page, and the key
+        // must stay a sentinel so `get()` explains itself instead of handing back `undefined`.
+        ...(parentCurrentLocation ? { __POINT0_CURRENT_LOCATION__: parentCurrentLocation } : {}),
       },
       'Value "%s" not exists in middleware call, this value accessible only in loader, ctx, components etc',
     )

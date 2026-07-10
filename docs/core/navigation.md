@@ -342,12 +342,67 @@ location.searchString // raw "?tab=news"
 location.hash // raw "#comments" — empty unless addHash is on (see below)
 location.route // the matched template, e.g. "/ideas/:id"
 location.params // parsed route params
-location.href // absolute; location.hrefRel = path+search+hash
+location.href // absolute, when the location has an origin; location.hrefRel = path+search+hash
 ```
 
 `useLocation()` re-renders on navigation; `getLocation()` reads it imperatively
 (and throws `"Current location is not yet initialized"` if called before the
 router mounts).
+
+### Reading the location on the server
+
+`useLocation()` is a hook, so it needs a React render: pages, layouts and
+[component points](component) — including the ones that mount as
+[RSC islands](rsc#interactive-islands-component-points). A
+[server component](rsc#server-components) is not a render at all, it is one
+plain function call, so no hook runs in it. Read `getLocation()` there:
+
+```tsx
+import { getLocation } from '@point0/core/navigation'
+
+const Breadcrumbs = async () => {
+  const location = getLocation() // no React render needed
+  return <nav>{location.pathname}</nav>
+}
+
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .rsc({ depth: 1 }) // usually inherited from the root — see the RSC page
+  .loader(async () => ({ crumbs: <Breadcrumbs /> }))
+  .page(({ data }) => <main>{data.crumbs}</main>)
+```
+
+On the server `getLocation()` — and `getSearch()`, which reads through it —
+answers whenever the request **stands for a page**, and which points those are
+is worth being precise about:
+
+| Reading from…                                 | On the server                                                    |
+| --------------------------------------------- | ---------------------------------------------------------------- |
+| a **page** loader, or its server components   | always — SSR, the navigation data fetch, a refetch, `ssr(false)` |
+| a **layout** loader, or its server components | only while a page renders or prefetches around it                |
+| a **query** or **mutation** loader            | throws — nothing about the request names a page                  |
+
+A page always answers because the request that carries its loader addresses the
+page itself, so the location can be rebuilt from the route and the input. A
+query or a mutation never had a page to name.
+
+A layout is the case to be careful with. It answers while a page is rendered or
+prefetched around it — but a layout has no route of its own, so the moment its
+query is fetched **on its own**, there is nothing to rebuild a location from and
+the call throws. That happens on an invalidation, on a `staleTime` refetch, and
+on a client-side navigation whose layout data isn't already fresh in the cache —
+so "the navigation data fetch" being safe for a page does **not** make it safe
+for a layout.
+
+> **Where it can throw, keep the location in the query input.** A value in the
+> input keys the cache; an ambient read does not, so one entry would serve two
+> different locations. Page and layout loaders already receive `params` and
+> `search` — prefer those, and pass what a server component needs as a prop.
+
+One caveat on the server: `origin` and `href` may come from the browser's
+`Referer` header, so never build a security-sensitive absolute URL out of them —
+a link in an email, an outbound redirect. `pathname`, `params` and `search` come
+from the route and the validated input, and cannot be spoofed.
 
 The hash is **off by default**: `location.hash` is an empty string unless you
 opt in. The underlying router doesn't track hash changes, so the hash is read

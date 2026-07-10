@@ -2054,7 +2054,8 @@ export const Breadcrumbs = () => {
 ```
 
 `useLocation()` is reactive — the component re-renders itself on navigation. If
-you need `location` outside React (in some helper), there's the imperative
+you need `location` outside React — in a helper, a loader, or an
+[RSC server component](rsc), where no hook can run — there's the imperative
 `getLocation()`.
 
 Read more in the docs [about navigation](navigation).
