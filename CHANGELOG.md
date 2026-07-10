@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.2.4 — 2026-07-10
+
 - Every string two independently compiled sides must agree on — the `x-point0-*`
   headers, the `/_point0/` path family, the globals the SSR html injects — now
   lives in one `protocol.ts` module per package (`@point0/core` for the wire
