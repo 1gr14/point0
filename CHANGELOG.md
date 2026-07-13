@@ -5,6 +5,19 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- SSR now renders your app as its own React root — the `#root` element itself —
+  instead of nesting it inside the whole-document React tree. React's `useId` is
+  relative to the render root, and the client hydrates `#root`, so the previous
+  whole-document render offset every id by the surrounding `<html>`/`<body>`
+  structure. React 19.2 turned that latent offset into a hard, unrecoverable
+  hydration mismatch — visible as diverging component ids (e.g. Radix
+  `radix-_R_bcb_` on the server vs `radix-_R_5m5q_` on the client). The document
+  shell is now rendered separately and streamed around the app, so every `useId`
+  is identical on both sides. One consequence of the app no longer being part of
+  the document tree: React 19's native `<title>`/`<meta>` hoisting doesn't reach
+  the document `<head>` from inside your components — route head tags through
+  `.head()` / unhead, which is already the documented path.
+
 ## 0.2.4 — 2026-07-10
 
 - Every string two independently compiled sides must agree on — the `x-point0-*`

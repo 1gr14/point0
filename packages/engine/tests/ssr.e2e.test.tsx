@@ -75,6 +75,27 @@ export const renders3Page = root
   })
 `,
   )
+  // A page that uses `useId` the way Radix does (an id on one node, referenced from another). React's `useId` encodes
+  // tree position relative to the render root, so if the server rendered the app under a different root than the
+  // client hydrates (the `#root` boundary), every id here would be offset — a "won't be patched up" hydration
+  // mismatch under React 19.2. The engine renders the app AS the `#root` root so the ids match; this page proves it
+  // end-to-end in a real browser.
+  await project.write(
+    'src/ssr/useid.tsx',
+    `import { root } from '../lib/root.js'
+import { useId } from 'react'
+export const useIdPage = root.lets('page', 'useid', '/useid').page(() => {
+  const id = useId()
+  return (
+    <div id="useid">
+      <span id={id}>USEID_BODY</span>
+      <button aria-describedby={id}>USEID_BTN</button>
+      <i id="useid-probe" data-uid={id} />
+    </div>
+  )
+})
+`,
+  )
 }
 
 // Boot a temp dev project with the SSR-switch pages, with the retry-over-ports pattern the other
@@ -103,6 +124,7 @@ const bootSsrProject = async (tpf: TestProjectOneClientFactory): Promise<TestPro
   await tp!.fetchServerHtml('/spa')
   await tp!.fetchServerHtml('/renders-1')
   await tp!.fetchServerHtml('/renders-3')
+  await tp!.fetchServerHtml('/useid')
   return tp!
 }
 
@@ -176,5 +198,29 @@ describe('ssr switch e2e (browser)', () => {
     expect(res3.status).toBe(200)
     expect(html3).toContain('R3_BODY')
     expect(res3.headers.get(discoveryRendersHeader)).toBe('3')
+  })
+
+  it('useId is stable across SSR and hydration (no mismatch)', async () => {
+    // The server bakes a `useId` value into the HTML (on `#useid-probe`); the client, hydrating at `#root`, must
+    // recompute the SAME value. It only does if the app is rendered at the same tree position on both sides — which
+    // is exactly what the `#root`-as-render-root fix guarantees.
+    const res = await tp.fetchServer('/useid')
+    const html = await res.text()
+    const serverId = /<i id="useid-probe" data-uid="([^"]+)"/.exec(html)?.[1] ?? null
+    expect(serverId, `no server useId found in HTML:\n${html.slice(0, 600)}`).toBeTruthy()
+
+    const page = await tp.gotoServer('/useid')
+    await page.waitContent('USEID_BODY', 10000)
+    await page.stable
+    // The value React renders after hydration. A tree-position offset makes React 19.2 throw out the server subtree
+    // and regenerate it with a DIFFERENT id — so equality here is the whole invariant.
+    const clientId = await page.original.evaluate(
+      () => document.querySelector('#useid-probe')?.getAttribute('data-uid') ?? null,
+    )
+    expect(clientId).toBe(serverId)
+    // Belt-and-suspenders: React (dev) logs a hydration error on a useId mismatch — assert none was logged.
+    const hydrationErrors = page.logs.filter((l) => /hydrat|did not match|Recoverable/i.test(l.text))
+    expect(hydrationErrors.map((l) => l.text)).toEqual([])
+    await page.close()
   })
 })

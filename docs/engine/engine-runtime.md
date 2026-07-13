@@ -391,17 +391,27 @@ The shell: a mount target and the client entry script.
 ```
 
 `index.html` is the authoring format, not the response: the engine parses it
-once and React renders the whole document — `<html>` through `</html>` — on
-every request (SSR and SPA alike). Titles, metas and links from the template
-merge with per-page [`.head()`](../core/head) values (the page wins), while
-`<script>` and `<noscript>` tags never join that merge — they render exactly
-where you put them, in order. The app renders inside your `#root` element
-([`domRootElementId`](engine-config)); everything else in `<body>` ships
-verbatim. The engine guarantees `<meta charset="utf-8">` is the first thing in
-`<head>` (deduping whatever charset the template declares). Two normalizations
-to know about: HTML comments from the template don't reach the browser, and
-attributes render in React's form (`<script defer>` becomes `defer=""`,
-`crossorigin` becomes `crossorigin=""` — byte-different, spec-identical).
+once and serves a full `<html>`…`</html>` document on every request (SSR and SPA
+alike). Your app renders as its own React root — your `#root` element
+([`domRootElementId`](engine-config)) — and the engine renders the surrounding
+document (head, body, template scripts) and streams the app in at `#root`. That
+is deliberate: React's `useId` is relative to the render root, so rendering the
+app at `#root` on the server — the same element the client hydrates — keeps
+every id identical on both sides (React 19.2 rejects a mismatch). Titles, metas
+and links from the template merge with per-page [`.head()`](../core/head) values
+(the page wins), while `<script>` and `<noscript>` tags never join that merge —
+they render exactly where you put them, in order. Everything else in `<body>`
+ships verbatim. The engine guarantees `<meta charset="utf-8">` is the first
+thing in `<head>` (deduping whatever charset the template declares). Two
+normalizations to know about: HTML comments from the template don't reach the
+browser, and attributes render in React's form (`<script defer>` becomes
+`defer=""`, `crossorigin` becomes `crossorigin=""` — byte-different,
+spec-identical).
+
+> Because your app is its own root (not part of the document tree), head tags
+> must go through [`.head()`](../core/head) / unhead — React 19's native
+> `<title>`/`<meta>` hoisting doesn't reach the document `<head>` from inside
+> your components.
 
 > With Vite the shell is `index.client.html` instead, and `index.server.ts` /
 > `index.client.tsx` use `import.meta.hot` for dispose + accept. See

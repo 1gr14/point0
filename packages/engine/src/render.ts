@@ -24,19 +24,34 @@ import { renderToReadableStream } from 'react-dom/server'
 import { capoTagWeight } from 'unhead/server'
 import { resolveTags } from 'unhead/utils'
 import type { SsrOptionsResolved } from './config.js'
-import { buildDocumentElement, parseDocumentTemplate } from './document.js'
+import {
+  buildDocumentElement,
+  findRootTemplateElement,
+  htmlAttrsToReactProps,
+  parseDocumentTemplate,
+  SSR_ROOT_OUTLET_MARKUP,
+  SSR_ROOT_OUTLET_TAG,
+} from './document.js'
 import type { Executor } from './executor.js'
 import { POINT0_ENV_EXTEND_FN_GLOBAL } from './protocol.js'
 import { buildHolePushPayload, emitHoleError, raceIsTimeout, RSC_STREAM_HEARTBEAT_MS } from './rsc-stream.js'
 import { readableStreamToString } from './utils.js'
 
 /**
- * The render pipeline: React owns the WHOLE document. The `index.html` template is parsed once into a React-renderable
- * tree (see ./document.ts), the app subtree renders inside the template's root element, and one
- * `renderToReadableStream` call emits `<!DOCTYPE html>` through `</html>` — the shell flushes immediately and each
- * resolved Suspense boundary follows as its own chunk. Because the markup root is `<html>` (never a Suspense boundary),
- * streaming needs no host-element wrapper around the app, and every head/body mutation is a structural React element
- * instead of string splicing.
+ * The render pipeline: the APP renders as its OWN React root — the `#root` element, `<div id="root">{app}</div>` — and
+ * the document shell renders SEPARATELY and is spliced around the app stream. React's `useId` is relative to the render
+ * root, and the client hydrates `#root`; rendering the app at `#root` on the server (not nested inside the `<html>`
+ * tree) is what keeps every id identical on both sides — the hydration contract React 19.2 enforces.
+ *
+ * The `index.html` template is parsed once into a React-renderable tree (see ./document.ts). The shell renders that
+ * tree with the WHOLE `#root` element replaced by an outlet marker (still React → head/body are structural elements,
+ * not string splicing) into a single string, split on the marker into a prefix (`<!DOCTYPE html>`…just before the
+ * `#root` open tag) and suffix (the template's post-`#root` body content…`</html>`). The app itself carries `#root`'s
+ * open and close tags: it is rendered with `renderToReadableStream(<div id="root">{app}</div>)`, and the shell flushes
+ * immediately (prefix + the app's first chunk), each resolved Suspense boundary follows as its own chunk, and the
+ * suffix closes the document last. Making `#root` (a host element) the render root also pins Fizz's host context so a
+ * suspended root boundary still streams, and keeps every post-shell byte Fizz emits (hidden segments, completion
+ * scripts) after `</div>` — outside the hydration container.
  */
 
 // A script's `id` attribute and the global it installs are two different contracts — the id is how a later render finds
@@ -205,6 +220,14 @@ export async function renderDocumentShellHtml({
   return await readableStreamToString(stream)
 }
 
+/** Concatenate two byte chunks into one — used to lead the first streamed chunk with the document-shell prefix. */
+function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const out = new Uint8Array(a.length + b.length)
+  out.set(a, 0)
+  out.set(b, a.length)
+  return out
+}
+
 export async function renderAppAsReadableStream({
   App,
   executor,
@@ -337,19 +360,28 @@ window.${POINT0_DEHYDRATED_SUPER_STORE_GLOBAL} = ${uneval(superstore.stringify(c
       })
     }
 
-    const documentElement = buildDocumentElement({
-      template,
-      resolvedHeadTags,
-      app: createElement(App),
-      domRootElementId,
-      headStart: envScriptElements({ envVars, envConsts }),
-      headEnd: [createElement(StoreScript, { key: 'p0-store' })],
-      modulePreloads: allModulePreloads,
-      omitHeadScriptIds: ENGINE_OWNED_HEAD_SCRIPT_IDS,
-    })
+    // The app renders as its OWN React root — the `#root` element itself, `<div id="root">{app}</div>` — NOT nested
+    // inside the document `<html>` tree. React's `useId` encodes a component's position RELATIVE TO ITS RENDER ROOT,
+    // and the client hydrates `#root` with the app as its root (react-dom/src/mount.ts). Rendering the app under the
+    // full `<html><body>…` shell on the server would offset every `useId` by the shell's fork structure — a hydration
+    // mismatch React 19.2 no longer patches up (visible as diverging Radix ids). So the app's render root and the
+    // client's hydration root must be the same tree position: the `#root` element.
+    //
+    // Making `#root` (a host element) the root — rather than a bare app fragment — matters twice over: it pins the
+    // host context so a suspended root boundary still streams (a bare suspended root makes Fizz withhold the whole
+    // response), and it guarantees every post-shell byte Fizz emits (hidden segments, `$RC` completion scripts, and
+    // our injected push/heartbeat scripts) lands AFTER `</div>`, outside the hydration container — never as stray
+    // nodes inside `#root` that hydration would trip over. This stream carries `#root`'s own open and close tags; the
+    // document shell around it (prefix `<!DOCTYPE html><html>…<body>…` up to the `#root` open tag, suffix the
+    // template's post-`#root` body content…`</body></html>`) is rendered separately below and spliced on.
+    const rootNode = findRootTemplateElement(template.bodyNodes, domRootElementId)
+    if (!rootNode) {
+      throw new Error(`Root element #${domRootElementId} not found in the <body> of the index.html template`)
+    }
+    const appRootElement = createElement(rootNode.tag, htmlAttrsToReactProps(rootNode.attrs), createElement(App))
 
     // Kick off the render; any randoms used during render happen now.
-    const reactStream = await renderToReadableStream(documentElement, {
+    const reactStream = await renderToReadableStream(appRootElement, {
       // Render errors that happen after the shell was sent (a throw inside a streamed Suspense
       // boundary) have no other server-side trace — log them. Failed streamed LOADERS never
       // reach this callback: their suspension resolves and the mountable's `.error()` streams in
@@ -388,9 +420,52 @@ window.${POINT0_DEHYDRATED_SUPER_STORE_GLOBAL} = ${uneval(superstore.stringify(c
       throw redirectTaskHolder.task
     }
 
-    // Streamed query push-hydration. The dehydrated store in the shell was snapshotted before any streamed query
-    // resolved, so their data is NOT in it — without this the client would silently refetch after hydration and flash
-    // the streamed content. Every React flush after the shell is a resolved Suspense boundary; prepending the newly
+    // The app's shell is rendered and no redirect fired — now materialize the document shell around it. Rendering the
+    // shell as its own `<html>` tree (a) prepends `<!DOCTYPE html>` for free (React emits it for an `<html>` root),
+    // and (b) renders the StoreScript HERE, so `captureSentQueryHashes` snapshots the super-store at ONE instant in
+    // this same server-global scope — exactly what the old single-tree render did when its `<head>` rendered. The
+    // `#root` element is a bare outlet marker; splitting the string on it yields the prefix (up to, excluding, the
+    // outlet) and suffix (from just after it), between which the pump splices the app stream that renders the real
+    // `<div id="root">…</div>`. Anything settling after this snapshot is streamed by the pump (never double-sent — the
+    // shared `sentQueryHashes` set already excludes it).
+    const shellElement = buildDocumentElement({
+      template,
+      resolvedHeadTags,
+      app: undefined,
+      domRootElementId,
+      headStart: envScriptElements({ envVars, envConsts }),
+      headEnd: [createElement(StoreScript, { key: 'p0-store' })],
+      modulePreloads: allModulePreloads,
+      omitHeadScriptIds: ENGINE_OWNED_HEAD_SCRIPT_IDS,
+      rootOutletTag: SSR_ROOT_OUTLET_TAG,
+    })
+    const shellStream = await renderToReadableStream(shellElement)
+    await shellStream.allReady
+    const shellHtml = await readableStreamToString(shellStream)
+    const outletIndex = shellHtml.indexOf(SSR_ROOT_OUTLET_MARKUP)
+    if (outletIndex === -1) {
+      // buildDocumentElement throws on 0/>1 root matches, so exactly one outlet is always present — unreachable, but a
+      // missing seam would silently drop the app, so fail loud rather than serve a rootless document.
+      throw new Error('The document shell is missing the app-root outlet marker')
+    }
+    if (outletIndex !== shellHtml.lastIndexOf(SSR_ROOT_OUTLET_MARKUP)) {
+      // React can never emit the literal marker twice from the tree (element text is escaped), but a template `<script>`
+      // body renders verbatim — a copy of the marker string BEFORE `#root` would splice the app inside that script.
+      // One comparison turns that into a loud failure instead of a silently broken document.
+      throw new Error('The document shell contains the app-root outlet marker more than once')
+    }
+    const prefixBytes = encoder.encode(shellHtml.slice(0, outletIndex))
+    // The suffix is the template's post-`#root` body content (e.g. the entry `<script type="module">`, which the app
+    // stream and its trailing scripts precede) through `</body></html>`. On a STREAMED page in dev (no preload
+    // manifest — prod-build-only) the browser therefore discovers the entry URL only at stream end; harmless (module
+    // scripts defer to document EOF regardless), just a slightly later download than the head `modulepreload` gives in
+    // prod. `#root`'s own close tag is NOT here — the app stream carries it.
+    const suffixBytes = encoder.encode(shellHtml.slice(outletIndex + SSR_ROOT_OUTLET_MARKUP.length))
+
+    // Streamed query push-hydration. The dehydrated store was snapshotted at shell-render time (just above): queries
+    // settled by then are IN the store, but a streamed query is still SUSPENDED then, so its data is NOT — without this
+    // the client would silently refetch after hydration and flash the streamed content. Every React flush after the
+    // shell is a resolved Suspense boundary; prepending the newly
     // settled query states to that same chunk guarantees the data <script> executes (in document order) before
     // React's reveal script and before the revealed content hydrates — the client's useQuery finds the data in cache.
     // Both success AND error states are pushed: a failed streamed loader streams the mountable's `.error()` in place,
@@ -505,9 +580,16 @@ window.${POINT0_DEHYDRATED_SUPER_STORE_GLOBAL} = ${uneval(superstore.stringify(c
         const { done, value } = await read
         pendingRead = undefined
         if (done) {
+          // Defensive: React always emits at least the root element, so the prefix has already led a first chunk by
+          // now — but if the app stream closed empty, still frame the document so the response is a whole page.
+          if (!firstChunkSent) {
+            firstChunkSent = true
+            sealEffectsOnFirstChunk()
+            controller.enqueue(prefixBytes)
+          }
           // A query or hole can settle without producing another React flush (e.g. a blocking render
-          // that arrived as one chunk) — drain the leftovers before closing. The HTML parser moves
-          // trailing scripts into <body>, and the buffer stubs capture them pre-hydration.
+          // that arrived as one chunk) — drain the leftovers before closing. These trailing scripts land after the
+          // app stream (outside `#root`), and the buffer stubs capture them pre-hydration.
           const pushScripts = collectNewlySettledQueryScripts()
           if (pushScripts) {
             controller.enqueue(encoder.encode(pushScripts))
@@ -516,6 +598,9 @@ window.${POINT0_DEHYDRATED_SUPER_STORE_GLOBAL} = ${uneval(superstore.stringify(c
           if (holeScripts) {
             controller.enqueue(encoder.encode(holeScripts))
           }
+          // The shell suffix (the template's post-`#root` body content through `</html>`) closes the document last —
+          // after the app stream (which already emitted `#root`'s `</div>`) and its trailing push/hole scripts.
+          controller.enqueue(suffixBytes)
           controller.close()
           return
         }
@@ -524,7 +609,9 @@ window.${POINT0_DEHYDRATED_SUPER_STORE_GLOBAL} = ${uneval(superstore.stringify(c
           // the shell may continue in this same burst — a pre-shell wait must not authorize an injection into it
           atFlushBoundary = false
           sealEffectsOnFirstChunk()
-          controller.enqueue(value)
+          // The shell prefix (doctype through just before `#root`) LEADS the first app chunk, in one enqueue so
+          // nothing can precede `<!DOCTYPE html>` and no injection can wedge between the prefix and the app's opening.
+          controller.enqueue(concatBytes(prefixBytes, value))
           return
         }
         if (atFlushBoundary) {

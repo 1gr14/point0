@@ -4,13 +4,15 @@ import type { ReactElement, ReactNode } from 'react'
 import type { HeadTag, ResolvableHead } from 'unhead/types'
 
 /**
- * The document pipeline: `index.html` stays the authoring format, but the engine renders the WHOLE document —
- * `<html>…</html>` — with React. The template string (whatever the mode produced: the source file, vite's
- * `transformIndexHtml` output in dev, the bundler's emitted `dist/client/index.html` in build) is parsed ONCE into a
- * {@link DocumentTemplate} with Bun's `HTMLRewriter` (no regexes, no extra parser dependency) and cached by the exact
- * string. {@link buildDocumentElement} then assembles the React tree per request: the app subtree sits inside the
- * template's root element, so a suspended Suspense boundary is never the root of React's markup and Fizz streams the
- * shell natively — no `display: contents` wrapper, no prefix/suffix string splicing.
+ * The document pipeline: `index.html` stays the authoring format, but the engine renders the document —
+ * `<html>…</html>` — with React (not string templating). The template string (whatever the mode produced: the source
+ * file, vite's `transformIndexHtml` output in dev, the bundler's emitted `dist/client/index.html` in build) is parsed
+ * ONCE into a {@link DocumentTemplate} with Bun's `HTMLRewriter` (no regexes, no extra parser dependency) and cached by
+ * the exact string. {@link buildDocumentElement} then assembles the React tree per request. The app itself is NOT part
+ * of that tree: it renders as its own React root at `#root` (so its `useId`s match the client's `#root` hydration — see
+ * ./render.ts), and the shell renders the `#root` element as an outlet marker ({@link SSR_ROOT_OUTLET_TAG}) that
+ * render.ts splits on to splice the app stream in. So the head/body chrome is still structural React elements (no regex
+ * templating), while the app streams through the `#root` seam.
  *
  * Parsing rules (all deliberate):
  *
@@ -208,6 +210,42 @@ function findElement(nodes: DocumentTemplateNode[], tag: string): DocumentTempla
   for (const node of nodes) {
     if (node.type === 'element' && node.tag === tag) {
       return node
+    }
+  }
+  return undefined
+}
+
+/**
+ * The custom-element marker {@link buildDocumentElement} renders in place of the app's root element when `rootOutletTag`
+ * is set — the seam where the SSR pipeline splices the separately-rendered app stream into the document shell (see
+ * engine/src/render.ts). An empty custom element serializes to a fixed, unambiguous `<tag></tag>` string (custom
+ * elements are never void), so a single `String.indexOf` locates the seam.
+ */
+export const SSR_ROOT_OUTLET_TAG = 'point0-ssr-root-outlet'
+export const SSR_ROOT_OUTLET_MARKUP = `<${SSR_ROOT_OUTLET_TAG}></${SSR_ROOT_OUTLET_TAG}>`
+
+/**
+ * Finds the app's root element (the one carrying `id === domRootElementId`) among the template's body nodes — the same
+ * search {@link buildDocumentElement} runs, exposed so the render pipeline can read the root element's tag/attributes to
+ * build the app's own React root (`<div id="root">{app}</div>`) BEFORE rendering the shell. Walks nested elements (a
+ * template may nest the root), skipping raw-text elements; returns the first match or `undefined`.
+ */
+export function findRootTemplateElement(
+  nodes: DocumentTemplateNode[],
+  domRootElementId: string,
+): DocumentTemplateElementNode | undefined {
+  for (const node of nodes) {
+    if (node.type !== 'element') {
+      continue
+    }
+    if (node.attrs.id === domRootElementId) {
+      return node
+    }
+    if (node.children.length > 0 && !RAW_TEXT_TAGS.has(node.tag)) {
+      const found = findRootTemplateElement(node.children, domRootElementId)
+      if (found) {
+        return found
+      }
     }
   }
   return undefined
@@ -487,6 +525,7 @@ export function buildDocumentElement({
   headEnd = [],
   modulePreloads = [],
   omitHeadScriptIds = [],
+  rootOutletTag,
 }: {
   template: DocumentTemplate
   resolvedHeadTags: HeadTag[]
@@ -502,6 +541,14 @@ export function buildDocumentElement({
    * static hosting, and when the engine serves the document it replaces it with serve-time values.
    */
   omitHeadScriptIds?: readonly string[]
+  /**
+   * When set, the app's root element is rendered as an EMPTY marker element of this tag (see
+   * {@link SSR_ROOT_OUTLET_TAG}) instead of `<root>{app}</root>` — the SSR pipeline renders this shell to a string and
+   * splices the separately-rendered app stream in at the marker (so the app is its own React root and its `useId`s
+   * match the client's `#root` hydration). `app` is ignored in this mode; the caller reads the root element's tag/attrs
+   * from the template itself via {@link findRootTemplateElement}.
+   */
+  rootOutletTag?: string
 }): ReactElement {
   const split = splitResolvedHeadTags(resolvedHeadTags)
 
@@ -523,6 +570,11 @@ export function buildDocumentElement({
   const renderBodyNode = (node: DocumentTemplateNode, key: string): ReactNode => {
     if (node.type === 'element' && node.attrs.id === domRootElementId) {
       rootMatches.count++
+      if (rootOutletTag !== undefined) {
+        // The marker replaces the WHOLE root element (open tag, children, close tag) — the app stream, rendered with
+        // this same root element as ITS React root, provides `<root>…app…</root>` verbatim when spliced in.
+        return createElement(rootOutletTag, { key })
+      }
       const props = htmlAttrsToReactProps(node.attrs)
       props.key = key
       return app === undefined ? createElement(node.tag, props) : createElement(node.tag, props, app)
