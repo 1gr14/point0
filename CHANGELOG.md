@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.2.5 — 2026-07-13
+
 - SSR now renders your app as its own React root — the `#root` element itself —
   instead of nesting it inside the whole-document React tree. React's `useId` is
   relative to the render root, and the client hydrates `#root`, so the previous
