@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.2.6 — 2026-07-14
+
 - `.scrollPosition()` now actually restores a custom scroll container — it never
   did. A page is code-split, so its collection record holds nothing but the chunk's
   loader until something loads it, and on the client that only ever happened on a
