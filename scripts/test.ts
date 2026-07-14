@@ -41,9 +41,9 @@
  * meaningful only for `unit`/`int` — `.e2e` files do their work in spawned child processes and a browser, neither of
  * which Bun can instrument.
  *
- * Env: TEST_PARALLEL_LIMIT (parallel-phase concurrency, default cpus), TEST_FILE_TIMEOUT_MS (default 5 min),
- * TEST_SOLO_FILE_TIMEOUT_MS (solo/e2e lane, default 15 min), TEST_FILE_RETRIES (default 1), LIVE_TEST_OUTPUT=1 (stream
- * output instead of buffering).
+ * Env: TEST_PARALLEL_LIMIT (parallel-phase concurrency, see {@link defaultParallelLimit}), TEST_TIMEOUT_MS (one test,
+ * see {@link PER_TEST_TIMEOUT_MS}), TEST_FILE_TIMEOUT_MS (default 5 min), TEST_SOLO_FILE_TIMEOUT_MS (solo/e2e lane,
+ * default 15 min), TEST_FILE_RETRIES (default 1), LIVE_TEST_OUTPUT=1 (stream output instead of buffering).
  */
 import * as nodeFs from 'node:fs'
 import { cpus } from 'node:os'
@@ -217,6 +217,17 @@ export const buildPlan = (allFiles: readonly string[]): Plan => {
 const liveTestOutput = process.env.LIVE_TEST_OUTPUT === '1'
 const FILE_TIMEOUT_MS = Number(process.env.TEST_FILE_TIMEOUT_MS ?? 5 * 60_000)
 const SOLO_FILE_TIMEOUT_MS = Number(process.env.TEST_SOLO_FILE_TIMEOUT_MS ?? 15 * 60_000)
+/**
+ * The budget for ONE test inside a file. Bun's own default is 5s, and that default is what made this lane look flaky:
+ * the files run several at a time, so a test that takes 0.1s on an idle machine waits behind its neighbours — and a
+ * compiler unit file that runs in 0.9s alone was measured at 5.7s beside them. The test wasn't slow; it was queued. The
+ * red then WANDERS between files run to run, which is exactly what a real bug never does.
+ *
+ * Nothing is lost by widening it, because this budget was never the thing catching hangs: {@link FILE_TIMEOUT_MS} is — a
+ * wall-clock guard around the whole file, which kills the process tree and names the file. Two timeouts, and only the
+ * outer one is calibrated for a machine under load. A passing test never waits for either.
+ */
+const PER_TEST_TIMEOUT_MS = Number(process.env.TEST_TIMEOUT_MS ?? 30_000)
 const FILE_RETRIES = Number(process.env.TEST_FILE_RETRIES ?? 1)
 
 /**
@@ -294,7 +305,7 @@ const runOnce = async (file: string, timeoutMs: number, coverage: boolean): Prom
     ? ['--coverage', '--coverage-reporter=lcov', `--coverage-dir=${coverageDirOf(file)}`]
     : []
   const proc = Bun.spawn({
-    cmd: ['bun', 'test', ...coverageArgs, file],
+    cmd: ['bun', 'test', `--timeout=${PER_TEST_TIMEOUT_MS}`, ...coverageArgs, file],
     cwd: ROOT,
     stdout: liveTestOutput ? 'inherit' : undefined,
     stderr: liveTestOutput ? 'inherit' : undefined,
@@ -361,8 +372,27 @@ const runFile = async (file: string, timeoutMs: number, coverage: boolean): Prom
   return { file, code, output: result.output, warning }
 }
 
-const runParallel = async (files: readonly string[], coverage: boolean): Promise<FileOutcome[]> => {
-  const maxParallel = Number(process.env.TEST_PARALLEL_LIMIT ?? cpus().length)
+/**
+ * How many `.int` files may boot at once — and it is NOT `cpus()` on a developer's machine.
+ *
+ * CI gives each group its own dedicated runner, so there every core really is ours and `cpus()` is exactly the budget.
+ * A developer's machine is nothing like that: an editor, a browser and usually a `build:watch` are already on it, its
+ * "cores" include the efficiency ones, and every one of these files boots a real dev server or build that fans out over
+ * the cores on its own. So `cpus()` there does not buy parallelism, it buys contention. `.unit` files are pure logic
+ * and keep the full width (see {@link runParallelPhase}).
+ *
+ * Override with TEST_PARALLEL_LIMIT — which is a machine-local knob, so keep it OUT of a committed `.env`: it silently
+ * outranks everything measured here (a stray `TEST_PARALLEL_LIMIT=16` in a local `.env` is what ran 16 concurrent files
+ * on 8 cores and made this lane look flaky).
+ */
+const defaultParallelLimit = (): number => (process.env.CI ? cpus().length : Math.max(2, Math.floor(cpus().length / 2)))
+
+const runParallel = async (
+  files: readonly string[],
+  coverage: boolean,
+  defaultLimit: number,
+): Promise<FileOutcome[]> => {
+  const maxParallel = Number(process.env.TEST_PARALLEL_LIMIT ?? defaultLimit)
   const limit = Number.isFinite(maxParallel) && maxParallel > 0 ? maxParallel : 1
   if (files.length === 0) return []
   console.info(`Running ${files.length} test files with parallelism=${Math.min(limit, files.length)}`)
@@ -375,6 +405,26 @@ const runParallel = async (files: readonly string[], coverage: boolean): Promise
     await runNext()
   }
   await Promise.all(Array.from({ length: Math.min(limit, files.length) }, runNext))
+  return outcomes
+}
+
+/**
+ * The parallel phase, in CLASS WAVES: every `.unit` file first, then every `.int` file — never the two mixed.
+ *
+ * CI has always worked this way without saying so: its groups are class-homogeneous (one runner for `unit`, one per
+ * `int-N`), so a cheap unit file never shares a machine with an int file booting a dev server or a build. Only the
+ * LOCAL whole-lane run threw all 94 into one pool — and that is where its flakes came from. They were never "slow
+ * tests": a unit file scheduled beside three concurrent builds simply gets starved. Measured:
+ * `compiler/tests/static-options.unit.test.ts` runs in 0.5s alone and took 5.5s in the mixed pool, which is how a
+ * pure-logic test blows a 5s per-test timeout and the failure then WANDERS between files run to run. Waves make the
+ * local run behave like CI's, and cost nothing: the unit wave keeps the full width, and the int wave was the only thing
+ * that ever needed the narrower one.
+ */
+const runParallelPhase = async (files: readonly string[], coverage: boolean): Promise<FileOutcome[]> => {
+  const unit = files.filter((file) => classOf(file) === 'unit')
+  const heavy = files.filter((file) => classOf(file) !== 'unit')
+  const outcomes = await runParallel(unit, coverage, defaultParallelLimit())
+  outcomes.push(...(await runParallel(heavy, coverage, defaultParallelLimit())))
   return outcomes
 }
 
@@ -532,6 +582,6 @@ if (import.meta.main) {
   // A stale shard from an earlier run would silently inflate the merge, so the raw dir is rebuilt from scratch.
   if (coverage) nodeFs.rmSync(nodePath.join(ROOT, COVERAGE_RAW_DIR), { recursive: true, force: true })
 
-  const outcomes = [...(await runParallel(parallelFiles, coverage)), ...(await runSolo(soloFiles, coverage))]
+  const outcomes = [...(await runParallelPhase(parallelFiles, coverage)), ...(await runSolo(soloFiles, coverage))]
   await report(outcomes, startTime, coverage)
 }
