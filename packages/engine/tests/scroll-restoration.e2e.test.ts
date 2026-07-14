@@ -30,6 +30,7 @@ export const layout = root.lets('layout', 'scrollLayout', '/scroll')
         <Link id="nav-anchors" to="/scroll/anchors">anchors</Link>
         <Link id="nav-anchors-hash" to="/scroll/anchors#target">anchors#target</Link>
         <Link id="nav-slow" to="/scroll/slow">slow</Link>
+        <Link id="nav-container" to="/scroll/container">container</Link>
       </nav>
       {children}
     </>
@@ -68,6 +69,21 @@ export const scrollAnchorsPage = layout.lets('page', 'scrollAnchors', 'anchors')
     <div style={{ height: ${tallHeight} }}>tail</div>
   </div>
 ))
+`
+
+// A page whose scroll lives in a custom CONTAINER, not the window (`.scrollPosition('#pane')`).
+// Measured: no browser restores element scroll natively, in any scrollRestoration mode — so unlike a
+// window scroll this position has NO platform fallback. It is entirely ours, on every path.
+const pageContainerTsx = `import { layout } from './layout.js'
+export const scrollContainerPage = layout.lets('page', 'scrollContainer', 'container')
+  .scrollPosition('#pane')
+  .page(() => (
+    <div id="scroll-container">
+      <div id="pane" style={{ height: 300, overflow: 'auto' }}>
+        <div style={{ height: ${tallHeight} }}>pane inner</div>
+      </div>
+    </div>
+  ))
 `
 
 // clientLoader delays the tall content, so right after a reload the document is short and a deep
@@ -136,6 +152,49 @@ const waitScrollY = async (
 const waitScrollYNear = async (page: PlaywrightPage, expected: number, timeout?: number): Promise<number> =>
   await waitScrollY(page, (y) => Math.abs(y - expected) <= 2, `≈ ${expected}`, timeout)
 
+const getPaneTop = async (page: PlaywrightPage): Promise<number> =>
+  await page.original.evaluate(() => document.querySelector('#pane')?.scrollTop ?? -1)
+const waitPaneTopNear = async (page: PlaywrightPage, expected: number, timeout = 5000): Promise<void> => {
+  const start = Date.now()
+  let last = -1
+  while (Date.now() - start < timeout) {
+    last = await getPaneTop(page)
+    if (Math.abs(last - expected) <= 2) {
+      return
+    }
+    await new Promise((r) => setTimeout(r, 50))
+  }
+  throw new Error(`Timeout waiting for #pane.scrollTop ≈ ${expected}, last seen ${last}`)
+}
+
+type FrameSample = { y: number; h: number }
+// Record scrollY + document height across the first frames of the NEXT load, before any app code runs.
+const recordFirstFrames = async (page: PlaywrightPage): Promise<void> => {
+  await page.original.addInitScript(() => {
+    ;(window as any).__frames = [] as FrameSample[]
+    let n = 0
+    const tick = (): void => {
+      ;(window as any).__frames.push({ y: Math.round(window.scrollY), h: document.documentElement.scrollHeight })
+      if (++n < 40) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
+}
+const readFirstFrames = async (page: PlaywrightPage): Promise<FrameSample[]> =>
+  (await page.original.evaluate(() => (window as any).__frames)) as FrameSample[]
+
+// `history.scrollRestoration` as the NEXT document load finds it — captured at document start, before a
+// line of app code runs and claims it back. The mode is a property of the session history ENTRY and
+// survives the load, so this is exactly what we left behind on the way out: the one direct, raceless
+// observation of who owns the restore of this entry.
+const recordModeAtDocumentStart = async (page: PlaywrightPage): Promise<void> => {
+  await page.original.addInitScript(() => {
+    ;(window as any).__modeAtStart = history.scrollRestoration
+  })
+}
+const readModeAtDocumentStart = async (page: PlaywrightPage): Promise<string> =>
+  (await page.original.evaluate(() => (window as any).__modeAtStart)) as string
+
 describe('scroll-restoration', () => {
   let tp: TestProjectOneClient
 
@@ -154,6 +213,7 @@ describe('scroll-restoration', () => {
         await tp.write('src/scroll/short.tsx', pageShortTsx)
         await tp.write('src/scroll/anchors.tsx', pageAnchorsTsx)
         await tp.write('src/scroll/slow.tsx', pageSlowTsx)
+        await tp.write('src/scroll/container.tsx', pageContainerTsx)
         tp.spawn(['bun', 'run', 'dev'])
         await tp.waitStarted()
         break
@@ -219,8 +279,11 @@ describe('scroll-restoration', () => {
     await page.waitContent('#scroll-slow', 5000)
     await scrollTo(page, 2500)
 
-    // Right after the reload the clientLoader hasn't resolved: the document is short and the
-    // restore clamps. The retry must re-apply it once the tall content renders.
+    // This now exercises the REPAIR path, not the platform one. The clientLoader hasn't resolved at
+    // load time, so the document is short: the browser makes its one restore attempt, clamps against
+    // that short document and gives up (measured — it does not re-apply as the page grows). Our
+    // post-hydration restore and its retry are what land the deep position once the tall content
+    // arrives. This is the case a pre-paint restore cannot serve, by definition.
     await page.original.reload()
     await page.waitContent('#scroll-slow', 5000)
     await waitScrollYNear(page, 2500)
@@ -260,6 +323,92 @@ describe('scroll-restoration', () => {
     // Default policy scrolls a current-page anchor smoothly — poll until the animation lands.
     await clickLink(page, '#in-page-anchor')
     await waitScrollY(page, (y) => y > anchorOffset - 500, `> ${anchorOffset - 500} (at the anchor)`)
+  })
+
+  // The no-flash invariant, and the reason the mode is yielded back to the browser on the way out.
+  // A reload is restored by the PLATFORM, before the first paint. Our own restore lives in a React
+  // effect — after hydration, hence after that first paint — so if we held `scrollRestoration =
+  // 'manual'` across the reload (as we used to), the user would see the TOP of the page and be thrown
+  // down a moment later. This samples window.scrollY together with the document height from the very
+  // first frames, before any app code runs. The page is static and tall, so its full height is present
+  // at first paint: any frame parked at the top is a visible flash, not a content-height problem.
+  //
+  // Chromium-scoped by nature (it asserts a pre-paint platform behavior). Every other test here
+  // asserts only the FINAL position, which is engine-independent.
+  it('reload restores before the first paint — no flash to the top', async () => {
+    const page = await tp.gotoServer('/scroll')
+    await page.waitContent('#scroll-home')
+    await scrollTo(page, 2500)
+    await settleCapture(page)
+
+    await recordFirstFrames(page)
+    await recordModeAtDocumentStart(page)
+    await page.original.reload()
+    await page.waitContent('#scroll-home')
+    await waitScrollYNear(page, 2500)
+
+    const frames = await readFirstFrames(page)
+    // The first frame at which the full page height is present (static page → immediately).
+    const firstTallFrame = frames.find((f) => f.h >= tallHeight)
+    expect(firstTallFrame, 'the tall content should be present in an early frame').toBeTruthy()
+    // Once the height is there, the scroll must ALREADY be at the saved position — the browser put it
+    // there before painting. Never a visible frame at the top. THIS is the flash, as the user sees it.
+    expect(firstTallFrame!.y).toBeGreaterThan(2000)
+    // And this is why there isn't one: we handed the entry back on the way out, so the load began under
+    // the platform's own pre-paint restore rather than under our post-hydration effect.
+    expect(await readModeAtDocumentStart(page)).toBe('auto')
+  })
+
+  // Gate A. We do NOT yield the mode for a URL carrying a `#hash`: under 'auto' the browser prefers the
+  // FRAGMENT over the stored position (measured — it lands on the anchor, not where you were). Such
+  // entries stay on 'manual' and are restored by us instead.
+  //
+  // The gate is asserted on the MODE, not on the frames of the next load. A reload of a hashed URL may
+  // scroll to the anchor on its own (fragment navigation is not scroll restoration), and our repair
+  // pulls it back either way — so an early frame sitting at the anchor proves nothing about the gate,
+  // it just samples that race. The mode on the history entry, read before any of our code claims it
+  // back, IS the gate: no race, no sampling.
+  it('a #hash entry is never handed to the browser, and its reload restores the position', async () => {
+    const page = await tp.gotoServer('/scroll/anchors#target')
+    await page.waitContent('#scroll-anchors')
+    await waitScrollY(page, (y) => y > anchorOffset - 500, `> ${anchorOffset - 500} (at the anchor)`)
+
+    // Move away from the anchor — this is the position a reload must bring back.
+    await scrollTo(page, 100)
+    await settleCapture(page)
+
+    await recordModeAtDocumentStart(page)
+    await page.original.reload()
+    await page.waitContent('#scroll-anchors')
+
+    expect(await readModeAtDocumentStart(page), 'a hashed entry must stay ours — gate A is gone').toBe('manual')
+    // And the user lands where they left, not on the anchor.
+    await waitScrollYNear(page, 100)
+  })
+
+  // A custom scroll container has NO platform fallback — no browser restores element scroll natively,
+  // in any mode. So this path is entirely ours, on BOTH a same-document pop and a reload, and it is the
+  // path the `behavior: 'instant'` setter fix protects (an animated restore reads as the user scrolling
+  // and makes the retry back off for good).
+  it('a custom scroll container restores on a pop and on a reload', async () => {
+    const page = await tp.gotoServer('/scroll/container')
+    await page.waitContent('#scroll-container')
+    await page.original.evaluate(() => {
+      document.querySelector('#pane')!.scrollTop = 2000
+    })
+    await settleCapture(page)
+
+    // same-document pop
+    await clickLink(page, '#nav-home')
+    await page.waitContent('#scroll-home')
+    await page.original.goBack()
+    await page.waitContent('#scroll-container')
+    await waitPaneTopNear(page, 2000)
+
+    // document load
+    await page.original.reload()
+    await page.waitContent('#scroll-container')
+    await waitPaneTopNear(page, 2000)
   })
 
   it('a search-only change keeps the scroll untouched', async () => {

@@ -5,6 +5,47 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- `.scrollPosition()` now actually restores a custom scroll container — it never
+  did. A page is code-split, so its collection record holds nothing but the chunk's
+  loader until something loads it, and on the client that only ever happened on a
+  navigation's prefetch — never for the page the server rendered. So the lookup
+  found no point, and silently fell back to the window: the capture stored the
+  window's offset instead of the container's, and the restore moved the window
+  instead of the container. Scroll restoration now loads the page's chunk before it
+  decides anything, and while that is in flight the lookup answers **"not yet"**
+  rather than "the window" — "we don't know yet how this page scrolls" and "this
+  page scrolls the window" are different answers, and collapsing them is what
+  scrolled the wrong thing and stored the wrong offset. A code-split page's
+  `.scrollRestore()` policy is honoured for the same reason: it lives in the chunk,
+  the decision is taken once, and it used to be taken from the default policy. And a
+  restore no longer gives up when the container isn't in the DOM yet — waiting for it
+  to render is precisely what the retry is for.
+- Reloading a scrolled page no longer flashes at the top before jumping back to
+  where you were. Scroll restoration is now split along the line of what each side
+  can actually do: the **browser** restores a document load (reload, cross-document
+  back/forward), and it does that _before the first paint_, knowing the real page
+  height — which no JavaScript restore can match, ours included, since it runs after
+  hydration and therefore after that paint. Point0 keeps
+  `history.scrollRestoration = 'manual'` only while the page is alive, because
+  same-document navigation really is its job (there the browser would restore before
+  React rendered the entering page, and would prefer a `#hash` over the remembered
+  position), and hands the mode back on the way out. A URL carrying a `#hash` is
+  never handed back — the browser would jump to the anchor instead of your position.
+  Point0 still restores everything the browser demonstrably cannot: content that
+  only reaches its full height after the first paint, custom scroll containers (no
+  browser restores element scroll, in any mode), those `#hash` entries, and
+  `ssr: false` pages, whose first paint is empty.
+- Restoring a scroll position no longer animates under
+  `scroll-behavior: smooth`. The restore used `window.scrollTo(x, y)` (and
+  `element.scrollTop = …` for a custom container), both of which scroll with the
+  CSS-resolved behavior — so on a smooth-scrolling page the restore animated, the
+  retry read that animation as the user scrolling, and backed off for good. Both now
+  pin `behavior: 'instant'`, like the `#hash` jump always did.
+- A scroll-position getter for a container that isn't in the DOM now reports
+  `undefined` instead of `{ x: 0, y: 0 }`. The zero was a lie: a capture firing while
+  the container was unmounted overwrote the page's real remembered position with the
+  top.
+
 ## 0.2.5 — 2026-07-13
 
 - SSR now renders your app as its own React root — the `#root` element itself —

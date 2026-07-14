@@ -99,7 +99,13 @@ export const windowScrollPositionSetter: ScrollPositionSetter = ({ x, y }: { x: 
     return
   }
   if (typeof window.scrollTo === 'function') {
-    window.scrollTo(x, y)
+    // `'instant'`, never the two-argument `scrollTo(x, y)`: that form scrolls with behavior `'auto'`,
+    // which resolves to the page's CSS `scroll-behavior` — so under `html { scroll-behavior: smooth }`
+    // a restore would ANIMATE. The restore retry compares the position on the next frame against what
+    // it applied and backs off when they differ (it must never wrestle the user), so an animated
+    // restore looks exactly like the user scrolling and the retry gives up for good. Same reason
+    // `scrollToHashElement` pins `'instant'` for a hard jump.
+    window.scrollTo({ left: x, top: y, behavior: 'instant' })
     return
   }
   const doc = document.documentElement
@@ -112,7 +118,11 @@ export const getWindowScrollPositionGetterByElementGetter = (elementGetter: () =
   return () => {
     const element = elementGetter()
     if (!element) {
-      return { x: 0, y: 0 }
+      // `undefined`, NOT `{ x: 0, y: 0 }` — the getter's contract allows it and every caller guards for
+      // it. A zero would be a LIE: a capture that fires while the container is unmounted (a navigation
+      // in flight, a conditionally rendered pane) would overwrite the page's real remembered position
+      // with the top of the page. Absent is not the same as zero.
+      return undefined
     }
     return { x: element.scrollLeft, y: element.scrollTop }
   }
@@ -124,8 +134,11 @@ export const getWindowScrollPositionSetterByElementGetter = (elementGetter: () =
     if (!element) {
       return
     }
-    element.scrollLeft = position.x
-    element.scrollTop = position.y
+    // `scrollTo({ behavior: 'instant' })`, not `element.scrollTop = …`: per CSSOM-View those property
+    // setters scroll with behavior `'auto'`, which resolves to the ELEMENT's computed `scroll-behavior`
+    // — so a `scroll-behavior: smooth` container would animate its restore, and the retry would read
+    // that animation as the user moving and back off. See windowScrollPositionSetter.
+    element.scrollTo({ left: position.x, top: position.y, behavior: 'instant' })
   }
 }
 

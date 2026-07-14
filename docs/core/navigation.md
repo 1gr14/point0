@@ -466,17 +466,37 @@ return <main className={isNavigating ? 'opacity-60' : ''}>{children}</main>
 
 ## Scroll restoration
 
-Point0 manages scroll itself: it sets `history.scrollRestoration = 'manual'` and
-the router becomes the single source of truth. A new navigation (push) scrolls
-to the top — or to the target `#hash` per the `scrollToHash` policy.
-Back/Forward (pop) restores the remembered position, even when the URL carries a
-`#hash` (the browser's own restoration would jump to the fragment instead).
-Positions are remembered per URL and survive a reload (persisted to
-`sessionStorage`), so reloading a scrolled page brings you back to the same
-offset. A first load with a `#hash` in the URL is a deep link — it jumps to the
-anchor. If the entering page's content is still rendering (async data), the
-restore keeps re-applying the position for up to a second while the document
-grows — and backs off the moment anything else moves the scroll.
+Scroll restoration is **split between the browser and Point0**, along the line
+of what each can actually do.
+
+**The browser restores a document load** — a reload, or a back/forward that
+reloads the page. It does this _before the first paint_, knowing the real page
+height, which no framework can match: any JavaScript restore runs after
+hydration, hence after that first paint, so it would show you the top of the
+page and then jump. So Point0 hands the mode back to the browser
+(`scrollRestoration = 'auto'`) when the page is on its way out, and reloading a
+scrolled page simply brings you back where you were, with nothing to see.
+
+**Point0 restores everything else**, and holds `scrollRestoration = 'manual'`
+while the page is alive so the browser doesn't interfere. Same-document
+navigation is its job: a new navigation (push) scrolls to the top — or to the
+target `#hash` per the `scrollToHash` policy — and Back/Forward (pop) restores
+the remembered position, even when the URL carries a `#hash` (the browser's own
+restoration would jump to the fragment instead — which is exactly why the mode
+is not handed back for a URL that has one). A first load with a `#hash` is a
+deep link: it jumps to the anchor.
+
+Positions are remembered per URL and persisted to `sessionStorage`, which is
+what lets the next document **repair** a restore the browser could not perform.
+It can't when the content isn't there yet at load time: a page whose data
+arrives after the first paint is still short when the browser makes its one
+attempt, so it lands nothing. Point0 then re-applies the position for up to a
+second while the document grows — and backs off the moment anything else moves
+the scroll. Same for a page rendered entirely on the client (`ssr: false`),
+whose first paint is empty, and for a **custom scroll container**
+(`.scrollPosition`): no browser restores the scroll of an element rather than
+the window, in any mode, so a container is always Point0's to restore — on a
+reload as much as on a Back/Forward.
 
 Two stage-methods on a mountable control where the page scrolls when you
 navigate to it. They're set on the point chain (page/layout), not on

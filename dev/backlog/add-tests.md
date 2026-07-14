@@ -156,3 +156,20 @@ stream-drop failsafe that landed in that review are now pinned by real tests:
   failing at render. Add a test where a layout's lazy FC load rejects while the
   page chunk loads fine, asserting `_loadPage` throws `PAGE_CHUNK_LOAD_FAILED`
   (and, e2e, that stale recovery runs).
+- **scroll restoration — the two paths the fix opened but nothing pins.**
+  `scroll-restoration.e2e.test.ts` covers the reload/no-flash gate, the `#hash`
+  gate and a custom container; `scroll-restoration-mode.unit.test.ts` covers the
+  mode machine, the accessors and the three-way config lookup. Two behaviours
+  the fix relies on are still untested. (1) **A code-split page's
+  `.scrollRestore()` policy.** The policy lives in the page's chunk and the
+  decision is taken ONCE, so before the chunk lands the manager must WAIT, not
+  fall back to the default policy — a lazy `.scrollRestore(false)` used to be
+  silently ignored and a lazy `.scrollRestore(true)` got a scroll-to-top. Add an
+  e2e with a lazy `.scrollRestore(false)` page and assert a pop does NOT move
+  the scroll. (2) **The stale deferred apply.** `withResolvedScrollConfig`
+  awaits `loadPage`, so a queued `apply` can outlive its navigation: navigate
+  away from a slow page while its chunk is in flight, and without the
+  `isCurrent` guard the chunk lands and restores the OLD page's offset onto the
+  NEW page. The guard is in `scroll.tsx`; nothing proves it. Add a test that
+  navigates twice in quick succession across a slow-chunk page and asserts the
+  second page keeps its own position.

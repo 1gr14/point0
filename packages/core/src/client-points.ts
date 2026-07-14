@@ -617,17 +617,35 @@ export class ClientPoints<TError extends ErrorPoint0> {
     return { point, location }
   }
 
-  // Resolved scroll config (custom element getter/setter + restore policy) for the
-  // page that matches `href`. Used by the router's central scroll manager.
-  _getPageScrollConfigByHref = (href: string): ScrollConfig | undefined => {
+  /**
+   * The scroll config (custom element getter/setter + restore policy) of the page matching `href` — for the router's
+   * central scroll manager. THREE outcomes, and collapsing any two of them is how `.scrollPosition()` stayed broken for
+   * the whole life of the feature:
+   *
+   * - a `ScrollConfig` — the page is known, and this is how it scrolls;
+   * - `'pending'` — a page matches, but it is code-split and its record still holds nothing but the LOADER, so we do not
+   *   YET know whether it scrolls the window or a container of its own. Answering "the window" here is not a safe
+   *   default but a WRONG one: it scrolls the wrong thing, and it stores the window's offset under a container page's
+   *   href, corrupting what a later restore reads back. The caller must wait — {@link loadPage} is what turns such a
+   *   record into a ready one (its `setReadyPoint`);
+   * - `undefined` — no page matches this href at all (a 404). That is a definitive answer, and the window is the right
+   *   fallback for it.
+   */
+  _getPageScrollConfigByHref = (href: string): ScrollConfig | 'pending' | undefined => {
     const found = this._getPageByHref(href)
     if (!found) {
       return undefined
     }
     const record = found.point
-    const readyPoint: ReadyPoint | undefined =
-      'ready' in record ? record.point : typeof record.point === 'function' ? undefined : record.point.point
-    return readyPoint?._getScrollConfig()
+    if ('ready' in record) {
+      return record.point._getScrollConfig()
+    }
+    // A function here is a LOADER and nothing else: the point's callable wrapper never reaches a record — `getPage`
+    // unwraps it (`(await loader()).point`) and `setReadyPoint` stores the instance.
+    if (typeof record.point === 'function') {
+      return 'pending'
+    }
+    return record.point.point._getScrollConfig()
   }
 
   static isPageLocationSuitable = ({

@@ -3983,6 +3983,12 @@ export class Point0<
    * prevLocation, type }) => …` policy. Default restores on back/forward (`pop`), scrolls to top on `push`. On page and
    * layout.
    *
+   * Applies to navigation _within_ the app. A DOCUMENT LOAD (reload, cross-document back/forward) of a hashless URL is
+   * restored by the BROWSER — before the first paint, which no JS restore can match — so this policy does not gate it.
+   * Point0 restores such a load itself only where the browser demonstrably cannot: content that arrives after the first
+   * paint, a custom scroll container (no browser restores element scroll, in any mode), a `#hash` URL, or `ssr:
+   * false`.
+   *
    * Client-only — stripped from the server bundle (runs in the browser, regardless of SSR).
    *
    *     .scrollRestore(true)                                 // boolean / null
