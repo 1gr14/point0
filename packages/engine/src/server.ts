@@ -68,7 +68,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   publicdirs: TPrepared extends true ? Array<Publicdir<true, TError>> : Array<Publicdir<false, TError>>
   outdir: string | null
   bunBuildConfig: EngineServerBuildConfigDefinition
-  bunServeConfig: Serve.Options<any, any> | null
+  bunServeConfig: Partial<Serve.Options<any, any>> | null
   bunPlugins: EngineServerPluginsDefinition
   generalBunPlugins: EngineSharedPluginsDefinition
   prepared: TPrepared
@@ -110,7 +110,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     publicdir: Publicdir<false, TError> | null
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
-    bunServeConfig: Serve.Options<any, any> | null
+    bunServeConfig: Partial<Serve.Options<any, any>> | null
     bunPlugins: EngineServerPluginsDefinition
     generalBunPlugins: EngineSharedPluginsDefinition
     viteConfig: EngineOptionsViteConfig | null
@@ -176,7 +176,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     envVars: EngineOptionsEnvParsed
     outdir: string | null
     bunBuildConfig: EngineServerBuildConfigDefinition
-    bunServeConfig: Serve.Options<any, any> | null
+    bunServeConfig: Partial<Serve.Options<any, any>> | null
     bunPlugins: EngineServerPluginsDefinition
     generalBunPlugins: EngineSharedPluginsDefinition
     log: LogFn

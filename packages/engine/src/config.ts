@@ -342,8 +342,8 @@ export type EngineServerOptions<
   entry?: string | Record<string, string>
   /** Default watch glob for `point0 dev` when `--watch` is passed with no value. Default `[]`. */
   devWatchGlob?: string | string[]
-  /** Raw `Bun.serve` config, passed through when serving with Bun. Default `null`. */
-  bunServeConfig?: Serve.Options<any, any>
+  /** Raw `Bun.serve` overrides (idleTimeout, tls, …), merged over the engine's own serve config. Default `null`. */
+  bunServeConfig?: Partial<Serve.Options<any, any>>
   /** Per-side `Bun.build` overrides (merged with the general `bunBuildConfig`). Default `{}`. */
   bunBuildConfig?: EngineServerBuildConfigDefinition
   /** Bun plugins for this side, additive over the shared `bunPlugins`. Default `[]`. */
@@ -544,7 +544,7 @@ export type EngineServerOptionsParsed = {
   cwdBeforeBuild: string
   itWasBuilt: boolean
   bunBuildConfig: EngineServerBuildConfigDefinition
-  bunServeConfig: Serve.Options<any, any> | null
+  bunServeConfig: Partial<Serve.Options<any, any>> | null
   bunPlugins: EngineServerPluginsDefinition
   viteConfig: EngineOptionsViteConfig | null
   compiler: EngineOptionsCompilerSpecificParsed | false
