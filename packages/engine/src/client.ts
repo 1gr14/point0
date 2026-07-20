@@ -559,6 +559,9 @@ try {
   // spawns), so a conflict means a genuinely foreign holder — let Bun.serve fail and the orchestrator surface it.
   const bunServer = Bun.serve({
     port: ${this.port},
+    // Dev proxy in front of the app server: long-polls and streams park without writing a byte, and Bun's default
+    // idleTimeout (10s) would cut them mid-request. 255 is Bun's maximum.
+    idleTimeout: 255,
     routes: {
       '/index.html': indexHtml,
     },
