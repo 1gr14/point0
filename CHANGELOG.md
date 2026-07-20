@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.2.8 — 2026-07-20
+
 - route0 bumped to `^0.3.0`, where a path param carries one descriptor —
   `{ required, type }`, plus `values` when it is restricted to a set.
 - Fix: the OpenAPI path template is built from the route's tokens instead of a
