@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.2.7 — 2026-07-20
+
 - Page routes are matched by route0 instead of by the router's own path parser. A
   page's `<Route>` was handed the raw definition string, which wouter re-parses with
   `regexparam` — a second, approximate matcher running beside the one point0 already
