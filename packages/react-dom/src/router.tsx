@@ -1527,7 +1527,7 @@ export const RenderPagesTree = ({
                 <Switch>
                   {node.pages.map(({ pageRoute, Page }) => {
                     return (
-                      <Route key={pageRoute.definition} path={pageRoute.definition}>
+                      <Route key={pageRoute.definition} path={pageRoute.regex}>
                         <Page />
                       </Route>
                     )
@@ -1551,7 +1551,7 @@ export const RenderPagesTree = ({
           <Fragment key={`nolayout-${node.layoutName}`}>
             {node.pages.map(({ pageRoute, Page }) => {
               return (
-                <Route key={pageRoute.definition} path={pageRoute.definition}>
+                <Route key={pageRoute.definition} path={pageRoute.regex}>
                   <Page />
                 </Route>
               )

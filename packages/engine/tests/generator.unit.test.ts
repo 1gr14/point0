@@ -426,8 +426,8 @@ export const dashed = root.lets('page', 'my-page', '/news/dashed').page(() => <d
           "import { Routes } from '@1gr14/route0'
 
           export const routes = Routes.create({
-            mypage: '/news',
             'my-page': '/news/dashed',
+            mypage: '/news',
           })
           "
         `)

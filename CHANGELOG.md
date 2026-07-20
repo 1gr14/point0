@@ -5,6 +5,28 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- Page routes are matched by route0 instead of by the router's own path parser. A
+  page's `<Route>` was handed the raw definition string, which wouter re-parses with
+  `regexparam` — a second, approximate matcher running beside the one point0 already
+  trusts everywhere else. Layouts had always used route0's real `RegExp`; pages now
+  do too. The two only agreed for plain routes: given `/:locale(ru|en)?/author`,
+  `regexparam` minted a param key literally called `locale(ru|en)` and matched
+  `/fr/author`, while route0 correctly rejected it — so the page rendered for a URL
+  the framework considered a 404, with params it could not supply.
+- Upgraded to `@1gr14/route0` 0.2, which brings params constrained to a value set —
+  `:locale(ru|en)` and `:locale(ru|en)?` — enforced in matching, building, schema
+  validation, the emitted JSON Schema and route ordering, and narrowed to the literal
+  union at the type level. Constrained params flow through the compiler untouched, so
+  a `basePath`, a nested layout and a synthesized endpoint route all carry them.
+  route0 0.2 also fixes the route ordering that let an optional leading param swallow
+  every single-segment top-level route, and now rejects a route definition that names
+  the same param twice — previously the second occurrence silently overwrote the
+  first, so one of the two segments could never be filled independently.
+- The dev proxy no longer cuts long-polls at Bun's idle timeout.
+- `bunServeConfig` is typed as a partial override.
+- The compiler resolves imports without the TypeScript compiler API.
+- The toolchain guard only guards the `tsc` of packages that actually run it.
+
 ## 0.2.6 — 2026-07-14
 
 - `.scrollPosition()` now actually restores a custom scroll container — it never

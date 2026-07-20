@@ -473,6 +473,44 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
     )
 
     it.concurrent(
+      'builds paths statically when a param is constrained to a value set',
+      helper({ ssr: true }, async ({ files: [f0], walker }) => {
+        // The compiler never runs the code — it reads the chain. A constrained param carries parentheses and a pipe,
+        // which is the first route syntax that is not a bare identifier, so the static reader has to carry it through
+        // basePath concatenation, layout nesting and the synthesized endpoint route untouched.
+        await f0.write(`import {Point0} from '@point0/core'
+          export const root = Point0.lets('root', 'root').basePath('/:locale(ru|en)?').root()
+          export const l1 = root.lets('layout', 'general', '/blog').layout(() => <div>Hello</div>)
+          export const p1 = l1.lets('page', 'article', '/:slug').loader(() => ({ ok: true })).page(() => <div>Hello</div>)
+          export const a1 = root.lets('action', 'feed', 'GET', '/feed/:format(rss|atom)').loader(() => ({ ok: true })).query()
+        `)
+        const result = walker.collectPointsFromFile({ file: f0.path })
+        expect(result.errors).toHaveLength(0)
+        const simplified = result.points.map((p) => p.simplify())
+        expect(simplified[1]).toMatchObject({
+          type: 'layout',
+          name: 'general',
+          route: '/:locale(ru|en)?/blog',
+          valid: true,
+        })
+        expect(simplified[2]).toMatchObject({
+          type: 'page',
+          name: 'article',
+          route: '/:locale(ru|en)?/blog/:slug',
+          valid: true,
+          endpoint: { method: 'GET', route: '/_point0/root/page/article/:locale(ru|en)?/blog/:slug' },
+        })
+        expect(simplified[3]).toMatchObject({
+          type: 'action',
+          name: 'feed',
+          route: '/:locale(ru|en)?/feed/:format(rss|atom)',
+          valid: true,
+          endpoint: { method: 'GET', route: '/:locale(ru|en)?/feed/:format(rss|atom)' },
+        })
+      }),
+    )
+
+    it.concurrent(
       'recognize usual action with basePath',
       helper(async ({ files: [f0], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
@@ -556,7 +594,7 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
       'recognize non action endpoints',
       helper({ ssr: true }, async ({ files: [f0], walker }) => {
         await f0.write(`import {Point0} from '@point0/core'
-          export const root = Point0.lets('root', 'root').basePath('/api').basePath('/:x').root()
+          export const root = Point0.lets('root', 'root').basePath('/api').basePath('/:w').root()
           export const q1 = root.lets('query', 'query1').loader(() => ({ ok: true })).query()
           export const q2 = root.lets('query', 'query2').query()
           export const m1 = root.lets('mutation', 'mutation1').loader(() => ({ ok: true })).mutation()
@@ -621,7 +659,7 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
         expect(simplified[9]).toMatchObject({
           type: 'layout',
           name: 'layout1',
-          endpoint: { method: 'GET', route: '/_point0/root/layout/layout1/api/:x/zxc/:x', methods: ['GET'] },
+          endpoint: { method: 'GET', route: '/_point0/root/layout/layout1/api/:w/zxc/:x', methods: ['GET'] },
         })
         expect(simplified[10]).toMatchObject({
           type: 'layout',
@@ -641,18 +679,18 @@ export const dashboardPage = appRoot.lets.page('/dashboard').page(() => <div>Das
         expect(simplified[13]).toMatchObject({
           type: 'page',
           name: 'page1',
-          endpoint: { method: 'GET', route: '/_point0/root/page/page1/api/:x/zxc/:x/abc/:y', methods: ['GET'] },
+          endpoint: { method: 'GET', route: '/_point0/root/page/page1/api/:w/zxc/:x/abc/:y', methods: ['GET'] },
         })
         // pages always has endpoint, becouse they can be called to get queryClientDehydratedState
         expect(simplified[14]).toMatchObject({
           type: 'page',
           name: 'page2',
-          endpoint: { method: 'GET', route: '/_point0/root/page/page2/api/:x/zxc/:x/abc/:y' },
+          endpoint: { method: 'GET', route: '/_point0/root/page/page2/api/:w/zxc/:x/abc/:y' },
         })
         expect(simplified[15]).toMatchObject({
           type: 'layout',
           name: 'layout3',
-          endpoint: { method: 'GET', route: '/_point0/root/layout/layout3/api/:x/zxc/:x/qqq/:y' },
+          endpoint: { method: 'GET', route: '/_point0/root/layout/layout3/api/:w/zxc/:x/qqq/:y' },
         })
         expect(simplified[16]).toMatchObject({
           type: 'layout',
