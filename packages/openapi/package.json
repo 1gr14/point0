@@ -44,8 +44,7 @@
     "build:watch": "tsdown --watch",
     "test": "bun test ./tests",
     "test:watch": "bun test --watch ./tests",
-    "types": "tsgo --noEmit -p tsconfig.build.json",
-    "types:6": "tsc --noEmit -p tsconfig.build.json",
+    "types": "tsc --noEmit -p tsconfig.build.json",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -63,6 +62,7 @@
     "@types/node": "^20.0.0",
     "@types/swagger-ui": "^5.32.0",
     "@point0/basic-auth": "^0.2.6",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "openapi-types": "^12.0.0",
     "tsdown": "^0.22.2",
     "typescript": "^6.0.3"

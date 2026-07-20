@@ -355,8 +355,294 @@ describe('FileResolver', () => {
           importer: file1Path,
         })
 
-        // TypeScript resolver should resolve to index.ts
         expect(resolved).toBe(posix(indexFile))
+      }),
+    )
+
+    // The resolver reads tsconfig `paths` itself and never loads the TypeScript compiler — TypeScript 7 ships no JS
+    // API, so a project on 7 (or with no typescript installed at all) must resolve exactly like one on 6.
+    it.concurrent(
+      'resolves a directory to its index file with no tsconfig involved',
+      helper(async ({ tempDir }) => {
+        const subDir = nodePath.join(tempDir, 'subdir')
+        nodeFs.mkdirSync(subDir, { recursive: true })
+        const indexFile = nodePath.join(subDir, 'index.ts')
+        await Bun.write(indexFile, 'export const a = 1')
+
+        const file1Path = nodePath.join(tempDir, 'file1.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: './subdir',
+          importer: file1Path,
+        })
+
+        expect(resolved).toBe(posix(indexFile))
+      }),
+    )
+
+    it.concurrent(
+      'prefers a sibling file over a directory of the same name',
+      helper(async ({ tempDir }) => {
+        const subDir = nodePath.join(tempDir, 'points')
+        nodeFs.mkdirSync(subDir, { recursive: true })
+        await Bun.write(nodePath.join(subDir, 'index.ts'), 'export const a = 1')
+        const siblingFile = nodePath.join(tempDir, 'points.ts')
+        await Bun.write(siblingFile, 'export const b = 2')
+
+        const file1Path = nodePath.join(tempDir, 'file1.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: './points',
+          importer: file1Path,
+        })
+
+        expect(resolved).toBe(posix(siblingFile))
+      }),
+    )
+
+    it.concurrent(
+      'resolves .mts, .cts and .jsx extensions',
+      helper(async ({ tempDir }) => {
+        const file1Path = nodePath.join(tempDir, 'file1.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+
+        for (const ext of ['.mts', '.cts', '.jsx']) {
+          const basename = crypto.randomUUID()
+          const target = nodePath.join(tempDir, `${basename}${ext}`)
+          await Bun.write(target, 'export const b = 2')
+
+          const resolved = FileResolver.resolveFilePath({
+            path: `./${basename}`,
+            importer: file1Path,
+          })
+
+          expect(resolved).toBe(posix(target))
+        }
+      }),
+    )
+
+    it.concurrent(
+      'resolves an ESM-style .js specifier to its .ts source',
+      helper(async ({ tempDir }) => {
+        const file1Path = nodePath.join(tempDir, 'file1.ts')
+        const file2Path = nodePath.join(tempDir, 'file2.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+        await Bun.write(file2Path, 'export const b = 2')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: './file2.js',
+          importer: file1Path,
+        })
+
+        expect(resolved).toBe(posix(file2Path))
+      }),
+    )
+
+    // The shape `create-point0-app` scaffolds: `paths` with no `baseUrl`, so the alias base is the directory of the
+    // tsconfig that declared it. This is the exact case that broke on TypeScript 7.
+    it.concurrent(
+      'resolves a path alias declared without baseUrl',
+      helper(async ({ tempDir }) => {
+        const tsConfigPath = nodePath.join(tempDir, 'tsconfig.json')
+        await Bun.write(tsConfigPath, JSON.stringify({ compilerOptions: { paths: { '@/*': ['./src/*'] } } }, null, 2))
+
+        const srcDir = nodePath.join(tempDir, 'src', 'lib')
+        nodeFs.mkdirSync(srcDir, { recursive: true })
+        const aliasedFile = nodePath.join(srcDir, 'root.ts')
+        await Bun.write(aliasedFile, 'export const root = 1')
+
+        const file1Path = nodePath.join(tempDir, 'src', 'file1.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: '@/lib/root',
+          importer: file1Path,
+        })
+
+        expect(resolved).toBe(posix(aliasedFile))
+      }),
+    )
+
+    it.concurrent(
+      'resolves a path alias inherited through extends',
+      helper(async ({ tempDir }) => {
+        await Bun.write(
+          nodePath.join(tempDir, 'tsconfig.base.json'),
+          JSON.stringify({ compilerOptions: { paths: { '@/*': ['./src/*'] } } }, null, 2),
+        )
+        await Bun.write(
+          nodePath.join(tempDir, 'tsconfig.json'),
+          // Comments and a trailing comma: real tsconfigs are JSONC, and we parse them as such.
+          '{\n  // inherits the alias\n  "extends": "./tsconfig.base.json",\n  "compilerOptions": { "strict": true },\n}\n',
+        )
+
+        const srcDir = nodePath.join(tempDir, 'src')
+        nodeFs.mkdirSync(srcDir, { recursive: true })
+        const aliasedFile = nodePath.join(srcDir, 'utils.ts')
+        await Bun.write(aliasedFile, 'export const utils = {}')
+
+        const file1Path = nodePath.join(tempDir, 'file1.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: '@/utils',
+          importer: file1Path,
+        })
+
+        expect(resolved).toBe(posix(aliasedFile))
+      }),
+    )
+
+    it.concurrent(
+      'resolves a non-module asset through a path alias',
+      helper(async ({ tempDir }) => {
+        await Bun.write(
+          nodePath.join(tempDir, 'tsconfig.json'),
+          JSON.stringify({ compilerOptions: { paths: { '@/*': ['./src/*'] } } }, null, 2),
+        )
+
+        const assetsDir = nodePath.join(tempDir, 'src', 'assets')
+        nodeFs.mkdirSync(assetsDir, { recursive: true })
+        const assetFile = nodePath.join(assetsDir, 'gem.png')
+        await Bun.write(assetFile, 'not really a png')
+
+        const file1Path = nodePath.join(tempDir, 'src', 'file1.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: '@/assets/gem.png',
+          importer: file1Path,
+        })
+
+        expect(resolved).toBe(posix(assetFile))
+      }),
+    )
+
+    it.concurrent(
+      'returns the intended path for a file that does not exist yet when existing is false',
+      helper(async ({ tempDir }) => {
+        const file1Path = nodePath.join(tempDir, 'file1.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: './generated/assets.ts',
+          importer: file1Path,
+          existing: false,
+        })
+
+        expect(resolved).toBe(posix(nodePath.join(tempDir, 'generated', 'assets.ts')))
+      }),
+    )
+
+    it.concurrent(
+      'leaves a bare npm specifier unresolved',
+      helper(async ({ tempDir }) => {
+        const file1Path = nodePath.join(tempDir, 'file1.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: 'react-dom/server',
+          importer: file1Path,
+        })
+
+        expect(resolved).toBeUndefined()
+      }),
+    )
+
+    // `.server` is part of the filename, not an extension — point0 itself ships `points.server.ts`. Resolving this by
+    // REPLACING the trailing ".server" would look for `points.ts`: missing, or a different module entirely.
+    it.concurrent(
+      'resolves a specifier whose name contains a dot',
+      helper(async ({ tempDir }) => {
+        const file1Path = nodePath.join(tempDir, 'engine.ts')
+        const target = nodePath.join(tempDir, 'points.server.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+        await Bun.write(target, 'export const b = 2')
+        // A same-stem module that must NOT be picked instead.
+        await Bun.write(nodePath.join(tempDir, 'points.ts'), 'export const c = 3')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: './points.server',
+          importer: file1Path,
+        })
+
+        expect(resolved).toBe(posix(target))
+      }),
+    )
+
+    it.concurrent(
+      'prefers the .ts source over a built .js sitting next to it',
+      helper(async ({ tempDir }) => {
+        const file1Path = nodePath.join(tempDir, 'file1.ts')
+        const sourcePath = nodePath.join(tempDir, 'file2.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+        await Bun.write(sourcePath, 'export const b = 2')
+        await Bun.write(nodePath.join(tempDir, 'file2.js'), 'export const b = 2')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: './file2.js',
+          importer: file1Path,
+        })
+
+        // Bun and Vite both compile the source, so the walker has to read the same file they do.
+        expect(resolved).toBe(posix(sourcePath))
+      }),
+    )
+
+    // Pins the two `paths` behaviours we now delegate to get-tsconfig, so a change in it can't drift us silently.
+    it.concurrent(
+      'picks the most specific of two overlapping path aliases',
+      helper(async ({ tempDir }) => {
+        await Bun.write(
+          nodePath.join(tempDir, 'tsconfig.json'),
+          JSON.stringify({ compilerOptions: { paths: { '@/*': ['./src/*'], '@/gen/*': ['./generated/*'] } } }, null, 2),
+        )
+
+        const generatedDir = nodePath.join(tempDir, 'generated')
+        nodeFs.mkdirSync(generatedDir, { recursive: true })
+        const generatedFile = nodePath.join(generatedDir, 'routes.ts')
+        await Bun.write(generatedFile, 'export const routes = {}')
+        // The looser `@/*` would land here; the more specific pattern must win, as it does in TypeScript.
+        const srcGenDir = nodePath.join(tempDir, 'src', 'gen')
+        nodeFs.mkdirSync(srcGenDir, { recursive: true })
+        await Bun.write(nodePath.join(srcGenDir, 'routes.ts'), 'export const wrong = true')
+
+        const file1Path = nodePath.join(tempDir, 'src', 'file1.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: '@/gen/routes',
+          importer: file1Path,
+        })
+
+        expect(resolved).toBe(posix(generatedFile))
+      }),
+    )
+
+    it.concurrent(
+      'resolves through baseUrl when the tsconfig declares no paths',
+      helper(async ({ tempDir }) => {
+        await Bun.write(
+          nodePath.join(tempDir, 'tsconfig.json'),
+          JSON.stringify({ compilerOptions: { baseUrl: '.' } }, null, 2),
+        )
+
+        const srcDir = nodePath.join(tempDir, 'src')
+        nodeFs.mkdirSync(srcDir, { recursive: true })
+        const target = nodePath.join(srcDir, 'util.ts')
+        await Bun.write(target, 'export const util = 1')
+
+        const file1Path = nodePath.join(tempDir, 'file1.ts')
+        await Bun.write(file1Path, 'export const a = 1')
+
+        const resolved = FileResolver.resolveFilePath({
+          path: 'src/util',
+          importer: file1Path,
+        })
+
+        expect(resolved).toBe(posix(target))
       }),
     )
   })

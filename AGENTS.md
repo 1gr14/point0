@@ -104,9 +104,19 @@ bun run testa         # everything incl. e2e (slow); `tests` = solo lane only (h
 bun run test:unit     # one class; also test:int, test:e2e; test:plan prints the CI plan
 bun run cov           # `testf` with line coverage → coverage/coverage.md (what to test next); `cov:all` adds the heavies
 bun run size          # measure Point0's client-bundle weight; `size:write` syncs the docs, `size:audit` gates in CI
-bun run types         # tsgo (native-preview) --noEmit; `types:6` = tsc
+bun run types         # tsc --noEmit — `tsc` is TypeScript 7, via the `@typescript/native` alias
+bun run types:6       # examples only: same check on TS 6, so the published types keep working for users still on 6
+bun run check:toolchain # asserts which TypeScript is wired where (both ways of getting it wrong are silent)
 bun run lint          # eslint --fix; `format` = prettier --write
 ```
+
+Two TypeScripts are installed on purpose. `@typescript/native`
+(`npm:typescript@7`) owns the `tsc` bin and does every type-check. The plain
+`typescript` dep stays on 6 because typescript-eslint's type-aware rules and
+tsdown's `.d.ts` emit load it as a module, and 7 ships no compiler API until 7.1
+— its own `tsc` bin is shadowed, so `types:6` invokes it by path. Nothing point0
+SHIPS depends on either: the compiler reads tsconfig `paths` itself, so a user's
+project works on 6, 7, or with no TypeScript at all.
 
 Inside an example: `bun run dev | build | start | generate`.
 

@@ -41,6 +41,10 @@ jobs:
       # dist is already in place, so this install also relinks the `point0` bin (codegen needs it).
       - name: Install dependencies
         uses: ./.github/actions/install
+      # Two TypeScripts are installed on purpose: 7 owns the `tsc` bin, 6 is the API typescript-eslint links against.
+      # Both ways of getting that wrong are silent, so assert the wiring before anything type-aware runs.
+      - name: Check TypeScript toolchain
+        run: bun run check:toolchain
       - name: Setup (codegen for examples/templates)
         run: bun run setup
       - name: Format check (prettier)

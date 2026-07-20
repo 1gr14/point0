@@ -1,126 +1,87 @@
 import * as nodeFs from 'node:fs'
 import * as nodeFsPath from 'node:path'
-import * as ts from 'typescript'
+import { createPathsMatcher, getTsconfig, type TsConfigResult } from 'get-tsconfig'
 import { toPosixPath } from './utils.js'
 
+/** Maps a non-relative specifier to the absolute, extension-less targets its `paths` alias expands to. */
+type PathsMatcher = (specifier: string) => string[]
+
+/**
+ * Extensions appended to a specifier that names no file on its own. TS-first, so `./x` prefers `x.ts` over a stale
+ * sibling `x.js`; `.mts`/`.cts`/`.jsx` are here because a specifier may legitimately point at them and nothing else
+ * resolves modules for us.
+ */
+const CANDIDATE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']
+
+/**
+ * An ESM specifier names the file that will EXIST at runtime, so TypeScript sources are imported by their output name
+ * (`./x.js` for `x.ts`). Mapped back the way TypeScript maps them, and tried before the literal path: when a built
+ * `x.js` sits next to its `x.ts`, both Bun and Vite compile the source, and the walker must read the same file.
+ */
+const SOURCE_EXTENSIONS_BY_OUTPUT: Record<string, string[] | undefined> = {
+  '.js': ['.ts', '.tsx'],
+  '.jsx': ['.tsx'],
+  '.mjs': ['.mts'],
+  '.cjs': ['.cts'],
+}
+
 export class FileResolver {
-  // Cache for TypeScript compiler options per directory
-  // Value can be: ParsedCommandLine, null (no tsconfig found), or undefined (not checked yet)
-  private static readonly tsConfigCache = new Map<string, ts.ParsedCommandLine | null>()
+  /**
+   * Directory → `paths` matcher, or null when the directory has no tsconfig above it (or one without `paths`). Mirrors
+   * the shape of the old per-directory tsconfig cache: the walk up the tree is the expensive part, and the walker hits
+   * this for every import of every file.
+   */
+  private static readonly pathsMatcherCache = new Map<string, PathsMatcher | null>()
+
+  /** `get-tsconfig`'s own read/parse cache, keyed by path — shared across lookups, cleared alongside ours. */
+  private static tsConfigCache = new Map<string, TsConfigResult | undefined | null>()
 
   /**
-   * Clears the TypeScript config cache. Useful for testing or when tsconfig files are modified.
+   * Clears the resolver caches. Useful for testing or when tsconfig files are modified.
    */
   static clearCache(): void {
-    FileResolver.tsConfigCache.clear()
+    FileResolver.pathsMatcherCache.clear()
+    FileResolver.tsConfigCache = new Map()
   }
 
   /**
-   * Loads and caches TypeScript compiler options for a given directory. Searches up the directory tree to find the
-   * nearest tsconfig.json. Returns null if TypeScript is not available or no tsconfig is found.
-   */
-  private static getTsConfigForDirectory({ dir }: { dir: string }): ts.ParsedCommandLine | null {
-    // Check cache first
-    if (FileResolver.tsConfigCache.has(dir)) {
-      return FileResolver.tsConfigCache.get(dir) ?? null
-    }
-
-    // Find the nearest tsconfig.json by walking up. Every path is posix-normalized so the comparisons are
-    // separator-agnostic — callers pass posix `dir`s but `nodeFsPath.resolve`/`parse`/`dirname` emit `\` on Windows.
-    // Mixing the two used to spin forever (`dirname('C:/') === 'C:/'` never equals a `C:\` root); normalizing plus the
-    // fixed-point guards make the walk terminate everywhere.
-    const startDir = toPosixPath(nodeFsPath.resolve(dir))
-    let currentDir = startDir
-    const root = toPosixPath(nodeFsPath.parse(currentDir).root)
-
-    while (currentDir !== root) {
-      const tsConfigPath = nodeFsPath.join(currentDir, 'tsconfig.json')
-      try {
-        // Use synchronous read for caching (ts.sys.readFile is synchronous)
-        const configFileText = ts.sys.readFile(tsConfigPath)
-        if (configFileText) {
-          const configFile = ts.readConfigFile(tsConfigPath, ts.sys.readFile.bind(ts.sys))
-          if (configFile.error) {
-            // Don't cache errors - allow retry in case tsconfig is created later
-            return null
-          }
-
-          const parsedConfig = ts.parseJsonConfigFileContent(
-            configFile.config,
-            ts.sys,
-            currentDir,
-            undefined,
-            tsConfigPath,
-          )
-
-          // Cache for this directory and all parent directories we checked
-          let cacheDir = startDir
-          while (cacheDir !== currentDir && cacheDir !== root) {
-            FileResolver.tsConfigCache.set(cacheDir, parsedConfig)
-            const parentCacheDir = toPosixPath(nodeFsPath.dirname(cacheDir))
-            if (parentCacheDir === cacheDir) break
-            cacheDir = parentCacheDir
-          }
-          FileResolver.tsConfigCache.set(currentDir, parsedConfig)
-          FileResolver.tsConfigCache.set(dir, parsedConfig)
-
-          return parsedConfig
-        }
-      } catch {
-        // File doesn't exist, continue searching up
-      }
-
-      const parentDir = toPosixPath(nodeFsPath.dirname(currentDir))
-      if (parentDir === currentDir) break
-      currentDir = parentDir
-    }
-
-    // No tsconfig found - don't cache null to allow retry
-    return null
-  }
-
-  /**
-   * Resolves an import path using TypeScript's module resolution. This handles TypeScript path aliases (paths in
-   * tsconfig.json) and relative paths. TypeScript's resolver can handle:
+   * Builds (and caches) the tsconfig `paths` matcher that applies to a directory. `get-tsconfig` owns the walk up the
+   * tree, `extends` chains (including `extends` from an npm package), JSONC, `${configDir}`, and the `baseUrl`-less
+   * case where `paths` resolve against the directory of the tsconfig that declared them.
    *
-   * - Path aliases (e.g., @/lib/client)
-   * - Relative paths with extension resolution
-   * - Index file resolution (e.g., ./dir -> ./dir/index.ts) Returns undefined if TypeScript is not available or
-   *   resolution fails.
+   * Returns null when there is no tsconfig above `dir`, or it declares no `paths` — both mean "nothing to expand", not
+   * an error: relative specifiers still resolve, and bare npm specifiers are meant to be left alone.
    */
-  private static resolveTsImport({ importer, path }: { importer: string; path: string }): string | undefined {
-    // we already check for importer absolute paths in the caller
-    const containingDir = nodeFsPath.dirname(importer)
-    const tsConfig = FileResolver.getTsConfigForDirectory({ dir: containingDir })
-    if (!tsConfig) {
-      return undefined
+  private static getPathsMatcher({ dir }: { dir: string }): PathsMatcher | null {
+    const cached = FileResolver.pathsMatcherCache.get(dir)
+    if (cached !== undefined) {
+      return cached
     }
-
+    let matcher: PathsMatcher | null = null
     try {
-      const result = ts.resolveModuleName(path, importer, tsConfig.options, ts.sys)
-      const resolvedFileName = result.resolvedModule?.resolvedFileName
-      // TypeScript's resolver might return a path even if the file doesn't exist yet
-      // (e.g., for .d.ts files or when resolving path aliases)
-      return resolvedFileName || undefined
+      const tsConfig = getTsconfig(dir, 'tsconfig.json', FileResolver.tsConfigCache)
+      matcher = tsConfig ? createPathsMatcher(tsConfig) : null
     } catch {
-      // Silently fail - TypeScript resolution might not work in all cases
-      return undefined
+      // A malformed tsconfig must not take the whole compile down — resolution degrades to relative-only, and the
+      // real diagnostic comes from the caller failing to resolve the specifier.
+      matcher = null
     }
+    FileResolver.pathsMatcherCache.set(dir, matcher)
+    return matcher
   }
 
   /**
-   * Detects the actual file path for an import path. First tries TypeScript resolution (for path aliases and relative
-   * paths), then falls back to relative path resolution with extension guessing.
+   * Detects the actual file path for an import path: expands tsconfig `paths` aliases, then probes the filesystem for
+   * the file the specifier means (extension guessing and `directory` → `directory/index.*`).
    *
-   * The result is posix-normalized so resolved identifiers match on every OS — TS's resolver already returns posix, and
-   * normalizing the filesystem fallback keeps the two consistent.
+   * point0 deliberately resolves this itself instead of asking the user's TypeScript: TypeScript 7 ships no JS compiler
+   * API, so any such dependency would make the compiler hostage to the TypeScript version in the user's project. We
+   * only ever need to find first-party source files, which is a far smaller job than real module resolution — bare npm
+   * specifiers match no alias, resolve to nothing, and are left untouched on purpose.
+   *
+   * The result is posix-normalized so resolved identifiers match on every OS.
    */
-  static resolveFilePath(args: {
-    importer?: string
-    path?: string
-    ts?: boolean
-    existsing?: boolean
-  }): string | undefined {
+  static resolveFilePath(args: { importer?: string; path?: string; existing?: boolean }): string | undefined {
     const resolved = FileResolver.resolveFilePathRaw(args)
     return resolved === undefined ? undefined : toPosixPath(resolved)
   }
@@ -128,13 +89,11 @@ export class FileResolver {
   private static resolveFilePathRaw({
     path,
     importer,
-    ts = true,
-    existsing = true,
+    existing = true,
   }: {
     importer?: string
     path?: string
-    ts?: boolean
-    existsing?: boolean
+    existing?: boolean
   }): string | undefined {
     if (!path) {
       return undefined
@@ -149,39 +108,70 @@ export class FileResolver {
       return undefined
     }
 
-    // If we have a containing file, try TypeScript resolution first
-    // This handles both path aliases (like @/lib/client) and relative paths
-    if (ts) {
-      const tsResolved = FileResolver.resolveTsImport({ importer, path })
-      if (tsResolved) {
-        // Check if the resolved file exists
-        if (!existsing || nodeFs.existsSync(tsResolved)) {
-          return tsResolved
+    // A relative specifier resolves against the importer's directory; a non-relative one expands through the
+    // importer's tsconfig `paths` aliases — so non-module specifiers like `@/assets/gem.png` resolve too. Bare npm
+    // specifiers (no relative prefix, no alias match) yield no candidates → undefined, left as-is.
+    const importerDir = nodeFsPath.dirname(importer)
+    const candidates = path.startsWith('.')
+      ? [nodeFsPath.resolve(importerDir, path)]
+      : (FileResolver.getPathsMatcher({ dir: importerDir })?.(path) ?? [])
+
+    for (const candidate of candidates) {
+      const probed = FileResolver.probeCandidate({ candidate })
+      if (probed) {
+        return probed
+      }
+    }
+
+    // `existing: false` asks for the intended path of something that need not exist yet (a generated asset, a file the
+    // watcher is about to see). Nothing on disk matched, so hand back the first candidate as-is.
+    return existing ? undefined : candidates[0]
+  }
+
+  /**
+   * Probes one absolute candidate path for the file it stands for, returning the first hit:
+   *
+   * 1. The TypeScript source behind an ESM output name — `./x.js` → `x.ts`. Before the literal path, so a built `x.js`
+   *    lying next to `x.ts` never wins over the source the bundler will actually compile.
+   * 2. The candidate itself, when it is a file — a specifier that already names a real file, assets included.
+   * 3. The candidate with an extension APPENDED. This covers the extension-less `./x`, and equally `./points.server`,
+   *    where `.server` only looks like an extension — hence append rather than replace: replacing would strip a piece
+   *    of the filename and go looking for `points.ts`, which is either missing or, worse, a different module.
+   * 4. `candidate/index.<ext>` — a directory specifier.
+   *
+   * The file check is `isFile()`, not `existsSync`: a directory named `./points` exists, and treating it as the
+   * resolved module would hand the walker a path it cannot parse instead of `points/index.ts`.
+   */
+  private static probeCandidate({ candidate }: { candidate: string }): string | undefined {
+    const currentExt = nodeFsPath.extname(candidate)
+
+    const sourceExtensions = SOURCE_EXTENSIONS_BY_OUTPUT[currentExt]
+    if (sourceExtensions) {
+      const candidateWithoutExt = candidate.slice(0, -currentExt.length)
+      for (const ext of sourceExtensions) {
+        const withExt = candidateWithoutExt + ext
+        if (FileResolver.isFile(withExt)) {
+          return withExt
         }
       }
     }
 
-    // Build candidate base paths, then probe them. A relative specifier resolves against the importer's directory; a
-    // non-relative one expands via the importer's tsconfig `paths` aliases — so non-module specifiers like
-    // `@/assets/gem.png` resolve too (the `ts.resolveModuleName` step above won't resolve them, since assets aren't TS
-    // modules). Bare npm specifiers (no relative prefix, no alias match) yield no candidates → undefined, left as-is.
-    const importerDir = nodeFsPath.dirname(importer)
-    const baseCandidates = path.startsWith('.')
-      ? [nodeFsPath.resolve(importerDir, path)]
-      : FileResolver.resolveTsConfigPathAliases({ importer, path })
+    if (FileResolver.isFile(candidate)) {
+      return candidate
+    }
 
-    for (const candidate of baseCandidates) {
-      if (!existsing) {
-        return candidate
+    for (const ext of CANDIDATE_EXTENSIONS) {
+      const withExt = candidate + ext
+      if (FileResolver.isFile(withExt)) {
+        return withExt
       }
-      const allExts = ['.ts', '.tsx', '.js', '.mjs', '.cjs']
-      const currentExt = nodeFsPath.extname(candidate)
-      const exts = [currentExt, ...allExts.filter((ext) => currentExt !== ext)]
-      const candidateWithoutExt = currentExt ? candidate.slice(0, -currentExt.length) : candidate
-      for (const ext of exts) {
-        const withExt = candidateWithoutExt + ext
-        if (nodeFs.existsSync(withExt)) {
-          return withExt
+    }
+
+    if (FileResolver.isDirectory(candidate)) {
+      for (const ext of CANDIDATE_EXTENSIONS) {
+        const indexFile = nodeFsPath.join(candidate, `index${ext}`)
+        if (FileResolver.isFile(indexFile)) {
+          return indexFile
         }
       }
     }
@@ -189,46 +179,19 @@ export class FileResolver {
     return undefined
   }
 
-  /**
-   * Expand a non-relative import specifier through the importer's tsconfig `paths` aliases (e.g. `@/assets/gem.png` ->
-   * `<src>/assets/gem.png`), returning the candidate absolute paths in declaration order. Unlike
-   * `ts.resolveModuleName`, this resolves ANY specifier the alias matches — including non-module files (assets) —
-   * because it only performs the path substitution, leaving extension/existence probing to the caller. Returns [] when
-   * there's no tsconfig, no `paths`, or no pattern matches. `paths` are resolved against `baseUrl`, or (when `paths` is
-   * used without `baseUrl`) against the directory of the tsconfig that declared them.
-   */
-  private static resolveTsConfigPathAliases({ importer, path }: { importer: string; path: string }): string[] {
-    const tsConfig = FileResolver.getTsConfigForDirectory({ dir: nodeFsPath.dirname(importer) })
-    const paths = tsConfig?.options.paths
-    if (!tsConfig || !paths) {
-      return []
+  private static isFile(path: string): boolean {
+    try {
+      return nodeFs.statSync(path).isFile()
+    } catch {
+      return false
     }
-    // `pathsBasePath` (TS's resolved base for `paths` without `baseUrl`) and `configFilePath` are not declared on the
-    // public `CompilerOptions`, so read them through a narrow cast rather than the broad index signature.
-    const internalOptions = tsConfig.options as { pathsBasePath?: string; configFilePath?: string }
-    const base =
-      tsConfig.options.baseUrl ??
-      internalOptions.pathsBasePath ??
-      (internalOptions.configFilePath ? nodeFsPath.dirname(internalOptions.configFilePath) : undefined)
-    if (!base) {
-      return []
+  }
+
+  private static isDirectory(path: string): boolean {
+    try {
+      return nodeFs.statSync(path).isDirectory()
+    } catch {
+      return false
     }
-    const candidates: string[] = []
-    for (const [pattern, targets] of Object.entries(paths)) {
-      const starIndex = pattern.indexOf('*')
-      if (starIndex === -1) {
-        if (pattern === path) {
-          for (const target of targets) candidates.push(nodeFsPath.resolve(base, target))
-        }
-        continue
-      }
-      const prefix = pattern.slice(0, starIndex)
-      const suffix = pattern.slice(starIndex + 1)
-      if (path.length >= prefix.length + suffix.length && path.startsWith(prefix) && path.endsWith(suffix)) {
-        const matched = path.slice(prefix.length, path.length - suffix.length)
-        for (const target of targets) candidates.push(nodeFsPath.resolve(base, target.replace('*', matched)))
-      }
-    }
-    return candidates
   }
 }

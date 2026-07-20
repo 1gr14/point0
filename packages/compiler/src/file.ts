@@ -1896,7 +1896,7 @@ export class CompilerFile<THasContent extends boolean> {
         const pathResolved = FileResolver.resolveFilePath({
           path: pathOriginal,
           importer: this.abs,
-          existsing: false,
+          existing: false,
         })
         const key = `${pathOriginal}\n${pathResolved ?? ''}`
         const existing = importsByPath.get(key)

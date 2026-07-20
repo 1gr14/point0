@@ -50,8 +50,7 @@
     "build:watch": "tsdown --watch",
     "test": "bun test ./tests",
     "test:watch": "bun test --watch ./tests",
-    "types": "tsgo --noEmit -p tsconfig.build.json",
-    "types:6": "tsc --noEmit -p tsconfig.build.json",
+    "types": "tsc --noEmit -p tsconfig.build.json",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -65,6 +64,7 @@
     "wouter": "^3.10.0"
   },
   "devDependencies": {
+    "@typescript/native": "npm:typescript@^7.0.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "@types/react": "^19.2.16",

@@ -20,7 +20,7 @@
  * package's own version
  */
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -34,6 +34,20 @@ const forcedPoint0Version = (() => {
 
 const DEP_SECTIONS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as const
 const IGNORE_DIRS = new Set(['node_modules', 'dist', '.git'])
+
+/**
+ * Deps a specific package pins on its own terms, exempt from the catalog table. Keys are workspace-relative posix
+ * paths.
+ *
+ * `create-app/template` is the only entry, and only for `typescript`: it is not a monorepo package but the app a user
+ * scaffolds, so it gets the current TypeScript (7). The monorepo itself stays on the `typescript` 6 package because
+ * typescript-eslint and tsdown's `.d.ts` emit still need the classic JS compiler API, which 7 dropped — it reaches
+ * TypeScript 7 through the `@typescript/native` alias instead. Two different answers to two different questions;
+ * syncing them would silently downgrade every scaffolded app.
+ */
+const CATALOG_EXCEPTIONS: Record<string, ReadonlySet<string> | undefined> = {
+  'packages/create-app/template/package.json': new Set(['typescript']),
+}
 
 const readJson = (p: string) => JSON.parse(readFileSync(p, 'utf-8'))
 
@@ -77,6 +91,8 @@ const isInternal = (name: string) => name.startsWith('@point0/')
 
 /** Desired range for a dep, or null to leave it as-is. Throws on an unresolvable protocol. */
 const desiredFor = (name: string, current: string, fileForError: string): string | null => {
+  // Posix-normalized: `relative()` emits `\` on Windows, the exception keys are written with `/`.
+  if (CATALOG_EXCEPTIONS[fileForError.split(sep).join('/')]?.has(name)) return null
   if (isInternal(name)) {
     const version = forcedPoint0Version ?? versionByName.get(name)
     if (!version) throw new Error(`[sync-versions] unknown internal package ${name} (in ${fileForError})`)

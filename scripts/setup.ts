@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
-// One-time codegen setup so `bun run types` (tsgo) / `bun run types:6` (tsc) pass on the example apps + the create-app template.
+// One-time codegen setup so `bun run types` (tsc = TS 7) / `bun run types:6` (TS 6, examples only) pass on the example
+// apps + the create-app template.
 // Those are workspace packages, so `bun --filter '**' types` typechecks them — but their entire `src/generated` is
 // gitignored (the Prisma client AND point0's generated points/routes/assets), and the template
 // (`packages/create-app/template`, package name `my-app`) ships only `env.example` (its own `.env` is gitignored). On a

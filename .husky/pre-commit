@@ -1,3 +1,4 @@
 bun run lint-staged
 bun run versions:check
+bun run check:toolchain
 bun run types

@@ -166,8 +166,7 @@
     "build:watch": "tsdown --watch",
     "test": "bun test ./tests",
     "test:watch": "bun test --watch ./tests",
-    "types": "tsgo --noEmit -p tsconfig.build.json",
-    "types:6": "tsc --noEmit -p tsconfig.build.json",
+    "types": "tsc --noEmit -p tsconfig.build.json",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -202,6 +201,7 @@
   "devDependencies": {
     "@types/babel__traverse": "^7.28.0",
     "@types/source-map-support": "^0.5.10",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "superjson": "^2.2.6",
     "@1gr14/error0": "^0.4.7",
     "@1gr14/flat": "^0.1.4",

@@ -107,7 +107,7 @@ describe('@point0/docs', () => {
   })
 })
 
-// Type-level guarantees for the public search-hit / section shapes (never executed; tsgo/tsc check the body).
+// Type-level guarantees for the public search-hit / section shapes (never executed; tsc checks the body).
 const _typeTests = (): void => {
   expectTypeOf<DocSearchHit>().toHaveProperty('headingId').toEqualTypeOf<string>()
   expectTypeOf<DocSearchHit>().toHaveProperty('ref').toEqualTypeOf<string>()

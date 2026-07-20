@@ -65,6 +65,35 @@ install Bun globally with `npm install -g bun` before continuing.
 `create-point0-app` bin, but both the scaffolder and the app it writes run on
 Bun, so they'd dead-end the moment you tried to use the result.
 
+### TypeScript 6 or 7 — both work
+
+Point0 never loads TypeScript. `dev`, `build` and `generate` don't touch the
+compiler API: the Point0 compiler parses your code with Babel and reads the
+`paths` aliases out of `tsconfig.json` itself. So the TypeScript in your project
+is yours alone — 6, 7, or none at all, the framework behaves identically.
+
+The scaffold pins TypeScript 7, and `bun run types` runs its `tsc`.
+
+Staying on 6 is a normal choice, and one tool makes it the right one:
+**typescript-eslint's type-aware linting doesn't run on TypeScript 7** — 7.0
+ships no compiler API, and typescript-eslint needs one. Support is waiting on
+the stable API in 7.1. If you lint with `projectService` or `project`, keep
+`"typescript": "^6.0.3"` and add the new compiler under a second name:
+
+```json
+{
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "@typescript/native": "npm:typescript@^7.0.2"
+  }
+}
+```
+
+`tsc` then resolves to TypeScript 7 while `import 'typescript'` still hands
+typescript-eslint the API it needs. This is exactly how the Point0 repo itself
+is set up. Don't alias the `typescript` name to `@typescript/typescript6` —
+under Bun the alias resolves back into itself and you end up with an empty API.
+
 ### Bun or Vite — pick at scaffold time
 
 The `--vite` choice changes which files you get:
@@ -161,7 +190,7 @@ typecheck:
     "seed": "cross-env NODE_ENV=development bun --preload ./src/preload.ts ./src/lib/seed.ts",
     "prisma:generate": "cross-env NODE_ENV=development prisma generate",
     "prisma:migrate:deploy": "cross-env NODE_ENV=development prisma migrate deploy",
-    "types": "tsgo --noEmit",
+    "types": "tsc --noEmit",
   },
 }
 ```

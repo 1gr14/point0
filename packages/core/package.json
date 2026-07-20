@@ -163,8 +163,7 @@
     "build:watch": "tsdown --watch",
     "test": "bun test ./tests",
     "test:watch": "bun test --watch ./tests",
-    "types": "tsgo --noEmit -p tsconfig.build.json",
-    "types:6": "tsc --noEmit -p tsconfig.build.json",
+    "types": "tsc --noEmit -p tsconfig.build.json",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -220,6 +219,7 @@
     "@types/node": "^20.0.0",
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "@unhead/react": "^3.1.1",
     "@valibot/to-json-schema": "^1.7.0",
     "arktype": "^2.2.0",
