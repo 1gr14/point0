@@ -18,7 +18,7 @@
  * Run after install, before anything that type-checks. `--quiet` suppresses the success line.
  */
 import { createRequire } from 'node:module'
-import { lstatSync, readdirSync, statSync } from 'node:fs'
+import { lstatSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -74,9 +74,12 @@ try {
   problems.push(`\`require('typescript')\` failed: ${(error as Error).message}`)
 }
 
-// 3. A workspace package may carry its own `.bin/tsc` (the scaffold template declares its own TypeScript 7 and so
-//    always will), but it must not be a DIFFERENT TypeScript — a nested 6 left over from an incremental install
-//    shadows the root bin for that package's `types` script, which then reports success from the wrong compiler.
+// 3. Whichever `tsc` a package's `types` script picks up must be TypeScript 7. A package may legitimately carry its
+//    own nested one — the scaffold template declares its own 7 and so always will — but a stale 6 left over from an
+//    incremental install shadows the root bin, and the run then reports success from the wrong compiler.
+//
+//    Only packages that HAVE a `types` script are checked: that is the only thing a shadowed bin can make lie.
+//    `examples/expo` nests a TypeScript 5 from the Expo SDK and never invokes it, which is nobody's problem.
 const IGNORE_DIRS = new Set(['node_modules', 'dist', '.git'])
 const workspaceDirs: string[] = []
 const findWorkspaceDirs = (dir: string) => {
@@ -101,8 +104,17 @@ for (const glob of (rootPkg.workspaces?.packages ?? []) as string[]) {
   findWorkspaceDirs(join(rootDir, glob.split('/*')[0]!))
 }
 
+const hasTypesScript = (dir: string): boolean => {
+  try {
+    return Boolean(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf-8')).scripts?.types)
+  } catch {
+    return false
+  }
+}
+
 const shadowed: string[] = []
 for (const dir of workspaceDirs) {
+  if (!hasTypesScript(dir)) continue
   const bin = findTscBin(dir)
   if (!bin) continue
   const version = await Bun.$`${bin} --version`
