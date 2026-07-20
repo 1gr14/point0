@@ -5,6 +5,15 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- route0 bumped to `^0.3.0`, where a path param carries one descriptor —
+  `{ required, type }`, plus `values` when it is restricted to a set.
+- Fix: the OpenAPI path template is built from the route's tokens instead of a
+  regex over the definition string, so a value constraint or a trailing `?` no
+  longer leaks into it. `/api/posts/:kind(new|top)/:id` documented itself as
+  `/api/posts/{kind}(new|top)/{id}`, and `/api/x/:id?` as `/api/x/{id}?`.
+- A param restricted to a set now reaches the OpenAPI spec as a real JSON Schema
+  `enum`, without declaring `.params(...)` by hand.
+
 ## 0.2.7 — 2026-07-20
 
 - Page routes are matched by route0 instead of by the router's own path parser. A

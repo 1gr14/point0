@@ -813,4 +813,36 @@ describe('openapi', () => {
     // the promise prop inlined too: the value is IN the body, and no streaming hole id is advertised
     expect(body).toContain('OPENAPI-PP-INLINE')
   })
+
+  it('builds the path template from the route grammar, not the raw definition', () => {
+    // Path params are spelled `:name`, `:name?` and `:name(a|b)`; only the name belongs in an OpenAPI path template.
+    const root = createRoot()
+    const constrained = root
+      .lets('action', 'kindAction', 'GET', '/api/posts/:kind(new|top)/:id')
+      .loader(() => ({ ok: true }))
+      .action()
+    const optional = root
+      .lets('action', 'optionalAction', 'GET', '/api/x/:id?')
+      .loader(() => ({ ok: true }))
+      .action()
+    const schema = getOpenapiSchemaFromPoints([constrained, optional], { info: { title: 'T', version: '1.0.0' } })
+    const paths = Object.keys(schema.paths as Record<string, unknown>)
+    expect(paths).toContain('/api/posts/{kind}/{id}')
+    expect(paths).toContain('/api/x/{id}')
+
+    // and the allowed values reach the parameter as a real JSON Schema enum
+    const parameters = (schema.paths as any)['/api/posts/{kind}/{id}'].get.parameters
+    expect(parameters).toContainEqual({
+      name: 'kind',
+      in: 'path',
+      required: true,
+      schema: { type: 'string', enum: ['new', 'top'] },
+    })
+    expect(parameters).toContainEqual({
+      name: 'id',
+      in: 'path',
+      required: true,
+      schema: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+    })
+  })
 })

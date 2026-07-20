@@ -97,7 +97,7 @@
     "safe-stable-stringify": "^2.5.0"
   },
   "peerDependencies": {
-    "@1gr14/route0": "^0.2.0",
+    "@1gr14/route0": "^0.3.0",
     "@point0/core": "^0.2.7",
     "@1gr14/flat": "^0.1.4"
   },

@@ -189,7 +189,7 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@1gr14/route0": "^0.2.0",
+    "@1gr14/route0": "^0.3.0",
     "@1gr14/flat": "^0.1.4",
     "@point0/compiler": "^0.2.7",
     "@point0/core": "^0.2.7",
@@ -205,7 +205,7 @@
     "superjson": "^2.2.6",
     "@1gr14/error0": "^0.4.7",
     "@1gr14/flat": "^0.1.4",
-    "@1gr14/route0": "^0.2.0",
+    "@1gr14/route0": "^0.3.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "@types/react-dom": "^19.2.3",

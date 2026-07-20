@@ -31,7 +31,7 @@
     "bun-plugin-tailwind": "^0.1.2",
     "tailwindcss": "^4.3.0",
     "@1gr14/error0": "^0.4.7",
-    "@1gr14/route0": "^0.2.0",
+    "@1gr14/route0": "^0.3.0",
     "@1gr14/flat": "^0.1.4",
     "wouter": "^3.10.0",
     "@tanstack/react-query": "^5.101.0",

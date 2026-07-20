@@ -140,6 +140,17 @@ export const ideaUpdateAction = root.lets
   .action(/* ... */)
 ```
 
+A route's own params are documented even without `.params(...)`: the path
+template keeps only the param names, and a param restricted to a set of values
+carries that set as a JSON Schema `enum`.
+
+```tsx
+root.lets.action('GET', '/api/posts/:kind(new|top)/:id')
+// path: /api/posts/{kind}/{id}
+// kind: { type: 'string', enum: ['new', 'top'] }
+// id:   { anyOf: [{ type: 'string' }, { type: 'number' }] }
+```
+
 The request body is `application/json` by default. If the body schema contains a
 file or blob field, the content type switches to `multipart/form-data` and the
 JSON variant is dropped:
