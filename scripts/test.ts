@@ -43,7 +43,8 @@
  *
  * Env: TEST_PARALLEL_LIMIT (parallel-phase concurrency, see {@link defaultParallelLimit}), TEST_TIMEOUT_MS (one test,
  * see {@link PER_TEST_TIMEOUT_MS}), TEST_FILE_TIMEOUT_MS (default 5 min), TEST_SOLO_FILE_TIMEOUT_MS (solo/e2e lane,
- * default 15 min), TEST_FILE_RETRIES (default 1), LIVE_TEST_OUTPUT=1 (stream output instead of buffering).
+ * default 10 min; a solo timeout never retries), TEST_FILE_RETRIES (default 1), LIVE_TEST_OUTPUT=1 (stream output
+ * instead of buffering).
  */
 import * as nodeFs from 'node:fs'
 import { cpus } from 'node:os'
@@ -228,7 +229,7 @@ export const buildPlan = (allFiles: readonly string[]): Plan => {
 
 const liveTestOutput = process.env.LIVE_TEST_OUTPUT === '1'
 const FILE_TIMEOUT_MS = Number(process.env.TEST_FILE_TIMEOUT_MS ?? 5 * 60_000)
-const SOLO_FILE_TIMEOUT_MS = Number(process.env.TEST_SOLO_FILE_TIMEOUT_MS ?? 15 * 60_000)
+const SOLO_FILE_TIMEOUT_MS = Number(process.env.TEST_SOLO_FILE_TIMEOUT_MS ?? 10 * 60_000)
 /**
  * The budget for ONE test inside a file. Bun's own default is 5s, and that default is what made this lane look flaky:
  * the files run several at a time, so a test that takes 0.1s on an idle machine waits behind its neighbours — and a
@@ -358,7 +359,12 @@ const runOnce = async (file: string, timeoutMs: number, coverage: boolean): Prom
 
 type FileOutcome = { file: string; code: number; output: string; warning?: string }
 
-const runFile = async (file: string, timeoutMs: number, coverage: boolean): Promise<FileOutcome> => {
+const runFile = async (
+  file: string,
+  timeoutMs: number,
+  coverage: boolean,
+  retries = FILE_RETRIES,
+): Promise<FileOutcome> => {
   const started = Date.now()
   // START breadcrumb, flushed immediately (NOT buffered into the per-file Terminal): if the phase hangs, the
   // log shows every ▶ with no matching ✓/✗ — that's the file that froze the runner.
@@ -367,8 +373,8 @@ const runFile = async (file: string, timeoutMs: number, coverage: boolean): Prom
   let result = await runOnce(file, timeoutMs, coverage)
   // "Passed but the process wouldn't exit" is NOT a failure and NOT worth a retry — the assertions ran green.
   let hungAfterPass = result.timedOut && passedButWouldNotExit(result.output)
-  for (let attempt = 1; result.timedOut && !hungAfterPass && attempt <= FILE_RETRIES; attempt++) {
-    process.stdout.write(`⟲ ${file} timed out — retry ${attempt}/${FILE_RETRIES} on a fresh process\n`)
+  for (let attempt = 1; result.timedOut && !hungAfterPass && attempt <= retries; attempt++) {
+    process.stdout.write(`⟲ ${file} timed out — retry ${attempt}/${retries} on a fresh process\n`)
     result = await runOnce(file, timeoutMs, coverage)
     hungAfterPass = result.timedOut && passedButWouldNotExit(result.output)
   }
@@ -446,7 +452,9 @@ const runSolo = async (files: readonly string[], coverage: boolean): Promise<Fil
   // running them concurrently stacks resource pressure — the documented CI flake source.
   const outcomes: FileOutcome[] = []
   for (const file of files) {
-    outcomes.push(await runFile(file, SOLO_FILE_TIMEOUT_MS, coverage))
+    // no timeout retry in the solo lane: these files get a 10-minute budget — a file that burned it is a hang,
+    // not a queue-starved neighbour, and retrying a hang only doubles how long the CI job wastes
+    outcomes.push(await runFile(file, SOLO_FILE_TIMEOUT_MS, coverage, 0))
     await reapTestBrowsers() // between files, never during one — Windows accumulates leaked headless shells
   }
   return outcomes

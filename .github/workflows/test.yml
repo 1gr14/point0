@@ -45,7 +45,7 @@ jobs:
         os: ${{ fromJSON(inputs.oses) }}
         group: ${{ fromJSON(inputs.groups) }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 15
     defaults:
       run:
         shell: bash
@@ -97,7 +97,7 @@ jobs:
         os: ${{ fromJSON(inputs.oses) }}
         file: ${{ fromJSON(inputs.solo) }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 20
     defaults:
       run:
         shell: bash

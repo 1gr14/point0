@@ -73,7 +73,7 @@ jobs:
       ${{ needs.decide.result == 'success' && needs.build.result == 'success' && needs.check.result == 'success' &&
       needs.test.result == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
