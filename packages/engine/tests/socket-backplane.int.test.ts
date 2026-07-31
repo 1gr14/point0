@@ -472,6 +472,7 @@ describe.skipIf(!process.env.REDIS_URL)('socket backplane (real Redis)', () => {
   it('the `server.backplane: "redis://…"` URL shortcut carries the KV and the bus between two EngineSocket instances', async () => {
     const { Point0 } = await import('@point0/core')
     const { EngineSocket } = await import('../src/socket.js')
+    const { resolveEngineSocketOptions } = await import('../src/config.js')
     const url = process.env.REDIS_URL as string
     const root = Point0.lets('root', 'root').root()
     const chatChannel = root.lets('channel', 'chatUrl').channel()
@@ -481,6 +482,7 @@ describe.skipIf(!process.env.REDIS_URL)('socket backplane (real Redis)', () => {
         clients: [],
         backplaneProvided: url,
         socketEnabled: true,
+        socketOptions: resolveEngineSocketOptions(true),
         log: () => {},
         bunServer: { publish: () => {} },
         points: {

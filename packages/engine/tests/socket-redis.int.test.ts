@@ -31,6 +31,7 @@ const workerSource = `/**
  *   bun worker.ts selftest                 → mint + claim in ONE process over the in-memory backplane (harness check)
  */
 import { Point0 } from '@point0/core'
+import { resolveEngineSocketOptions } from '../../../src/config.js'
 import { EngineSocket } from '../../../src/socket.js'
 
 const RESULT_MARKER = '${RESULT_MARKER}'
@@ -44,6 +45,7 @@ const createInstance = (external: boolean) => {
     clients: [],
     backplaneProvided: external ? process.env.REDIS_URL : null,
     socketEnabled: true,
+    socketOptions: resolveEngineSocketOptions(true),
     log: () => {},
     bunServer: { publish: () => {} },
     points: {
