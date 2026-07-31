@@ -5,6 +5,15 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **0.3.2 never reached npm either** — three more Windows/format landmines: a
+  prettier-plugin-jsdoc wrap that isn't idempotent (the release script now runs
+  the same fresh repo-wide `format:check` CI runs, before tagging), Bun on
+  Windows never dropping a slow pub/sub subscriber at `closeOnBackpressureLimit`
+  (test skipped there — `dev/backlog/socket-backpressure-windows.md`), and a
+  Windows temp-dir `rm` racing the OS's asynchronous handle release (the test
+  harness now retries longer and leaks the dir with a warning instead of
+  failing). 0.3.3 is the first published build of everything under 0.3.0.
+
 ## 0.3.2 — 2026-07-31
 
 - **0.3.1 never reached npm either.** Its tag was pushed and the lockfile fix

@@ -14,7 +14,7 @@
  * patch/minor/explicit are all refused if they'd change the major, so a major is only ever cut by a human hardcoding
  * that constant. Never automatic, never accidental.
  */
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -104,6 +104,18 @@ if (sync.exitCode !== 0) process.exit(sync.exitCode)
 // `bun install --frozen-lockfile` (Bun >= 1.3.x) rejects a lock whose versions lag the bump.
 const lock = Bun.spawnSync(['bun', 'install'], { cwd: rootDir, stdout: 'inherit', stderr: 'inherit' })
 if (lock.exitCode !== 0) process.exit(lock.exitCode)
+
+// Fail the release HERE if CI's format gate would fail it there. The pre-commit's format:fix runs prettier with
+// --cache and only over the staged files, and both have lied before: a stale cache verdict (or a jsdoc-plugin wrap
+// that isn't idempotent) sails through the hook and then kills the tag's CI run — a dead tag nothing can reuse.
+// This is the same fresh, repo-wide check the CI `check` job runs, and it costs seconds. The local cache is
+// dropped first — a cached verdict is exactly what lied last time.
+rmSync(join(rootDir, 'node_modules/.cache/prettier'), { recursive: true, force: true })
+const format = Bun.spawnSync(['bun', 'run', 'format:check'], { cwd: rootDir, stdout: 'inherit', stderr: 'inherit' })
+if (format.exitCode !== 0) {
+  console.error('release: prettier is unhappy (see above) — run `bun run format` and retry.')
+  process.exit(format.exitCode)
+}
 
 // Promote the CHANGELOG "Unreleased" section — only for a stable cut. Prereleases are interim,
 // so they leave Unreleased to keep accumulating until the real release.

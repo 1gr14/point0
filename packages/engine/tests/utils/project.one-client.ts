@@ -351,8 +351,14 @@ export class TestProjectOneClient {
     }
     if (files) {
       // Windows releases a terminated process's file handles asynchronously, so a dir `rm` right after killTree can hit
-      // EBUSY/EPERM even though the holders are gone. Node retries those codes when maxRetries > 0 — give the OS a beat.
-      await nodeFs.rm(this.dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
+      // EBUSY/EPERM even though the holders are gone. Node retries those codes when maxRetries > 0 — give the OS a beat,
+      // and if it STILL will not let go, leak the temp dir with a warning instead of failing the test: the assertions
+      // already ran, and an orphaned tests/temp dir is garbage, not a signal (CI runners are ephemeral anyway).
+      try {
+        await nodeFs.rm(this.dir, { recursive: true, force: true, maxRetries: 60, retryDelay: 250 })
+      } catch (error) {
+        console.warn(`[test-project] could not remove ${this.dir} — leaking it: ${String(error)}`)
+      }
     }
   }
 
