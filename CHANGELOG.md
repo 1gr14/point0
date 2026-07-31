@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.1 — 2026-07-31
+
 - **0.3.0 never reached npm.** Its tag was pushed, but the release run failed
   before publishing: the release script bumped every workspace version without
   refreshing `bun.lock`, and CI's `bun install --frozen-lockfile` (Bun ≥ 1.3)
