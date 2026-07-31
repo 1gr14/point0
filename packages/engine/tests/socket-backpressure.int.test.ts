@@ -33,6 +33,9 @@ setDefaultTimeout(60_000)
  */
 const FLOOD_COUNT = 200
 const FLOOD_SIZE = 128 * 1024
+/** fan-out test only: how many {@link FLOOD_COUNT}-sized batches may pile up before the drop is declared missing (~512
+MB) */
+const MAX_FLOOD_BATCHES = 20
 /** once Bun is buffering at all, this trips within one frame — the limit is read BEFORE the frame is appended */
 const BACKPRESSURE_LIMIT = 64 * 1024
 
@@ -297,15 +300,26 @@ describe('a socket that cannot keep up', () => {
       // both claims landed — the confirmation the slow socket cannot read is still counted on the server
       await waitFor(() => served.live().length === 2, 'both connections to be claimed')
 
-      await served.flood()
+      // One fixed-size flood cannot promise to trip the limit: the slow peer's KERNEL buffers stand between the
+      // publish and Bun's own queue, and Windows auto-tunes loopback buffers into the tens of megabytes — a flood
+      // that reliably overflows Linux sat entirely in kernel space there. So flood in batches until the kernel
+      // space is exhausted and the drop lands; the ceiling only bounds a build where the close-on-backpressure
+      // default is genuinely gone.
+      let published = 0
+      for (let batch = 0; batch < MAX_FLOOD_BATCHES && served.live().includes('slow'); batch++) {
+        await served.flood()
+        published += FLOOD_COUNT
+        // a beat for the server to observe the close before deciding the flood was not enough
+        await new Promise((resolve) => setTimeout(resolve, 250))
+      }
 
       // the slow subscriber is gone: Bun tore it down at the limit rather than dropping frames into a live socket
       await waitFor(() => !served.live().includes('slow'), 'the slow connection to be dropped')
       // …and the drop cost nothing to anyone else on the same topic
-      await waitFor(() => fast.pushes() === FLOOD_COUNT, `the fast client to receive all ${FLOOD_COUNT} pushes`)
+      await waitFor(() => fast.pushes() === published, `the fast client to receive all ${published} pushes`)
       expect(served.live()).toEqual(['fast'])
       // the slow one really was short of frames — that is the loss the disconnect stands in for
-      expect(slow.pushes()).toBeLessThan(FLOOD_COUNT)
+      expect(slow.pushes()).toBeLessThan(published)
     } finally {
       fast.destroy()
       slow.destroy()
