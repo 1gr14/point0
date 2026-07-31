@@ -1,23 +1,10 @@
 import { defer } from '@point0/core'
+import { SlowServerBlock } from '@/components/slow-server-block.js'
 import { generalLayout } from '@/layouts/general.js'
 import { prisma } from '@/lib/prisma'
 import { root } from '@/lib/root'
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
-// A slow SERVER COMPONENT — a plain async function. Its code never ships; only the host elements it
-// renders do. `defer()` streams it as a hole: the shell ships now with the fallback below, and this
-// markup is pushed into the SAME response ~1.5s later. No query, no island — just deferred server
-// markup, the RSC counterpart of the `suspend: 'server'` block above.
-const SlowServerBlock = async () => {
-  await sleep(1500)
-  const ideasCount = await prisma.idea.count()
-  return (
-    <p className="rounded-lg bg-sky-50 px-4 py-3 text-sky-800">
-      Rendered on the server from <b>{ideasCount}</b> ideas — this markup streamed in via <code>defer()</code>.
-    </p>
-  )
-}
 
 // The slow part of the page. `suspend: 'server'` keeps its ~2s loader from blocking the HTML: the
 // shell ships immediately with the `.loading()` fallback in place, and this block streams into the

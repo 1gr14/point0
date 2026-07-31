@@ -92,16 +92,36 @@ new ErrorPoint0().message // => 'Unknown error'
 new ErrorPoint0('x', { status: 0 }).status // => undefined (0 is falsy)
 ```
 
-All fields are optional: `status`, `code`, `redirect`, `response`, `headers`,
-`meta`. You rarely construct `ErrorPoint0` by hand — you replace it with your
-own class (below) and throw that. But it's the type behind every
-framework-raised error (a 404 on an unmatched route, a redirect carrier) when
-you haven't set one.
+All fields are optional: `status`, `code`, `redirect`, `preventRetry`,
+`response`, `headers`, `meta`. You rarely construct `ErrorPoint0` by hand — you
+replace it with your own class (below) and throw that. But it's the type behind
+every framework-raised error (a 404 on an unmatched route, a redirect carrier)
+when you haven't set one.
 
 `response` and `headers` are wired in the engine. When `error.response` is set,
 it's used verbatim as the emitted `Response`; otherwise the engine builds a JSON
 error response from `status`. When `error.headers` is set, it's merged into the
 response headers through the effects system.
+
+### preventRetry
+
+`preventRetry: true` is the server saying "and don't try this again" — every
+client retry machinery honors it. Throw it wherever the failure is terminal (a
+401 after logout, a revoked right, a hard deny) and the client stops knocking:
+
+```tsx
+throw new AppError('Signed out', { status: 401, preventRetry: true })
+```
+
+Where it lands: react-query stops retrying the **query or mutation** (including
+the socket query family); a [channel](socket) connect denied with it sits out
+the reconnect cycles; a space join denied with it is not replayed on reconnects.
+The flag travels in the public serialization — it's a behavioral contract, not a
+secret — and `reconnectAll()` clears the socket "sit out" marks (an explicit
+re-evaluation). Without the flag a typed error still stops a connect (an answer
+is an answer), but queries retry it the usual three times and joins replay on
+the next reconnect. An Error0-built class carries the flag through a small prop
+plugin — `examples/socket`'s `src/lib/error.ts` shows the four-line shape.
 
 ## Replacing the class: `.errorClass(AppError)`
 
@@ -424,9 +444,9 @@ The `status` drives the HTTP response and the error component's `setStatus`; the
 `code` is what your error component branches on. Internally an unmatched route
 is just `new AppError('Not Found', { status: 404, code: 'POINT0_NOT_FOUND' })` —
 same mechanism. Point0 exposes its own codes through `POINT0_ERROR_CODES_MAP`
-(`.NOT_FOUND`, `.REDIRECT`, …) for matching framework errors; you can treat
-`POINT0_NOT_FOUND` as expected noise to keep scanner 404s out of your error
-reporter.
+(`.NOT_FOUND`, `.REDIRECT`, `.SOCKET_CONNECTION_LOST`, `.SUBSCRIPTION_LOST`, …)
+for matching framework errors; you can treat `POINT0_NOT_FOUND` as expected
+noise to keep scanner 404s out of your error reporter.
 
 ## Security
 

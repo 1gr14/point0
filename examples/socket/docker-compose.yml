@@ -1,0 +1,16 @@
+services:
+  socket:
+    build:
+      context: ../..
+      dockerfile: examples/socket/Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      SERVER_URL: http://localhost:3000
+      DATABASE_URL: file:./.data/dev.db
+    volumes:
+      - socket_db:/app/examples/socket/.data
+
+volumes:
+  socket_db:

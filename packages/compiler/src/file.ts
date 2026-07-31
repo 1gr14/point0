@@ -26,7 +26,7 @@ import * as nodePath from 'node:path'
 import prettier from 'prettier'
 import remarkFrontmatter from 'remark-frontmatter'
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter'
-import type { Compiler, CompilerEnvConsts, ImportsTraceResult } from './compiler.js'
+import type { Compiler, CompilerEnvConsts, CompilerFeatures, ImportsTraceResult } from './compiler.js'
 import { resolveImporterRule, writeOrCreateVirtualModulePath, type ImporterOptionsParsed } from './importer.js'
 import { CompilerPoint, POINT_METHOD_TO_TYPE_MAP } from './point.js'
 import { POINT0_INTERMEDIATE_SOURCE_LABEL_PREFIX } from './protocol.js'
@@ -764,7 +764,10 @@ export class CompilerFile<THasContent extends boolean> {
   async toPrettyCode(): Promise<string> {
     const { code } = this.toCode()
     return await prettier.format(code, {
-      parser: 'babel',
+      // point0 sources are TypeScript and the transform keeps their type syntax — a point's type arguments
+      // (`.lets<{ chatId: string }>('space', 'chat')`) survive into the emitted code. The plain `babel` parser chokes
+      // on them; `babel-ts` reads both
+      parser: 'babel-ts',
       semi: false,
       singleQuote: true,
       trailingComma: 'all',
@@ -779,6 +782,7 @@ export class CompilerFile<THasContent extends boolean> {
   private _shakeForEnv:
     | {
         side: 'client' | 'server' | false
+        features: CompilerFeatures | false
         mode: NormalizedNodeEnv | false
         runtime: EnvRuntimeName | false
         os: EnvOsName | false
@@ -795,6 +799,7 @@ export class CompilerFile<THasContent extends boolean> {
     | undefined = undefined
   shakeForEnv({
     side,
+    features = false,
     scope,
     consts = undefined,
     built = false,
@@ -805,6 +810,7 @@ export class CompilerFile<THasContent extends boolean> {
     processEnvAliases = [],
   }: {
     side: 'client' | 'server' | false
+    features?: CompilerFeatures | false
     scope: string | false
     mode: NormalizedNodeEnv | false
     runtime?: EnvRuntimeName | false
@@ -815,6 +821,7 @@ export class CompilerFile<THasContent extends boolean> {
     processEnvAliases?: string[] | undefined
   }): {
     side: 'client' | 'server' | false
+    features: CompilerFeatures | false
     built: boolean
     scope: string | false
     mode: NormalizedNodeEnv | false
@@ -881,6 +888,7 @@ export class CompilerFile<THasContent extends boolean> {
         const resultOs = os
         this._shakeForEnv = {
           side: resultSide,
+          features,
           scope: resultScope,
           mode,
           runtime: resultRuntime,
@@ -1229,6 +1237,27 @@ export class CompilerFile<THasContent extends boolean> {
               isTrustedEnvRootIdentifier(node.object.object.name)
             ) {
               p.replaceWith(makeBooleanLiteral(built))
+              modified = true
+              passModified = true
+            }
+            // Handle env.feature.<name> — CLIENT ONLY. Every method of an optional feature opens with
+            // `if (!_point0_env.feature.<name>) { throw }`, so a `false` here turns the body, and with it the last
+            // live reference into the feature's module, into dead code the bundler drops: an app that never turned
+            // `socket` on does not download `@point0/core/socket` at all. The server keeps the runtime getter —
+            // nothing is cut there, so nothing is gained by baking it in. An unknown feature name is left alone.
+            else if (
+              side === 'client' &&
+              features !== false &&
+              node.object.type === 'MemberExpression' &&
+              node.object.object.type === 'Identifier' &&
+              (node.object.object.name === 'env' || node.object.object.name === '_point0_env') &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'feature' &&
+              node.property.type === 'Identifier' &&
+              Object.hasOwn(features, node.property.name) &&
+              isTrustedEnvRootIdentifier(node.object.object.name)
+            ) {
+              p.replaceWith(makeBooleanLiteral(features[node.property.name as keyof CompilerFeatures]))
               modified = true
               passModified = true
             }
@@ -1742,12 +1771,12 @@ export class CompilerFile<THasContent extends boolean> {
         if (!passModified) break
       }
 
-      this._shakeForEnv = { side, scope, mode, runtime, os, consts, built, errors, ok: true, modified, ssr }
+      this._shakeForEnv = { side, features, scope, mode, runtime, os, consts, built, errors, ok: true, modified, ssr }
       this.modified ||= modified
       return this._shakeForEnv
     } catch (e) {
       errors.push(e)
-      this._shakeForEnv = { side, scope, mode, runtime, os, consts, built, errors, ok: false, modified, ssr }
+      this._shakeForEnv = { side, features, scope, mode, runtime, os, consts, built, errors, ok: false, modified, ssr }
       return this._shakeForEnv
     }
   }

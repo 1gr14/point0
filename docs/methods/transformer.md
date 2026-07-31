@@ -39,6 +39,12 @@ nowhere else. It's not available on a [page](page), [query](query),
 a type error. One root, one transformer, shared by every point in that root's
 [scope](query#mode-tags-scope).
 
+The one opt-out is a channel option, not a second transformer knob: a
+[channel](socket) declared with the `preventTransformer: true` channel option
+serializes its whole socket subtree (spaces and handlers included) as plain JSON
+— for raw external consumers that must not learn the transformer's envelope. See
+[Channel options](socket#reference).
+
 `superjson` is not a Point0 dependency — install it yourself:
 
 ```sh
@@ -200,6 +206,23 @@ derive a stable `stringify`/`parse` pair for query keys and the wire
 | page dehydrated state (SSR)       | server → client | `stringify` the dehydrated state |
 | response read                     | client reads    | `deserialize` the JSON           |
 | query key `input`                 | both            | `stringify` the routed input     |
+
+### The `x-point0-transform` header
+
+The HTTP transform is **opt-in per request**, gated on the
+`x-point0-transform: true` request header. The generated client always sends it,
+so every request the app makes is transformed on both ends: the server
+`deserialize`s the input and `stringify`s the output through the transformer. A
+request without the header — a hand-driven `curl`, an external HTTP client —
+gets **raw JSON** semantics instead: the server reads the input as plain JSON
+(no `deserialize`) and returns the output as plain JSON (no transformer
+`stringify`), so a foreign caller sees ordinary JSON and never has to speak
+superjson.
+
+The [socket](socket) wire is not gated — every frame's payload always goes
+through the transformer, in both directions. Which transformer that is belongs
+to the channel: the root's by inheritance, or plain JSON when the channel
+declared `preventTransformer: true` ([above](#root-only)).
 
 ### Edge cases
 

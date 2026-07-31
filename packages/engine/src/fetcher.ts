@@ -8,9 +8,11 @@ import {
   POINT0_NOT_JSON_DATA_HEADER,
   POINT0_OUTPUT_TYPE_HEADER,
   POINT0_QUERY_GET_INPUT_SEARCH_PARAM,
+  POINT0_WEBSOCKET_UPGRADE_HEADER,
   POINT0_REDIRECT_HEADER,
   POINT0_REQUEST_ID_HEADER,
   POINT0_TRANSFORM_HEADER,
+  POINT0_UPGRADE_TRANSFORM_SEARCH_PARAM,
   _getSsItemsWithRestErrors,
   _point0_env,
   _ss,
@@ -23,6 +25,7 @@ import {
   wrapTransformerWithRsc,
 } from '@point0/core'
 import type {
+  AnyNiceReadyPoint,
   AnyPoint,
   ClassLikeError0,
   Data,
@@ -36,7 +39,7 @@ import type {
   FetcherFetchDetailedResultNoMiddleware,
   InputRawUnknown,
   MiddlewareFn,
-  MiddlewareFnOptionsBase,
+  MiddlewarePropsBase,
   NiceServerPoints,
   PagePoint,
   PointsScope,
@@ -50,6 +53,7 @@ import { Request0 } from '@point0/core/request0'
 import type {
   RequestVariantAsset,
   RequestVariantEndpoint,
+  RequestVariantWebsocket,
   RequestVariantError,
   RequestVariantPage,
   RequestVariantPublicdir,
@@ -60,6 +64,7 @@ import type { Engine } from './engine.js'
 import { Executor } from './executor.js'
 import type { ExecuteOptionsKnownInput } from './executor.js'
 import { createHoleNdjsonStream } from './rsc-stream.js'
+import { createSubscriptionStream } from './subscription-stream.js'
 import type { Publicdir } from './publicdir.js'
 import type { EngineServer } from './server.js'
 // import { renderToReadableStream } from 'react-dom/server'
@@ -133,6 +138,11 @@ export class Fetcher<TError extends ErrorPoint0> {
     if (!transform) {
       return blankDataTransformerExtended
     }
+    // a channel endpoint (the ticket connect leg) is part of the SOCKET wire — the channel's declaration decides:
+    // a `preventTransformer` channel parses plain JSON even from a client that (wrongly) advertised the transform
+    if (point?.type === 'channel') {
+      return point._getSocketTransformer()
+    }
     if (point?._transformer) {
       return point._transformer
     }
@@ -177,10 +187,11 @@ export class Fetcher<TError extends ErrorPoint0> {
     const isAction = point.type === 'action'
     const isPage = point.type === 'page'
     const isLayout = point.type === 'layout'
-    // A query endpoint reached over GET carries its input in the ?input= search param (JSON), not the body — the
-    // client only POSTs it as a body on the binary/over-long fallback. So we skip the body read for a GET query
-    // endpoint and pick the input up from the URL below.
-    const isQueryInputFromSearch = point._canHaveQueryEndpoint() && request.method === 'GET'
+    // A query-transport endpoint reached over GET carries its input in the ?input= search param (JSON), not the body —
+    // the client only POSTs it as a body on the binary/over-long fallback. So we skip the body read for such a GET
+    // and pick the input up from the URL below. Channel connects (the cold-start GET+Upgrade path and the short-input
+    // ticket GET) are part of the same transport — the shared kind list in core's protocol covers them.
+    const isQueryInputFromSearch = point._usesQueryTransport() && request.method === 'GET'
     const shouldReadBody = isAction
       ? point._serverExecuteActions.some((action) => action.type === 'body')
       : !isPage && !isLayout && !isQueryInputFromSearch
@@ -428,10 +439,63 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
-      const endpoint = this.server.points.findEndpoint({
+      // The bare `websocket` endpoint — `GET /_point0/<scope>/websocket` + Upgrade, its own request variant. It rides
+      // the FULL pipeline: the scope's middlewares run first (`request.variant.type === 'websocket'` is their veto
+      // hook — e.g. an Origin allowlist), then the handler in `_fetchDetailed` answers the upgrade-marker response the
+      // server top turns into the Bun handshake. When the engine's `websocket` option is off the matcher never
+      // matches — the endpoint does not exist. Gated on the option, NOT on a live Bun server: the FakeClient
+      // in-memory transport dials this same endpoint through the pipeline with no Bun.serve anywhere — its ticket
+      // path (a reconnect, a post-upgrade second connect) needs the marker exactly like a real handshake does.
+      const websocketScope = this.server.socketEnabled
+        ? this.server.socket.matchWebsocketEndpoint(request.original)
+        : undefined
+      if (websocketScope) {
+        const variant: RequestVariantWebsocket = { type: 'websocket', scope: websocketScope }
+        request.variant = variant
+        return {
+          variant,
+          transform,
+          scope: websocketScope,
+          request,
+          effects,
+          middlewares:
+            this.server.points.middlewares.get(websocketScope) ??
+            this.server.points.middlewares.get(this.server.scope) ??
+            [],
+          middlewareOptions: {
+            request,
+            set: effects.set,
+            scope: websocketScope,
+            points: this.server.points as NiceServerPoints,
+          },
+        }
+      }
+
+      let endpoint = this.server.points.findEndpoint({
         method: request.method,
         location: request.location,
       })
+
+      // Cold-start channel connect: a GET with an `Upgrade: websocket` header on the channel endpoint. Channel
+      // endpoints answer GET too (the short-input ticket connect rides `?input=` like a query), so the GET may already
+      // have matched the channel endpoint above — a GET carrying an Upgrade header is the cold-start connect either way.
+      // Mark the variant `upgrade` (resolving the channel endpoint under POST when the GET did not match its own route)
+      // so the full pipeline (middleware, connector) runs and fetchEndpoint turns the marker response into a Bun
+      // WebSocket handshake at the server top. Gated on the `websocket` option like the bare endpoint — off means the
+      // engine performs no WebSocket upgrades at all (the GET then answers the plain ticket connect).
+      const isWsUpgrade =
+        this.server.socketEnabled && request.original.headers.get('upgrade')?.toLowerCase() === 'websocket'
+      let isChannelUpgrade = false
+      if (request.method === 'GET' && isWsUpgrade) {
+        const channelEndpoint =
+          endpoint?.point.type === 'channel'
+            ? endpoint
+            : this.server.points.findEndpoint({ method: 'POST', location: request.location })
+        if (channelEndpoint && channelEndpoint.point.type === 'channel') {
+          endpoint = channelEndpoint
+          isChannelUpgrade = true
+        }
+      }
 
       if (endpoint) {
         const outputTypeRaw = (request.original.headers.get(POINT0_OUTPUT_TYPE_HEADER) ?? undefined) as
@@ -439,8 +503,9 @@ export class Fetcher<TError extends ErrorPoint0> {
           | 'data'
           | 'queryClientDehydratedState'
           | undefined
-        const outputType =
-          outputTypeRaw === 'queryClientDehydratedState'
+        const outputType: RequestVariantEndpoint['outputType'] = isChannelUpgrade
+          ? 'upgrade'
+          : outputTypeRaw === 'queryClientDehydratedState'
             ? 'queryClientDehydratedState'
             : outputTypeRaw === 'html'
               ? 'html'
@@ -454,7 +519,13 @@ export class Fetcher<TError extends ErrorPoint0> {
         request.variant = variant
         return {
           variant,
-          transform,
+          // On the upgrade-connect the transform fact rides the URL, not the header: the handshake is a normal GET
+          // (browser-set headers like Cookie arrive as usual), but browser JS cannot attach CUSTOM headers to it —
+          // so the client that speaks a transformer appends `?x-point0-transform=true` instead. Read here ONLY; on
+          // every other request transform stays a header. A raw client sends neither → blank parse.
+          transform: isChannelUpgrade
+            ? (request.location.search as Record<string, unknown>)[POINT0_UPGRADE_TRANSFORM_SEARCH_PARAM] === 'true'
+            : transform,
           scope: endpoint.point.scope,
           request,
           effects,
@@ -687,7 +758,7 @@ export class Fetcher<TError extends ErrorPoint0> {
     requiredCtx: RequiredCtx
     effects: Effects
     serverStorageState: SuperStoreInternalValuesOrErrors
-    outputType: 'html' | 'data' | 'queryClientDehydratedState'
+    outputType: 'html' | 'data' | 'queryClientDehydratedState' | 'upgrade'
   }): Promise<FetcherFetchEndpointResult<TError>> => {
     const client = this.server.clients.find((client) => client.scope === point.scope)
     const partialResult = {
@@ -869,12 +940,29 @@ export class Fetcher<TError extends ErrorPoint0> {
         })
       }
 
+      const isChannelConnect = point.type === 'channel'
+      const channelConnectInput = (input.input ?? {}) as Record<string, unknown>
+      if (isChannelConnect) {
+        point._emit(
+          'pointChannelConnectServerStart',
+          { input: channelConnectInput, point: point as never },
+          { point: point.id },
+        )
+      }
+
+      // a subscription's generator loader gets an unsubscribe signal — the NDJSON stream's cancel() aborts it when
+      // the client goes away. The flavor check covers both shapes: a `.lets.subscription()` point and a custom-route
+      // action whose generator loader closed with `.subscription()` (its `type` stays 'action').
+      const isSubscription = point._isHttpSubscription()
+      const subscriptionAbortController = isSubscription ? new AbortController() : undefined
+
       const executeResult = await executor.execute({
         point,
         input: null as never,
         _known: input,
         effects: executor.effects, // here we pass executor effects, becouse we want to apply status and effects to it
         ErrorClass,
+        ...(subscriptionAbortController ? { signal: subscriptionAbortController.signal } : {}),
       })
 
       if (executeResult.redirect && request.original.headers.get(POINT0_CLIENT_REQUEST_ID_HEADER)) {
@@ -894,6 +982,17 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       if (executeResult.error) {
+        if (isChannelConnect) {
+          const eventData = {
+            input: channelConnectInput,
+            point: point as never as AnyNiceReadyPoint,
+            connectionId: undefined,
+            identity: undefined,
+            error: executeResult.error,
+          }
+          point._emit('pointChannelConnectServerSettled', eventData, { point: point.id })
+          point._emit('pointChannelConnectServerError', eventData, { point: point.id })
+        }
         const response =
           executeResult.error.response ??
           this.toJsonErrorResponse({
@@ -911,6 +1010,110 @@ export class Fetcher<TError extends ErrorPoint0> {
           ...partialResult,
           response,
           error: executeResult.error as TError,
+        }
+      }
+
+      // A channel connect: the connector ran like any endpoint loader; its output IS the connection's identity (bare —
+      // no room, no data), frozen per connection. The ticket path answers `{ id, ticket }` the client's WebSocket
+      // claims; the GET+Upgrade cold-start path returns a synthetic marker the server top upgrades into the socket.
+      if (isChannelConnect) {
+        const socket = this.server.socket
+        const identity = executeResult.output ?? {}
+        const isUpgrade = outputType === 'upgrade'
+        const connection = await socket.createConnection({
+          point: point as never,
+          identity,
+          ticket: !isUpgrade,
+        })
+        const eventData = {
+          input: channelConnectInput,
+          point: point as never as AnyNiceReadyPoint,
+          connectionId: connection.cid,
+          identity,
+          error: undefined,
+        }
+        point._emit('pointChannelConnectServerSettled', eventData, { point: point.id, connection: connection.cid })
+        point._emit('pointChannelConnectServerSuccess', eventData, { point: point.id, connection: connection.cid })
+        if (isUpgrade) {
+          // stash the seed so the upgraded socket installs it in handleOpen (same process by construction), and return
+          // the marker response: status 200 + the upgrade header carrying the cid. The server top strips the marker
+          // and calls bunServer.upgrade; middleware see the marker like any header and can cancel by replacing it.
+          socket.stashPendingUpgrade({
+            cid: connection.cid,
+            point: point as never,
+            identitySerialized: connection.identitySerialized,
+          })
+          const response = new Response(null, {
+            status: 200,
+            headers: { [POINT0_WEBSOCKET_UPGRADE_HEADER]: connection.cid, 'Cache-Control': 'private, no-store' },
+          })
+          return {
+            ...partialResult,
+            response,
+            data: undefined,
+          }
+        }
+        const connectOutput = { id: connection.cid, ticket: connection.ticket }
+        const response = new Response(transformer.stringify(connectOutput), {
+          // a connect response is per-connection state — no cache may store it
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' },
+          status: executeResult.effects.status ?? 200,
+        })
+        return {
+          ...partialResult,
+          response,
+          data: connectOutput,
+        }
+      }
+
+      // A subscription: the executor ran the pipeline (middleware, ctx, input parse) and handed back the loader's
+      // async generator UNTOUCHED — drain it into the NDJSON stream, one line per yield, a terminal line on
+      // completion/throw, blank-line heartbeats in between. The pipeline's errors above answered as plain JSON before
+      // any streaming started — the client reader treats a non-2xx as a single-body typed error.
+      if (isSubscription && subscriptionAbortController) {
+        const generator = executeResult.output as AsyncIterable<unknown> | undefined
+        if (!generator || typeof (generator as never as Record<symbol, unknown>)[Symbol.asyncIterator] !== 'function') {
+          const error = new ErrorClass(
+            `Subscription point "${point.id}" loader did not return an async generator — declare it as .loader(async function* () { ... })`,
+            { code: POINT0_ERROR_CODES_MAP.NO_OUTPUT },
+          )
+          return {
+            ...partialResult,
+            response: this.toJsonErrorResponse({ ErrorClass, error, status: 500, transformer }),
+            error: error as TError,
+          }
+        }
+        const subscriptionInput = (input.input ?? {}) as Record<string, unknown>
+        point._emit(
+          'pointSubscriptionServerStart',
+          { input: subscriptionInput, point: point as never },
+          { point: point.id },
+        )
+        // content negotiation: our client names the native framing explicitly (`Accept: application/x-ndjson`);
+        // anything else — a browser EventSource, an absent or unknown Accept — gets the SAME envelopes in SSE framing
+        const framing = request.original.headers.get('Accept')?.includes('application/x-ndjson') ? 'ndjson' : 'sse'
+        const stream = createSubscriptionStream({
+          point: point as never,
+          input: subscriptionInput,
+          generator: generator as AsyncGenerator<unknown, unknown, undefined>,
+          framing,
+          abortController: subscriptionAbortController,
+          log: (entry) => this.server.log(entry as never),
+        })
+        return {
+          ...partialResult,
+          response: new Response(stream, {
+            status: executeResult.effects.status ?? 200,
+            headers: {
+              'Content-Type': framing === 'sse' ? 'text/event-stream' : 'application/x-ndjson',
+              // the body follows the Accept header — caches/proxies must key on it
+              Vary: 'Accept',
+              // a stream is per-consumer live state — no cache may store or coalesce it
+              'Cache-Control': 'private, no-store',
+              // disable proxy buffering (nginx honors this) — a buffered subscription never delivers anything
+              'X-Accel-Buffering': 'no',
+            },
+          }),
         }
       }
 
@@ -1139,7 +1342,7 @@ export class Fetcher<TError extends ErrorPoint0> {
   }: {
     middlewares: MiddlewareFn<TError>[]
     finalHandler: () => Promise<FetcherFetchDetailedResultNoMiddleware<TError>>
-    baseOptions: MiddlewareFnOptionsBase<TError>
+    baseOptions: MiddlewarePropsBase<TError>
     transform: boolean
   }): Promise<FetcherFetchDetailedResult<TError>> {
     let index = -1
@@ -1244,6 +1447,19 @@ export class Fetcher<TError extends ErrorPoint0> {
           request: prepareFetchResult.request,
           scope: prepareFetchResult.scope,
           response: prepareFetchResult.variant.response,
+          variant: prepareFetchResult.variant,
+          error: undefined,
+        }
+      }
+
+      // the bare `websocket` endpoint: every middleware passed the request through — accept the upgrade (mint the
+      // one-time token, emit `socketServerUpgrade`, answer the marker response the server top turns into the
+      // Bun handshake)
+      if (prepareFetchResult.variant.type === 'websocket') {
+        return {
+          request: prepareFetchResult.request,
+          scope: prepareFetchResult.scope,
+          response: this.server.socket.acceptBareUpgrade(prepareFetchResult.variant.scope),
           variant: prepareFetchResult.variant,
           error: undefined,
         }
@@ -1604,7 +1820,7 @@ type PrepareFetchResultGeneral<TError extends ErrorPoint0> = {
   request: Request0<any, TError>
   effects: Effects
   middlewares: MiddlewareFn<TError>[]
-  middlewareOptions: MiddlewareFnOptionsBase<TError>
+  middlewareOptions: MiddlewarePropsBase<TError>
 }
 type PrepareFetchResult<TError extends ErrorPoint0> =
   | (PrepareFetchResultGeneral<TError> & {
@@ -1618,6 +1834,9 @@ type PrepareFetchResult<TError extends ErrorPoint0> =
     })
   | (PrepareFetchResultGeneral<TError> & {
       variant: RequestVariantPage<EngineClient<true, TError>>
+    })
+  | (PrepareFetchResultGeneral<TError> & {
+      variant: RequestVariantWebsocket
     })
   | (PrepareFetchResultGeneral<TError> & {
       variant: RequestVariantUnknown

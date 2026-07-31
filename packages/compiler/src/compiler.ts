@@ -2,7 +2,14 @@ import type { PluginItem } from '@babel/core'
 import type { GeneratorResult } from '@babel/generator'
 import type { RoutesPretty } from '@1gr14/route0'
 import type { CompileOptions as MdxCompileOptions } from '@mdx-js/mdx'
-import { log, normalNodeEnvs, type EnvOsName, type EnvRuntimeName, type NormalizedNodeEnv } from '@point0/core'
+import {
+  log,
+  normalNodeEnvs,
+  type EnvOsName,
+  type EnvRuntimeName,
+  type NormalizedNodeEnv,
+  type Point0Feature,
+} from '@point0/core'
 import { CompilerFile } from './file.js'
 import {
   createVirtualModuleCode,
@@ -119,6 +126,7 @@ export class Compiler {
   runtime: EnvRuntimeName | false
   os: EnvOsName | false
   side: 'client' | 'server' | false
+  features: CompilerFeatures | false
   consts: CompilerEnvConsts | undefined
   hmrFix: boolean
   walker: Walker
@@ -168,6 +176,7 @@ export class Compiler {
   constructor({
     filter,
     side,
+    features,
     scope,
     consts,
     hmrFix,
@@ -188,6 +197,7 @@ export class Compiler {
   }: {
     filter: RegExp
     side: 'client' | 'server' | false
+    features: CompilerFeatures | false
     scope: string | false
     consts: CompilerEnvConsts | undefined
     hmrFix: boolean
@@ -208,6 +218,7 @@ export class Compiler {
   }) {
     this.filter = filter
     this.side = side
+    this.features = features
     this.scope = scope
     this.consts = consts
     this.hmrFix = hmrFix
@@ -231,6 +242,7 @@ export class Compiler {
     const {
       filter,
       side,
+      features = false,
       scope,
       consts,
       hmrFix,
@@ -284,6 +296,7 @@ export class Compiler {
     return new Compiler({
       filter: filter ?? Compiler.defaultFilter,
       side,
+      features,
       scope,
       consts,
       hmrFix: hmrFix ?? (side === 'server' ? false : true),
@@ -376,6 +389,7 @@ export class Compiler {
       this.walker.pruneFiles()
     }
     const side = this.side
+    const features = this.features
     const scope = this.scope
     const consts = this.consts
     // const hmrFix = this.hmrFix // now provided in props
@@ -430,6 +444,7 @@ export class Compiler {
     }
     cf.shakeForEnv({
       side,
+      features,
       scope,
       consts,
       built,
@@ -857,6 +872,7 @@ export class Compiler {
         runtime: this.runtime,
         os: this.os,
         side: this.side,
+        features: this.features,
         consts: this.consts,
         walker: this.walker,
         routes: this.routes,
@@ -945,6 +961,15 @@ export type CompilerOptions = {
   runtime?: EnvRuntimeName | false
   os?: EnvOsName | false
   side: 'client' | 'server' | false
+  /**
+   * Which optional Point0 features this build carries — the FULL record, one boolean per {@link Point0Feature} (`false`
+   * = not resolved: leave every `_point0_env.feature.*` access alone and let it read at runtime).
+   *
+   * Only the CLIENT compile inlines them: a `false` there turns the feature's guarded bodies into dead code and its
+   * whole module graph drops out of the bundle. The server compile never inlines — cutting server code buys nothing and
+   * would only break tooling that reaches for a feature the endpoint happens not to serve.
+   */
+  features?: CompilerFeatures | false
   scope: string | false
   built?: boolean
   consts?: CompilerEnvConsts
@@ -975,6 +1000,8 @@ export type CompilerMarkdownOptions = Omit<MdxCompileOptions, 'remarkPlugins' | 
 }
 export type CompilerBabelOptions = PluginItem[] | CompilerBabelOptionsNormalized
 export type CompilerBabelOptionsNormalized = { plugins?: PluginItem[]; presets?: PluginItem[] }
+/** The full feature record a build carries — see {@link CompilerOptions.features}. */
+export type CompilerFeatures = Record<Point0Feature, boolean>
 export type CompilerEnvConstsObject = { [key: string]: string | number | boolean | null | undefined }
 export type CompilerEnvConstsString = string
 export type CompilerEnvConstsItem = CompilerEnvConstsString | CompilerEnvConstsObject

@@ -9,7 +9,12 @@ import type {
   PointsScope,
   RequiredCtx,
 } from '@point0/core'
-import { _point0_env, PointsSourceNotReadyError, prependAndDeappendSlash } from '@point0/core'
+import {
+  _point0_env,
+  POINT0_WEBSOCKET_UPGRADE_HEADER,
+  PointsSourceNotReadyError,
+  prependAndDeappendSlash,
+} from '@point0/core'
 import type { BunPlugin, Serve } from 'bun'
 import * as nodeFs from 'node:fs/promises'
 import * as nodePath from 'node:path'
@@ -19,11 +24,17 @@ import type { EngineClient } from './client.js'
 import type {
   EngineOptionsCompilerSpecificParsed,
   EngineOptionsEnvParsed,
+  EngineOptionsFeaturesParsed,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
+  BackplaneOptionsInput,
+  EngineSocketServerOptions,
+  EngineSocketServerOptionsResolved,
 } from './config.js'
+import { resolveEngineSocketOptions } from './config.js'
 import type { Engine } from './engine.js'
 import { Fetcher } from './fetcher.js'
+import { EngineSocket, type SocketData } from './socket.js'
 import { isDevShuttingDown, registerDevChild, requestDevShutdown } from './dev-shutdown.js'
 import { describePortHolders } from './port.js'
 import type { PublicdirDefinition } from './publicdir.js'
@@ -43,6 +54,7 @@ import {
   extractViteConfig,
   getDirByPaths,
   getViteRoot,
+  isSocketUpgradeRequest,
   loadBunPlugins,
   normalizeAndValidateNodeEnv,
   pipeStreamStripped,
@@ -50,6 +62,14 @@ import {
   validateEntrypoints,
 } from './utils.js'
 import { collectImportGraphPatterns, FilesWatcher } from './watcher.js'
+
+/**
+ * Slack added over the widest channel's `maxMessageSize` when the engine derives Bun's `maxPayloadLength`: the payload
+ * a channel caps is the frame's `input`/`data` string, and the frame wraps it in JSON (`t`, `cid`, `id`, `handler`,
+ * `space`, `room`, `mid`, the `except*` lists) before it hits the wire. The transport cap must clear the envelope, or a
+ * message the channel would have accepted dies at the socket instead of answering with the channel's own error.
+ */
+const SOCKET_FRAME_ENVELOPE_SLACK_BYTES = 16 * 1024
 
 export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0> {
   scope: PointsScope
@@ -71,6 +91,12 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   bunServeConfig: Partial<Serve.Options<any, any>> | null
   bunPlugins: EngineServerPluginsDefinition
   generalBunPlugins: EngineSharedPluginsDefinition
+  backplaneProvided: BackplaneOptionsInput | null
+  /** the `socket` server option — the bare `/_point0/<scope>/websocket` endpoint exists only when this is on */
+  socketEnabled: boolean
+  /** the resolved process-wide socket infra knobs — the object form of the `socket` option, defaults applied */
+  socketOptions: EngineSocketServerOptionsResolved
+  socket: TPrepared extends true ? EngineSocket<TError> : null
   prepared: TPrepared
   bunPluginsLoaded = false
   envVarsApplied = false
@@ -83,6 +109,12 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   fetcher: TPrepared extends true ? Fetcher<TError> : null
   compiler: EngineOptionsCompilerSpecificParsed | false
   ssrEnabled: boolean
+  /**
+   * This side's resolved feature record — the RUNTIME one: it becomes the `POINT0_FEATURE_*` env consts this side reads
+   * back as `env.feature`, and the server always reads them (it is never stripped). What the transform compiles against
+   * is `compiler.features`, resolved from this record in config.ts. See {@link EngineOptionsFeaturesParsed}.
+   */
+  features: EngineOptionsFeaturesParsed
   /**
    * Server-dev hot-reload binding (CHILD side). Set by {@link bindHotStore} when the stable dev child runs in hot mode:
    * `readPoints` then re-imports the server points aggregator from the content-addressed store (per request, gated by
@@ -113,11 +145,14 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     bunServeConfig: Partial<Serve.Options<any, any>> | null
     bunPlugins: EngineServerPluginsDefinition
     generalBunPlugins: EngineSharedPluginsDefinition
+    backplane?: BackplaneOptionsInput | null
+    socket?: boolean | EngineSocketServerOptions | null
     viteConfig: EngineOptionsViteConfig | null
     viteDevServer: ViteDevServer | null
     hmrPort: number | false
     compiler: EngineOptionsCompilerSpecificParsed | false
     ssrEnabled: boolean
+    features: EngineOptionsFeaturesParsed
   }) {
     this.cwd = input.cwd
     this.scope = input.scope
@@ -149,6 +184,10 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     this.bunServeConfig = input.bunServeConfig
     this.bunPlugins = input.bunPlugins
     this.generalBunPlugins = input.generalBunPlugins
+    this.backplaneProvided = input.backplane ?? null
+    this.socketEnabled = Boolean(input.socket ?? false)
+    this.socketOptions = resolveEngineSocketOptions(input.socket)
+    this.socket = null as TPrepared extends true ? EngineSocket<TError> : null
     this.prepared = input.prepared
     this.viteConfig = input.viteConfig
     this.viteDevServer = input.viteDevServer
@@ -156,6 +195,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     this.compiler = input.compiler
     this.fetcher = null as TPrepared extends true ? Fetcher<TError> : null
     this.ssrEnabled = input.ssrEnabled
+    this.features = input.features
   }
 
   static create<TError extends ErrorPoint0>(input: {
@@ -179,12 +219,15 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     bunServeConfig: Partial<Serve.Options<any, any>> | null
     bunPlugins: EngineServerPluginsDefinition
     generalBunPlugins: EngineSharedPluginsDefinition
+    backplane?: BackplaneOptionsInput | null
+    socket?: boolean | EngineSocketServerOptions | null
     log: LogFn
     clients: EngineClient<any, TError>[]
     viteConfig: EngineOptionsViteConfig | null
     hmrPort: number | false
     compiler: EngineOptionsCompilerSpecificParsed | false
     ssrEnabled: boolean
+    features: EngineOptionsFeaturesParsed
   }): EngineServer<false, TError> {
     const publicdir = input.publicdir
       ? Publicdir.create<TError>({
@@ -276,15 +319,20 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     POINT0_SCOPE: PointsScope
     POINT0_SIDE: 'server'
     POINT0_SSR_ENABLED_DEFAULT: 'true' | 'false'
+    POINT0_FEATURE_SOCKET: 'true' | 'false'
   } {
     const NODE_ENV = normalizeAndValidateNodeEnv(nodeEnvFallback)
     const POINT0_SCOPE = this.scope
     const POINT0_SIDE = 'server'
     const POINT0_SSR_ENABLED_DEFAULT = this.ssrEnabled ? 'true' : 'false'
+    // The server never STRIPS a feature (see `CompilerOptions.features`) — it reads the flag at runtime, so the
+    // socket surface answers honestly instead of silently doing nothing when the feature was declared off.
+    const POINT0_FEATURE_SOCKET = this.features.socket ? 'true' : 'false'
     this.envConsts.NODE_ENV = NODE_ENV
     this.envConsts.POINT0_SCOPE = POINT0_SCOPE
     this.envConsts.POINT0_SIDE = POINT0_SIDE
     this.envConsts.POINT0_SSR_ENABLED_DEFAULT = POINT0_SSR_ENABLED_DEFAULT
+    this.envConsts.POINT0_FEATURE_SOCKET = POINT0_FEATURE_SOCKET
     if (assignToProcessEnv && !this.envVarsApplied) {
       this.envVarsApplied = true
       for (const [envVarKey, envVarValue] of Object.entries({ ...this.envVars, ...this.envConsts })) {
@@ -296,7 +344,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         // }
       }
     }
-    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR_ENABLED_DEFAULT }
+    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR_ENABLED_DEFAULT, POINT0_FEATURE_SOCKET }
   }
 
   isFileInOutdir(file: string = Bun.main): boolean {
@@ -345,6 +393,21 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     this.fetcher = Fetcher.create({ engine, server: this as EngineServer<true, TError> }) as TPrepared extends true
       ? Fetcher<TError>
       : null
+    const socket = new EngineSocket<TError>({ server: this as EngineServer<true, TError> })
+    socket.registerAdapters()
+    this.socket = socket as TPrepared extends true ? EngineSocket<TError> : null
+    // channels multiplex over the bare `websocket` endpoint, and that endpoint exists only when the option is on — a
+    // channel declared without it means every client connect will fail, so say it loudly at startup
+    if (!this.socketEnabled && this.points) {
+      const channel = [...this.points.manager.collection].find(({ point }) => point.type === 'channel')
+      if (channel) {
+        this.log({
+          level: 'warn',
+          category: ['point0', 'socket'],
+          message: `Channel point "${channel.point.id}" is declared but the engine's \`socket\` server option is off — the WebSocket endpoint does not exist and socket clients cannot connect. Set \`server: { socket: true }\` in Engine.create.`,
+        })
+      }
+    }
     return this as EngineServer<true, TError>
   }
 
@@ -422,6 +485,10 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     return {
       scope: this.compiler.scope ? this.scope : false,
       side: this.compiler.side ? 'server' : false,
+      // Compile-time record, resolved in config.ts from this side's `features` — not `this.features`, which is the
+      // RUNTIME one. The server compile ignores it (it never strips); handing it over anyway keeps every field of the
+      // compiler options coming from one place, and what to inline stays the compiler's own call by side.
+      features: this.compiler.features,
       mode: this.compiler.mode ? normalizeAndValidateNodeEnv() : false,
       runtime: this.compiler.runtime,
       os: this.compiler.os,
@@ -559,6 +626,11 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     if (this.itWasBuilt) {
       return undefined
     }
+    // a socket upgrade (the bare `websocket` endpoint, or a cold-start channel connect) is never a client asset —
+    // without this skip the dev HMR proxy would swallow the upgrade before the fetch pipeline sees it
+    if (isSocketUpgradeRequest(request)) {
+      return undefined
+    }
     const forwardedFromClientScope = request.headers.get(POINT0_FORWARDED_FROM_DEV_CLIENT_HEADER)
     if (forwardedFromClientScope) {
       return undefined
@@ -587,6 +659,33 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     return undefined // this mean that we did not find any dev client proxy response, and should continue to fetch point
   }
 
+  /**
+   * Bun's inbound frame cap for this server, derived from the channels — `undefined` when there is nothing to derive it
+   * from (the `socket` option off, or not a single channel point) and Bun's own 16 MiB default stands.
+   *
+   * Why derive it at all: the channel's `maxMessageSize` is enforced per FRAME, and only for a frame that names a
+   * claimed connection — before the claim a socket is unauthenticated and utterly unbounded. `maxPayloadLength` is the
+   * transport bound that holds from the handshake on, so it is set to the widest channel any served scope declares
+   * (they all multiplex over the one endpoint) plus {@link SOCKET_FRAME_ENVELOPE_SLACK_BYTES} — wide enough that every
+   * legitimate frame reaches the engine and is answered by the channel's own `maxMessageSize` error rather than by a
+   * silent socket close. `bunServeConfig.websocket.maxPayloadLength` (or the same key in the `serve()` options)
+   * overrides it.
+   */
+  private socketMaxPayloadLength(): number | undefined {
+    if (!this.socketEnabled || !this.points) {
+      return undefined
+    }
+    let widest: number | undefined
+    for (const { type, point } of this.points.manager.collection) {
+      if (type !== 'channel') {
+        continue
+      }
+      const { maxMessageSize } = point._getChannelPointOptions()
+      widest = widest === undefined ? maxMessageSize : Math.max(widest, maxMessageSize)
+    }
+    return widest === undefined ? undefined : widest + SOCKET_FRAME_ENVELOPE_SLACK_BYTES
+  }
+
   async serve({
     requiredCtx,
     ..._providedServeConfig
@@ -607,6 +706,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     const customWebsocketConfig = this.bunServeConfig?.websocket as any
     const providedServeConfig = _providedServeConfig as Record<string, unknown>
     const providedWebsocketConfig = _providedServeConfig.websocket as any
+    const maxPayloadLength = this.socketMaxPayloadLength()
     const serveConfig: Serve.Options<any, any> = {
       ...customServeConfig,
       ...providedServeConfig,
@@ -624,13 +724,55 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         }
 
         const result = await this.fetchDetailed({ request, requiredCtx, bunServer })
+        // A WebSocket upgrade rode the pipeline and came back as the marker response (status 200 + the upgrade header
+        // carrying a channel-connect cid or a bare-endpoint token): strip the marker and turn it into a Bun WebSocket
+        // handshake. On the channel path the socket data (with pendingClaimCid) is what handleOpen installs the
+        // stashed connection from; on the bare path it is a fresh socket for the scope. A missing seed / failed
+        // upgrade answers 400 so the browser handshake fails and the client falls back / retries.
+        const upgradeMarker = result.response.headers.get(POINT0_WEBSOCKET_UPGRADE_HEADER)
+        if (upgradeMarker) {
+          const socketData = this.socket.socketDataForUpgrade(upgradeMarker)
+          if (socketData) {
+            const headers = new Headers(result.response.headers)
+            headers.delete(POINT0_WEBSOCKET_UPGRADE_HEADER)
+            const upgraded = bunServer.upgrade(request, { data: socketData as never, headers })
+            if (upgraded) {
+              return undefined as never
+            }
+          }
+          return new Response(null, { status: 400 })
+        }
         return result.response
       },
+      // the SETTINGS merge (engine defaults ← `bunServeConfig.websocket` ← this call's options) and then the HANDLERS,
+      // which point0 owns outright: every socket on this server multiplexes point0 frames, and a foreign `open`/
+      // `message`/`close` still gets its turn below whenever the socket is not point0's. The defaults below are the
+      // engine's opinion, not a lock — an app that overrides one of them (`closeOnBackpressureLimit: false`, say) gets
+      // exactly what it asked for, including the consequences spelled out here
       websocket: {
+        // a silently dead client stops pinging — Bun closes the idle socket and handleClose sweeps its connections
+        // (the client ping default is 30 s, comfortably inside the window)
+        idleTimeout: 120,
+        // the server half of the delivery contract ("delivered while the connection is alive, otherwise the connection
+        // breaks"). Past `backpressureLimit` Bun DROPS every further frame on that socket and says nothing: the send
+        // returns 0, the buffered amount does not move, `readyState` stays OPEN, and no `drain`/`error` carries the
+        // loss — and on the pub/sub fan-out (`publish`) there is no per-subscriber return value to inspect at all, so
+        // `closeOnBackpressureLimit` is the ONLY mechanism that covers it: uWS tears down exactly the subscriber that
+        // would have lost frames while every other subscriber of the topic still receives them. A client that cannot
+        // keep up loses its socket, not its frames — the reconnect re-claims, re-joins, and the app re-reads state.
+        // The limit is written out at Bun's own default rather than left implicit, because the contract now leans on
+        // it (Bun's shipped reference table says 1 MB — that table is stale; source and measurement both say 16 MiB).
+        // Never set it to 0: that does not mean "no buffer", it disables the limit entirely (unbounded buffering).
+        backpressureLimit: 16 * 1024 * 1024,
+        closeOnBackpressureLimit: true,
+        ...(maxPayloadLength === undefined ? {} : { maxPayloadLength }),
         ...(customWebsocketConfig ?? {}),
         ...(providedWebsocketConfig ?? {}),
-        // later will be user for channels
         open: (ws) => {
+          if ((ws.data as SocketData | undefined)?.__point0Socket) {
+            this.socket.handleOpen(ws as never)
+            return undefined
+          }
           const customOpen = customWebsocketConfig?.open?.bind(ws)
           if (customOpen) {
             return customOpen(ws)
@@ -638,6 +780,16 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
           return undefined
         },
         message: (ws, message) => {
+          if ((ws.data as SocketData | undefined)?.__point0Socket) {
+            return this.socket.handleMessage(ws as never, message as never).catch((error: unknown) => {
+              this.log({
+                level: 'error',
+                category: ['point0', 'socket'],
+                message: 'Socket message handling failed',
+                error,
+              })
+            })
+          }
           const customMessage = customWebsocketConfig?.message?.bind(ws)
           if (customMessage) {
             return customMessage(ws, message)
@@ -645,6 +797,10 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
           return undefined
         },
         close: (ws, code, reason) => {
+          if ((ws.data as SocketData | undefined)?.__point0Socket) {
+            this.socket.handleClose(ws as never)
+            return undefined
+          }
           const customClose = customWebsocketConfig?.close?.bind(ws)
           if (customClose) {
             return customClose(ws, code, reason)
@@ -724,7 +880,14 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
   async dispose(options?: { closeViteDevServer?: boolean }): Promise<void> {
     const { closeViteDevServer = false } = options ?? {}
     if (this.bunServer) {
-      await this.bunServer.stop()
+      // Bun leaks `pendingWebSockets` on every NORMAL websocket close (ours or the client's), and `stop()` — graceful
+      // or forced — never settles while the leaked counter is above zero. The listener itself DOES close the moment
+      // `stop()` is called; only the returned promise hangs. A bounded race is therefore a complete workaround: the
+      // port is released either way and the following serve() re-binds fine. Without it, any app that saw one real
+      // websocket would hang here — e.g. the vite HMR path below, which disposes on every edit. Repro + issue draft:
+      // dev/backlog/bun-issue-server-stop.md.
+      const STOP_SETTLE_MS = 2000
+      await Promise.race([this.bunServer.stop(), new Promise<void>((resolve) => setTimeout(resolve, STOP_SETTLE_MS))])
       // Clear the reference so a following serve() re-binds. The vite dev server re-runs the app entry in-process on
       // every HMR (import.meta.hot.dispose → engine.dispose() → here, then the re-run calls engine.serve() again); if we
       // left `bunServer` set, that serve() would hit its `if (this.bunServer) return` guard and the server would stay

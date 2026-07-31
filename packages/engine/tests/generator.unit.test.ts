@@ -188,6 +188,102 @@ export const plugin = Point0.lets('plugin', 'myplugin').input().plugin()
     )
 
     it(
+      'lazy client points file carries channels and handlers — handler records tagged with their channel',
+      helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLastLogMessage }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const chatChannel = root.lets('channel', 'chatChannel').connector(() => ({ room: {} })).channel()
+export const sendHandler = chatChannel.lets('serverHandler', 'sendHandler').serverReply(() => ({ ok: true })).serverHandler()
+export const notifyHandler = chatChannel.lets('clientHandler', 'notifyHandler').clientHandler()
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'clientPoints',
+              outfile: pointsFile.path,
+              lazy: true,
+            },
+          ],
+          log,
+          routes: {},
+        })
+        await generator.sync()
+
+        const content = fixPaths(await pointsFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0 } from './file0.js'
+          export default [
+            root_0,
+            {
+              type: 'channel',
+              name: 'chatChannel',
+              point: async () => (await import('./file0.js')).chatChannel,
+            },
+            {
+              type: 'serverHandler',
+              name: 'sendHandler',
+              channel: 'chatChannel',
+              point: async () => (await import('./file0.js')).sendHandler,
+            },
+            {
+              type: 'clientHandler',
+              name: 'notifyHandler',
+              channel: 'chatChannel',
+              point: async () => (await import('./file0.js')).notifyHandler,
+            },
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
+          "
+        `)
+        expect(getLastLogMessage()).toStartWith('4 points processed')
+      }),
+    )
+
+    it(
+      'the NON-lazy client points file carries channels and handlers too — as static imports (eager registration)',
+      helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLastLogMessage }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const chatChannel = root.lets('channel', 'chatChannel').connector(() => ({ room: {} })).channel()
+export const notifyHandler = chatChannel.lets('clientHandler', 'notifyHandler').clientHandler()
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [
+            {
+              scope: 'myroot',
+              what: 'clientPoints',
+              outfile: pointsFile.path,
+              lazy: false,
+            },
+          ],
+          log,
+          routes: {},
+        })
+        await generator.sync()
+
+        const content = fixPaths(await pointsFile.text())
+        expect(content).toMatchInlineSnapshot(`
+          "import type { PointsDefinition } from '@point0/core'
+          import { root as root_0, chatChannel as chatChannel_1, notifyHandler as notifyHandler_2 } from './file0.js'
+          export default [
+            root_0,
+            chatChannel_1,
+            notifyHandler_2,
+          ] as PointsDefinition<typeof root_0['Infer']['RequiredCtx'], typeof root_0['Infer']['Error']>
+          "
+        `)
+        expect(getLastLogMessage()).toStartWith('3 points processed')
+      }),
+    )
+
+    it(
       'generates lazy clients points file, and log errors for invalid points',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLogs }) => {
         await rootFile.write(`import {Point0} from '@point0/core'

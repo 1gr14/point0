@@ -218,8 +218,8 @@ export class TestProjectOneClient {
     return await response.text()
   }
 
-  async waitPortsFree() {
-    await waitPortFree(this.ports)
+  async waitPortsFree(timeout?: number) {
+    await waitPortFree(this.ports, timeout)
   }
 
   async getDistServerFilesContent(): Promise<string> {
@@ -282,12 +282,14 @@ export class TestProjectOneClient {
     console.info(this.output)
   }
 
-  async waitStarted(port?: number) {
+  async waitStarted(port?: number, timeoutOverride?: number) {
     // Vite dev boots a fresh temp project with a COLD deps optimizer — under CI load that alone can blow a
     // 30s budget while the server is perfectly healthy (dev/backlog/vite-dev-tests-order-dependent-flakes.md).
     // A slow start is not a failed start: the negative `!Failed…` patterns still fail fast on real errors,
     // and the wait returns the moment the "started" line lands, so green runs pay nothing for the ceiling.
-    const timeout = this.vite ? 90000 : 30000
+    // `timeoutOverride` is for the callers that boot UNDER KNOWN LOAD — a mid-suite re-spawn racing parallel
+    // suites (the socket-resumable redeploy) — where even a Bun boot legitimately outlives the default.
+    const timeout = timeoutOverride ?? (this.vite ? 90000 : 30000)
     if (port) {
       await this.waitOutput([`started http://localhost:${port}`, '!Failed to start server'], timeout)
     } else {

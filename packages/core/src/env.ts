@@ -1,4 +1,4 @@
-import type { EnvVars, NormalizedNodeEnv } from './env.types.js'
+import type { EnvVars, NormalizedNodeEnv, Point0Feature } from './env.types.js'
 import { POINT0_ENV_CONSTS_GLOBAL, POINT0_ENV_VARS_GLOBAL } from './protocol.js'
 import { superstore } from './super-store.js'
 import type { IsAny } from './types.js'
@@ -675,6 +675,38 @@ const envOs = Object.defineProperties(
   },
 ) as never as EnvOs
 
+// feature
+
+/**
+ * Which OPTIONAL features this build carries — one boolean per {@link Point0Feature}, ALWAYS the full record (a feature
+ * is never "unspecified" here; the engine normalizes its partial config option into this shape per side).
+ *
+ * Read it as "is this feature's code in this build", not "is it configured": every method of a feature opens with `if
+ * (!_point0_env.feature.<name>) { throw … }`, and the compiler rewrites that member access to a literal in the CLIENT
+ * build, so a `false` turns the whole body — and the module graph behind it — into dead code the bundler drops. The
+ * server build never inlines it: the server has nothing to gain from cutting code, and reads the value at runtime
+ * instead.
+ */
+export type EnvFeature = {
+  readonly [K in Point0Feature]: boolean
+}
+
+// `POINT0_FEATURE_*` is set by the engine for the server, injected into the client's env consts, AND inlined by the
+// compiler at the member access itself. Unset means nobody cut anything — a bare `@point0/core` in a unit test, an
+// app whose side runs with `compiler: false` — so the honest answer is `true`: the feature's code IS here. Only a
+// build that deliberately resolved the feature off reports `false`, which is exactly when the throw is the truth.
+const getFeatureSocket = (): boolean => {
+  const value = getEnvVars().POINT0_FEATURE_SOCKET
+  return value === undefined ? true : value === 'true'
+}
+
+const envFeature = Object.defineProperties(
+  {},
+  {
+    socket: { get: getFeatureSocket },
+  },
+) as EnvFeature
+
 // build
 
 type BuildDefineWithHelpers = {
@@ -761,6 +793,7 @@ export type Env<
   readonly ssr: EnvSsr
   readonly scope: EnvScope<IsAny<TScope> extends true ? string : TScope>
   readonly build: EnvBuild
+  readonly feature: EnvFeature
 }
 
 export const env: Env = Object.defineProperties(
@@ -772,6 +805,7 @@ export const env: Env = Object.defineProperties(
     ssr: envSsr,
     scope: envScope,
     build: envBuild, // can be statically shaken by compiler
+    feature: envFeature, // client build: statically shaken by compiler; server build: read at runtime
   },
   {
     vars: { get: getEnvVars },

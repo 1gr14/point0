@@ -4,12 +4,19 @@ import type { ErrorPoint0 } from './error.js'
 import type { Props, QuerySuccess, UseQueryOrInfiniteQueryResult } from './mountable.js'
 import { POINT0_QUERY_KEY_NAMESPACE } from './protocol.js'
 import type {
+  ChannelOptionsResolved,
+  ClientHandlerOptionsResolved,
   Data,
   DataTransformer,
   DataTransformerExtended,
+  ExtraUseConnectionOptions,
   ExtraUseInfiniteQueryOptions,
+  ExtraUseMembershipOptions,
   ExtraUseMutationOptions,
   ExtraUseQueryOptions,
+  ServerHandlerOptionsResolved,
+  SpaceOptionsResolved,
+  SubscriptionPointOptions,
   FetchServerOutputType,
   MiddlewareFn,
   MutationKey,
@@ -231,6 +238,20 @@ export const toExtendedTransformer = (transformer: DataTransformer): DataTransfo
 }
 
 export const blankDataTransformerExtended: DataTransformerExtended = toExtendedTransformer(blankDataTransformer)
+
+/**
+ * `transformer.stringify` for a value that MUST serialize — socket keys, identities, rooms, frame payloads, stream
+ * envelopes. `stringify` answers `undefined` when the transformer's `serialize` refused the value (a custom transformer
+ * bug); coercing that would merge distinct keys or put the literal string "undefined" on the wire, so it fails loud
+ * instead — the same contract the fetch path enforces for request bodies.
+ */
+export const stringifyOrThrow = (transformer: DataTransformerExtended, value: unknown, pointId: string): string => {
+  const serialized = transformer.stringify(value)
+  if (serialized === undefined) {
+    throw new Error(`Transformer returned undefined serializing a value on point ${pointId}`)
+  }
+  return serialized
+}
 
 const WORD_SEP = /[_\-.:/\\\s]+/g
 
@@ -516,6 +537,75 @@ export const mergeMutationOptions = (
   ...options: Array<(UseMutationOptions | ExtraUseMutationOptions) | undefined>
 ): UseMutationOptions => {
   return mergeOptionsWithCallbacks(['onMutate', 'onSuccess', 'onError', 'onSettled'], ...options) as never
+}
+
+/**
+ * Flatten a GROUPED socket point-options declaration (`{ server, client, ...topLevel }`) into the resolved shape the
+ * runtime reads. No key collides across the sides of a family, so the flat object is lossless; a group missing because
+ * the compiler cut it (the client bundle has no `server`, the server bundle no `client`) simply contributes nothing and
+ * the defaults stand in — only the other side ever reads those keys anyway. Already-flat input (a call site, an earlier
+ * merge result) passes through untouched.
+ */
+export const flattenSidedOptions = <TResolved extends Record<string, any>>(
+  options: { server?: Record<string, any>; client?: Record<string, any> } | Record<string, any> | undefined,
+): TResolved | undefined => {
+  if (!options) {
+    return undefined
+  }
+  const { server, client, ...rest } = options as { server?: Record<string, any>; client?: Record<string, any> }
+  return { ...rest, ...server, ...client } as TResolved
+}
+
+// socket option merges — the inputs are RESOLVED (flat) options, so pass a grouped point declaration through
+// `flattenSidedOptions` first. Non-callback keys are last-wins (chain → close → call site), callbacks at every level
+// run in order, like mutation callbacks; since the sides share no key, per-key last-wins IS per-side last-wins.
+export const mergeChannelOptions = (
+  ...options: Array<ChannelOptionsResolved<any, any> | ExtraUseConnectionOptions<any, any> | undefined>
+): ChannelOptionsResolved<any, any> & ExtraUseConnectionOptions<any, any> => {
+  const merged = mergeOptionsWithCallbacks(['onConnect', 'onDisconnect', 'onError'], ...options) as Record<string, any>
+  // the `resume` tuning group merges PER KEY across the levels (defaults → chain → closer) — plain last-wins would
+  // drop the defaults of the keys a later level did not name
+  const resumeLevels = options.map((level) => (level as { resume?: object } | undefined)?.resume).filter(Boolean)
+  if (resumeLevels.length > 1) {
+    merged.resume = Object.assign({}, ...resumeLevels)
+  }
+  return merged as never
+}
+
+export const mergeServerHandlerOptions = (
+  ...options: Array<ServerHandlerOptionsResolved<any> | undefined>
+): ServerHandlerOptionsResolved<any> => {
+  return mergeOptionsWithCallbacks(
+    ['onReplyFromServer', 'onBeforeServerReply', 'onAfterServerReply'],
+    ...options,
+  ) as never
+}
+
+export const mergeSpaceOptions = (
+  ...options: Array<SpaceOptionsResolved<any, any, any> | ExtraUseMembershipOptions | undefined>
+): SpaceOptionsResolved<any, any, any> & ExtraUseMembershipOptions => {
+  const merged = mergeOptionsWithCallbacks(
+    ['onBeforeJoiner', 'onAfterJoiner', 'onEnter', 'onLeave'],
+    ...options,
+  ) as Record<string, any>
+  // the `resume` ceilings merge per key across the levels, like the channel's group
+  const resumeLevels = options.map((level) => (level as { resume?: object } | undefined)?.resume).filter(Boolean)
+  if (resumeLevels.length > 1) {
+    merged.resume = Object.assign({}, ...resumeLevels)
+  }
+  return merged as never
+}
+
+export const mergeSubscriptionOptions = (
+  ...options: Array<SubscriptionPointOptions<any, any, any> | undefined>
+): SubscriptionPointOptions<any, any, any> => {
+  return mergeOptionsWithCallbacks(['onMessageFromServer', 'onConnect', 'onDisconnect', 'onError'], ...options) as never
+}
+
+export const mergeClientHandlerOptions = (
+  ...options: Array<ClientHandlerOptionsResolved<any, any> | undefined>
+): ClientHandlerOptionsResolved<any, any> => {
+  return mergeOptionsWithCallbacks(['onMessageFromServer'], ...options) as never
 }
 
 export const mergeCallbacks = <TCallback extends ((...args: any[]) => any) | undefined>(
@@ -823,3 +913,13 @@ export const isAbsoluteUrl = (value: string): boolean => {
     return false
   }
 }
+
+/**
+ * The uniform "socket feature is off" failure every stripped socket method throws. Only the MESSAGE construction is
+ * shared — the check itself stays inline at every call site (`if (!_point0_env.feature.socket) { throw
+ * socketFeatureOffError(...) }`): the compiler folds the inline condition to a literal on the client build, and a
+ * helper performing the check would not be dead code to the bundler. `site` names the method (and, on point methods,
+ * the point) for the error to read back.
+ */
+export const socketFeatureOffError = (site: string): Error =>
+  new Error(`Socket feature is off — set \`server: { socket: true }\` in the engine config (${site})`)

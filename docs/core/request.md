@@ -383,7 +383,7 @@ fresh `state` but the **same** `cache`.
 `request.variant` is how the engine classified this request. It starts
 `{ type: 'unknown' }` and the engine sets it as the request is routed, so early
 middleware may still see `'unknown'`. The discriminant is
-`'publicdir' | 'asset' | 'endpoint' | 'page' | 'error' | 'unknown'`:
+`'publicdir' | 'asset' | 'endpoint' | 'page' | 'websocket' | 'error' | 'unknown'`:
 
 ```tsx
 request.variant.type // => 'page' | 'endpoint' | ...
@@ -399,6 +399,12 @@ so the same URL can never serve different bytes and it is safe to cache forever
 content (favicons, `robots.txt`, `index.html`). The classification is exact, not
 guessed from file names: the build persists the list of content-hashed outputs
 into `_point0/<scope>/build-assets.json` and the server checks against it.
+
+`'websocket'` is the bare WebSocket upgrade — `GET /_point0/<scope>/websocket`
+with an `Upgrade: websocket` header, matched only when the engine's `socket`
+server option is on. It carries the resolved `scope`, and it is the middleware
+hook for gating the socket (an `Origin` allowlist, say) — see the
+[recipe](socket#origin-allowlist-for-the-socket).
 
 ### `request.renders`
 

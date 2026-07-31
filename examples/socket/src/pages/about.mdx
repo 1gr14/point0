@@ -1,0 +1,28 @@
+import { Link } from '@/lib/navigation'
+import { generalLayout } from '@/layouts/general'
+
+export const page = generalLayout
+  .lets('page', 'about', '/about')
+  .head('About')
+  .page((props) => (
+    <div className="prose">
+      <MDXContent {...props} />
+    </div>
+  ))
+
+# About this example
+
+This is the **Point0 Sockets** showcase — four small, focused recipes built on Point0's socket primitives, all riding a
+single WebSocket:
+
+- **Channel** — one identified pipe. Its connector reads a nickname cookie and freezes the result as the connection
+  identity: a nickname, or `null` for a guest — everyone is connected, watching is free everywhere.
+- **Spaces** — families of rooms. A client joins them; the server decides which rooms it enters.
+- **Handlers** — typed messages in both directions: a server handler (client → server) and a client handler (server →
+  client). Every gated ACTION — writing to the chat, drawing on the board — is gated on the server, where the identity
+  is trusted; the interface only mirrors it.
+
+Watch everything as a guest right away, or sign in with any nickname in the header to write, draw and get a personal
+inbox — then open a second tab to see messages, presence, and the live board update as they happen.
+
+<Link route="home">Back to the recipes</Link>

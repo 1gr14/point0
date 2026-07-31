@@ -17,6 +17,27 @@
  * `@point0/engine`'s own protocol module, the compiler's virtual-module ids in `@point0/compiler`'s.
  */
 
+// the one permitted import: type-only, erased at compile time — the module still drags no runtime graph behind it
+import type { PointType } from './types.js'
+
+/**
+ * Whether a point KIND rides the query transport: a read whose JSON input travels in the URL as `?input=` on a GET,
+ * with a POST-body fallback for binary or over-long input — the endpoint registered under BOTH methods. That is
+ * queries, infinite queries, the self-queries behind component/provider loaders, subscriptions (the NDJSON stream is
+ * requested the same way), and channel connects (the short-input ticket GET, and the cold-start GET+Upgrade connect — a
+ * WebSocket handshake is GET by spec). Pages/layouts are GET too but encode input as route params/search; mutations and
+ * custom-route actions follow their own method. ONE source of truth: core's fetch options and endpoint methods, the
+ * engine's input read, and the compiler's endpoint meta all call this — a drifted copy would split the wire surface
+ * between the bundles.
+ */
+export const pointTypeUsesQueryTransport = (type: PointType): boolean =>
+  type === 'query' ||
+  type === 'infiniteQuery' ||
+  type === 'component' ||
+  type === 'provider' ||
+  type === 'subscription' ||
+  type === 'channel'
+
 /**
  * Header names are lowercase, always.
  *
@@ -93,6 +114,24 @@ export const POINT0_NOT_JSON_DATA_HEADER = 'x-point0-not-json-data'
 export const POINT0_REDIRECT_HEADER = 'x-point0-redirect'
 
 /**
+ * Set on the synthetic marker response every WebSocket upgrade rides out of the fetch pipeline: a channel endpoint
+ * reached over `GET` with an `Upgrade: websocket` header answers it with the freshly created connection id (cid), and
+ * the bare `websocket` endpoint (`/_point0/<scope>/websocket`) with a one-time upgrade token. The server top sees the
+ * marker, strips it, and turns the response into a Bun WebSocket handshake (installing the stashed connection on the
+ * channel path). Middleware see the marker like any other header: passing the response through keeps the upgrade,
+ * replacing the marker response with an ordinary one cancels it (the browser handshake then fails).
+ */
+export const POINT0_WEBSOCKET_UPGRADE_HEADER = 'x-point0-websocket-upgrade'
+
+/**
+ * The path segment of the bare WebSocket endpoint — `/_point0/<scope>/websocket`, the one socket per client that every
+ * socket channel of the scope multiplexes over. It exists only when the engine's `websocket` server option is on, it is
+ * matched into its own request variant (`request.variant.type === 'websocket'`), and its upgrade rides the FULL fetch
+ * pipeline (middlewares, events) via the {@link POINT0_WEBSOCKET_UPGRADE_HEADER} marker response.
+ */
+export const POINT0_WEBSOCKET_ENDPOINT_SEGMENT = 'websocket'
+
+/**
  * The reserved path segment under which point0 serves everything it owns: the point endpoints
  * (`/_point0/<scope>/<type>/<name>`), the content-addressed assets (`/_point0/assets/<hash>.<ext>`), and the per-client
  * build metadata (`/_point0/<scope>/build-version.json` and friends). One segment, reserved once, so an app's own
@@ -149,6 +188,18 @@ export const getPointEndpointRoutePath = ({
 }): string => `${POINT0_INTERNAL_URL_PREFIX}${scope}/${type}/${name}`
 
 /**
+ * One envelope of a subscription point's stream, after the transformer parse — the same envelope rides both wire
+ * framings (native NDJSON: one per line; SSE for foreign clients: one per `data:` event, negotiated by `Accept`).
+ * Exactly one key per line: `v` — one streamed value (a loader yield); `e` — the loader threw, the field carries the
+ * error's public serialization and the stream is over; `d` — the loader COMPLETED (returned) and the stream is over.
+ * The distinction between `d` and the stream simply ending is load-bearing: an end with no `d`/`e` line is a BREAK
+ * (network, server restart) and is what the client's `reconnect` reacts to — a completed or failed stream never
+ * restarts. Empty lines are heartbeats, skipped by every reader. Written by the engine's subscription stream, read by
+ * core's subscription client.
+ */
+export type SubscriptionStreamEnvelope = { v: unknown } | { e: unknown } | { d: true }
+
+/**
  * First element of every point0 query and mutation key. It namespaces point0's keys inside a React Query cache the app
  * may also use for its own queries — `parseQueryKey`/`parseMutationKey` recognize a key by this element alone.
  */
@@ -161,6 +212,15 @@ export const POINT0_QUERY_KEY_NAMESPACE = 'point0'
  * Shared between the client that writes it (core) and the server that reads it (engine), so the two never drift.
  */
 export const POINT0_QUERY_GET_INPUT_SEARCH_PARAM = 'input'
+
+/**
+ * Search-param name that carries the transform fact on the cold-start upgrade-connect GET (same string as
+ * {@link POINT0_TRANSFORM_HEADER}). The WebSocket handshake is a normal GET — browser-set headers (Cookie, Origin)
+ * arrive as usual — but browser JS cannot attach CUSTOM headers to it (`new WebSocket(url)` exposes none), so the one
+ * header the connect would carry rides the URL instead: the client appends `?<this>=true` when the channel's socket
+ * transformer is non-blank. Read by the engine on the upgrade variant ONLY — everywhere else transform stays a header.
+ */
+export const POINT0_UPGRADE_TRANSFORM_SEARCH_PARAM = POINT0_TRANSFORM_HEADER
 
 /**
  * Globals the server render injects into the HTML and the client runtime reads back.

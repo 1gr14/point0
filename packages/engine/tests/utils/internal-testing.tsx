@@ -2,6 +2,7 @@ import { CookieStore } from '@point0/core/cookie-store'
 import { createQueryClient, isQueryClientDehydratedStateQuery } from '@point0/core'
 import type {
   AnyNiceRequestableReadyPoint,
+  RequestableReadyPointType,
   AppComponent,
   FetchOptions,
   PointsDefinition,
@@ -271,7 +272,9 @@ type TestThingsState = {
   _locationCleanup: () => void
   _unmount?: () => void
 }
-type FetchPoint = <T extends AnyNiceRequestableReadyPoint>(
+type FetchPoint = <
+  T extends AnyNiceRequestableReadyPoint<Exclude<RequestableReadyPointType, 'channel' | 'subscription'>>,
+>(
   point: T,
   ...args: T['Infer']['IsInputOptional'] extends true
     ? [input?: T['Infer']['InputRawOrUndefined'], options?: FetchOptions]

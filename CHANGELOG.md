@@ -5,6 +5,27 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- Sockets: four new point types — live messaging over one WebSocket per
+  client. A `channel` is the authenticated connection (its `.connector` returns
+  the connection identity), a `space` is a family of rooms the server's
+  `.joiner` / `.enroller` admits into, and the handlers are the typed messages:
+  a `serverHandler` (the client sends, `.serverReply` answers) and a
+  `clientHandler` (the server pushes to connections or rooms, with optionally
+  collected replies). Reconnect and resumable connections, kicks, presence,
+  connection/membership enumeration, per-process metrics, lifecycle events for
+  every family, the compiler's side-split stripping of the sided options — and
+  a backplane for multi-process delivery: in-memory by default, a `redis://`
+  URL, or the ready-made
+  `@point0/engine/backplane/{bun-redis,ioredis,node-redis,postgres}` adapters.
+  Docs: [socket](https://1gr14.dev/point0/latest/socket); a complete app:
+  [the socket example](https://1gr14.dev/point0/latest/example-socket).
+- Subscriptions: a new point type — a server stream of values over plain HTTP,
+  the pull twin of a socket push. The `.loader` is an async generator (each
+  `yield` streams one value); consume with `useSubscription` or the imperative
+  `fetchSubscription`; a broken stream reconnects with backoff and can resume
+  from a tracked cursor; foreign clients get the same stream as SSE. Docs:
+  [subscription](https://1gr14.dev/point0/latest/subscription).
+
 ## 0.2.8 — 2026-07-20
 
 - route0 bumped to `^0.3.0`, where a path param carries one descriptor —
@@ -18,23 +39,17 @@ release` promotes that section to the new version.
 
 ## 0.2.7 — 2026-07-20
 
-- Page routes are matched by route0 instead of by the router's own path parser. A
-  page's `<Route>` was handed the raw definition string, which wouter re-parses with
-  `regexparam` — a second, approximate matcher running beside the one point0 already
-  trusts everywhere else. Layouts had always used route0's real `RegExp`; pages now
-  do too. The two only agreed for plain routes: given `/:locale(ru|en)?/author`,
-  `regexparam` minted a param key literally called `locale(ru|en)` and matched
-  `/fr/author`, while route0 correctly rejected it — so the page rendered for a URL
-  the framework considered a 404, with params it could not supply.
-- Upgraded to `@1gr14/route0` 0.2, which brings params constrained to a value set —
-  `:locale(ru|en)` and `:locale(ru|en)?` — enforced in matching, building, schema
-  validation, the emitted JSON Schema and route ordering, and narrowed to the literal
-  union at the type level. Constrained params flow through the compiler untouched, so
-  a `basePath`, a nested layout and a synthesized endpoint route all carry them.
-  route0 0.2 also fixes the route ordering that let an optional leading param swallow
-  every single-segment top-level route, and now rejects a route definition that names
-  the same param twice — previously the second occurrence silently overwrote the
-  first, so one of the two segments could never be filled independently.
+- Page routes are matched by route0 instead of wouter's own `regexparam`
+  parser. The two only agreed on plain routes: given `/:locale(ru|en)?/author`,
+  `regexparam` minted a param literally named `locale(ru|en)` and matched
+  `/fr/author` — a page rendered for a URL the framework considered a 404.
+  Layouts always used route0's real `RegExp`; pages now do too.
+- Upgraded to `@1gr14/route0` 0.2: params constrained to a value set —
+  `:locale(ru|en)`, `:locale(ru|en)?` — enforced in matching, building, schema
+  validation, the emitted JSON Schema and route ordering, and narrowed to the
+  literal union at the type level. Also fixes the ordering that let an optional
+  leading param swallow every single-segment top-level route, and rejects a
+  route naming the same param twice.
 - The dev proxy no longer cuts long-polls at Bun's idle timeout.
 - `bunServeConfig` is typed as a partial override.
 - The compiler resolves imports without the TypeScript compiler API.
@@ -42,61 +57,36 @@ release` promotes that section to the new version.
 
 ## 0.2.6 — 2026-07-14
 
-- `.scrollPosition()` now actually restores a custom scroll container — it never
-  did. A page is code-split, so its collection record holds nothing but the chunk's
-  loader until something loads it, and on the client that only ever happened on a
-  navigation's prefetch — never for the page the server rendered. So the lookup
-  found no point, and silently fell back to the window: the capture stored the
-  window's offset instead of the container's, and the restore moved the window
-  instead of the container. Scroll restoration now loads the page's chunk before it
-  decides anything, and while that is in flight the lookup answers **"not yet"**
-  rather than "the window" — "we don't know yet how this page scrolls" and "this
-  page scrolls the window" are different answers, and collapsing them is what
-  scrolled the wrong thing and stored the wrong offset. A code-split page's
-  `.scrollRestore()` policy is honoured for the same reason: it lives in the chunk,
-  the decision is taken once, and it used to be taken from the default policy. And a
-  restore no longer gives up when the container isn't in the DOM yet — waiting for it
-  to render is precisely what the retry is for.
-- Reloading a scrolled page no longer flashes at the top before jumping back to
-  where you were. Scroll restoration is now split along the line of what each side
-  can actually do: the **browser** restores a document load (reload, cross-document
-  back/forward), and it does that _before the first paint_, knowing the real page
-  height — which no JavaScript restore can match, ours included, since it runs after
-  hydration and therefore after that paint. Point0 keeps
-  `history.scrollRestoration = 'manual'` only while the page is alive, because
-  same-document navigation really is its job (there the browser would restore before
-  React rendered the entering page, and would prefer a `#hash` over the remembered
-  position), and hands the mode back on the way out. A URL carrying a `#hash` is
-  never handed back — the browser would jump to the anchor instead of your position.
-  Point0 still restores everything the browser demonstrably cannot: content that
-  only reaches its full height after the first paint, custom scroll containers (no
-  browser restores element scroll, in any mode), those `#hash` entries, and
-  `ssr: false` pages, whose first paint is empty.
-- Restoring a scroll position no longer animates under
-  `scroll-behavior: smooth`. The restore used `window.scrollTo(x, y)` (and
-  `element.scrollTop = …` for a custom container), both of which scroll with the
-  CSS-resolved behavior — so on a smooth-scrolling page the restore animated, the
-  retry read that animation as the user scrolling, and backed off for good. Both now
-  pin `behavior: 'instant'`, like the `#hash` jump always did.
-- A scroll-position getter for a container that isn't in the DOM now reports
-  `undefined` instead of `{ x: 0, y: 0 }`. The zero was a lie: a capture firing while
-  the container was unmounted overwrote the page's real remembered position with the
-  top.
+- `.scrollPosition()` now actually restores a custom scroll container — it
+  never did. The code-split page's chunk wasn't loaded for the server-rendered
+  page, so the lookup silently fell back to the window, capturing and restoring
+  the window's offset instead of the container's. Restoration now loads the
+  chunk first (answering "not yet" while it's in flight), honours a code-split
+  page's `.scrollRestore()` policy, and waits for the container to render
+  instead of giving up.
+- Reloading a scrolled page no longer flashes at the top before jumping back.
+  The browser now restores document loads (reload, cross-document
+  back/forward) — it does that before first paint, which no post-hydration
+  JavaScript can match — while Point0 keeps restoring everything the browser
+  can't: same-document navigation, late-growing content, custom containers,
+  `#hash` entries, and `ssr: false` pages.
+- Restores pin `behavior: 'instant'`, so `scroll-behavior: smooth` no longer
+  animates them (the retry used to read that animation as the user scrolling
+  and back off for good).
+- A scroll getter for a container not in the DOM reports `undefined` instead of
+  `{ x: 0, y: 0 }`, so a capture while unmounted can't overwrite the real
+  remembered position with the top.
 
 ## 0.2.5 — 2026-07-13
 
-- SSR now renders your app as its own React root — the `#root` element itself —
-  instead of nesting it inside the whole-document React tree. React's `useId` is
-  relative to the render root, and the client hydrates `#root`, so the previous
-  whole-document render offset every id by the surrounding `<html>`/`<body>`
-  structure. React 19.2 turned that latent offset into a hard, unrecoverable
-  hydration mismatch — visible as diverging component ids (e.g. Radix
-  `radix-_R_bcb_` on the server vs `radix-_R_5m5q_` on the client). The document
-  shell is now rendered separately and streamed around the app, so every `useId`
-  is identical on both sides. One consequence of the app no longer being part of
-  the document tree: React 19's native `<title>`/`<meta>` hoisting doesn't reach
-  the document `<head>` from inside your components — route head tags through
-  `.head()` / unhead, which is already the documented path.
+- SSR now renders your app as its own React root (the `#root` element) instead
+  of nesting it inside a whole-document React tree. React's `useId` is relative
+  to the render root, so the old shape offset every id — and React 19.2 turned
+  that into a hard hydration mismatch (visibly diverging Radix ids). The
+  document shell is now rendered separately and streamed around the app. One
+  consequence: React 19's native `<title>`/`<meta>` hoisting can't reach the
+  document `<head>` from inside your components — route head tags through
+  `.head()` / unhead, the documented path.
 
 ## 0.2.4 — 2026-07-10
 
@@ -123,22 +113,16 @@ release` promotes that section to the new version.
   nine places that build `/_point0/` paths, so setting it silently broke the
   other eight; nothing ever set it. The prefix is a constant
   (`POINT0_INTERNAL_PATH_PREFIX`), not an option.
-- `getLocation()` and `getSearch()` now answer on the server wherever the request
-  stands for a page. A **page**'s loader — and every RSC server component its data
-  returns, `defer`red subtrees included — can read them on any path: the SSR
-  render, the client-navigation data fetch, a plain refetch of its query, and
-  `ssr(false)`. A **layout**'s loader can only while a page renders or prefetches
-  around it — a layout has no route of its own, so its query fetched alone (an
-  invalidation, a `staleTime` refetch, a navigation that misses the cache) still
-  throws. Before, the nested run that executes a page's loader dropped the page
-  location, and the plain data fetch never had one, so both threw
-  `"Current location is not yet initialized"`. A **query** or **mutation** point
-  still has no page and still throws — there, keep the value in the query input,
-  which also keys the cache. On the server `origin`/`href` may come from the
-  browser's `Referer`, so don't build security-sensitive absolute urls from them;
-  `pathname`, `params` and `search` cannot be spoofed. `useLocation()` is unchanged: it is a hook, so it
-  belongs to pages, layouts and component points (islands), never to a server
-  component, which runs as one plain function call.
+- `getLocation()` and `getSearch()` now answer on the server wherever the
+  request stands for a page: a page's loader — and every RSC server component
+  its data returns, `defer`red subtrees included — on the SSR render, the
+  client-navigation data fetch, plain refetches, and `ssr(false)`. A layout's
+  loader answers only while a page renders or prefetches around it (a layout
+  has no route of its own); a query or mutation point still throws — keep the
+  value in the query input, which also keys the cache. On the server
+  `origin`/`href` may come from the `Referer`, so don't build
+  security-sensitive absolute urls from them. `useLocation()` is unchanged: a
+  hook, for pages, layouts and islands — never a server component.
 - A page fetched through its endpoint no longer loses its origin. The page url was
   built from the `Referer` alone, so a request without one
   (`Referrer-Policy: no-referrer`, a privacy extension) produced an origin-less

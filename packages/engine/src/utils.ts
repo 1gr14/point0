@@ -1,6 +1,6 @@
 import { type CompilerOptions, toPosixPath } from '@point0/compiler'
 import type { NormalizedNodeEnv, PointsScope } from '@point0/core'
-import { env } from '@point0/core'
+import { env, POINT0_INTERNAL_PATH_PREFIX, POINT0_WEBSOCKET_ENDPOINT_SEGMENT } from '@point0/core'
 import type { BuildConfig, BunPlugin } from 'bun'
 import { plugin } from 'bun'
 import * as nodeFsSync from 'node:fs'
@@ -325,31 +325,31 @@ export const removeLikeJsExtension = (path: string) => {
 
 // build config
 
-export type EngineServerBuildConfigDefinitionFnOptions = {
+export type EngineServerBuildConfigDefinitionProps = {
   mode: NormalizedNodeEnv
   side: 'server'
 }
 export type EngineServerBuildConfigDefinitionFn = (
-  options: EngineServerBuildConfigDefinitionFnOptions,
+  props: EngineServerBuildConfigDefinitionProps,
 ) => Partial<BuildConfig> | Promise<Partial<BuildConfig>>
 export type EngineServerBuildConfigDefinition = EngineServerBuildConfigDefinitionFn | Partial<BuildConfig>
 
-export type EngineClientBuildConfigDefinitionFnOptions = {
+export type EngineClientBuildConfigDefinitionProps = {
   mode: NormalizedNodeEnv
   side: 'client'
 }
 export type EngineClientBuildConfigDefinitionFn = (
-  options: EngineClientBuildConfigDefinitionFnOptions,
+  props: EngineClientBuildConfigDefinitionProps,
 ) => Partial<BuildConfig> | Promise<Partial<BuildConfig>>
 export type EngineClientBuildConfigDefinition = EngineClientBuildConfigDefinitionFn | Partial<BuildConfig>
 
-export type BunBuildConfigDefinitionFnOptions = {
+export type BunBuildConfigDefinitionProps = {
   mode: NormalizedNodeEnv
   side: 'client' | 'server'
   scope: PointsScope
 }
 export type BunBuildConfigDefinitionFn = (
-  options: BunBuildConfigDefinitionFnOptions,
+  props: BunBuildConfigDefinitionProps,
 ) => Partial<BuildConfig> | Promise<Partial<BuildConfig>>
 export type BunBuildConfigDefinition = BunBuildConfigDefinitionFn | Partial<BuildConfig>
 
@@ -417,45 +417,45 @@ export const extractBunBuildConfig = async ({
 
 // plugins
 
-export type EngineServerPluginsDefinitionFnOptions = {
+export type EngineServerPluginsDefinitionProps = {
   mode: NormalizedNodeEnv
   command: 'serve' | 'build'
   side: 'server'
 }
 export type EngineServerPluginsDefinitionFn = (
-  options: EngineServerPluginsDefinitionFnOptions,
+  props: EngineServerPluginsDefinitionProps,
 ) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
 export type EngineServerPluginsDefinition = EngineServerPluginsDefinitionFn | Array<BunPlugin | string>
 
-export type EngineClientPluginsDefinitionFnOptions = {
+export type EngineClientPluginsDefinitionProps = {
   mode: NormalizedNodeEnv
   command: 'serve' | 'build'
   side: 'client'
 }
 export type EngineClientPluginsDefinitionFn = (
-  options: EngineClientPluginsDefinitionFnOptions,
+  props: EngineClientPluginsDefinitionProps,
 ) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
 export type EngineClientPluginsDefinition = EngineClientPluginsDefinitionFn | Array<BunPlugin | string>
 
-export type EngineSharedPluginsDefinitionFnOptions = {
+export type EngineSharedPluginsDefinitionProps = {
   mode: NormalizedNodeEnv
   command: 'serve' | 'build'
   side: 'client' | 'server'
   scope: PointsScope
 }
 export type EngineSharedPluginsDefinitionFn = (
-  options: EngineSharedPluginsDefinitionFnOptions,
+  props: EngineSharedPluginsDefinitionProps,
 ) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
 export type EngineSharedPluginsDefinition = EngineSharedPluginsDefinitionFn | Array<BunPlugin | string>
 
-export type BunPluginsDefinitionFnOptions = {
+export type BunPluginsDefinitionProps = {
   mode: NormalizedNodeEnv
   command: 'serve' | 'build'
   side: 'client' | 'server'
   scope: PointsScope
 }
 export type BunPluginsDefinitionFn = (
-  options: BunPluginsDefinitionFnOptions,
+  props: BunPluginsDefinitionProps,
 ) => Array<BunPlugin | string> | Promise<Array<BunPlugin | string>>
 export type BunPluginsDefinition = BunPluginsDefinitionFn | Array<BunPlugin | string>
 
@@ -857,6 +857,136 @@ export const fetchRetryingConnectionRefused = async (
       await new Promise((resolve) => setTimeout(resolve, intervalMs))
     }
   }
+}
+
+/**
+ * Dev-only WebSocket proxy from a client dev server to the engine server. The client dev servers forward HTTP with a
+ * plain `fetch`, which cannot carry a WebSocket upgrade — so a socket upgrade (the bare socket `GET
+ * /_point0/<scope>/websocket`, and the cold-start channel-endpoint connect `GET /_point0/<scope>/channel/<name>` with
+ * an `Upgrade: websocket` header) would die at the client port. This upgrades the browser's socket locally and pipes
+ * frames to the engine's socket, both ways, preserving the query string. Used by the vite client host and the generated
+ * bun-native client script.
+ */
+export type WebsocketDevProxyData = {
+  __point0WebsocketDevProxy?: {
+    url: string
+    /** the original handshake's headers, replayed on the upstream dial — the proxy must be invisible */
+    headers: Record<string, string>
+    upstream?: WebSocket
+    queue: Array<string | Uint8Array>
+  }
+}
+
+/**
+ * The headers the proxy must NOT replay upstream: the WebSocket handshake mechanics — the upstream `new WebSocket()`
+ * generates its own key/version and connection framing, and `host` names the upstream, not the dev port. Everything
+ * else (cookie, origin, authorization, custom headers) travels verbatim: in production there is no proxy, so in dev the
+ * upstream handshake must look exactly as if there were none.
+ */
+const SOCKET_WS_PROXY_SKIPPED_HEADERS = new Set([
+  'host',
+  'connection',
+  'upgrade',
+  'sec-websocket-key',
+  'sec-websocket-version',
+  'sec-websocket-accept',
+  'sec-websocket-extensions',
+  'sec-websocket-protocol',
+])
+
+export const isSocketUpgradeRequest = (request: Request): boolean => {
+  if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') {
+    return false
+  }
+  const segments = new URL(request.url).pathname.split('/').filter(Boolean)
+  if (segments[0] !== POINT0_INTERNAL_PATH_PREFIX) {
+    return false
+  }
+  // the bare `websocket` endpoint, or a cold-start channel connect that upgrades the channel endpoint itself
+  return (
+    (segments.length === 3 && segments[2] === POINT0_WEBSOCKET_ENDPOINT_SEGMENT) ||
+    (segments.length === 4 && segments[2] === 'channel')
+  )
+}
+
+export const upgradeWebsocketDevProxy = ({
+  request,
+  bunServer,
+  targetPort,
+}: {
+  request: Request
+  bunServer: Bun.Server<any>
+  targetPort: number
+}): { response: Response | undefined } | undefined => {
+  if (!isSocketUpgradeRequest(request)) {
+    return undefined
+  }
+  const url = new URL(request.url)
+  const headers: Record<string, string> = {}
+  request.headers.forEach((value, key) => {
+    if (!SOCKET_WS_PROXY_SKIPPED_HEADERS.has(key.toLowerCase())) {
+      headers[key] = value
+    }
+  })
+  const data: WebsocketDevProxyData = {
+    __point0WebsocketDevProxy: { url: `ws://localhost:${targetPort}${url.pathname}${url.search}`, headers, queue: [] },
+  }
+  const upgraded = bunServer.upgrade(request, { data: data as never })
+  if (!upgraded) {
+    return { response: new Response('WebSocket upgrade failed', { status: 400 }) }
+  }
+  return { response: undefined }
+}
+
+export const websocketDevProxyHandlers = {
+  open: (ws: Bun.ServerWebSocket<WebsocketDevProxyData>): void => {
+    const proxy = ws.data.__point0WebsocketDevProxy
+    if (!proxy) {
+      return
+    }
+    // Bun's WebSocket takes custom handshake headers — replay the original ones (cookies included: the cold-start
+    // channel connect runs its CONNECTOR on this handshake, and an auth cookie lost here is a 401 that exists only
+    // in dev). Without the replay a signed-in refresh greeted every user with the connector's deny.
+    const upstream = new WebSocket(proxy.url, { headers: proxy.headers } as never)
+    proxy.upstream = upstream
+    upstream.addEventListener('open', () => {
+      for (const message of proxy.queue) {
+        upstream.send(message as never)
+      }
+      proxy.queue = []
+    })
+    upstream.addEventListener('message', (event) => {
+      ws.send(event.data as never)
+    })
+    upstream.addEventListener('close', () => {
+      try {
+        ws.close()
+      } catch {
+        // already closed
+      }
+    })
+    upstream.addEventListener('error', () => {
+      try {
+        ws.close()
+      } catch {
+        // already closed
+      }
+    })
+  },
+  message: (ws: Bun.ServerWebSocket<WebsocketDevProxyData>, message: string | Buffer): void => {
+    const proxy = ws.data.__point0WebsocketDevProxy
+    if (!proxy) {
+      return
+    }
+    if (proxy.upstream && proxy.upstream.readyState === 1) {
+      proxy.upstream.send(message as never)
+    } else {
+      proxy.queue.push(message as never)
+    }
+  },
+  close: (ws: Bun.ServerWebSocket<WebsocketDevProxyData>): void => {
+    ws.data.__point0WebsocketDevProxy?.upstream?.close()
+  },
 }
 
 export const normalizeAndValidateNodeEnv = (fallback?: NormalizedNodeEnv): NormalizedNodeEnv => {

@@ -114,10 +114,13 @@ The order — preload before app — only matters when running source directly; 
 `engine.serve(options?)` prepares the engine and starts a Bun server that serves
 the API, SSR, and the client. If your engine declares a `requiredCtx`, `serve`
 requires an options argument carrying it; otherwise the argument is optional.
-The `options` object is Bun's `Serve` config (`hostname`, `idleTimeout`, TLS, a
-custom `fetch` / `websocket`, …) — the same shape as the `bunServeConfig` engine
-option. Calling `serve()` twice is a no-op (it returns early if a server is
-already running), which matters for dev re-serve, not production.
+The `options` object is Bun's `Serve` config (`hostname`, TLS, a custom `fetch`,
+the `websocket` settings, …) — the same shape as the `bunServeConfig` engine
+option, and it wins over it. Point0 owns `port`, `fetch` and the `websocket`
+handlers; the websocket settings merge (see
+[websocket settings](engine-config#websocket-settings)). Calling `serve()` twice
+is a no-op (it returns early if a server is already running), which matters for
+dev re-serve, not production.
 
 ### Port
 
@@ -345,6 +348,14 @@ Running `prisma migrate deploy && bun run start` in the start command is fine
 when a single instance starts. **If you run more than one instance, move
 `migrate deploy` out of the start command** into a deploy-time step (a platform
 pre-deploy hook, a separate job), so the instances don't race on migrations.
+
+**Sockets across a rolling deploy.** Instances sharing one [backplane](socket)
+mid-rollout can run different point0 versions, and cross-version pushes are
+best-effort: the bus envelopes are versioned, and a release that changes the bus
+wiring may leave the old instances deaf to some of the new instances' pushes for
+the duration of the rollout (each release's notes say when). Socket delivery is
+at-most-once by design and the truth lives in queries, so the catch-up recipes
+cover the gap; keep the rollout window short.
 
 ### Healthchecks
 

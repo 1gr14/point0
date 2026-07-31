@@ -30,6 +30,8 @@ import type {
   UseInfiniteQueryResult,
   UseMutationResult,
   UseQueryResult,
+  UseSuspenseInfiniteQueryResult,
+  UseSuspenseQueryResult,
 } from '@tanstack/react-query'
 import { hydrate, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { useHead, useSeoMeta } from '@unhead/react'
@@ -59,7 +61,47 @@ import { _splitHead } from './head.js'
 import { ClientOnly, getEffectsOrUndefined, getFetch, setStatus } from './helpers.js'
 import { _getFakeClient, _ss } from './internals.js'
 import { noticeClientBuildHeaderFromResponse } from './stale.js'
-import { log, type LogFn } from './logger.js'
+import { getLogFnForPoint, log, type LogFn } from './logger.js'
+import {
+  addClientHandlerListener,
+  connectToChannel,
+  DEFAULT_SEND_TIMEOUT_MS,
+  getChannelConnectionOrUndefined,
+  getChannelReactContext,
+  isDeadSocketFacade,
+  isMembershipFacade,
+  listChannelConnectionFacades,
+  listSpaceMembershipFacades,
+  readBoundSpaceRoom,
+  getConnectionFacadeChannel,
+  getMembershipFacadeSpace,
+  normalizeGate,
+  registerClientHandlerPoint,
+  registerSpacePoint,
+  resolveHandlerTarget,
+  sendToServerHandler,
+  useAmbientChannelConnection,
+  useBoundConnection,
+  useSocketConnection,
+  useSocketOnMessage,
+  joinSpace,
+  getSpaceMembershipOrUndefined,
+  useSpaceMembership,
+  useAmbientSpaceMembership,
+  getSpaceReactContext,
+  resolveSpaceHandlerTarget,
+  useBoundMembership,
+  type ChannelConnectOutput,
+  iterateClientHandlerMessages,
+  getSocketServerAdapterOrThrow,
+} from './socket.js'
+import type {
+  SocketAdminTarget,
+  SocketConnectionSnapshot,
+  SocketServerAdapter,
+  SocketServerPushTarget,
+} from './socket.js'
+import { iterateSubscription, useSubscriptionValue } from './subscription.js'
 import type {
   AppendProps,
   AppendQueries,
@@ -81,6 +123,8 @@ import type {
   LocationOrAnyLocation,
   MapperFn,
   MergeQueries,
+  MergeConnections,
+  MergeMemberships,
   MountAction,
   MountableLocation,
   MountableSelfType,
@@ -94,6 +138,8 @@ import type {
   Props,
   ProviderSelfProps,
   ProviderSelfType,
+  ConnectionsDefinitions,
+  MembershipsDefinitions,
   QueriesDefinitions,
   QueriesDefinitionsByQueries,
   QueriesResults,
@@ -104,9 +150,11 @@ import type {
   UndefinedLayoutSuccessComponent,
   UndefinedSuccessPageComponent,
   UseQueryOrInfiniteQueryResult,
+  WithConnectionFn,
   WithFn,
-  WithFnOptions,
+  WithProps,
   WithFnReturnProps,
+  WithMembershipFn,
   WithQueryFn,
   WithSelfQueryIfShouldBeFinalized,
   WrapperComponentType,
@@ -168,6 +216,77 @@ import type {
   ExtendRouteDefinition,
   ExtraUseInfiniteQueryOptions,
   ExtraUseMutationOptions,
+  AssertClientReplyMatchesSchema,
+  ChannelPointOptions,
+  ChannelOptionsResolved,
+  ChannelResumeOptions,
+  ChannelConnectionComponentProps,
+  ChannelAdminTarget,
+  ChannelConnectionListed,
+  ChannelConnectionsEnumeration,
+  EnumerationOptions,
+  SpaceAdminTarget,
+  SpaceMembershipListed,
+  SpaceMembershipsEnumeration,
+  SpaceMembershipComponentProps,
+  ExtraUseMembershipOptions,
+  ClientSpaceMembership,
+  AnyClientSpaceMembership,
+  JoinerFn,
+  EnrollerFn,
+  AssertEnrollerNotDefined,
+  AssertIdentityAmendable,
+  AssertRoomNotWider,
+  SpacePointOptions,
+  SpaceOptionsResolved,
+  NiceSpaceReadyPoint,
+  ClientChannelConnection,
+  AnyClientChannelConnection,
+  Gate,
+  ClientHandlerListenerFn,
+  IterateMessagesFromServerOptions,
+  ClientHandlerPointOptions,
+  ClientHandlerOptionsResolved,
+  ClientHandlerReply,
+  ClientHandlerSendHeadArgs,
+  ClientHandlerSendReplies,
+  ClientHandlerSendRepliesObject,
+  ClientHandlerSendTarget,
+  ClientReplyFn,
+  ExtraUseConnectionOptions,
+  NiceChannelReadyPoint,
+  NiceClientHandlerReadyPoint,
+  NiceServerHandlerReadyPoint,
+  NiceServerHandlerStagePoint,
+  NiceServerPoints,
+  AssertSubscriptionCursorParams,
+  ExtraUseSubscriptionOptions,
+  FetchSubscriptionOptions,
+  InferSubscriptionYield,
+  NiceSubscriptionReadyPoint,
+  ServerHandlerInputArgs,
+  ServerHandlerPointOptions,
+  ServerHandlerOptionsResolved,
+  ServerHandlerCallOptions,
+  ServerHandlerSendArgs,
+  ServerReplyFn,
+  ServerReplyChainFn,
+  ActionLoaderFnWithStream,
+  SubscriptionLoaderFn,
+  SubscriptionPointOptions,
+  UseOnMessageFromServerOptions,
+  UseOnMessageFromServerResultFor,
+  UseSubscriptionResultFor,
+  UnknownData,
+  EmptyObject,
+  EmptyObjectOnly,
+  UndefinedChannelInput,
+  UndefinedIdentity,
+  UndefinedSpaceInput,
+  UndefinedRoom,
+  EmptyQueriesDefinitions,
+  EmptyConnectionsDefinitions,
+  EmptyMembershipsDefinitions,
   ExtraUseQueryOptions,
   ExtraUseSuspenseQueryOptions,
   FetchOptions,
@@ -177,6 +296,7 @@ import type {
   FetchServerOutput,
   FetchServerOutputType,
   FinalInputRaw,
+  FinalServerInputParsed,
   FinalInputRawOrUndefined,
   FinalInputRawOrUndefinedOrVoid,
   FinalLoaderData,
@@ -201,9 +321,10 @@ import type {
   MapperOutput,
   MergeRecordValidationSchemas,
   MiddlewareFn,
-  MiddlewareFnOptions,
+  MiddlewareProps,
   Mountable,
   MountablePointType,
+  RenderablePointType,
   MutationKey,
   NiceActionReadyPoint,
   NiceBaseReadyPoint,
@@ -286,12 +407,19 @@ import {
   isAbortCancellation,
   isContainsBinary,
   isErrorCode,
+  flattenSidedOptions,
+  mergeChannelOptions,
+  stringifyOrThrow,
+  mergeClientHandlerOptions,
   mergeEndpointOpenapiSchemas,
   mergeHeaders,
   mergeInfiniteQueryOptions,
   mergeMiddlewares,
   mergeMutationOptions,
   mergeQueryOptions,
+  mergeServerHandlerOptions,
+  mergeSpaceOptions,
+  mergeSubscriptionOptions,
   parseMutationKey,
   parseQueryKey,
   resolveQuery,
@@ -300,12 +428,14 @@ import {
   singletonize,
   toExtendedTransformer,
   toKebabCase,
+  socketFeatureOffError,
   windowScrollPositionGetter,
   windowScrollPositionSetter,
   withLetsSugar,
 } from './utils.js'
 import {
   getPointEndpointRoutePath,
+  pointTypeUsesQueryTransport,
   POINT0_CLIENT_REQUEST_ID_HEADER,
   POINT0_FROM_SCOPE_HEADER,
   POINT0_NOT_JSON_DATA_HEADER,
@@ -316,6 +446,7 @@ import {
   POINT0_STREAM_HEADER,
   POINT0_TO_SCOPE_HEADER,
   POINT0_TRANSFORM_HEADER,
+  POINT0_UPGRADE_TRANSFORM_SEARCH_PARAM,
 } from './protocol.js'
 import { rscComponentsRegistry, wrapTransformerWithRsc, type RscPointOptions } from './rsc.js'
 
@@ -341,6 +472,12 @@ export class Point0<
   in out TOuterProps extends Props,
   in out TInnerProps extends Props,
   in out TQueriesDefinitions extends QueriesDefinitions,
+  in out TConnectionsDefinitions extends ConnectionsDefinitions,
+  in out TMembershipsDefinitions extends MembershipsDefinitions,
+  in out TChannelInput extends UnknownData | EmptyObject | UndefinedChannelInput,
+  in out TIdentity extends UnknownData | EmptyObject | UndefinedIdentity,
+  in out TSpaceInput extends UnknownData | EmptyObject | UndefinedSpaceInput,
+  in out TRoom extends UnknownData | EmptyObject | UndefinedRoom,
 > {
   /**
    * Type-extraction only — `typeof point.Infer.<Key>` pulls any type out of the point (`InputRaw`, `QueriedData`,
@@ -374,7 +511,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   > = null as never
 
   point: typeof this // this, needed for generator to collect points
@@ -456,6 +599,20 @@ export class Point0<
   private readonly _letsReadyPointType: TLetsReadyPointType
   readonly _transformer: DataTransformerExtended | undefined
   _getTransformer = () => this._transformer ?? blankDataTransformerExtended
+  /**
+   * Did the channel opt its wire out of the app transformer (`preventTransformer` channel option)? Resolved ONCE at
+   * `.channel()` — a wire format is a declaration fact — and inherited by the channel's spaces and handlers through the
+   * chain. `_transformer` itself stays untouched (it keeps meaning "the app transformer from `.transformer()`"); the
+   * socket serialization sites read `_getSocketTransformer` instead.
+   */
+  readonly _preventSocketTransformer: boolean | undefined
+  /**
+   * The transformer for THIS point's SOCKET wire — frames (connect input, identity, joins, sends, replies, pushes),
+   * room keys, socket query keys, the upgrade `?input=`: the app transformer, unless the channel declared
+   * `preventTransformer` (then the blank one — plain JSON). Named access like `_getTransformerWithRsc`: "I serialize
+   * this specific surface".
+   */
+  _getSocketTransformer = () => (this._preventSocketTransformer ? blankDataTransformerExtended : this._getTransformer())
   private _transformerWithRsc: DataTransformerExtended | undefined
   /**
    * The transformer for DATA payloads (loader/query/mutation outputs, dehydrated state, push scripts) — the app
@@ -495,6 +652,51 @@ export class Point0<
   private readonly _defaultProviderQueryOptions: ExtraUseQueryOptions | undefined
   private readonly _queryOptions: ExtraUseQueryOptions
   private readonly _pageDehydratedStateQueryOptions: ExtraUseQueryOptions | undefined
+  // socket state — non-private: the engine (connect endpoint, socket dispatch) and the client socket manager work
+  // with points passed around as values, where `private` would be unreachable
+  readonly _defaultChannelOptions: ChannelOptionsResolved<TError> | undefined
+  readonly _channelOptions: ChannelOptionsResolved<TError> | undefined
+  readonly _defaultServerHandlerOptions: ServerHandlerOptionsResolved | undefined
+  readonly _serverHandlerOptions: ServerHandlerOptionsResolved | undefined
+  readonly _defaultClientHandlerOptions: ClientHandlerOptionsResolved | undefined
+  readonly _clientHandlerOptions: ClientHandlerOptionsResolved | undefined
+  readonly _defaultSpaceOptions: SpaceOptionsResolved | undefined
+  readonly _defaultSubscriptionOptions: SubscriptionPointOptions | undefined
+  readonly _spaceOptions: SpaceOptionsResolved | undefined
+  readonly _clientSendSchema: InputSchema | undefined
+  readonly _serverSendSchema: InputSchema | undefined
+  readonly _serverReplyFn: ServerReplyFn<any, any, any, any> | undefined
+  /** A space's `.joiner` — runs over the socket per join (in `_executeJoiner`), never through the HTTP pipeline. */
+  readonly _joinerFn: JoinerFn<any, any, any> | undefined
+  /**
+   * Was `.joiner()` DECLARED on this space? The fact, not the callback — `.joiner()` sets it whatever its argument, so
+   * it survives into the client bundle (the compiler blanks the callback, the call itself stays). The client refuses a
+   * `join` on a space without it before any frame leaves; the server answers the same refusal in `_executeJoiner`.
+   */
+  readonly _joinerDeclared: boolean
+  /**
+   * Was `.connector()` DECLARED on this channel? The fact, not the callback — `.connector()` sets it whatever its
+   * argument, so it survives into the client bundle (the compiler blanks the callback, the call itself stays). A
+   * connectorless channel's identity is the strict `{}`, so `amendIdentity` refuses to run on it — there is nothing
+   * declared to amend (the type-level twin is `AssertIdentityAmendable`).
+   */
+  readonly _connectorDeclared: boolean
+  /** A space's `.enroller` — runs server-side at connection setup (in `_executeEnroller`), no client involvement. */
+  readonly _enrollerFn: EnrollerFn<any, any> | undefined
+  readonly _clientReplyFn: ClientReplyFn<any, any, any, any, any> | undefined
+  readonly _clientReplySchema: InputSchema | undefined
+  /**
+   * The parent channel a handler/space grew from — set by `channel.lets('serverHandler' | 'clientHandler' | 'space',
+   * ...)`.
+   */
+  readonly _channelPoint: AnyPoint | undefined
+  /**
+   * The parent space a handler grew from — set when a handler is born from a space's `.lets` (undefined for channel
+   * handlers).
+   */
+  readonly _spacePoint: AnyPoint | undefined
+  /** The closing `.subscription({...})` options — point-level defaults for every consumer. */
+  readonly _subscriptionOptions: SubscriptionPointOptions | undefined
   readonly _infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
     FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
     FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
@@ -532,12 +734,14 @@ export class Point0<
         >
       >
     : UndefinedRoute
-  private readonly _page: PageSuccessComponentType<any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
+  private readonly _page:
+    | PageSuccessComponentType<any, any, any, any, any, any, any, any, any>
+    | UndefinedSuccessPageComponent
   private readonly _component:
-    | ComponentSuccessComponentType<any, any, any, any, any, any>
+    | ComponentSuccessComponentType<any, any, any, any, any, any, any, any>
     | UndefinedComponentSuccessComponent
   private readonly _layout:
-    | LayoutSuccessComponentType<any, any, any, any, any, any, any>
+    | LayoutSuccessComponentType<any, any, any, any, any, any, any, any, any>
     | UndefinedLayoutSuccessComponent
   readonly _layouts: LayoutPoint[]
   /**
@@ -630,7 +834,6 @@ export class Point0<
   private readonly _loadingComponent: LoadingComponentType<any> | undefined
   private readonly _pageLoadingComponent: LoadingComponentType<any> | undefined
   private readonly _componentLoadingComponent: LoadingComponentType<any> | undefined
-  private readonly _getComponentLoadingComponent = () => this._componentLoadingComponent ?? this.DefaultLoadingComponent
   /**
    * The bound React component a closed mountable produces, carrying the full point API. The ready point IS this
    * component, so `<UserCard />` and `<UserCard.X />` are identical — `.X` is the explicit form (needed for a
@@ -656,6 +859,8 @@ export class Point0<
         TOuterProps,
         TInnerProps,
         TQueriesDefinitions,
+        TConnectionsDefinitions,
+        TMembershipsDefinitions,
         TMapperOutput
       >
     : TPointType extends 'page'
@@ -670,6 +875,8 @@ export class Point0<
           TOuterProps,
           TInnerProps,
           TQueriesDefinitions,
+          TConnectionsDefinitions,
+          TMembershipsDefinitions,
           TMapperOutput
         >
       : TPointType extends 'component'
@@ -683,6 +890,8 @@ export class Point0<
             TOuterProps,
             TInnerProps,
             TQueriesDefinitions,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
             TMapperOutput
           >
         : TPointType extends 'provider'
@@ -696,6 +905,8 @@ export class Point0<
               TOuterProps,
               TInnerProps,
               TQueriesDefinitions,
+              TConnectionsDefinitions,
+              TMembershipsDefinitions,
               TMapperOutput
             >
           : null
@@ -719,6 +930,7 @@ export class Point0<
     _basePath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
     _transformer?: DataTransformerExtended | undefined
+    _preventSocketTransformer?: boolean | undefined
     _ssr?: PointSsrState | undefined
     _clientOnly?: boolean | undefined
     _eventerSubscriptions?: EventerSubscription<any, TError>[]
@@ -734,6 +946,27 @@ export class Point0<
     _defaultProviderQueryOptions?: ExtraUseQueryOptions
     _queryOptions?: ExtraUseQueryOptions
     _pageDehydratedStateQueryOptions?: ExtraUseQueryOptions
+    _defaultChannelOptions?: ChannelOptionsResolved<TError> | undefined
+    _channelOptions?: ChannelOptionsResolved<TError> | undefined
+    _defaultServerHandlerOptions?: ServerHandlerOptionsResolved | undefined
+    _serverHandlerOptions?: ServerHandlerOptionsResolved | undefined
+    _defaultClientHandlerOptions?: ClientHandlerOptionsResolved | undefined
+    _clientHandlerOptions?: ClientHandlerOptionsResolved | undefined
+    _defaultSpaceOptions?: SpaceOptionsResolved | undefined
+    _defaultSubscriptionOptions?: SubscriptionPointOptions | undefined
+    _spaceOptions?: SpaceOptionsResolved | undefined
+    _clientSendSchema?: InputSchema | undefined
+    _serverSendSchema?: InputSchema | undefined
+    _serverReplyFn?: ServerReplyFn<any, any, any, any> | undefined
+    _joinerFn?: JoinerFn<any, any, any> | undefined
+    _joinerDeclared?: boolean | undefined
+    _connectorDeclared?: boolean | undefined
+    _enrollerFn?: EnrollerFn<any, any> | undefined
+    _clientReplyFn?: ClientReplyFn<any, any, any, any, any> | undefined
+    _clientReplySchema?: InputSchema | undefined
+    _channelPoint?: AnyPoint | undefined
+    _spacePoint?: AnyPoint | undefined
+    _subscriptionOptions?: SubscriptionPointOptions | undefined
     _infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           FinalInputRaw<
@@ -765,9 +998,11 @@ export class Point0<
     route?: TRouteDefinition extends RouteDefinition
       ? CallableRoute<IfAnyThenElse<TRouteDefinition, string, TRouteDefinition>>
       : UndefinedRoute
-    _page?: PageSuccessComponentType<any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
-    _component?: ComponentSuccessComponentType<any, any, any, any, any, any> | UndefinedComponentSuccessComponent
-    _layout?: LayoutSuccessComponentType<any, any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
+    _page?: PageSuccessComponentType<any, any, any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
+    _component?:
+      | ComponentSuccessComponentType<any, any, any, any, any, any, any, any>
+      | UndefinedComponentSuccessComponent
+    _layout?: LayoutSuccessComponentType<any, any, any, any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
     _layouts?: LayoutPoint[]
     name: PointName
     _fetchOptions?: FetchOptionsFn
@@ -787,7 +1022,7 @@ export class Point0<
     _layoutLoadingComponent?: LoadingComponentType<any>
     _pageLoadingComponent?: LoadingComponentType<any>
     _componentLoadingComponent?: LoadingComponentType<any>
-    X?: MountableSelfType<any, any, any, any, any, any, any, any, any, any, any, any, any> | null
+    X?: MountableSelfType<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any> | null
     _unstableId?: number
   }) {
     this.point = this
@@ -800,6 +1035,7 @@ export class Point0<
     this._Error = options._Error ?? (ErrorPoint0 as unknown as ClassLikeError0<TError>)
     this._middlewares = options._middlewares ?? []
     this._transformer = options._transformer ?? undefined
+    this._preventSocketTransformer = options._preventSocketTransformer ?? undefined
     this._ssr = options._ssr ?? undefined
     this._clientOnly = options._clientOnly ?? false
     this._eventerSubscriptions = options._eventerSubscriptions ?? []
@@ -824,6 +1060,27 @@ export class Point0<
     this._defaultPageQueryOptions = options._defaultPageQueryOptions ?? undefined
     this._queryOptions = options._queryOptions ?? {}
     this._pageDehydratedStateQueryOptions = options._pageDehydratedStateQueryOptions ?? undefined
+    this._defaultChannelOptions = options._defaultChannelOptions ?? undefined
+    this._channelOptions = options._channelOptions ?? undefined
+    this._defaultServerHandlerOptions = options._defaultServerHandlerOptions ?? undefined
+    this._serverHandlerOptions = options._serverHandlerOptions ?? undefined
+    this._defaultClientHandlerOptions = options._defaultClientHandlerOptions ?? undefined
+    this._clientHandlerOptions = options._clientHandlerOptions ?? undefined
+    this._defaultSpaceOptions = options._defaultSpaceOptions ?? undefined
+    this._defaultSubscriptionOptions = options._defaultSubscriptionOptions ?? undefined
+    this._spaceOptions = options._spaceOptions ?? undefined
+    this._clientSendSchema = options._clientSendSchema ?? undefined
+    this._serverSendSchema = options._serverSendSchema ?? undefined
+    this._serverReplyFn = options._serverReplyFn ?? undefined
+    this._joinerFn = options._joinerFn ?? undefined
+    this._joinerDeclared = options._joinerDeclared ?? false
+    this._connectorDeclared = options._connectorDeclared ?? false
+    this._enrollerFn = options._enrollerFn ?? undefined
+    this._clientReplyFn = options._clientReplyFn ?? undefined
+    this._clientReplySchema = options._clientReplySchema ?? undefined
+    this._channelPoint = options._channelPoint ?? undefined
+    this._spacePoint = options._spacePoint ?? undefined
+    this._subscriptionOptions = options._subscriptionOptions ?? undefined
     this._infiniteQueryOptions = options._infiniteQueryOptions ?? ({} as never)
     this._queryResultType = (options._queryResultType ?? undefined) as TQueryResultType
     // this._asFormData = options._asFormData
@@ -888,6 +1145,12 @@ export class Point0<
     TOuterProps extends Props,
     TInnerProps extends Props,
     TQueriesDefinitions extends QueriesDefinitions,
+    TConnectionsDefinitions extends ConnectionsDefinitions,
+    TMembershipsDefinitions extends MembershipsDefinitions,
+    TChannelInput extends UnknownData | EmptyObject | UndefinedChannelInput,
+    TIdentity extends UnknownData | EmptyObject | UndefinedIdentity,
+    TSpaceInput extends UnknownData | EmptyObject | UndefinedSpaceInput,
+    TRoom extends UnknownData | EmptyObject | UndefinedRoom,
   >(overrides: {
     type?: PointType
     scope?: PointsScope
@@ -908,7 +1171,8 @@ export class Point0<
     _description?: string | undefined
     _basePath?: AnyRoute | undefined
     _endpoint?: EndpointDefinition | undefined
-    _transformer?: DataTransformerExtended | null
+    _transformer?: DataTransformerExtended | undefined
+    _preventSocketTransformer?: boolean | undefined
     _ssr?: PointSsrState | undefined
     _clientOnly?: boolean | undefined
     _eventerSubscriptions?: EventerSubscription<any, TError>[]
@@ -922,6 +1186,27 @@ export class Point0<
     _defaultProviderQueryOptions?: ExtraUseQueryOptions | undefined
     _queryOptions?: ExtraUseQueryOptions | undefined
     _pageDehydratedStateQueryOptions?: ExtraUseQueryOptions | undefined
+    _defaultChannelOptions?: ChannelOptionsResolved<TError> | undefined
+    _channelOptions?: ChannelOptionsResolved<TError> | undefined
+    _defaultServerHandlerOptions?: ServerHandlerOptionsResolved | undefined
+    _serverHandlerOptions?: ServerHandlerOptionsResolved | undefined
+    _defaultClientHandlerOptions?: ClientHandlerOptionsResolved | undefined
+    _clientHandlerOptions?: ClientHandlerOptionsResolved | undefined
+    _defaultSpaceOptions?: SpaceOptionsResolved | undefined
+    _defaultSubscriptionOptions?: SubscriptionPointOptions | undefined
+    _spaceOptions?: SpaceOptionsResolved | undefined
+    _clientSendSchema?: InputSchema | undefined
+    _serverSendSchema?: InputSchema | undefined
+    _serverReplyFn?: ServerReplyFn<any, any, any, any> | undefined
+    _joinerFn?: JoinerFn<any, any, any> | undefined
+    _joinerDeclared?: boolean | undefined
+    _connectorDeclared?: boolean | undefined
+    _enrollerFn?: EnrollerFn<any, any> | undefined
+    _clientReplyFn?: ClientReplyFn<any, any, any, any, any> | undefined
+    _clientReplySchema?: InputSchema | undefined
+    _channelPoint?: AnyPoint | undefined
+    _spacePoint?: AnyPoint | undefined
+    _subscriptionOptions?: SubscriptionPointOptions | undefined
     _infiniteQueryOptions?:
       | ExtraUseInfiniteQueryOptions<
           FinalInputRaw<
@@ -954,9 +1239,11 @@ export class Point0<
       TRouteDefinition extends RouteDefinition ? CallableRoute<TRouteDefinition> : UndefinedRoute,
       AnyRoute
     >
-    _page?: PageSuccessComponentType<any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
-    _component?: ComponentSuccessComponentType<any, any, any, any, any, any> | UndefinedComponentSuccessComponent
-    _layout?: LayoutSuccessComponentType<any, any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
+    _page?: PageSuccessComponentType<any, any, any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
+    _component?:
+      | ComponentSuccessComponentType<any, any, any, any, any, any, any, any>
+      | UndefinedComponentSuccessComponent
+    _layout?: LayoutSuccessComponentType<any, any, any, any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
     _layouts?: LayoutPoint[]
     name?: PointName
     _fetchOptions?: FetchOptionsFn
@@ -976,7 +1263,7 @@ export class Point0<
     _layoutLoadingComponent?: LoadingComponentType<any> | undefined
     _pageLoadingComponent?: LoadingComponentType<any> | undefined
     _componentLoadingComponent?: LoadingComponentType<any> | undefined
-    X?: MountableSelfType<any, any, any, any, any, any, any, any, any, any, any, any, any> | null
+    X?: MountableSelfType<any, any, any, any, any, any, any, any, any, any, any, any, any, any, any> | null
   }): Point0<
     TPointType,
     TLetsReadyPointType,
@@ -998,7 +1285,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   > {
     const set = (...args: [key: keyof typeof overrides, value?: any]) => {
       const [key, value] = args
@@ -1031,7 +1324,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >({
       scope: set('scope'),
       scopes: set('scopes'),
@@ -1053,6 +1352,7 @@ export class Point0<
       _basePath: set('_basePath'),
       _endpoint: set('_endpoint'),
       _transformer: set('_transformer'),
+      _preventSocketTransformer: set('_preventSocketTransformer'),
       _ssr: set('_ssr'),
       _clientOnly: set('_clientOnly'),
       _eventerSubscriptions: set('_eventerSubscriptions'),
@@ -1066,6 +1366,27 @@ export class Point0<
       _defaultProviderQueryOptions: set('_defaultProviderQueryOptions'),
       _queryOptions: set('_queryOptions'),
       _pageDehydratedStateQueryOptions: set('_pageDehydratedStateQueryOptions'),
+      _defaultChannelOptions: set('_defaultChannelOptions'),
+      _channelOptions: set('_channelOptions'),
+      _defaultServerHandlerOptions: set('_defaultServerHandlerOptions'),
+      _serverHandlerOptions: set('_serverHandlerOptions'),
+      _defaultClientHandlerOptions: set('_defaultClientHandlerOptions'),
+      _clientHandlerOptions: set('_clientHandlerOptions'),
+      _defaultSpaceOptions: set('_defaultSpaceOptions'),
+      _defaultSubscriptionOptions: set('_defaultSubscriptionOptions'),
+      _spaceOptions: set('_spaceOptions'),
+      _clientSendSchema: set('_clientSendSchema'),
+      _serverSendSchema: set('_serverSendSchema'),
+      _serverReplyFn: set('_serverReplyFn'),
+      _joinerFn: set('_joinerFn'),
+      _joinerDeclared: set('_joinerDeclared'),
+      _connectorDeclared: set('_connectorDeclared'),
+      _enrollerFn: set('_enrollerFn'),
+      _clientReplyFn: set('_clientReplyFn'),
+      _clientReplySchema: set('_clientReplySchema'),
+      _channelPoint: set('_channelPoint'),
+      _spacePoint: set('_spacePoint'),
+      _subscriptionOptions: set('_subscriptionOptions'),
       _infiniteQueryOptions: set('_infiniteQueryOptions'),
       _queryResultType: set('_queryResultType'),
       // _asFormData: overrides._asFormData ?? this._asFormData,
@@ -1120,7 +1441,7 @@ export class Point0<
     const composing = this.type === 'coreStage'
     if (!composing) {
       throw new Error(
-        `You can not call .${method}() on point ${this.toStringWithLocation()} — its setup stage is "${this.type}". The single loader, ctx and all input schemas (input/clientInput/sharedInput/params/search/body/headers/cookies) must be defined while the point is still being composed: before the loader, and before the point is finalized.`,
+        `You can not call .${method}() on point ${this.toStringWithLocation()} — its setup stage is "${this.type}". The single loader, ctx and all input schemas (input/clientInput/sharedInput/params/search/body/headers/cookies/clientSend/serverSend) must be defined while the point is still being composed: before the loader, and before the point is finalized.`,
       )
     }
   }
@@ -1178,7 +1499,13 @@ export class Point0<
       UndefinedQueryResultType,
       EmptyProps,
       EmptyProps,
-      []
+      EmptyQueriesDefinitions,
+      EmptyConnectionsDefinitions,
+      EmptyMembershipsDefinitions,
+      UndefinedChannelInput,
+      UndefinedIdentity,
+      UndefinedSpaceInput,
+      UndefinedRoom
     >
     (
       pointType: 'plugin',
@@ -1204,7 +1531,13 @@ export class Point0<
       UndefinedQueryResultType,
       EmptyProps,
       EmptyProps,
-      []
+      EmptyQueriesDefinitions,
+      EmptyConnectionsDefinitions,
+      EmptyMembershipsDefinitions,
+      UndefinedChannelInput,
+      UndefinedIdentity,
+      UndefinedSpaceInput,
+      UndefinedRoom
     >
     root: <TRequiredCtx extends RequiredCtx = UndefinedCtx>() => NiceRootStagePoint<
       'coreStage',
@@ -1227,7 +1560,13 @@ export class Point0<
       UndefinedQueryResultType,
       EmptyProps,
       EmptyProps,
-      []
+      EmptyQueriesDefinitions,
+      EmptyConnectionsDefinitions,
+      EmptyMembershipsDefinitions,
+      UndefinedChannelInput,
+      UndefinedIdentity,
+      UndefinedSpaceInput,
+      UndefinedRoom
     >
     plugin: () => NicePluginStagePoint<
       'coreStage',
@@ -1250,7 +1589,13 @@ export class Point0<
       UndefinedQueryResultType,
       EmptyProps,
       EmptyProps,
-      []
+      EmptyQueriesDefinitions,
+      EmptyConnectionsDefinitions,
+      EmptyMembershipsDefinitions,
+      UndefinedChannelInput,
+      UndefinedIdentity,
+      UndefinedSpaceInput,
+      UndefinedRoom
     >
   }
 
@@ -1293,7 +1638,7 @@ export class Point0<
     // not by runtime side (a side-dependent origin would hydration-mismatch every ssr-rendered href): actions are api
     // endpoints living on the server → serverUrl; pages and layouts are web pages → clientUrl, falling back to
     // serverUrl. Routes built here from strings take that origin outright (it outranks the location fallback, same
-    // priority as getServerUrl); routes received as objects or extended from one keep an origin they already carry —
+    // priority as _getServerUrl); routes received as objects or extended from one keep an origin they already carry —
     // only a missing one is filled in
     const routeOriginUrl = isAction ? this._serverUrl : (this._clientUrl ?? this._serverUrl)
     const routeOriginConfig = routeOriginUrl ? { origin: routeOriginUrl } : undefined
@@ -1358,9 +1703,18 @@ export class Point0<
 
     const _endpoint = (() => {
       if (
-        !['page', 'layout', 'component', 'provider', 'action', 'query', 'infiniteQuery', 'mutation'].includes(
-          letsReadyPointType,
-        )
+        ![
+          'page',
+          'layout',
+          'component',
+          'provider',
+          'action',
+          'query',
+          'infiniteQuery',
+          'mutation',
+          'subscription',
+          'channel',
+        ].includes(letsReadyPointType)
       ) {
         return undefined
       }
@@ -1373,7 +1727,9 @@ export class Point0<
         }
         // Reads default to GET so a CDN can cache them: pages/layouts (input in the route) and the query family —
         // query, infiniteQuery, and the queries behind component/provider loaders (input in the ?input= search param,
-        // see _getFetchServerOptions). Only mutations, which write, stay POST.
+        // see _getFetchServerOptions). Only mutations, which write, stay POST. A channel's nominal method is GET too —
+        // its real connect is GET-first (`?input=`, and the cold-start GET+Upgrade handshake, GET by WebSocket spec),
+        // POSTing only on the binary/over-long fallback.
         if (letsReadyPointType === 'mutation') {
           return 'POST'
         }
@@ -1408,7 +1764,7 @@ export class Point0<
       return {
         method,
         route,
-        methods: Point0._canHaveQueryEndpoint(letsReadyPointType) ? ['GET', 'POST'] : [method],
+        methods: pointTypeUsesQueryTransport(letsReadyPointType) ? ['GET', 'POST'] : [method],
       }
     })()
 
@@ -1417,6 +1773,28 @@ export class Point0<
     if (letsReadyPointType === 'root' && normalizedPointName === 'plugin') {
       throw new Error('Cannot create root point with "plugin" scope, it is internally used name for plugin points')
     }
+
+    // handlers live inside a channel or a space: they need its identity/room/input at runtime, so they grow only from a
+    // closed channel (channel handlers) or a closed space (space handlers)
+    const isHandler = letsReadyPointType === 'serverHandler' || letsReadyPointType === 'clientHandler'
+    // a space grows from a closed channel only — its `.joiner` runs over that channel's socket with its identity
+    const isSpaceOpener = letsReadyPointType === 'space'
+    if (isHandler && this.type !== 'channel' && this.type !== 'space') {
+      throw new Error(
+        `A ${letsReadyPointType} point grows from a channel or a space — call .lets on a closed channel/space point, not on ${this.toStringWithLocation()}`,
+      )
+    }
+    if (isSpaceOpener && this.type !== 'channel') {
+      throw new Error(
+        `A space point grows from a channel — call .lets('space', …) on a closed channel point, not on ${this.toStringWithLocation()}`,
+      )
+    }
+    // a space, like a handler, runs over the socket (no HTTP execute pipeline) — but it keeps its own `.input` schema,
+    // added AFTER the opener, so the joiner-side parse still finds it
+    const isSocketPoint = isHandler || isSpaceOpener
+    // where a handler's channel/space come from: born from a channel → channel is `this`, no space; born from a space →
+    // the channel is the space's own channel, and the space is `this`. A space opener keeps its channel (`this`).
+    const bornFromSpace = isHandler && this.type === 'space'
 
     const newExecuteActions = (() => {
       if ((!isAction && !isPage && !isLayout) || !newRoute) {
@@ -1487,9 +1865,13 @@ export class Point0<
     return this._continue({
       scope,
       scopes,
-      _serverExecuteActions: serverExecuteActionsSuitable,
-      _clientExecuteActions: clientExecuteActionsSuitable,
-      _mountActions: mountActionsSuitable,
+      // handlers and spaces run over the socket, never through the HTTP execute pipeline — the channel's input/ctx
+      // entries would be dead weight on them (a space adds its OWN `.input` after the opener, kept for the joiner parse)
+      _serverExecuteActions: isSocketPoint ? [] : serverExecuteActionsSuitable,
+      _clientExecuteActions: isSocketPoint ? [] : clientExecuteActionsSuitable,
+      // mount actions follow the COMMON rule for every renderable point — a space renders (`<space.Membership>`), so
+      // it inherits like anyone opened from a non-base point (the meta subset); only handlers never render at all
+      _mountActions: isHandler ? [] : mountActionsSuitable,
       _wrappers: wrappersSuitable,
       type: 'coreStage',
       _letsReadyPointType: letsReadyPointType,
@@ -1509,6 +1891,25 @@ export class Point0<
       _basePath: this._base?._basePath,
       _defaultMutationOptions: this._base?._defaultMutationOptions,
       _mutationOptions: {},
+      // the handler/space keeps its channel at hand (frames carry the channel name; options resolve through it), and
+      // every new point starts with a clean socket state of its own — chain-level _default*Options flow through
+      // untouched. A handler born from a space rides the space's own channel and remembers the space too; a space
+      // opener keeps its channel (`this`) and has no space of its own.
+      _channelPoint: bornFromSpace ? this._channelPoint : isHandler || isSpaceOpener ? (this as AnyPoint) : undefined,
+      _spacePoint: bornFromSpace ? (this as AnyPoint) : undefined,
+      _clientSendSchema: undefined,
+      _serverSendSchema: undefined,
+      _serverReplyFn: undefined,
+      _joinerFn: undefined,
+      _joinerDeclared: false,
+      _connectorDeclared: false,
+      _enrollerFn: undefined,
+      _clientReplyFn: undefined,
+      _clientReplySchema: undefined,
+      _serverHandlerOptions: undefined,
+      _clientHandlerOptions: undefined,
+      _spaceOptions: undefined,
+      _subscriptionOptions: undefined,
       _defaultQueryOptions: this._base?._defaultQueryOptions,
       _defaultInfiniteQueryOptions: this._base?._defaultInfiniteQueryOptions,
       _defaultPageQueryOptions: this._base?._defaultPageQueryOptions,
@@ -1579,7 +1980,13 @@ export class Point0<
         UndefinedQueryResultType,
         EmptyProps,
         TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
       >
     >
     <
@@ -1623,7 +2030,13 @@ export class Point0<
         UndefinedQueryResultType,
         EmptyProps,
         TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
       >
     >
     <
@@ -1665,7 +2078,13 @@ export class Point0<
         UndefinedQueryResultType,
         EmptyProps,
         TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
       >
     >
     <
@@ -1707,7 +2126,13 @@ export class Point0<
         UndefinedQueryResultType,
         EmptyProps,
         TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
       >
     >
     <
@@ -1745,7 +2170,13 @@ export class Point0<
         UndefinedQueryResultType,
         EmptyProps,
         TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
       >
     >
     <
@@ -1781,7 +2212,13 @@ export class Point0<
         UndefinedQueryResultType,
         EmptyProps,
         TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
       >
     >
     <
@@ -1819,7 +2256,13 @@ export class Point0<
         UndefinedQueryResultType,
         EmptyProps,
         TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
       >
     >
     <
@@ -1855,7 +2298,13 @@ export class Point0<
         UndefinedQueryResultType,
         EmptyProps,
         TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
       >
     >
     <
@@ -1886,7 +2335,13 @@ export class Point0<
         UndefinedQueryResultType,
         TNewOuterProps,
         TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
       >
     >
     <
@@ -1917,16 +2372,22 @@ export class Point0<
         UndefinedQueryResultType,
         TNewOuterProps,
         TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
       >
     >
     <
-      TNewLetsReadyPointType extends 'query' | 'infiniteQuery' | 'mutation',
+      TNewLetsReadyPointType extends 'query' | 'infiniteQuery' | 'mutation' | 'subscription',
       TCheckError = AssertUsualInputSchemaOnly<
         TParamsSchema,
         TSearchSchema,
         TBodySchema,
-        'query' | 'infiniteQuery' | 'mutation'
+        'query' | 'infiniteQuery' | 'mutation' | 'subscription'
       >,
     >(
       ...args: TPointType extends 'root' | 'base'
@@ -1955,7 +2416,13 @@ export class Point0<
         UndefinedQueryResultType,
         EmptyProps,
         TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-        TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
       >
     >
     <TNewLetsReadyPointType extends 'root' | 'base'>(
@@ -1983,7 +2450,129 @@ export class Point0<
       UndefinedQueryResultType,
       EmptyProps,
       TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-      TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+      TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+      TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+      TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+      UndefinedChannelInput,
+      UndefinedIdentity,
+      UndefinedSpaceInput,
+      UndefinedRoom
+    >
+    <TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'channel'>>(
+      ...args: TPointType extends 'root' | 'base' ? [letsReadyPointType: 'channel', pointName: string] : never[]
+    ): WithError<
+      TCheckError,
+      NiceStagePoint<
+        'coreStage',
+        'channel',
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        TRouteDefinition,
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        UndefinedQueryResultType,
+        EmptyProps,
+        TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+        TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+        TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+        TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+        UndefinedChannelInput,
+        UndefinedIdentity,
+        UndefinedSpaceInput,
+        UndefinedRoom
+      >
+    >
+    <TNewLetsReadyPointType extends 'serverHandler' | 'clientHandler'>(
+      ...args: TPointType extends 'channel' | 'space'
+        ? [letsReadyPointType: TNewLetsReadyPointType, pointName: string]
+        : never[]
+    ): NiceStagePoint<
+      'coreStage',
+      TNewLetsReadyPointType,
+      TRequiredCtx,
+      TError,
+      // handlers take no chain ctx — what the channel/space established per connection travels in the four trailing slots
+      EmptyCtx,
+      TCtxExposedKeys,
+      UndefinedLoaderOutput,
+      UndefinedLoaderOutput,
+      UndefinedMapperOutput,
+      TRouteDefinition,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedInputSchema,
+      UndefinedQueryResultType,
+      EmptyProps,
+      EmptyProps,
+      EmptyQueriesDefinitions,
+      EmptyConnectionsDefinitions,
+      EmptyMembershipsDefinitions,
+      // born from a channel: compute channel input/identity, no space slots. Born from a space: carry the channel's
+      // input/identity forward and fill the space slots from the space's own input + joiner room shape
+      // the closers already wrote every socket slot (channel: input/identity, space: those plus its own
+      // input/room) — a handler grown from either simply inherits them
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
+    >
+    // open a space from a closed channel — it carries the channel's input/identity; its own input rides the standard
+    // schema slots of its chain (filled by `.input`, read back by the `.space()` closer). The ROOM SHAPE is declared
+    // right here, like a component's props: `channel.lets<{ chatId: string }>('space', 'chat')`. Omitted, it is the
+    // strict empty object — one global room `{}` — and a joiner/enroller returning anything keyed is a type error,
+    // which is the nudge to declare the generic
+    <
+      TNewRoom extends UnknownData = EmptyObjectOnly,
+      TCheckSpaceError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'space'>,
+    >(
+      ...args: TPointType extends 'channel' ? [letsReadyPointType: 'space', pointName: string] : never[]
+    ): WithError<
+      TCheckSpaceError,
+      NiceStagePoint<
+        'coreStage',
+        'space',
+        TRequiredCtx,
+        TError,
+        EmptyCtx,
+        TCtxExposedKeys,
+        UndefinedLoaderOutput,
+        UndefinedLoaderOutput,
+        UndefinedMapperOutput,
+        TRouteDefinition,
+        UndefinedInputSchema,
+        UndefinedInputSchema,
+        UndefinedInputSchema,
+        UndefinedInputSchema,
+        UndefinedInputSchema,
+        UndefinedInputSchema,
+        UndefinedInputSchema,
+        UndefinedQueryResultType,
+        EmptyProps,
+        EmptyProps,
+        EmptyQueriesDefinitions,
+        EmptyConnectionsDefinitions,
+        EmptyMembershipsDefinitions,
+        // opened from a CLOSED channel — its slots are written; the space's input arrives at its `.space()` close, its
+        // room is declared right here by the opener's generic
+        TChannelInput,
+        TIdentity,
+        UndefinedSpaceInput,
+        TNewRoom
+      >
     >
   } & (TPointType extends 'root' | 'base'
     ? {
@@ -2009,7 +2598,13 @@ export class Point0<
             UndefinedQueryResultType,
             EmptyProps,
             TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-            TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+            TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+            TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+            TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+            UndefinedChannelInput,
+            UndefinedIdentity,
+            UndefinedSpaceInput,
+            UndefinedRoom
           >
         }
         base: {
@@ -2034,7 +2629,13 @@ export class Point0<
             UndefinedQueryResultType,
             EmptyProps,
             TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-            TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+            TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+            TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+            TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+            UndefinedChannelInput,
+            UndefinedIdentity,
+            UndefinedSpaceInput,
+            UndefinedRoom
           >
         }
         query: {
@@ -2061,7 +2662,13 @@ export class Point0<
               UndefinedQueryResultType,
               EmptyProps,
               TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+              TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+              TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+              UndefinedChannelInput,
+              UndefinedIdentity,
+              UndefinedSpaceInput,
+              UndefinedRoom
             >
           >
         }
@@ -2091,7 +2698,13 @@ export class Point0<
               UndefinedQueryResultType,
               EmptyProps,
               TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+              TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+              TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+              UndefinedChannelInput,
+              UndefinedIdentity,
+              UndefinedSpaceInput,
+              UndefinedRoom
             >
           >
         }
@@ -2121,7 +2734,83 @@ export class Point0<
               UndefinedQueryResultType,
               EmptyProps,
               TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+              TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+              TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+              UndefinedChannelInput,
+              UndefinedIdentity,
+              UndefinedSpaceInput,
+              UndefinedRoom
+            >
+          >
+        }
+        subscription: {
+          <
+            TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'subscription'>,
+          >(): WithError<
+            TCheckError,
+            NiceStagePoint<
+              'coreStage',
+              'subscription',
+              TRequiredCtx,
+              TError,
+              TCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              TRouteDefinition,
+              TServerInputSchema,
+              TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
+              UndefinedQueryResultType,
+              EmptyProps,
+              TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+              TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+              TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+              UndefinedChannelInput,
+              UndefinedIdentity,
+              UndefinedSpaceInput,
+              UndefinedRoom
+            >
+          >
+        }
+        channel: {
+          <TCheckError = AssertUsualInputSchemaOnly<TParamsSchema, TSearchSchema, TBodySchema, 'channel'>>(): WithError<
+            TCheckError,
+            NiceStagePoint<
+              'coreStage',
+              'channel',
+              TRequiredCtx,
+              TError,
+              TCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              TRouteDefinition,
+              TServerInputSchema,
+              TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
+              UndefinedQueryResultType,
+              EmptyProps,
+              TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+              TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+              TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+              UndefinedChannelInput,
+              UndefinedIdentity,
+              UndefinedSpaceInput,
+              UndefinedRoom
             >
           >
         }
@@ -2152,7 +2841,13 @@ export class Point0<
               UndefinedQueryResultType,
               TNewOuterProps,
               TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+              TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+              TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+              UndefinedChannelInput,
+              UndefinedIdentity,
+              UndefinedSpaceInput,
+              UndefinedRoom
             >
           >
         }
@@ -2183,7 +2878,13 @@ export class Point0<
               UndefinedQueryResultType,
               TNewOuterProps,
               TPointType extends 'root' | 'base' ? AppendProps<TInnerProps, TNewOuterProps> : TNewOuterProps,
-              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+              TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+              TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+              UndefinedChannelInput,
+              UndefinedIdentity,
+              UndefinedSpaceInput,
+              UndefinedRoom
             >
           >
         }
@@ -2228,7 +2929,13 @@ export class Point0<
               UndefinedQueryResultType,
               EmptyProps,
               TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+              TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+              TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+              UndefinedChannelInput,
+              UndefinedIdentity,
+              UndefinedSpaceInput,
+              UndefinedRoom
             >
           >
           <
@@ -2271,7 +2978,13 @@ export class Point0<
               UndefinedQueryResultType,
               EmptyProps,
               TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-              TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+              TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+              TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+              TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+              UndefinedChannelInput,
+              UndefinedIdentity,
+              UndefinedSpaceInput,
+              UndefinedRoom
             >
           >
         }
@@ -2313,7 +3026,13 @@ export class Point0<
                 UndefinedQueryResultType,
                 EmptyProps,
                 TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-                TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+                TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+                TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+                TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+                UndefinedChannelInput,
+                UndefinedIdentity,
+                UndefinedSpaceInput,
+                UndefinedRoom
               >
             >
             <
@@ -2351,7 +3070,13 @@ export class Point0<
                 UndefinedQueryResultType,
                 EmptyProps,
                 TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-                TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+                TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+                TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+                TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+                UndefinedChannelInput,
+                UndefinedIdentity,
+                UndefinedSpaceInput,
+                UndefinedRoom
               >
             >
           }
@@ -2389,7 +3114,13 @@ export class Point0<
                 UndefinedQueryResultType,
                 EmptyProps,
                 TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-                TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+                TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+                TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+                TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+                UndefinedChannelInput,
+                UndefinedIdentity,
+                UndefinedSpaceInput,
+                UndefinedRoom
               >
             >
             <
@@ -2427,8 +3158,123 @@ export class Point0<
                 UndefinedQueryResultType,
                 EmptyProps,
                 TPointType extends 'root' | 'base' ? TInnerProps : EmptyProps,
-                TPointType extends 'root' | 'base' ? TQueriesDefinitions : []
+                TPointType extends 'root' | 'base' ? TQueriesDefinitions : EmptyQueriesDefinitions,
+                TPointType extends 'root' | 'base' ? TConnectionsDefinitions : EmptyConnectionsDefinitions,
+                TPointType extends 'root' | 'base' ? TMembershipsDefinitions : EmptyMembershipsDefinitions,
+                UndefinedChannelInput,
+                UndefinedIdentity,
+                UndefinedSpaceInput,
+                UndefinedRoom
               >
+            >
+          }
+        }
+      : unknown) &
+    // handlers grow from a closed channel OR a closed space — the child carries the level's per-connection types in the
+    // four trailing slots (channel: its input/identity, no space slots; space: the channel's input/identity + its own)
+    (TPointType extends 'channel' | 'space'
+      ? {
+          serverHandler: {
+            (): NiceStagePoint<
+              'coreStage',
+              'serverHandler',
+              TRequiredCtx,
+              TError,
+              EmptyCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              TRouteDefinition,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedQueryResultType,
+              EmptyProps,
+              EmptyProps,
+              EmptyQueriesDefinitions,
+              EmptyConnectionsDefinitions,
+              EmptyMembershipsDefinitions,
+              // the closers already wrote every socket slot — a handler grown from a channel or a space inherits
+              TChannelInput,
+              TIdentity,
+              TSpaceInput,
+              TRoom
+            >
+          }
+          clientHandler: {
+            (): NiceStagePoint<
+              'coreStage',
+              'clientHandler',
+              TRequiredCtx,
+              TError,
+              EmptyCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              TRouteDefinition,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedQueryResultType,
+              EmptyProps,
+              EmptyProps,
+              EmptyQueriesDefinitions,
+              EmptyConnectionsDefinitions,
+              EmptyMembershipsDefinitions,
+              // the closers already wrote every socket slot — a handler grown from a channel or a space inherits
+              TChannelInput,
+              TIdentity,
+              TSpaceInput,
+              TRoom
+            >
+          }
+        }
+      : unknown) &
+    // a space opens from a closed channel — the sugar `.lets.space()` (compiler-rewritten to `.lets('space', name)`).
+    // The room shape rides the same generic as the long form: `.lets.space<{ chatId: string }>()`
+    (TPointType extends 'channel'
+      ? {
+          space: {
+            <TNewRoom extends UnknownData = EmptyObjectOnly>(): NiceStagePoint<
+              'coreStage',
+              'space',
+              TRequiredCtx,
+              TError,
+              EmptyCtx,
+              TCtxExposedKeys,
+              UndefinedLoaderOutput,
+              UndefinedLoaderOutput,
+              UndefinedMapperOutput,
+              TRouteDefinition,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedInputSchema,
+              UndefinedQueryResultType,
+              EmptyProps,
+              EmptyProps,
+              EmptyQueriesDefinitions,
+              EmptyConnectionsDefinitions,
+              EmptyMembershipsDefinitions,
+              // opened from a CLOSED channel — its slots are written; the space's input arrives at its `.space()`
+              // close, its room is declared right here by the opener's generic
+              TChannelInput,
+              TIdentity,
+              UndefinedSpaceInput,
+              TNewRoom
             >
           }
         }
@@ -2470,7 +3316,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   > {
     return this._continue({
       _Error: ErrorClass as never,
@@ -2605,7 +3457,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   > {
     const newBasePath: CallableRoute = this._basePath ? this._basePath.extend(basePath) : Route0.create(basePath)
     return this._continue({
@@ -2792,6 +3650,8 @@ export class Point0<
         TQueriesDefinitions,
         TError
       >,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TMapperOutput,
       TError
     >,
@@ -2811,6 +3671,8 @@ export class Point0<
         TQueriesDefinitions,
         TError
       >,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TMapperOutput,
       TError
     >,
@@ -3118,7 +3980,13 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions,
       TError
-    >
+    >,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   error(errorComponent: ErrorComponentType<any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -3281,7 +4149,13 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions,
       TError
-    >
+    >,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   loading(loadingComponent: LoadingComponentType<any> | undefined) {
     // this._applyComponentDisplayName(loadingComponent, {
@@ -3365,7 +4239,13 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions,
       TError
-    >
+    >,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   wrapper(wrapperComponent: WrapperComponentType<any, any, any> | undefined) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -3390,6 +4270,17 @@ export class Point0<
    *     with(point, input, queryOptions, resolve)  ...resolve (boolean | callback) is ALWAYS the 4th arg;
    *                                                   pass `undefined` for queryOptions if you only want it
    *     with(fn)                                   a with-fn returning queries (appended) or props (merged)
+   *     with(channel, input?, connectionOptions?, gate?)  hold a connection for this mountable — it lands in
+   *                                                  `connections` next to `queries` and the subtree gets the channel
+   *                                                  context; by default only errors gate (`{ loading: false, error:
+   *                                                  true }`) — the render is progressive but a failed connect surfaces
+   *                                                  through the HOST's own loading/error. `gate: true` also waits on
+   *                                                  the connect, `gate: false` renders through everything (pass
+   *                                                  `undefined` connectionOptions for gate-only). NOTE: `gate` is
+   *                                                  distinct from a query injection's `resolve` (which spreads data)
+   *     with(space, input?, membershipOptions?, gate?)    hold a membership for this mountable — it lands in
+   *                                                  `memberships` next to `connections`; same `gate` default, and the
+   *                                                  space's channel connection is resolved from the chain
    *
    * Server-ssr-and-client — cut from the SERVER bundle when `ssr: false` (or after a `.clientOnly()`): its body and the
    * imports it pulls in are removed from the server build. Kept in the client build always, and in the server build
@@ -3413,9 +4304,33 @@ export class Point0<
   with<
     // arg0 is exactly one of three things. The union is also the constraint, so passing anything
     // else (e.g. `() => 'a string'`) fails here with a normal "not assignable" error.
-    TArg extends // 1. a point to inject as a query — a `.query()` or a callable component/layout/page. We only ever
-      //    read its `Infer` shape (never call it), so a component point is injected for its query, not rendered.
+    TArg extends // 0. a channel point to hold a connection for — matched by its `Infer.PointType` brand. It lands in
+      //    `connections` next to `queries`; the subtree gets the channel context; `gate` (default errors-only) gates the
+        //    mountable on the connect with its own loading/error.
 
+        | {
+            Infer: {
+              PointType: 'channel'
+              IsInputOptional: boolean
+              InputRawOrUndefined: any
+              ServerLoaderOutput: any
+              Error: any
+            }
+          }
+        // 0b. a space point to hold a membership for — matched by its `Infer.PointType` brand. It lands in
+        //    `memberships` next to `connections`; the subtree gets the space context; `gate` (default errors-only) gates
+        //    the mountable on the join with its own loading/error.
+        | {
+            Infer: {
+              PointType: 'space'
+              IsInputOptional: boolean
+              InputRawOrUndefined: any
+              Room: any
+              Error: any
+            }
+          }
+        // 1. a point to inject as a query — a `.query()` or a callable component/layout/page. We only ever
+        //    read its `Infer` shape (never call it), so a component point is injected for its query, not rendered.
         | {
             Infer: {
               IsInputOptional: boolean
@@ -3442,6 +4357,8 @@ export class Point0<
               TQueriesDefinitions,
               TError
             >,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
             TMapperOutput,
             TError
           >
@@ -3460,16 +4377,21 @@ export class Point0<
               TQueriesDefinitions,
               TError
             >,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
             TMapperOutput,
             TError,
             Props
           >,
-    // resolve: true -> data spread into props, false/omitted -> nothing, fn -> mapped props.
+    // resolve: true -> data spread into props, false/omitted -> nothing, fn -> mapped props. QUERY injections ONLY.
     // Split into two params so an inline resolve callback infers correctly: `success` is typed
     // concretely inside the rest tuple (so the callback isn't context-sensitive), `TResolveMapped`
     // is inferred from its return, and `TResolveBool` captures the literal `true`.
     TResolveBool extends boolean = false,
     TResolveMapped extends Props | undefined = undefined,
+    // a channel/space injection does NOT use TResolveBool — its trailing positional is `gate` (`Gate`), a pure render
+    // gate that never narrows the appended connection/membership type (a connection has no data and a status that can
+    // flip, so it always lands as the indeterminate facade — see the ConnectionsDefinitions/MembershipsDefinitions slots).
   >(
     // Only a *plain* with-fn is forbidden from returning an array (a frequent mistake: returning the
     // query data array directly). A with-query-fn legitimately returns an array of queries, and an
@@ -3493,24 +4415,21 @@ export class Point0<
     //  - anything else (a plain with-fn / with-query-fn — no `Infer`) takes no further args -> `[]`
     ...rest: TArg extends {
       Infer: {
-        IsInputOptional: infer TIsInputOptional
-        InputRawOrUndefined: infer TInputRawOrUndefined
-        UseQueryOptions: infer TUseQueryOptions
-        QueryResultType: infer TQueryResultType extends QueryResultType
-        QueriedData: infer TQueriedData extends Data
-        Error: infer TQueryError extends ErrorPoint0
+        PointType: 'channel'
+        IsInputOptional: infer TIsChannelInputOptional
+        InputRawOrUndefined: infer TChannelInputRaw
+        Error: infer TChannelError extends ErrorPoint0
       }
     }
-      ? // `input` is optional iff the query's input is optional. That single `?` on the tuple
-        // element is what makes `with(query)` say "Expected 2 arguments" (instead of silently
-        // passing) when the query actually requires an input. The two branches are identical
-        // except for that `?`. `input` may also be a fn deriving the input from the mount options.
-        TIsInputOptional extends true
+      ? // a channel injection: [input?, connectionOptions?] — the options are the connection options plus
+        // `resolve`; the `input` requiredness follows the channel's input schema, and it may be a fn deriving
+        // the input from the mount options, like a query injection's.
+        TIsChannelInputOptional extends true
         ? [
             input?:
-              | TInputRawOrUndefined
+              | TChannelInputRaw
               | ((
-                  options: WithFnOptions<
+                  props: WithProps<
                     MountableLocation<TLetsReadyPointType, TRouteDefinition>,
                     TParamsSchema,
                     TSearchSchema,
@@ -3524,18 +4443,23 @@ export class Point0<
                       TQueriesDefinitions,
                       TError
                     >,
+                    TConnectionsDefinitions,
+                    TMembershipsDefinitions,
                     TMapperOutput,
                     TError
                   >,
-                ) => TInputRawOrUndefined),
-            queryOptions?: TUseQueryOptions | undefined,
-            resolve?: TResolveBool | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
+                ) => TChannelInputRaw),
+            connectionOptions?: ExtraUseConnectionOptions<
+              TChannelError,
+              ClientChannelConnection<TChannelInputRaw, TChannelError>
+            >,
+            gate?: Gate,
           ]
         : [
             input:
-              | TInputRawOrUndefined
+              | TChannelInputRaw
               | ((
-                  options: WithFnOptions<
+                  props: WithProps<
                     MountableLocation<TLetsReadyPointType, TRouteDefinition>,
                     TParamsSchema,
                     TSearchSchema,
@@ -3549,14 +4473,164 @@ export class Point0<
                       TQueriesDefinitions,
                       TError
                     >,
+                    TConnectionsDefinitions,
+                    TMembershipsDefinitions,
                     TMapperOutput,
                     TError
                   >,
-                ) => TInputRawOrUndefined),
-            queryOptions?: TUseQueryOptions | undefined,
-            resolve?: TResolveBool | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
+                ) => TChannelInputRaw),
+            connectionOptions?: ExtraUseConnectionOptions<
+              TChannelError,
+              ClientChannelConnection<TChannelInputRaw, TChannelError>
+            >,
+            gate?: Gate,
           ]
-      : []
+      : TArg extends {
+            Infer: {
+              PointType: 'space'
+              IsInputOptional: infer TIsSpaceInputOptional
+              InputRawOrUndefined: infer TSpaceInputRaw extends UnknownData | EmptyObject | UndefinedSpaceInput
+              Room: infer TSpaceRoom extends UnknownData | EmptyObject | UndefinedRoom
+              ChannelInput: infer TSpaceChannelInput extends UnknownData | EmptyObject | UndefinedChannelInput
+              Error: infer TSpaceError extends ErrorPoint0
+            }
+          }
+        ? // a space injection: [input?, membershipOptions?] — the options are the membership options plus
+          // `resolve`; the `input` requiredness follows the space's input schema, and it may be a fn deriving
+          // the input from the mount options, like a channel injection's.
+          TIsSpaceInputOptional extends true
+          ? [
+              input?:
+                | TSpaceInputRaw
+                | ((
+                    props: WithProps<
+                      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                      TParamsSchema,
+                      TSearchSchema,
+                      TClientInputSchema,
+                      TInnerProps,
+                      WithSelfQueryIfShouldBeFinalized<
+                        TPointType,
+                        TLetsReadyPointType,
+                        TServerLoaderOutput,
+                        TClientLoaderOutput,
+                        TQueriesDefinitions,
+                        TError
+                      >,
+                      TConnectionsDefinitions,
+                      TMembershipsDefinitions,
+                      TMapperOutput,
+                      TError
+                    >,
+                  ) => TSpaceInputRaw),
+              membershipOptions?: ExtraUseMembershipOptions<
+                ClientSpaceMembership<TSpaceInputRaw, TSpaceRoom, TSpaceError, TSpaceChannelInput>
+              >,
+              gate?: Gate,
+            ]
+          : [
+              input:
+                | TSpaceInputRaw
+                | ((
+                    props: WithProps<
+                      MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                      TParamsSchema,
+                      TSearchSchema,
+                      TClientInputSchema,
+                      TInnerProps,
+                      WithSelfQueryIfShouldBeFinalized<
+                        TPointType,
+                        TLetsReadyPointType,
+                        TServerLoaderOutput,
+                        TClientLoaderOutput,
+                        TQueriesDefinitions,
+                        TError
+                      >,
+                      TConnectionsDefinitions,
+                      TMembershipsDefinitions,
+                      TMapperOutput,
+                      TError
+                    >,
+                  ) => TSpaceInputRaw),
+              membershipOptions?: ExtraUseMembershipOptions<
+                ClientSpaceMembership<TSpaceInputRaw, TSpaceRoom, TSpaceError, TSpaceChannelInput>
+              >,
+              gate?: Gate,
+            ]
+        : TArg extends {
+              Infer: {
+                IsInputOptional: infer TIsInputOptional
+                InputRawOrUndefined: infer TInputRawOrUndefined
+                UseQueryOptions: infer TUseQueryOptions
+                QueryResultType: infer TQueryResultType extends QueryResultType
+                QueriedData: infer TQueriedData extends Data
+                Error: infer TQueryError extends ErrorPoint0
+              }
+            }
+          ? // `input` is optional iff the query's input is optional. That single `?` on the tuple
+            // element is what makes `with(query)` say "Expected 2 arguments" (instead of silently
+            // passing) when the query actually requires an input. The two branches are identical
+            // except for that `?`. `input` may also be a fn deriving the input from the mount options.
+            TIsInputOptional extends true
+            ? [
+                input?:
+                  | TInputRawOrUndefined
+                  | ((
+                      props: WithProps<
+                        MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                        TParamsSchema,
+                        TSearchSchema,
+                        TClientInputSchema,
+                        TInnerProps,
+                        WithSelfQueryIfShouldBeFinalized<
+                          TPointType,
+                          TLetsReadyPointType,
+                          TServerLoaderOutput,
+                          TClientLoaderOutput,
+                          TQueriesDefinitions,
+                          TError
+                        >,
+                        TConnectionsDefinitions,
+                        TMembershipsDefinitions,
+                        TMapperOutput,
+                        TError
+                      >,
+                    ) => TInputRawOrUndefined),
+                queryOptions?: TUseQueryOptions | undefined,
+                resolve?:
+                  | TResolveBool
+                  | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
+              ]
+            : [
+                input:
+                  | TInputRawOrUndefined
+                  | ((
+                      props: WithProps<
+                        MountableLocation<TLetsReadyPointType, TRouteDefinition>,
+                        TParamsSchema,
+                        TSearchSchema,
+                        TClientInputSchema,
+                        TInnerProps,
+                        WithSelfQueryIfShouldBeFinalized<
+                          TPointType,
+                          TLetsReadyPointType,
+                          TServerLoaderOutput,
+                          TClientLoaderOutput,
+                          TQueriesDefinitions,
+                          TError
+                        >,
+                        TConnectionsDefinitions,
+                        TMembershipsDefinitions,
+                        TMapperOutput,
+                        TError
+                      >,
+                    ) => TInputRawOrUndefined),
+                queryOptions?: TUseQueryOptions | undefined,
+                resolve?:
+                  | TResolveBool
+                  | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
+              ]
+          : []
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -3667,15 +4741,51 @@ export class Point0<
             TClientLoaderOutput,
             TQueriesDefinitions,
             TError
-          >
+          >,
+    // ---- NiceStagePoint's TConnectionsDefinitions slot — a channel injection appends its connection ----
+    TArg extends {
+      Infer: {
+        PointType: 'channel'
+        InputRawOrUndefined: infer TChannelInputRaw
+        Error: infer TChannelError extends ErrorPoint0
+      }
+    }
+      ? [
+          // the injected connection is ALWAYS the indeterminate facade — a connection carries no data and its status
+          // can flip (reconnect/kick) at any moment, so `gate` never narrows the type, it only gates the render
+          ...TConnectionsDefinitions,
+          ClientChannelConnection<TChannelInputRaw, TChannelError>,
+        ]
+      : TConnectionsDefinitions,
+    // ---- NiceStagePoint's TMembershipsDefinitions slot — a space injection appends its membership ----
+    TArg extends {
+      Infer: {
+        PointType: 'space'
+        InputRawOrUndefined: infer TSpaceInputRaw extends UnknownData | EmptyObject | UndefinedSpaceInput
+        Room: infer TSpaceRoom extends UnknownData | EmptyObject | UndefinedRoom
+        ChannelInput: infer TSpaceChannelInput extends UnknownData | EmptyObject | UndefinedChannelInput
+        Error: infer TSpaceError extends ErrorPoint0
+      }
+    }
+      ? [
+          // the injected membership is ALWAYS the indeterminate facade — same reason as the connection above: no data,
+          // a status that can flip, so `gate` gates the render but never narrows the type
+          ...TMembershipsDefinitions,
+          ClientSpaceMembership<TSpaceInputRaw, TSpaceRoom, TSpaceError, TSpaceChannelInput>,
+        ]
+      : TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   with(...args: any[]) {
     const _args = args as
-      | [withFn?: WithFn<any, any, any, any, any, any, any, any, any> | undefined]
+      | [withFn?: WithFn<any, any, any, any, any, any, any, any, any, any> | undefined]
       | [
           point?: AnyPoint | undefined,
           input?: (
-            options: WithFnOptions<
+            props: WithProps<
               MountableLocation<TLetsReadyPointType, TRouteDefinition>,
               TParamsSchema,
               TSearchSchema,
@@ -3689,6 +4799,8 @@ export class Point0<
                 TQueriesDefinitions,
                 TError
               >,
+              TConnectionsDefinitions,
+              TMembershipsDefinitions,
               TMapperOutput,
               TError
             >,
@@ -3712,6 +4824,8 @@ export class Point0<
     // it is query injection
     if ('point' in _args[0]) {
       const [{ point }, inputFnOrInput, ...restArgs] = _args
+      // `_args` is the untyped runtime surface — pin the injected point to the full class once
+      const injected = point
       // queryOptions is always the 3rd arg, resolve always the 4th (pass undefined queryOptions for resolve-only).
       const [queryOptions, resolveCallback] = restArgs as [
         ExtraUseQueryOptions | ExtraUseInfiniteQueryOptions<any, any, any, any, any, any> | undefined,
@@ -3723,20 +4837,94 @@ export class Point0<
           : typeof inputFnOrInput === 'object'
             ? () => inputFnOrInput
             : () => ({})
+      // a channel injection: hold a connection for this mountable — the third argument is the connection options,
+      // the fourth the positional `resolve` (the same word and position a query injection gates with; a connection
+      // lands in `connections`, never in props, so `gate` is a pure render gate). A closure like every other
+      // `.with` — the hook runs inside it, `'loading'`/the error render through the HOST's own components (an
+      // injected connection never brings the channel's), and the returned facade is what the interpreter lands in
+      // the `connections` layer (providing the channel context around the subtree).
+      if (injected.type === 'channel') {
+        if (!_point0_env.feature.socket) {
+          throw socketFeatureOffError(`.with(channel), point ${this.id}`)
+        }
+        const [connectionOptions, gateArg] = restArgs as [
+          ExtraUseConnectionOptions<any, any> | undefined,
+          Gate | undefined,
+        ]
+        const gate = normalizeGate(gateArg)
+        const withConnectionFn: WithConnectionFn = (options) => {
+          const input = getInputFn(options)
+          const connection = useSocketConnection(injected, input as never, connectionOptions)
+          if (gate.loading && connection.status === 'connecting') {
+            return 'loading'
+          }
+          if (gate.error && connection.status === 'error' && connection.error) {
+            return connection.error
+          }
+          return connection
+        }
+        return this._continue({
+          _mountActions: [
+            ...this._mountActions,
+            ...selfQueryAction,
+            { type: 'with', fn: withConnectionFn, unstableId: Point0._getNextUnstableId() },
+          ],
+          ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
+        }) as never
+      }
+      // a space injection: hold a membership for this mountable — the third argument is the membership options, the
+      // fourth the positional `gate` (a membership lands in `memberships`, never in props, so `gate` is a pure render
+      // gate — default errors-only). Same closure shape as the channel injection, one level below.
+      if (injected.type === 'space') {
+        if (!_point0_env.feature.socket) {
+          throw socketFeatureOffError(`.with(space), point ${this.id}`)
+        }
+        const [membershipOptions, gateArg] = restArgs as [ExtraUseMembershipOptions | undefined, Gate | undefined]
+        const gate = normalizeGate(gateArg)
+        const withMembershipFn: WithMembershipFn = (options) => {
+          const input = getInputFn(options)
+          const membership = useSpaceMembership(injected, input as never, membershipOptions)
+          if (gate.loading && membership.status === 'joining') {
+            return 'loading'
+          }
+          if (gate.error && membership.status === 'error' && membership.error) {
+            return membership.error
+          }
+          return membership
+        }
+        return this._continue({
+          _mountActions: [
+            ...this._mountActions,
+            ...selfQueryAction,
+            { type: 'with', fn: withMembershipFn, unstableId: Point0._getNextUnstableId() },
+          ],
+          ...(queryShouldBeFinalized ? { _queryResultType: 'query', type: 'finalStage' } : {}),
+        }) as never
+      }
       const withQueryFn = ((options) => {
         const input = getInputFn(options)
+        // a query-flavored serverHandler has no loader — its query rides the socket connection, so read it through
+        // the socket hooks (they resolve the ambient connection/membership a preceding `.with(channel)`/`.with(space)`
+        // provides and gate on OPEN/JOINED, so during SSR the query stays pending and never dehydrates).
+        if (injected.type === 'serverHandler') {
+          if (point._queryResultType === 'infiniteQuery') {
+            return point.useSocketInfiniteQuery(input as never, queryOptions as never)
+          } else {
+            return point.useSocketQuery(input as never, queryOptions as never)
+          }
+        }
         if (point._queryResultType === 'infiniteQuery') {
           return point.useInfiniteQuery(input, queryOptions as never)
         } else {
           return point.useQuery(input, queryOptions)
         }
-      }) as WithQueryFn<any, any, any, any, any, any, any, any>
+      }) as WithQueryFn<any, any, any, any, any, any, any, any, any, any>
       const withResolveFn = !resolveCallback
         ? undefined
         : ((({ queries, resolve }) => {
             const lastQuery = queries.at(-1)
             return resolveCallback === true ? resolve(lastQuery, true) : resolve(lastQuery, resolveCallback)
-          }) as WithFn<any, any, any, any, any, any, any, any> | undefined)
+          }) as WithFn<any, any, any, any, any, any, any, any, any, any> | undefined)
       return this._continue({
         _mountActions: [
           ...this._mountActions,
@@ -3866,7 +5054,13 @@ export class Point0<
         data: TPoint['Infer']['QueriedData']
         error: TPoint['Infer']['Error']
       },
-    ]
+    ],
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   relatedQuery(
     ...args: [
@@ -3971,7 +5165,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >({
       _scrollPositionGetter: getter,
       _scrollPositionSetter: setter,
@@ -4025,7 +5225,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >({
       _scrollPositionRestorePolicy: typeof policy === 'function' ? policy : () => policy ?? null,
     }) as never
@@ -4099,7 +5305,7 @@ export class Point0<
     }
     const middleware = ((): MiddlewareFn<TError, any> => {
       if (_point0_env.side.is.client || args.length === 0 || args[0] === undefined) {
-        return ({ next }: MiddlewareFnOptions<TError>) => next()
+        return ({ next }: MiddlewareProps<TError>) => next()
       }
       if (isFunction(args[0])) {
         return mergeMiddlewares(args as MiddlewareFn<TError, any>[])
@@ -4117,13 +5323,13 @@ export class Point0<
         const middlewares = args.slice(1) as MiddlewareFn<TError, any>[]
         const mergedMiddlewares = mergeMiddlewares(middlewares)
         const hasParams = route.getParamsKeys().length > 0
-        return (options: MiddlewareFnOptions<TError>) => {
-          if (route.isExact(options.request.location.pathname)) {
-            const params = hasParams ? route.getRelation(options.request.location).params : undefined
-            const optionsWithParams = hasParams ? { ...options, params } : options
-            return mergedMiddlewares(optionsWithParams)
+        return (props: MiddlewareProps<TError>) => {
+          if (route.isExact(props.request.location.pathname)) {
+            const params = hasParams ? route.getRelation(props.request.location).params : undefined
+            const propsWithParams = hasParams ? { ...props, params } : props
+            return mergedMiddlewares(propsWithParams)
           }
-          return options.next()
+          return props.next()
         }
       }
       if (isFunction(args[2])) {
@@ -4140,13 +5346,13 @@ export class Point0<
         const middlewares = args.slice(2) as MiddlewareFn<TError, any>[]
         const mergedMiddlewares = mergeMiddlewares(middlewares)
         const hasParams = route.getParamsKeys().length > 0
-        return (options: MiddlewareFnOptions<TError>) => {
-          if (methods.includes(options.request.method) && route.isExact(options.request.location.pathname)) {
-            const params = hasParams ? route.getRelation(options.request.location).params : undefined
-            const optionsWithParams = hasParams ? { ...options, params } : options
-            return mergedMiddlewares(optionsWithParams)
+        return (props: MiddlewareProps<TError>) => {
+          if (methods.includes(props.request.method) && route.isExact(props.request.location.pathname)) {
+            const params = hasParams ? route.getRelation(props.request.location).params : undefined
+            const propsWithParams = hasParams ? { ...props, params } : props
+            return mergedMiddlewares(propsWithParams)
           }
-          return options.next()
+          return props.next()
         }
       }
       throw new Error(`Invalid middleware arguments in point ${this.toStringWithLocation()}`)
@@ -4205,7 +5411,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       _onPrefetchMountableFns: [...this._onPrefetchMountableFns, (fn ?? (() => undefined)) as never],
@@ -4258,7 +5470,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >({
       _onPrefetchMountableFns: fn ? [...this._onPrefetchMountableFns, fn as never] : [...this._onPrefetchMountableFns],
     }) as never
@@ -4309,7 +5527,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >({
       _onPrefetchMountableFns: fn ? [...this._onPrefetchMountableFns, fn as never] : [...this._onPrefetchMountableFns],
     }) as never
@@ -4388,7 +5612,8 @@ export class Point0<
   /**
    * Set how Point0 serializes data crossing the wire — query inputs/outputs, request bodies, the SSR dehydrated state,
    * and the query key. Default is plain JSON (no `Date`/`Map`/`Set`/`BigInt`); pass `superjson` and those round-trip.
-   * Root only. Takes any `{ serialize, deserialize }` pair.
+   * Root only. Takes any `{ serialize, deserialize }` pair. A CHANNEL opts its wire out of the transformer with the
+   * `preventTransformer` channel option, not here.
    *
    * Server-and-client — kept on both bundles (both sides serialize/deserialize the wire).
    *
@@ -4457,7 +5682,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   ctx<
     TCtxFn extends CtxFn<
@@ -4504,7 +5735,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   ctx<
     TCtxFn extends CtxFn<
@@ -4551,7 +5788,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx &
@@ -4578,7 +5821,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   ctx<TAppendCtx extends Ctx>(
     ctx: TAppendCtx &
@@ -4607,7 +5856,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   ctx<TAppendCtx extends Ctx, TAppendCtxExposedKeys extends Extract<keyof TAppendCtx, string>>(
     ctx: TAppendCtx &
@@ -4635,7 +5890,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   ctx(ctxOrFn?: CtxFn | Ctx, expose?: true | string[]) {
     this._assertSetupStageAllowed('ctx')
@@ -4668,21 +5929,52 @@ export class Point0<
    * Full reference: https://1gr14.dev/point0/latest/loader
    */
   loader<
-    TLoaderResponseFn extends LoaderFn<
-      TCtx,
-      TCtxExposedKeys,
-      TServerLoaderOutput,
-      TServerInputSchema,
-      TParamsSchema,
-      TSearchSchema,
-      TBodySchema,
-      THeadersSchema,
-      TCookiesSchema,
-      'endpoint',
-      TError
-    >,
+    // the constraint IS the callback's contextual type, so it is stage-exact: the subscription stage takes the async
+    // generator with a required `signal`; the action stage takes the standard loader OR a generator (`signal`
+    // optional) — a stream on the action's own method/path closes with `.subscription()`; everything else takes the
+    // standard loader. One overload on purpose: contextual typing binds a callback to the FIRST overload candidate
+    // and keeps it (a `never`-gated earlier overload still poisons it), so the stage dispatch must live in the type
+    TLoaderResponseFn extends TLetsReadyPointType extends 'subscription'
+      ? SubscriptionLoaderFn<
+          TCtx,
+          TCtxExposedKeys,
+          TServerInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema,
+          THeadersSchema,
+          TCookiesSchema,
+          TError,
+          UnknownData
+        >
+      : TLetsReadyPointType extends 'action'
+        ? ActionLoaderFnWithStream<
+            TCtx,
+            TCtxExposedKeys,
+            TServerLoaderOutput,
+            TServerInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema,
+            THeadersSchema,
+            TCookiesSchema,
+            TError
+          >
+        : LoaderFn<
+            TCtx,
+            TCtxExposedKeys,
+            TServerLoaderOutput,
+            TServerInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema,
+            THeadersSchema,
+            TCookiesSchema,
+            'endpoint',
+            TError
+          >,
   >(
-    loaderFn: TLetsReadyPointType extends 'mutation' | 'action'
+    loaderFn: TLetsReadyPointType extends 'mutation' | 'action' | 'subscription'
       ? TLoaderResponseFn & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
       : //  &
         // AssertNoArrayReturn<InferLoaderResponseFnOutput<TLoaderResponseFn>, 'Loader fn should not return array'>
@@ -4699,7 +5991,12 @@ export class Point0<
     TError,
     TCtx,
     TCtxExposedKeys,
-    IfNeverThen<InferLoaderFnOutput<TLoaderResponseFn>, EmptyData>,
+    // a generator loader's data is the union of its yields; everything else keeps the standard inference
+    TLetsReadyPointType extends 'subscription' | 'action'
+      ? ReturnType<TLoaderResponseFn> extends AsyncIterable<any>
+        ? IfNeverThen<InferSubscriptionYield<TLoaderResponseFn>, EmptyData>
+        : IfNeverThen<InferLoaderFnOutput<TLoaderResponseFn>, EmptyData>
+      : IfNeverThen<InferLoaderFnOutput<TLoaderResponseFn>, EmptyData>,
     TClientLoaderOutput,
     TMapperOutput,
     TRouteDefinition,
@@ -4710,11 +6007,23 @@ export class Point0<
     TBodySchema,
     THeadersSchema,
     TCookiesSchema,
-    // NormalizeQueryResultType<TLetsReadyPointType, TQueryResultType, 'query'>,
-    TQueryResultType,
+    // a generator loader marks the point 'subscription' — what `.subscription()` requires and `.action()` rejects
+    TLetsReadyPointType extends 'subscription'
+      ? 'subscription'
+      : TLetsReadyPointType extends 'action'
+        ? ReturnType<TLoaderResponseFn> extends AsyncIterable<any>
+          ? 'subscription'
+          : TQueryResultType
+        : TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   // no-arg passthrough loader: marks the point as having a (server) loader without custom logic,
   // so the point still gets a server request/ctx. Allowed only before the single loader.
@@ -4743,7 +6052,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   loader(...args: any[]) {
     this._assertSetupStageAllowed('loader')
@@ -4822,7 +6137,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
+    TQueriesDefinitions, // so here we not try to finalize query, becouse for mutation it is not needed at all, and in mountable can not happen becouse it can not return response
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
     // WithSelfQueryIfShouldBeFinalized<
     //   TNewClientLoaderOutput extends Response ? 'finalStage' : 'clientStage',
     //   TLetsReadyPointType,
@@ -4881,6 +6202,8 @@ export class Point0<
         TQueriesDefinitions,
         TError
       >,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TMapperOutput,
       TNewMapperOutput
     >,
@@ -4914,11 +6237,17 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions,
       TError
-    >
+    >,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
-  mapper(mapperFn: MapperFn<any, any, any, any, any, any, any, any> | undefined) {
+  mapper(mapperFn: MapperFn<any, any, any, any, any, any, any, any, any, any> | undefined) {
     // in case if we shake mapper for server without ssr side
-    mapperFn ||= ((o) => o.data) as MapperFn<any, any, any, any, any, any, any, any>
+    mapperFn ||= ((o) => o.data) as MapperFn<any, any, any, any, any, any, any, any, any, any>
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
@@ -4968,6 +6297,8 @@ export class Point0<
             TQueriesDefinitions,
             TError
           >,
+          TConnectionsDefinitions,
+          TMembershipsDefinitions,
           TMapperOutput,
           TError
         >
@@ -5003,7 +6334,13 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions,
       TError
-    >
+    >,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   head<TStatus extends 'loading' | 'error' | 'success' | 'universal' | 'global'>(
     status: TStatus,
@@ -5025,6 +6362,8 @@ export class Point0<
                 TQueriesDefinitions,
                 TError
               >,
+              TConnectionsDefinitions,
+              TMembershipsDefinitions,
               TMapperOutput,
               TError
             >
@@ -5060,7 +6399,13 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions,
       TError
-    >
+    >,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   head(..._args: any[]) {
     const args = _args as
@@ -5075,6 +6420,8 @@ export class Point0<
                 TClientInputSchema,
                 TInnerProps,
                 TQueriesDefinitions,
+                TConnectionsDefinitions,
+                TMembershipsDefinitions,
                 TMapperOutput,
                 ErrorPoint0
               >
@@ -5091,6 +6438,8 @@ export class Point0<
                 TClientInputSchema,
                 TInnerProps,
                 TQueriesDefinitions,
+                TConnectionsDefinitions,
+                TMembershipsDefinitions,
                 TMapperOutput,
                 ErrorPoint0
               >
@@ -5214,7 +6563,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   input<
@@ -5258,7 +6613,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   input<
@@ -5301,7 +6662,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   input<
@@ -5338,7 +6705,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   input(...args: any[]) {
@@ -5394,7 +6767,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   clientInput<
@@ -5438,7 +6817,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   clientInput<
@@ -5481,7 +6866,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   clientInput<
@@ -5520,7 +6911,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   clientInput(...args: any[]) {
@@ -5578,7 +6975,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   sharedInput<
@@ -5622,7 +7025,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   sharedInput<
@@ -5665,7 +7074,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   sharedInput<
@@ -5704,7 +7119,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   sharedInput(...args: any[]) {
@@ -5766,7 +7187,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   params<
@@ -5817,7 +7244,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   params(...args: any[]) {
@@ -5878,7 +7311,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   search<
@@ -5924,7 +7363,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   search<
@@ -5961,7 +7406,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   search(...args: any[]) {
@@ -6033,7 +7484,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   body<
@@ -6073,7 +7530,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   body<
@@ -6112,7 +7575,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   body(...args: any[]) {
@@ -6167,7 +7636,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   headers<
@@ -6201,7 +7676,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   headers<
@@ -6233,7 +7714,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   headers(...args: any[]) {
@@ -6288,7 +7775,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   cookies<
@@ -6322,7 +7815,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   cookies<
@@ -6354,7 +7853,13 @@ export class Point0<
       TQueryResultType,
       TOuterProps,
       TInnerProps,
-      TQueriesDefinitions
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   cookies(...args: any[]) {
@@ -6497,7 +8002,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   > {
     return this._continue({
       type: 'root',
@@ -6544,7 +8055,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   > {
     return this._continue({
       type: 'plugin',
@@ -6584,7 +8101,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   > {
     return this._continue({
       type: 'base',
@@ -6631,6 +8154,8 @@ export class Point0<
               TQueriesDefinitions,
               TError
             >,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
             TMapperOutput
           >,
         ]
@@ -6663,10 +8188,18 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions,
       TError
-    >
+    >,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   page(...args: any[]) {
-    const [page = () => null] = args as [PageSuccessComponentType<any, any, any, any, any, any, any> | undefined]
+    const [page = () => null] = args as [
+      PageSuccessComponentType<any, any, any, any, any, any, any, any, any> | undefined,
+    ]
     // this._applyComponentDisplayName(page as React.ComponentType<any>, { suffix: 'PageInner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
@@ -6731,6 +8264,8 @@ export class Point0<
               TQueriesDefinitions,
               TError
             >,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
             TMapperOutput
           >,
         ]
@@ -6764,11 +8299,17 @@ export class Point0<
         TClientLoaderOutput,
         TQueriesDefinitions,
         TError
-      >
+      >,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   > {
     const [component = () => null] = args as never as [
-      ComponentSuccessComponentType<any, any, any, any, any, any> | undefined,
+      ComponentSuccessComponentType<any, any, any, any, any, any, any, any> | undefined,
     ]
     // this._applyComponentDisplayName(component, { suffix: 'Inner' })
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -6829,6 +8370,8 @@ export class Point0<
               TQueriesDefinitions,
               TError
             >,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
             TMapperOutput
           >,
         ]
@@ -6861,7 +8404,13 @@ export class Point0<
       TClientLoaderOutput,
       TQueriesDefinitions,
       TError
-    >
+    >,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   layout<
     TPoint extends {
@@ -6910,7 +8459,13 @@ export class Point0<
         TQueriesDefinitions,
         TError
       >,
-    ]
+    ],
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   layout(...args: any[]) {
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
@@ -6919,7 +8474,7 @@ export class Point0<
       : []
     if (this._letsReadyPointType === 'layout') {
       const [layout = ({ children }) => children] = args as [
-        LayoutSuccessComponentType<any, any, any, any, any, any, any> | undefined,
+        LayoutSuccessComponentType<any, any, any, any, any, any, any, any, any> | undefined,
       ]
       // this._applyComponentDisplayName(layout as React.ComponentType<any>, { suffix: 'LayoutInner' })
       const point = this._continue({
@@ -6944,6 +8499,12 @@ export class Point0<
     } else {
       const [layoutNicePoint] = args as [
         | NiceLayoutReadyPoint<
+            any,
+            any,
+            any,
+            any,
+            any,
+            any,
             any,
             any,
             any,
@@ -7061,6 +8622,8 @@ export class Point0<
               TQueriesDefinitions,
               TError
             >,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
             TMapperOutput,
             TNewMapperOutput
           >,
@@ -7095,11 +8658,17 @@ export class Point0<
         TClientLoaderOutput,
         TQueriesDefinitions,
         TError
-      >
+      >,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
     >
   >
   provider(_mapperFn?: any) {
-    const mapperFn = _mapperFn as MapperFn<any, any, any, any, any, any, any, any> | undefined
+    const mapperFn = _mapperFn as MapperFn<any, any, any, any, any, any, any, any, any, any> | undefined
     const queryShouldBeFinalized = this._isMountableQueryShouldBeFinalized()
     const selfQueryAction: MountAction[] = queryShouldBeFinalized
       ? [{ type: 'selfQuery', unstableId: Point0._getNextUnstableId() }]
@@ -7182,6 +8751,12 @@ export class Point0<
       any,
       any,
       any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
       any
     >,
   >(
@@ -7235,10 +8810,22 @@ export class Point0<
         TError
       >,
       T['Infer']['Queries']
-    >
+    >,
+    MergeConnections<TConnectionsDefinitions, T['Infer']['ConnectionsDefinitions']>,
+    MergeMemberships<TMembershipsDefinitions, T['Infer']['MembershipsDefinitions']>,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   use(
     plugin: NicePluginReadyPoint<
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
       any,
       any,
       any,
@@ -7355,6 +8942,23 @@ export class Point0<
         this._defaultProviderQueryOptions,
         point._defaultProviderQueryOptions,
       ),
+      // the socket scope defaults fold exactly like the query family above — a plugin's `.channelOptions()` /
+      // `.spaceOptions()` / `.serverHandlerOptions()` / `.clientHandlerOptions()` / `.subscriptionOptions()` reach
+      // the consumer's points (callbacks stack, plugin's run after the consumer's own)
+      _defaultChannelOptions: mergeChannelOptions(this._defaultChannelOptions, point._defaultChannelOptions),
+      _defaultSpaceOptions: mergeSpaceOptions(this._defaultSpaceOptions, point._defaultSpaceOptions),
+      _defaultServerHandlerOptions: mergeServerHandlerOptions(
+        this._defaultServerHandlerOptions,
+        point._defaultServerHandlerOptions,
+      ),
+      _defaultClientHandlerOptions: mergeClientHandlerOptions(
+        this._defaultClientHandlerOptions,
+        point._defaultClientHandlerOptions,
+      ),
+      _defaultSubscriptionOptions: mergeSubscriptionOptions(
+        this._defaultSubscriptionOptions,
+        point._defaultSubscriptionOptions,
+      ),
       // _queryOptions: { ...this._queryOptions, ...point._queryOptions },
       // _infiniteQueryOptions: { ...this._infiniteQueryOptions, ...point._infiniteQueryOptions },
       // _asFormData: this._asFormData,
@@ -7448,6 +9052,10 @@ export class Point0<
    * Every query method takes the INPUT first — `useQuery(input, options?)`, `fetchQuery(input)`, `getQueryKey(input)`,
    * `setQueryData(input, updater)`, … — and that input forms the cache key.
    *
+   * On a serverHandler chain (after `.serverReply`) the same call declares the handler's FLAVOR instead: the handler
+   * becomes a socket query (`useSocketQuery` and the family) — and it throws "Handler has no reply" without a declared
+   * `.serverReply`.
+   *
    * Server-and-client — the query closer is kept on both bundles (the query runs from whichever side calls it).
    *
    *     export const ideaQuery = root.lets
@@ -7495,24 +9103,36 @@ export class Point0<
     'query',
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   query(
     ...args: TLetsReadyPointType extends 'action'
       ? TPointType extends 'finalStage'
         ? [ShowError<`You can not use query() to finalize your query, becouse it is already finalized`>]
-        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+        : TQueryResultType extends 'subscription'
           ? [
-              queryOptions?: ExtraUseQueryOptions<
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                TError,
-                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                QueryKey
-              >,
+              ShowError<`This action's .loader is an async generator — a stream closes with .subscription(), not .query()`>,
             ]
-          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
-            ? [ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>]
-            : [ShowError<`Point has no loaders. Please add .loader() before calling .query() to finalize action`>]
+          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+            ? [
+                queryOptions?: ExtraUseQueryOptions<
+                  FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                  TError,
+                  FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                  QueryKey
+                >,
+              ]
+            : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+              ? [
+                  ShowError<`Query can not return response. Last loader should provide plain object data, not response.`>,
+                ]
+              : [ShowError<`Point has no loaders. Please add .loader() before calling .query() to finalize action`>]
       : never
   ): NiceActionReadyPoint<
     'action',
@@ -7535,7 +9155,13 @@ export class Point0<
     'query',
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   query(
     ...args: TLetsReadyPointType extends MountablePointType
@@ -7580,7 +9206,59 @@ export class Point0<
     AppendQueries<
       TQueriesDefinitions,
       QueryDefinition<'query', FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>, TError>
-    >
+    >,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
+  >
+  query(
+    ...args: TLetsReadyPointType extends 'serverHandler'
+      ? TPointType extends 'loadedStage'
+        ? TQueryResultType extends UndefinedQueryResultType
+          ? [
+              queryOptions?: ExtraUseQueryOptions<
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                TError,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                QueryKey
+              >,
+            ]
+          : [
+              ShowError<`This serverHandler already has a flavor — .query()/.mutation()/.infiniteQuery() is declared once`>,
+            ]
+        : [ShowError<`Add .serverReply() before the .query() flavor — the reply is what the socket query returns`>]
+      : never
+  ): NiceServerHandlerStagePoint<
+    'loadedStage',
+    'serverHandler',
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    'query',
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   query(...args: any) {
     const [queryOptions = {}] = args as [ExtraUseQueryOptions | undefined]
@@ -7616,6 +9294,23 @@ export class Point0<
         _queryResultType: 'query',
         _queryOptions: queryOptions,
       }) as never
+    } else if (this._letsReadyPointType === 'serverHandler') {
+      if (!_point0_env.feature.socket) {
+        throw socketFeatureOffError(`.query() flavor, point ${this.id}`)
+      }
+      // a serverHandler FLAVOR, not a closer: what this handler IS for the client — the point stays on its stage
+      // and still closes with .serverHandler(). Guarded at the type level to come after .serverReply and only once.
+      // The runtime mirror of the loader check the action closers make: a query needs the reply to answer with (the
+      // compiler leaves a stub on the client bundle, so the check holds on both sides).
+      if (!this._serverReplyFn) {
+        throw new Error(
+          `Handler has no reply. Please add .serverReply() before the .query() flavor on ${this.toStringWithLocation()}`,
+        )
+      }
+      return this._continue({
+        _queryResultType: 'query',
+        _queryOptions: queryOptions,
+      }) as never
     } else {
       throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
     }
@@ -7627,6 +9322,10 @@ export class Point0<
    * the same options as `useInfiniteQuery` (`getNextPageParam`, `initialPageParam`, `maxPages`, …) plus one
    * Point0-specific required key, `pageParamFromInput`, telling Point0 where the cursor lives in the input. Any
    * mountable can also close with `.infiniteQuery({…})` after its loader to make its self-query infinite.
+   *
+   * On a serverHandler chain (after `.serverReply`) the same call declares the handler's FLAVOR instead — the socket
+   * infinite query (`useSocketInfiniteQuery` and the family), the page cursor folding into the message input under
+   * `pageParamFromInput`.
    *
    * Server-and-client — the infiniteQuery closer is kept on both bundles (the query runs from whichever side calls it).
    *
@@ -7686,31 +9385,35 @@ export class Point0<
       : TLetsReadyPointType extends 'action'
         ? TPointType extends 'finalStage'
           ? [ShowError<`You can not use infiniteQuery() to finalize, becouse it is already finalized`>]
-          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
+          : TQueryResultType extends 'subscription'
             ? [
-                infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
-                  FinalInputRaw<
-                    TLetsReadyPointType,
-                    TServerInputSchema,
-                    TClientInputSchema,
-                    TParamsSchema,
-                    TSearchSchema,
-                    TBodySchema
-                  >,
-                  FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
-                  TError,
-                  InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
-                  QueryKey,
-                  unknown
-                >,
+                ShowError<`This action's .loader is an async generator — a stream closes with .subscription(), not .infiniteQuery()`>,
               ]
-            : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+            : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Data
               ? [
-                  ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
+                  infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+                    FinalInputRaw<
+                      TLetsReadyPointType,
+                      TServerInputSchema,
+                      TClientInputSchema,
+                      TParamsSchema,
+                      TSearchSchema,
+                      TBodySchema
+                    >,
+                    FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                    TError,
+                    InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+                    QueryKey,
+                    unknown
+                  >,
                 ]
-              : [
-                  ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>,
-                ]
+              : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends Response
+                ? [
+                    ShowError<`InfiniteQuery can not return response. Last loader should provide plain object data, not response.`>,
+                  ]
+                : [
+                    ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery()`>,
+                  ]
         : TLetsReadyPointType extends MountablePointType
           ? TPointType extends 'finalStage'
             ? [ShowError<`You can not use infiniteQuery() to finalize yout query, becouse it is already finalized`>]
@@ -7739,7 +9442,26 @@ export class Point0<
                 : [
                     ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .infiniteQuery() to finalize query.`>,
                   ]
-          : never
+          : TLetsReadyPointType extends 'serverHandler'
+            ? TPointType extends 'loadedStage'
+              ? TQueryResultType extends UndefinedQueryResultType
+                ? [
+                    infiniteQueryOptions: ExtraUseInfiniteQueryOptions<
+                      InputRaw<TServerInputSchema>,
+                      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                      TError,
+                      InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+                      QueryKey,
+                      unknown
+                    >,
+                  ]
+                : [
+                    ShowError<`This serverHandler already has a flavor — .query()/.mutation()/.infiniteQuery() is declared once`>,
+                  ]
+              : [
+                  ShowError<`Add .serverReply() before the .infiniteQuery() flavor — the reply is what a page of the socket query returns`>,
+                ]
+            : never
   ): TLetsReadyPointType extends 'infiniteQuery'
     ? // standalone infinite query point
       NiceInfiniteQueryReadyPoint<
@@ -7763,7 +9485,13 @@ export class Point0<
         'infiniteQuery',
         TOuterProps,
         TInnerProps,
-        TQueriesDefinitions
+        TQueriesDefinitions,
+        TConnectionsDefinitions,
+        TMembershipsDefinitions,
+        TChannelInput,
+        TIdentity,
+        TSpaceInput,
+        TRoom
       >
     : TLetsReadyPointType extends 'action'
       ? // action finalized as an infinite query
@@ -7788,7 +9516,13 @@ export class Point0<
           'infiniteQuery',
           TOuterProps,
           TInnerProps,
-          TQueriesDefinitions
+          TQueriesDefinitions,
+          TConnectionsDefinitions,
+          TMembershipsDefinitions,
+          TChannelInput,
+          TIdentity,
+          TSpaceInput,
+          TRoom
         >
       : TLetsReadyPointType extends MountablePointType
         ? // finalize the mountable point's own query (appended to its queries)
@@ -7820,9 +9554,45 @@ export class Point0<
                 InfiniteData<FinalLoaderDataOrNever<TServerLoaderOutput, TClientLoaderOutput>>,
                 TError
               >
-            >
+            >,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
+            TChannelInput,
+            TIdentity,
+            TSpaceInput,
+            TRoom
           >
-        : never
+        : TLetsReadyPointType extends 'serverHandler'
+          ? NiceServerHandlerStagePoint<
+              'loadedStage',
+              'serverHandler',
+              TRequiredCtx,
+              TError,
+              TCtx,
+              TCtxExposedKeys,
+              TServerLoaderOutput,
+              TClientLoaderOutput,
+              TMapperOutput,
+              TRouteDefinition,
+              TServerInputSchema,
+              TClientInputSchema,
+              TParamsSchema,
+              TSearchSchema,
+              TBodySchema,
+              THeadersSchema,
+              TCookiesSchema,
+              'infiniteQuery',
+              TOuterProps,
+              TInnerProps,
+              TQueriesDefinitions,
+              TConnectionsDefinitions,
+              TMembershipsDefinitions,
+              TChannelInput,
+              TIdentity,
+              TSpaceInput,
+              TRoom
+            >
+          : never
   infiniteQuery(...args: any[]) {
     const [infiniteQueryOptions = {}] = args as [ExtraUseInfiniteQueryOptions<any> | undefined]
     if (this._isMountablePoint()) {
@@ -7877,6 +9647,20 @@ export class Point0<
         _queryResultType: 'infiniteQuery',
         _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<any>,
       }) as never
+    } else if (this._letsReadyPointType === 'serverHandler') {
+      if (!_point0_env.feature.socket) {
+        throw socketFeatureOffError(`.infiniteQuery() flavor, point ${this.id}`)
+      }
+      // a serverHandler FLAVOR, not a closer — see query()
+      if (!this._serverReplyFn) {
+        throw new Error(
+          `Handler has no reply. Please add .serverReply() before the .infiniteQuery() flavor on ${this.toStringWithLocation()}`,
+        )
+      }
+      return this._continue({
+        _queryResultType: 'infiniteQuery',
+        _infiniteQueryOptions: infiniteQueryOptions as ExtraUseInfiniteQueryOptions<any>,
+      }) as never
     } else {
       throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
     }
@@ -7887,6 +9671,9 @@ export class Point0<
    * and a thin wrapper over a TanStack mutation at once — call it anywhere with `.useMutation()` /
    * `.fetchMutation(input)`. The optional argument is the default react-query `useMutation` options. A `.loader` (or
    * `.clientLoader`) is required before closing. The first argument to every call is the input.
+   *
+   * On a serverHandler chain (after `.serverReply`) the same call declares the handler's FLAVOR instead — the socket
+   * mutation (`useSocketMutation` / `fetchSocketMutation`), which is also the default flavor when none is declared.
    *
    * Server-and-client — the mutation closer is kept on both bundles (the mutation runs from whichever side calls it).
    *
@@ -7935,28 +9722,38 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   mutation(
     ...args: TLetsReadyPointType extends 'action'
       ? TPointType extends 'finalStage'
         ? [ShowError<`You can not use mutation() to finalize action, becouse it is already finalized`>]
-        : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
+        : TQueryResultType extends 'subscription'
           ? [
-              mutationOptions?: ExtraUseMutationOptions<
-                FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
-                TError,
-                FinalInputRawOrUndefinedOrVoid<
-                  TPointType,
-                  TServerInputSchema,
-                  TClientInputSchema,
-                  TParamsSchema,
-                  TSearchSchema,
-                  TBodySchema
-                >
-              >,
+              ShowError<`This action's .loader is an async generator — a stream closes with .subscription(), not .mutation()`>,
             ]
-          : [ShowError<`Point has no loaders. Please add .loader() before calling .mutation() to finalize action`>]
+          : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
+            ? [
+                mutationOptions?: ExtraUseMutationOptions<
+                  FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
+                  TError,
+                  FinalInputRawOrUndefinedOrVoid<
+                    TPointType,
+                    TServerInputSchema,
+                    TClientInputSchema,
+                    TParamsSchema,
+                    TSearchSchema,
+                    TBodySchema
+                  >
+                >,
+              ]
+            : [ShowError<`Point has no loaders. Please add .loader() before calling .mutation() to finalize action`>]
       : never
   ): NiceActionReadyPoint<
     'action',
@@ -7979,7 +9776,60 @@ export class Point0<
     UndefinedQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
+  >
+  mutation(
+    ...args: TLetsReadyPointType extends 'serverHandler'
+      ? TPointType extends 'loadedStage'
+        ? TQueryResultType extends UndefinedQueryResultType
+          ? [
+              mutationOptions?: ExtraUseMutationOptions<
+                FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
+                TError,
+                InputRaw<TServerInputSchema>
+              >,
+            ]
+          : [
+              ShowError<`This serverHandler already has a flavor — .query()/.mutation()/.infiniteQuery() is declared once`>,
+            ]
+        : [
+            ShowError<`Add .serverReply() before the .mutation() flavor — the reply is what the connection mutation returns`>,
+          ]
+      : never
+  ): NiceServerHandlerStagePoint<
+    'loadedStage',
+    'serverHandler',
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   mutation(...args: any) {
     const [mutationOptions = {}] = args as [ExtraUseMutationOptions<any, any, any, any> | undefined]
@@ -8001,9 +9851,6255 @@ export class Point0<
         _letsReadyPointType: undefined,
         _mutationOptions: mutationOptions as ExtraUseMutationOptions,
       }) as never
+    } else if (this._letsReadyPointType === 'serverHandler') {
+      if (!_point0_env.feature.socket) {
+        throw socketFeatureOffError(`.mutation() flavor, point ${this.id}`)
+      }
+      // a serverHandler FLAVOR, not a closer — mutation IS the default (`_queryResultType` stays undefined), the
+      // explicit call only carries the default mutation options for useSocketMutation
+      if (!this._serverReplyFn) {
+        throw new Error(
+          `Handler has no reply. Please add .serverReply() before the .mutation() flavor on ${this.toStringWithLocation()}`,
+        )
+      }
+      return this._continue({
+        _mutationOptions: mutationOptions as ExtraUseMutationOptions,
+      }) as never
     } else {
       throw new Error(`Unknown condition, please report this issue on point ${this.toStringWithLocation()}`)
     }
+  }
+
+  /**
+   * Close a subscription point: a server stream of values over HTTP (NDJSON). The `.loader` is an async GENERATOR —
+   * each `yield` is one streamed value, a `return` completes the stream, and the data type is the union of the yields.
+   * The loader receives `signal` — it fires when the consumer unsubscribes; hand it to whatever feeds the generator.
+   * Also closes a custom-method/path opener (`.lets.action('GET', '/api/feed')`) whose loader is a generator — the
+   * stream on your own URL; closing such a loader with `.action()` is a type error. A subscription is an HTTP concept —
+   * a request the server answers with a stream; a clientHandler's pushes are not one: listen with
+   * `useOnMessageFromServer` / `onMessageFromServer` or iterate them with `iterateMessagesFromServer`.
+   *
+   * The options can declare the tracked-cursor pair — `cursorParamFromInput` + `cursorParamFromData` (always both;
+   * possibly deep dot-paths, the `pageParamFromInput` rule) — and a broken stream resumes instead of restarting from
+   * scratch: the client remembers the cursor plucked from the last delivered value and rewrites the named input field
+   * before the auto-reconnect resubscribes. The first subscribe sends the caller's input untouched — the loader reads
+   * the cursor out of its input the same way on a fresh start and on a resume.
+   *
+   * Server-and-client — the closer is kept on both bundles (the generator body itself is server code, cut from the
+   * client like any loader; the cursor pair and the callbacks are client code, cut from the server bundle).
+   *
+   *     export const taskProgressSubscription = root.lets
+   *       .subscription()
+   *       .input(z.object({ taskId: z.string() }))
+   *       .loader(async function* ({ input, signal }) {
+   *         for await (const percent of watchProgress(input.taskId, { signal })) {
+   *           yield { percent }
+   *         }
+   *       })
+   *       .subscription()
+   *     // resumable: .subscription({ cursorParamFromInput: 'lastEventId', cursorParamFromData: 'id' })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/subscription
+   */
+  subscription<
+    TSubscriptionOptions extends
+      | SubscriptionPointOptions<
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+          FinalInputRaw<
+            ReadyPointTypeOrNever<TLetsReadyPointType>,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          TError
+        >
+      | undefined =
+      | SubscriptionPointOptions<
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+          FinalInputRaw<
+            ReadyPointTypeOrNever<TLetsReadyPointType>,
+            TServerInputSchema,
+            TClientInputSchema,
+            TParamsSchema,
+            TSearchSchema,
+            TBodySchema
+          >,
+          TError
+        >
+      | undefined,
+  >(
+    ...args: TLetsReadyPointType extends 'subscription' | 'action'
+      ? TQueryResultType extends 'subscription'
+        ? [
+            subscriptionOptions?: TSubscriptionOptions &
+              AssertSubscriptionCursorParams<
+                TSubscriptionOptions,
+                FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+                FinalInputRaw<
+                  ReadyPointTypeOrNever<TLetsReadyPointType>,
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >
+              >,
+          ]
+        : [
+            ShowError<`A subscription's .loader must be an async generator (each yield is one streamed value) — add .loader(async function* () { ... }) before .subscription()`>,
+          ]
+      : never
+  ): TLetsReadyPointType extends 'action'
+    ? NiceActionReadyPoint<
+        'action',
+        UndefinedReadyPointType,
+        TRequiredCtx,
+        TError,
+        TCtx,
+        TCtxExposedKeys,
+        TServerLoaderOutput,
+        TClientLoaderOutput,
+        TMapperOutput,
+        TRouteDefinition,
+        TServerInputSchema,
+        TClientInputSchema,
+        TParamsSchema,
+        TSearchSchema,
+        TBodySchema,
+        THeadersSchema,
+        TCookiesSchema,
+        'subscription',
+        TOuterProps,
+        TInnerProps,
+        TQueriesDefinitions,
+        TConnectionsDefinitions,
+        TMembershipsDefinitions,
+        TChannelInput,
+        TIdentity,
+        TSpaceInput,
+        TRoom
+      >
+    : TLetsReadyPointType extends 'subscription'
+      ? NiceSubscriptionReadyPoint<
+          'subscription',
+          UndefinedReadyPointType,
+          TRequiredCtx,
+          TError,
+          TCtx,
+          TCtxExposedKeys,
+          TServerLoaderOutput,
+          TClientLoaderOutput,
+          TMapperOutput,
+          TRouteDefinition,
+          TServerInputSchema,
+          TClientInputSchema,
+          TParamsSchema,
+          TSearchSchema,
+          TBodySchema,
+          THeadersSchema,
+          TCookiesSchema,
+          'subscription',
+          TOuterProps,
+          TInnerProps,
+          TQueriesDefinitions,
+          TConnectionsDefinitions,
+          TMembershipsDefinitions,
+          TChannelInput,
+          TIdentity,
+          TSpaceInput,
+          TRoom
+        >
+      : never
+  subscription(...args: any[]) {
+    const [subscriptionOptions = {}] = args as [SubscriptionPointOptions | undefined]
+    if (this._letsReadyPointType === 'subscription' || this._letsReadyPointType === 'action') {
+      if (!this._hasServerLoader) {
+        throw new Error(
+          `Point has no loader. Please add an async-generator .loader() before calling .subscription() on ${this.toStringWithLocation()}`,
+        )
+      }
+      const mergedSubscriptionOptions = mergeSubscriptionOptions(this._defaultSubscriptionOptions, subscriptionOptions)
+      this._assertSubscriptionCursorParams(mergedSubscriptionOptions)
+      return this._continue({
+        // an action-opener point STAYS an action (exactly as `.query()`/`.mutation()` closers keep it) — the stream
+        // is its FLAVOR, `_queryResultType`; only the dedicated `.lets.subscription()` opener yields the kind
+        type: this._letsReadyPointType === 'action' ? 'action' : 'subscription',
+        _letsReadyPointType: undefined,
+        _queryResultType: 'subscription',
+        // scope defaults (`.subscriptionOptions()` on root/base/plugin) under the closing options — same
+        // lowest-to-highest resolution the space closer uses
+        _subscriptionOptions: mergedSubscriptionOptions,
+        _endpoint: this.undefinedEndpointIfHasNotServerLoader(),
+      }) as never
+    } else {
+      throw new Error(`subscription() closes a subscription point, got ${this.toStringWithLocation()}`)
+    }
+  }
+
+  /**
+   * The runtime mirror of `AssertSubscriptionCursorParams`, run when `.subscription({...})` closes the point: the
+   * tracked-cursor paths come only as a PAIR, and the input path must start inside the declared input shape — the first
+   * segment is checked against the input schema's keys when the schema can be introspected (the same best-effort
+   * `extractKeysBySchemasHelpers` the search-key collection uses; a custom validate-fn or a client-stripped schema
+   * yields no keys and skips the check). The data path has no runtime schema to check against — the type level owns it.
+   * Deeper segments are the type level's job on both paths.
+   */
+  private _assertSubscriptionCursorParams(subscriptionOptions: SubscriptionPointOptions): void {
+    const { cursorParamFromInput, cursorParamFromData } = subscriptionOptions as {
+      cursorParamFromInput?: string
+      cursorParamFromData?: string
+    }
+    if ((cursorParamFromInput === undefined) !== (cursorParamFromData === undefined)) {
+      throw new Error(
+        `cursorParamFromInput and cursorParamFromData come as a pair — declare both or neither on ${this.toStringWithLocation()}`,
+      )
+    }
+    if (cursorParamFromInput === undefined) {
+      return
+    }
+    const firstSegment = cursorParamFromInput.split('.')[0] ?? ''
+    if (this._letsReadyPointType === 'action') {
+      // an action-opened subscription takes the ACTION input shape — the path starts at one of its three groups
+      if (!['params', 'search', 'body'].includes(firstSegment)) {
+        throw new Error(
+          `cursorParamFromInput of an action-opened subscription must start with params, search or body (the action input shape), got "${cursorParamFromInput}" on ${this.toStringWithLocation()}`,
+        )
+      }
+      return
+    }
+    const inputAction = this._serverExecuteActions.find((action) => action.type === 'input')
+    const inputSchema = inputAction && 'schema' in inputAction ? inputAction.schema : undefined
+    const inputKeys = extractKeysBySchemasHelpers(inputSchema, this._schemasHelpers)
+    if (inputKeys && !inputKeys.includes(firstSegment)) {
+      throw new Error(
+        `cursorParamFromInput "${cursorParamFromInput}" does not exist in the input schema (keys: ${inputKeys.join(', ')}) on ${this.toStringWithLocation()}`,
+      )
+    }
+  }
+
+  /**
+   * Subscribe to this subscription point's stream while the component is mounted. By default nothing re-renders — react
+   * to messages through `options.onMessageFromServer` (per call, or point-level in `.subscription({...})`); with
+   * `lastMessageFromServerAsData: true` the result gains `data` (the LATEST streamed value), re-rendering on every
+   * message. `status` walks `connecting` → `open` → `closed` (the generator completed) or `error` (a typed error —
+   * never restarted), `isLoading` covers the connect. A BROKEN stream (network drop, server restart) restarts with
+   * backoff per `reconnect` (point-level `.subscription({ reconnect })`, overridable per call). The lifecycle callbacks
+   * (`onConnect` / `onDisconnect` / `onError`, with `connectionIndex` in the props) ride the same two levels — point
+   * and call site both fire, point level first. During SSR nothing streams — the hook renders the same
+   * `connecting`/`closed` the client's hydration render computes and does the real work after mount.
+   *
+   * Server-and-client — kept on both bundles (renders the connecting state on the server).
+   *
+   *     taskProgressSubscription.useSubscription(
+   *       { taskId },
+   *       { onMessageFromServer: (tick) => setPercent(tick.percent) },
+   *     )
+   *     // const { data } = taskProgressSubscription.useSubscription({ taskId }, { lastMessageFromServerAsData: true })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/subscription
+   */
+  useSubscription<
+    TOptions extends
+      | ExtraUseSubscriptionOptions<
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+          TError
+        >
+      | undefined =
+      | ExtraUseSubscriptionOptions<
+          FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+          TError
+        >
+      | undefined,
+  >(
+    ...args: TQueryResultType extends 'subscription'
+      ? [
+          ...ServerHandlerInputArgs<
+            FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
+          >,
+          options?: TOptions,
+        ]
+      : never
+  ): TQueryResultType extends 'subscription'
+    ? UseSubscriptionResultFor<TOptions, FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>, TError>
+    : never
+  useSubscription(...args: any[]): any {
+    if (!this._isHttpSubscription()) {
+      throw new Error(`useSubscription() lives on subscription points only, got ${this.toStringWithLocation()}`)
+    }
+    return useSubscriptionValue(this as never, args[0], args[1])
+  }
+
+  /**
+   * The imperative subscription consumer: an async iterable of the streamed values — `for await` it. A typed error or a
+   * broken stream THROWS (no auto-restart — an imperative consumer loops on its own terms); a completed stream ends the
+   * iteration. Breaking out of the loop (or aborting `options.signal`) cancels the stream — the server generator's
+   * `signal` fires.
+   *
+   * Client-side — a runtime error on the server.
+   *
+   *     for await (const { percent } of taskProgressSubscription.fetchSubscription({ taskId })) {
+   *       render(percent)
+   *     }
+   *
+   * Full reference: https://1gr14.dev/point0/latest/subscription
+   */
+  fetchSubscription(
+    ...args: TQueryResultType extends 'subscription'
+      ? [
+          ...ServerHandlerInputArgs<
+            FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>
+          >,
+          options?: FetchSubscriptionOptions,
+        ]
+      : never
+  ): TQueryResultType extends 'subscription'
+    ? AsyncIterable<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
+    : never
+  fetchSubscription(...args: any[]): any {
+    if (!this._isHttpSubscription()) {
+      throw new Error(`fetchSubscription() lives on subscription points only, got ${this.toStringWithLocation()}`)
+    }
+    return iterateSubscription(this as never, args[0], args[1])
+  }
+
+  // socket — channels and handlers. The client runtime (socket, holds, dedup, queue) lives in socket.ts; these
+  // methods are the point-level surface over it.
+
+  /**
+   * Default channel options for every channel in scope, GROUPED by side: `server` (`maxMessageSize`, `maxConnections`,
+   * `connectionTtl`), `client` (`reconnect`, `linger`, `ping`, `upgradable`, the lifecycle callbacks), and
+   * `preventTransformer` / `resumable` top-level. On root, base, plugin. Resolution lowest-to-highest: chain options →
+   * the closing `.channel({...})` → the call site (flat — the call names its own side); callbacks at every level run in
+   * order.
+   *
+   * Server-and-client — the method is kept on both bundles; the compiler drops the `server` group from the client
+   * bundle and the `client` group from the server one, so the argument must be an object literal without spreads.
+   *
+   *     .channelOptions({ client: { linger: 3000, onConnect: ({ connection }) => console.info(connection.status) } })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  channelOptions<TSelf>(this: TSelf, channelOptions: ChannelPointOptions<TError>): TSelf
+  channelOptions(channelOptions: ChannelPointOptions<TError>) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`channelOptions, point ${this.id}`)
+    }
+    return this._continue({
+      _defaultChannelOptions: mergeChannelOptions(
+        this._defaultChannelOptions,
+        flattenSidedOptions(channelOptions),
+      ) as never,
+    }) as never
+  }
+
+  /**
+   * Default server-handler options for every serverHandler in scope, GROUPED by side: `client` (`timeout`, `queue`,
+   * `onReplyFromServer`), `server` (`onBeforeServerReply`, `onAfterServerReply`). On root, base, plugin — and on a
+   * channel, since handlers grow from it. In the chain-level `onReplyFromServer` the `data` is unknown — the callback's
+   * `point` tells which handler replied.
+   *
+   * Server-and-client — the method is kept on both bundles; the compiler drops the wrong group per bundle, so the
+   * argument must be an object literal without spreads.
+   *
+   *     .serverHandlerOptions({ client: { onReplyFromServer: ({ data, point }) => analytics.track(point.name, data) } })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  serverHandlerOptions<TSelf>(this: TSelf, serverHandlerOptions: ServerHandlerPointOptions): TSelf
+  serverHandlerOptions(serverHandlerOptions: ServerHandlerPointOptions) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`serverHandlerOptions, point ${this.id}`)
+    }
+    return this._continue({
+      _defaultServerHandlerOptions: mergeServerHandlerOptions(
+        this._defaultServerHandlerOptions,
+        flattenSidedOptions(serverHandlerOptions),
+      ),
+    }) as never
+  }
+
+  /**
+   * Default client-handler options for every clientHandler in scope, GROUPED by side: `client` (`onMessageFromServer`),
+   * `server` (`timeout` — the reply-collection window), plus the top-level `resumable` (opt this handler's pushes into
+   * a resumable channel's replay buffer). On root, base, plugin — and on a channel. In the chain-level
+   * `onMessageFromServer` the `message` is unknown — narrow by the callback's `point`. Listeners add up: every
+   * registered listener fires exactly once per message.
+   *
+   * Server-and-client — the method is kept on both bundles; the compiler drops the wrong group per bundle, so the
+   * argument must be an object literal without spreads.
+   *
+   *     .clientHandlerOptions({ client: { onMessageFromServer: ({ point, message }) => console.info(point.name, message) } })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  clientHandlerOptions<TSelf>(this: TSelf, clientHandlerOptions: ClientHandlerPointOptions): TSelf
+  clientHandlerOptions(clientHandlerOptions: ClientHandlerPointOptions) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`clientHandlerOptions, point ${this.id}`)
+    }
+    return this._continue({
+      _defaultClientHandlerOptions: mergeClientHandlerOptions(
+        this._defaultClientHandlerOptions,
+        flattenSidedOptions(clientHandlerOptions),
+      ),
+    }) as never
+  }
+
+  /**
+   * Default space options for every space in scope, GROUPED by side: `server` (`maxRooms`, `onBeforeJoiner`,
+   * `onAfterJoiner`), `client` (`linger`, `onEnter`, `onLeave`), and the top-level `resumable: false` opt-out of a
+   * resumable channel's restore. On root, base, plugin — and on a channel, since spaces grow from it. In the
+   * chain-level callbacks the `input`/`identity`/`rooms` are unknown — narrow by the callback's `point`. Callbacks
+   * stack chain → the closing `.space({...})` and run in order.
+   *
+   * Server-and-client — the method is kept on both bundles; the compiler drops the `server` group (join guards, cap)
+   * from the client bundle and the `client` group from the server one, so the argument must be an object literal
+   * without spreads.
+   *
+   *     .spaceOptions({ server: { onAfterJoiner: ({ point, output }) => metrics.join(point.name, output?.length ?? 0) } })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  spaceOptions<TSelf>(this: TSelf, spaceOptions: SpacePointOptions): TSelf
+  spaceOptions(spaceOptions: SpacePointOptions) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`spaceOptions, point ${this.id}`)
+    }
+    return this._continue({
+      _defaultSpaceOptions: mergeSpaceOptions(this._defaultSpaceOptions, flattenSidedOptions(spaceOptions)),
+    }) as never
+  }
+
+  /**
+   * Default subscription options for every subscription in scope (`reconnect`, the point-level `onMessageFromServer`
+   * listener, the lifecycle callbacks `onConnect` / `onDisconnect` / `onError`). On root, base, plugin. Resolution
+   * lowest-to-highest: `.subscriptionOptions()` → the closing `.subscription({...})` → the call site; listeners and
+   * callbacks at every level run in order. The tracked-cursor pair is NOT declarable here — its paths name one point's
+   * schema fields, so it lives on the closing `.subscription({...})` only.
+   *
+   * Server-and-client — kept on both bundles (isomorphic config; the listener and the lifecycle callbacks are client
+   * code the compiler cuts from the server bundle).
+   *
+   *     .subscriptionOptions({ reconnect: { delay: 1000 } })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/subscription
+   */
+  subscriptionOptions<TSelf>(
+    this: TSelf,
+    subscriptionOptions: Omit<SubscriptionPointOptions, 'cursorParamFromInput' | 'cursorParamFromData'>,
+  ): TSelf
+  subscriptionOptions(subscriptionOptions: SubscriptionPointOptions) {
+    return this._continue({
+      _defaultSubscriptionOptions: mergeSubscriptionOptions(this._defaultSubscriptionOptions, subscriptionOptions),
+    }) as never
+  }
+
+  /**
+   * The schema of what the CLIENT SENDS to this serverHandler — parsed by the server on every incoming message, like
+   * `.input` on a mutation. Optional: a serverHandler without it takes no message payload. The name is the verb pair of
+   * `.serverReply`: the client sends, the server replies (and the runtime twin is `sendToServer`). Any Standard Schema
+   * library or a plain validate function works, and the no-arg type-only form skips runtime validation.
+   *
+   * Server-only — the schema is cut from the client bundle (with the imports it pulls in).
+   *
+   *     .clientSend(z.object({ text: z.string().min(1) }))    // schema form
+   *     .clientSend((raw) => parseMessage(raw))               // custom validate-fn form
+   *     .clientSend<{ text: string }>()                       // no-arg, type-only
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  clientSend<
+    TNextServerInputSchema extends InputSchema,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientSend'> &
+      AssertInputSchemaNotWider<TNextServerInputSchema, TServerInputSchema, TClientInputSchema>,
+  >(
+    inputSchema: TNextServerInputSchema,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, TNextServerInputSchema>,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
+    >
+  >
+  clientSend<
+    TInputRaw extends InputRaw,
+    TInputParsed extends InputParsed = TInputRaw,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientSend'> &
+      AssertInputSchemaNotWider<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        TServerInputSchema,
+        TClientInputSchema
+      >,
+  >(
+    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
+    >
+  >
+  clientSend<
+    TValidateFn extends CustomValidationFn<any>,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientSend'> &
+      AssertInputSchemaNotWider<
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        TServerInputSchema,
+        TClientInputSchema
+      >,
+  >(
+    validateFn: TValidateFn,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
+    >
+  >
+  clientSend<
+    TInput extends InputRaw,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientSend'> &
+      AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
+  >(
+    ...args: unknown extends TCheckError ? [] : [TCheckError]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      MergeRecordValidationSchemas<TServerInputSchema, RecordValidationSchema<TInput, TInput>>,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
+    >
+  >
+  clientSend(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`clientSend, point ${this.id}`)
+    }
+    this._assertSetupStageAllowed('clientSend')
+    const schema = Point0._normalizeInputSchema(args[0])
+    return this._continue({ _clientSendSchema: schema }) as never
+  }
+
+  /**
+   * The schema of what the SERVER SENDS through this clientHandler — what `.sendToClient` carries and what the client
+   * receives as `input`. Optional: a clientHandler without it is a pure trigger. The name is the verb pair of
+   * `.clientReply`: the server sends, the client replies (runtime twin: `sendToClient`) — and the server trusts itself,
+   * so the schema types the message without a server-side parse. Any Standard Schema library or a plain validate
+   * function works, and the no-arg type-only form is the common one.
+   *
+   * Client-only — the schema is cut from the server bundle (with the imports it pulls in).
+   *
+   *     .serverSend(z.object({ message: MessageSchema }))    // schema form
+   *     .serverSend((raw) => parseMessage(raw))              // custom validate-fn form
+   *     .serverSend<{ message: Message }>()                  // no-arg, type-only
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  serverSend<
+    TNextClientInputSchema extends InputSchema,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'serverSend'> &
+      AssertInputSchemaNotWider<TNextClientInputSchema, TServerInputSchema, TClientInputSchema>,
+  >(
+    inputSchema: TNextClientInputSchema,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      MergeRecordValidationSchemas<TClientInputSchema, TNextClientInputSchema>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
+    >
+  >
+  serverSend<
+    TInputRaw extends InputRaw,
+    TInputParsed extends InputParsed = TInputRaw,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'serverSend'> &
+      AssertInputSchemaNotWider<
+        RecordValidationSchema<TInputRaw, TInputParsed>,
+        TServerInputSchema,
+        TClientInputSchema
+      >,
+  >(
+    ...args: TInputParsed extends InputSchema ? never[] : [validateFn: CustomValidationFn<TInputParsed> & TCheckError]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInputRaw, TInputParsed>>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
+    >
+  >
+  serverSend<
+    TValidateFn extends CustomValidationFn<any>,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'serverSend'> &
+      AssertInputSchemaNotWider<
+        CustomValidationFnToRecordValidationSchema<TValidateFn>,
+        TServerInputSchema,
+        TClientInputSchema
+      >,
+  >(
+    validateFn: TValidateFn,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      MergeRecordValidationSchemas<TClientInputSchema, CustomValidationFnToRecordValidationSchema<TValidateFn>>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
+    >
+  >
+  serverSend<
+    TInput extends InputRaw,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'serverSend'> &
+      AssertInputSchemaNotWider<RecordValidationSchema<TInput, TInput>, TServerInputSchema, TClientInputSchema>,
+  >(
+    ...args: unknown extends TCheckError ? [] : [TCheckError]
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      StagePointTypeOrNever<TPointType>,
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TClientLoaderOutput,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      MergeRecordValidationSchemas<TClientInputSchema, RecordValidationSchema<TInput, TInput>>,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
+    >
+  >
+  serverSend(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`serverSend, point ${this.id}`)
+    }
+    this._assertSetupStageAllowed('serverSend')
+    const schema = Point0._normalizeInputSchema(args[0])
+    return this._continue({ _serverSendSchema: schema }) as never
+  }
+
+  /**
+   * The server's answer to a serverHandler message — required before closing (a server handler without one is
+   * meaningless). Receives `{ input, identity, connectionId, messageId, points }` (+ the typed `room` on a space
+   * handler) — no `request`/`set`/`ctx`: messages travel over the socket, everything request-shaped was established by
+   * the connector at connect time and lives in the identity. Takes no schema — the server trusts itself, only client
+   * answers need checking. The client's `.sendToServer()` resolves with its return.
+   *
+   * Answer early and keep working: the explicit generic — `.serverReply<T>(...)` — names the reply type and puts the
+   * imperative `reply` into the args (a call argument cannot drive inference the way a `return` does, so the type must
+   * be named). Call `reply(data)` and the envelope leaves immediately while the code keeps running; a later `return` is
+   * ignored. `reply(new Error(...))` rejects the client's send; `.serverReply<undefined>()` makes `reply(undefined)`
+   * the early ack. `return` works the same with or without the generic.
+   *
+   * Server-only — the callback body (and the imports it pulls in) is cut from the client bundle.
+   *
+   *     .serverReply(async ({ input, identity, room }) => ({ message: await createMessage(input, identity, room) }))
+   *     .serverReply<{ accepted: boolean }>(async ({ input, reply }) => {
+   *       reply({ accepted: true }) // the client resolves now…
+   *       await heavyPostProcessing(input) // …while the server keeps working
+   *     })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  serverReply<
+    // the optional EXPLICIT reply type — `.serverReply<T>(fn)` types the reply without inferring it from the return
+    // and unlocks the imperative `reply` in the args (precedent: `.connector<TIdentity>()`)
+    TExplicitReply extends UnknownData | undefined = never,
+    TReplyFn extends ServerReplyChainFn<TIdentity, TRoom, TServerInputSchema, TExplicitReply> = ServerReplyChainFn<
+      TIdentity,
+      TRoom,
+      TServerInputSchema,
+      TExplicitReply
+    >,
+  >(
+    replyFn: TReplyFn & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'serverReply'>,
+  ): NiceStagePoint<
+    'loadedStage',
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    // the explicit generic names the reply outright (its `undefined` arm — the pure ack — types as EmptyData, the
+    // same shape a bare ack always had); otherwise the reply's data is the awaited return
+    [TExplicitReply] extends [never]
+      ? IfNeverThen<Exclude<Awaited<ReturnType<TReplyFn>>, void>, EmptyData>
+      : IfNeverThen<Exclude<TExplicitReply, undefined>, EmptyData>,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
+  >
+  serverReply(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`serverReply, point ${this.id}`)
+    }
+    this._assertSetupStageAllowed('serverReply')
+    // the client bundle arrives stripped — `.serverReply()` with no args — mirror the connector's stub fallback so
+    // `_serverReplyFn` is set on BOTH bundles (the flavor guards below rely on it). The stub must never RUN on
+    // either side — the server bundle keeps the real callback — so executing it is a loud mis-strip signal, not a
+    // silent `{}` reply.
+    const replyFn = (args[0] ??
+      (() => {
+        throw new Error(
+          `The .serverReply() stub was executed — the reply callback was stripped from the executing bundle. This is a bundling bug: the server bundle must keep the real callback. Point: ${this.toStringWithLocation()}`,
+        )
+      })) as ServerReplyFn<any, any, any, any>
+    // the runtime mirror of the type-level constraint: a reply answers, it never streams — the server streams to
+    // clients through a `.subscription()` clientHandler's pushes
+    if (Point0._isGeneratorFunction(replyFn)) {
+      throw new Error(
+        `A generator .serverReply is not supported — a reply answers one send. Stream to clients through a clientHandler instead: the server pushes with sendToClient, the client listens with useOnMessageFromServer or iterates with iterateMessagesFromServer. Point: ${this.toStringWithLocation()}`,
+      )
+    }
+    return this._continue({
+      type: 'loadedStage',
+      _serverReplyFn: replyFn,
+    }) as never
+  }
+
+  /** Is this callback declared as a generator (`function*` / `async function*`)? A reply refuses both kinds. */
+  private static _isGeneratorFunction(fn: unknown): boolean {
+    if (typeof fn !== 'function') {
+      return false
+    }
+    const name = (fn as { constructor?: { name?: string } }).constructor?.name
+    return name === 'AsyncGeneratorFunction' || name === 'GeneratorFunction'
+  }
+
+  /**
+   * The client's answer to a clientHandler message — a module-level reaction that runs on every message regardless of
+   * what's mounted. Its return is what listeners receive as `data` and what travels back to the server as this client's
+   * reply. Clients can send anything, so pass a schema as the second argument and the server validates every reply with
+   * it — the parsed type becomes the reply type.
+   *
+   * Split by the compiler: the callback is client code (replaced with `() => {}` in the server bundle), the schema is
+   * server code (dropped from the client bundle).
+   *
+   *     .clientReply(({ message }) => ({ answer: `pong: ${message.ask}` }))                          // callback only
+   *     .clientReply(({ message }) => ({ answer: message.ask }), z.object({ answer: z.string() }))  // + server-checked schema
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  clientReply<
+    TReplyFn extends ClientReplyFn<TChannelInput, TRoom, TClientInputSchema, TError, UnknownData>,
+    TReplySchema extends InputSchema | UndefinedInputSchema = UndefinedInputSchema,
+    TCheckError = AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'clientReply'> &
+      AssertClientReplyMatchesSchema<TReplyFn, TReplySchema>,
+  >(
+    replyFn: TReplyFn,
+    // a bare `TReplySchema & TCheckError` would block inference — the check lives in the WithError return instead
+    replySchema?: TReplySchema,
+  ): WithError<
+    TCheckError,
+    NiceStagePoint<
+      'loadedStage',
+      ReadyPointTypeOrNever<TLetsReadyPointType>,
+      TRequiredCtx,
+      TError,
+      TCtx,
+      TCtxExposedKeys,
+      TReplySchema extends InputSchema
+        ? InputParsed<TReplySchema>
+        : IfNeverThen<Awaited<ReturnType<TReplyFn>>, EmptyData>,
+      IfNeverThen<Awaited<ReturnType<TReplyFn>>, EmptyData>,
+      TMapperOutput,
+      TRouteDefinition,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      TQueryResultType,
+      TOuterProps,
+      TInnerProps,
+      TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
+      TChannelInput,
+      TIdentity,
+      TSpaceInput,
+      TRoom
+    >
+  >
+  clientReply(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`clientReply, point ${this.id}`)
+    }
+    this._assertSetupStageAllowed('clientReply')
+    const replySchema = args[1] === undefined ? undefined : Point0._normalizeInputSchema(args[1])
+    return this._continue({
+      type: 'loadedStage',
+      _clientReplyFn: args[0] as ClientReplyFn<any, any, any, any, any>,
+      _clientReplySchema: replySchema,
+    }) as never
+  }
+
+  /**
+   * The channel's connect callback — runs on every connect request through the full endpoint pipeline (middleware,
+   * plugins, `.ctx`, input parse) and returns the connection's **identity**, bare: the connection's private server-side
+   * data (who this connection is — userId, role, …), frozen until a reconnect or a `refresh`. The identity is what
+   * handlers receive next to their input, what admin selections (`kick` / `connections`) match over, and what `.joiner`
+   * sees when the client enters a space's rooms. Nothing else comes out of a connect — no rooms (spaces own them) and
+   * no data (a query next door answers questions). The connector itself is optional: a channel without one connects
+   * with an empty identity. The access check lives here — throw and the connect fails with the typed error (and it
+   * re-applies on every reconnect and `refresh`).
+   *
+   * Server-only — the body (and every import only it uses) is stripped from the client bundle (runs server-side).
+   *
+   *     .connector(async ({ ctx }) => ({ userId: ctx.me.user.id, role: ctx.me.role }))
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  connector<
+    // the optional EXPLICIT identity — `.connector<TIdentity>(fn)` types the identity without inferring it from the
+    // callback's return. Needed to break a self-referential inference cycle: a connector that calls its own channel's
+    // server surface (`appChannel.connections.server.count(...)`) would otherwise fail with "referenced in its own
+    // initializer" (precedent: the type-only `.clientSend<T>()`)
+    TExplicitIdentity extends UnknownData = never,
+    TConnectorFn extends LoaderFn<
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TServerInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      'endpoint',
+      TError
+    > = LoaderFn<
+      TCtx,
+      TCtxExposedKeys,
+      TServerLoaderOutput,
+      TServerInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema,
+      THeadersSchema,
+      TCookiesSchema,
+      'endpoint',
+      TError
+    >,
+  >(
+    connectorFn: TConnectorFn &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'connector'> &
+      AssertResponseNotAllowed<InferLoaderFnOutput<TConnectorFn>, 'channel'>,
+  ): NiceStagePoint<
+    'loadedStage',
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    [TExplicitIdentity] extends [never] ? IfNeverThen<InferLoaderFnOutput<TConnectorFn>, EmptyData> : TExplicitIdentity,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    // the identity is WRITTEN the moment it appears — the connector's return names it (`Extract` guards the record
+    // form); an explicit `.connector<TIdentity>` names it directly (breaks the self-referential inference cycle)
+    [TExplicitIdentity] extends [never]
+      ? IfNeverThen<Extract<InferLoaderFnOutput<TConnectorFn>, UnknownData>, EmptyData>
+      : TExplicitIdentity,
+    TSpaceInput,
+    TRoom
+  >
+  connector(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`connector, point ${this.id}`)
+    }
+    this._assertSetupStageAllowed('connector')
+    if (this._letsReadyPointType !== 'channel') {
+      throw new Error(`connector() lives on channel points only, got ${this.toStringWithLocation()}`)
+    }
+    // the client bundle arrives stripped — `.connector()` with no args — mirror the loader's passthrough fallback
+    const connectorFn = (args[0] ?? ((c: any) => c.data)) as LoaderFn<
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any
+    >
+    return this._continue({
+      type: 'loadedStage',
+      _hasServerLoader: true,
+      // the DECLARATION fact, kept apart from `_hasServerLoader` (which the closer's default connector sets too) —
+      // `amendIdentity` reads it to refuse a connectorless channel on every bundle (the stripped call survives)
+      _connectorDeclared: true,
+      _serverExecuteActions: [
+        ...this._serverExecuteActions,
+        { type: 'loader', fn: connectorFn, unstableId: Point0._getNextUnstableId() },
+      ],
+    }) as never
+  }
+
+  /**
+   * The space's join callback: which rooms a client enters. It runs over the socket per join — the channel already
+   * authenticated the connection, so there is no request here, just the parsed `input` and the connection's frozen
+   * `identity`. Return one room snapshot, an ARRAY of snapshots (enter several at once), an empty array or nothing (a
+   * clean deny — `joined` with no rooms). Throw to fail the join (the client sees the typed error on the membership).
+   * The return is CHECKED against the room shape the opener declared (`.lets<{ chatId: string }>('space', 'chat')`) —
+   * it never declares it, and it may not be WIDER either: a key the space never declared is a type error, because the
+   * room snapshot IS the room's address (`{ chatId: 'c1', extra: 1 }` is a different pub/sub topic, deaf to every send
+   * aimed at `{ chatId: 'c1' }`). Map a wide row down to the room shape rather than passing it through.
+   *
+   * Declaring it is what MAKES a space joinable: with no `.joiner` a client `join` is refused outright (a
+   * `POINT0_SOCKET_JOIN_NOT_ALLOWED` typed error, thrown on the client before any frame leaves) and the server enrolls
+   * into the space itself, through `.enroller` / `space.enroll()`.
+   *
+   * Server-only — the callback body (and the imports it pulls in) is cut from the client bundle (mirrors `.connector`).
+   *
+   *     .joiner(async ({ input, identity }) => (await isMember(identity.userId, input.chatId) ? { chatId: input.chatId } : undefined))
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  joiner<TReturnedRoom extends TRoom, TCheckRoom extends AssertRoomNotWider<TReturnedRoom, TRoom>>(
+    // the room type comes from the OPENER's generic and NOTHING the chain carries is read out of the callback — `TRoom`
+    // passes through this method untouched. That is what lets a joiner call its own space's server surface
+    // (`chatSpace.memberships.server.count(…)`): the space's type never depends on the callback's, so a self-reference
+    // in the body is a plain value reference, not a "referenced in its own initializer" cycle. (Feeding a RETURN
+    // EXPRESSION from that call is still the ordinary circularity every `const` has — TS7024 — and always was.)
+    // `TReturnedRoom` is the one thing read back, and it feeds nothing downstream: it is inferred from the return only
+    // so `AssertRoomNotWider` can compare its KEYS with the declared room. That comparison is not decoration —
+    // assignability alone accepts a wider object, and TypeScript's excess-property check never fires on a callback's
+    // return (5.9/6.0/7.0 alike), so without it `() => ({ chatId, extra })` would silently join a DIFFERENT room.
+    // `TCheckRoom` carries the verdict as a second type parameter, constrained by it and given NO default on purpose:
+    // whatever it infers still has to satisfy that constraint, so a `ShowError` verdict fails the call and reads back
+    // as the message, and the second slot keeps `.joiner<{ … }>(…)` an arity error — the room stays declarable at the
+    // opener and nowhere else.
+    // `TRoom` also goes into `JoinerFn` BARE — no `& UnknownData` to satisfy a narrower constraint (`JoinerFn` takes the
+    // chain's own room union): that intersection would drag an index signature into the return position, which makes
+    // every key look declared and stops a wrongly-TYPED one from being rejected
+    joinerFn: JoinerFn<TIdentity, TServerInputSchema, TReturnedRoom> &
+      TCheckRoom &
+      AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'joiner'>,
+  ): NiceStagePoint<
+    'loadedStage',
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    // the room came from the opener and passes through untouched — a joiner names no types, it is checked against them
+    TRoom
+  >
+  joiner(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`joiner, point ${this.id}`)
+    }
+    this._assertSetupStageAllowed('joiner')
+    if (this._letsReadyPointType !== 'space') {
+      throw new Error(`joiner() lives on space points only, got ${this.toStringWithLocation()}`)
+    }
+    // the client bundle arrives stripped — `.joiner()` with no args — but the CALL survives, so `_joinerDeclared` still
+    // records the fact and the client can refuse a join on a joinerless space without asking the server
+    const joinerFn = args[0] as JoinerFn<any, any, any> | undefined
+    return this._continue({
+      type: 'loadedStage',
+      _joinerFn: joinerFn,
+      _joinerDeclared: true,
+    }) as never
+  }
+
+  /**
+   * The space's server-side auto-enrollment: which rooms a FRESH CONNECTION enters without the client joining — runs at
+   * connection setup (both connect paths), reading the connection's frozen identity. The canonical case is the hot
+   * personal-push room: `.enroller(({ identity }) => ({ userId: identity.userId }))` — then `sendToClient(message, {
+   * room: { userId } })` reaches the user over the pub/sub hot path with zero client code. The client learns its
+   * enrollments from the connect confirmation and holds them WITHOUT holds: they live with the connection, and the
+   * client may still `leave()` one — the rooms drop server-side, and the NEXT connection setup (a reconnect, a
+   * `refresh`) re-runs this callback and enrolls again, so a permanent opt-out is data the enroller reads. Return one
+   * room snapshot, an array, or nothing — CHECKED against the room shape the opener declared (`.lets<{ userId: string
+   * }>('space', 'notifications')`), extra keys included: an undeclared key makes it a different room, so it is a type
+   * error, exactly like on `.joiner`. A space takes at most one `.enroller`; `.joiner` and `.enroller` coexist (the
+   * client can still join more rooms), in either order, and an enroller-only space is the server-enrolled kind —
+   * clients cannot join it at all. A throw here fails the WHOLE connection setup — the client sees a failed connect
+   * (`claimErr`), never a connection missing its enrolled rooms. Not allowed together with `resumable: false` — a
+   * resume would silently drop the enrollments (the `.space()` closer throws).
+   *
+   * Server-only — the callback body (and the imports it pulls in) is cut from the client bundle (mirrors `.joiner`).
+   *
+   *     .enroller(({ identity }) => ({ userId: identity.userId }))
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  enroller<TReturnedRoom extends TRoom, TCheckRoom extends AssertRoomNotWider<TReturnedRoom, TRoom>>(
+    // like `.joiner`: the room comes from the OPENER's generic, the chain carries nothing read out of the callback, and
+    // `TReturnedRoom`/`TCheckRoom` exist only to compare the returned keys with the declared ones (see `.joiner` for
+    // why assignability alone lets an extra key through)
+    enrollerFn: EnrollerFn<TIdentity, TReturnedRoom> & TCheckRoom & AssertEnrollerNotDefined<TClientLoaderOutput>,
+  ): NiceStagePoint<
+    StagePointTypeOrNever<TPointType>,
+    ReadyPointTypeOrNever<TLetsReadyPointType>,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    // the marker slot: an enroller is declared (the client-loader slot is unused on spaces) — guards the second one.
+    // Pure flag — the room itself is written into `TRoom` below, not threaded through slots.
+    EmptyData,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    // the room came from the opener and passes through untouched — an enroller names no types either
+    TRoom
+  >
+  enroller(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`enroller, point ${this.id}`)
+    }
+    if (this._letsReadyPointType !== 'space') {
+      throw new Error(`enroller() lives on space points only, got ${this.toStringWithLocation()}`)
+    }
+    // allowed while composing AND after `.joiner` (loadedStage) — the two coexist in either order
+    if (this.type !== 'coreStage' && this.type !== 'loadedStage') {
+      throw new Error(
+        `You can not call .enroller() on point ${this.toStringWithLocation()} — its setup stage is "${this.type}"`,
+      )
+    }
+    if (this._enrollerFn) {
+      throw new Error(
+        `This space already has an .enroller — a space takes at most one (${this.toStringWithLocation()})`,
+      )
+    }
+    // the client bundle arrives stripped — `.enroller()` with no args — the client learns enrollments from the
+    // connect confirmation, it never runs the callback
+    const enrollerFn = args[0] as EnrollerFn<any, any> | undefined
+    return this._continue({
+      _enrollerFn: enrollerFn,
+    }) as never
+  }
+
+  /**
+   * Close a channel point: a live connection clients open through the dual-method channel endpoint (`GET`/`POST
+   * /_point0/<scope>/channel/<name>`, chosen by input length like a query) — the connector runs per connect and its
+   * return IS the connection identity (server-side only), then the connection binds to the client's WebSocket. Grow
+   * spaces and message handlers from the closed channel with `.lets.space()` / `.lets.serverHandler()` /
+   * `.lets.clientHandler()`. The optional argument is the channel options, grouped by side: `server` (the caps),
+   * `client` (reconnect, linger, ping, upgradable, the lifecycle callbacks), plus `preventTransformer` and `resumable`
+   * top-level.
+   *
+   * Server-and-client — the channel closer is kept on both bundles; the compiler drops the wrong group per bundle, so
+   * the argument must be an object literal without spreads.
+   *
+   *     export const chatChannel = root.lets.channel().input(schema).connector(connectFn).channel()
+   *     // .channel({ server: { maxMessageSize: 4096 }, client: { linger: 3000 } })   // options form
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  channel(
+    ...args: TLetsReadyPointType extends 'channel'
+      ? TServerLoaderOutput extends UnknownData | UndefinedLoaderOutput
+        ? [
+            channelOptions?: ChannelPointOptions<
+              TError,
+              ClientChannelConnection<
+                FinalInputRaw<
+                  'channel',
+                  TServerInputSchema,
+                  TClientInputSchema,
+                  TParamsSchema,
+                  TSearchSchema,
+                  TBodySchema
+                >,
+                TError
+              >
+            >,
+          ]
+        : [
+            ShowError<`Channel connector must return the identity (an object) or nothing — anything else is a type error`>,
+          ]
+      : never
+  ): NiceChannelReadyPoint<
+    'channel',
+    UndefinedReadyPointType,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    // the channel exists NOW — the closer writes the connect input; the identity was already written by the
+    // `.connector()` itself (a connectorless channel keeps the sentinel → `{}`)
+    FinalInputRaw<'channel', TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+    [TIdentity] extends [UndefinedIdentity] ? EmptyObject : TIdentity,
+    TSpaceInput,
+    TRoom
+  >
+  channel(...args: any) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`channel, point ${this.id}`)
+    }
+    if (this._letsReadyPointType !== 'channel') {
+      throw new Error(`channel() closes a channel point only, got ${this.toStringWithLocation()}`)
+    }
+    const [channelOptionsGrouped = {}] = args as [ChannelPointOptions<TError> | undefined]
+    // the declaration is GROUPED (`{ server, client }` — the compiler cuts the wrong group per bundle); everything
+    // downstream reads the RESOLVED flat shape, so flatten once, here at the entry point
+    const channelOptions = flattenSidedOptions<ChannelOptionsResolved<TError>>(channelOptionsGrouped)
+    // a connectorless channel is legal — one shared identityless pipe. The closer registers the default connector
+    // ITSELF (identity `{}` — NOT the input: the input-passthrough fallback above is for a STRIPPED declared
+    // connector, a different case), so downstream nobody special-cases "a channel may have no loader".
+    const defaultConnectorAction: ServerExecuteAction[] = this._hasServerLoader
+      ? []
+      : [{ type: 'loader', fn: () => ({}), unstableId: Point0._getNextUnstableId() }]
+    // `preventTransformer` resolves HERE, once — a wire format is a declaration fact, not a runtime option: the closed
+    // channel carries the fact, and the spaces and handlers that chain off it inherit it. `_transformer` stays the
+    // app transformer — the socket serialization sites read `_getSocketTransformer`, which honors this fact.
+    const resolvedAtClose = mergeChannelOptions(this._defaultChannelOptions, channelOptions)
+    const preventSocketTransformer = resolvedAtClose.preventTransformer === true
+    // the resumable validation cascade, the channel's leg: the `server.resume` TUNING configures machinery only
+    // `resumable: true` turns on — accepted without the switch it would sit dead and lie about being in force
+    if (resolvedAtClose.resume !== undefined && resolvedAtClose.resumable !== true) {
+      throw new Error(
+        `channel \`server.resume\` needs the top-level \`resumable: true\` (point ${this.toStringWithLocation()}) — the park window and the stream buffers only exist on a resumable channel; remove the group or make the channel resumable`,
+      )
+    }
+    return this._continue({
+      type: 'channel',
+      _preventSocketTransformer: preventSocketTransformer,
+      _channelOptions: channelOptions,
+      _letsReadyPointType: undefined,
+      _hasServerLoader: true,
+      _serverExecuteActions: [...this._serverExecuteActions, ...defaultConnectorAction],
+      // a channel is a mountable like a provider: its chain's mount actions (inherited wrappers, .loading/.error,
+      // .with injections) run in `<channel.Connection>` through the same interpreter, closed by the channel's own
+      // terminal step — hold the connection, gate, provide the channel context. Route-bound actions inherited from
+      // the scope (`.search`/`.params`) are dropped — a channel has no route surface to parse them from.
+      _mountActions: [
+        ...this._mountActions.filter((action) => action.type !== 'search' && action.type !== 'params'),
+        { type: 'selfConnection', unstableId: Point0._getNextUnstableId() },
+      ],
+    }) as never
+  }
+
+  /**
+   * Close a space point: a family of rooms of one shape inside a channel. The room shape is declared at the OPENER
+   * (`.lets<{ chatId: string }>('space', 'chat')` / `.lets.space<{ chatId: string }>()`; omitted, it is the single
+   * global room `{}`). Clients `join(input)` it over the socket, the `.joiner` decides which rooms they enter, and its
+   * handlers (grown with `.lets.serverHandler()` / `.lets.clientHandler()`) target those rooms. No `.joiner` = clients
+   * cannot join at all — only the server enrolls, through `.enroller` / `space.enroll()`. The optional argument is the
+   * space options, grouped by side: `server` (`maxRooms` and the join guards `onBeforeJoiner` / `onAfterJoiner`),
+   * `client` (`linger` and the membership lifecycle), plus the top-level `resumable: false` opt-out of a resumable
+   * channel's restore.
+   *
+   * Server-and-client — the space closer is kept on both bundles; the compiler drops the `server` group (server code)
+   * from the client bundle and the `client` group from the server one, so the argument must be an object literal
+   * without spreads.
+   *
+   *     export const chatSpace = appChannel.lets.space<{ chatId: string }>().input(schema).joiner(joinFn).space()
+   *     // .space({ server: { onBeforeJoiner: ({ connectionId }) => assertCanJoinMore(chatSpace.memberships.server.local.rooms({ connectionId })) } })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  space(
+    ...args: TLetsReadyPointType extends 'space'
+      ? [
+          spaceOptions?: SpacePointOptions<
+            FinalServerInputParsed<'space', TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+            TIdentity,
+            TRoom,
+            ClientSpaceMembership<
+              FinalInputRaw<'space', TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+              TRoom,
+              TError,
+              TChannelInput
+            >
+          >,
+        ]
+      : never
+  ): NiceSpaceReadyPoint<
+    'space',
+    UndefinedReadyPointType,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    // the space's own input becomes `TSpaceInput` for its handlers
+    FinalInputRaw<'space', TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+    // the room slot was written at the opener — the closer carries it through, it never falls back to anything
+    TRoom
+  >
+  space(...args: any) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`space, point ${this.id}`)
+    }
+    if (this._letsReadyPointType !== 'space') {
+      throw new Error(`space() closes a space point only, got ${this.toStringWithLocation()}`)
+    }
+    const [spaceOptionsGrouped = {}] = args as [SpacePointOptions | undefined]
+    const spaceOptions = flattenSidedOptions<SpaceOptionsResolved>(spaceOptionsGrouped)
+    // the resumable validation cascade, the space's leg (the clientHandler closer holds the other two): the resume
+    // opt-out must not lie about itself either. Both checks fail at module load; the resolution is chain -> closer,
+    // like every option
+    const resolvedResumable = mergeSpaceOptions(this._defaultSpaceOptions, spaceOptions).resumable
+    if (resolvedResumable === false) {
+      // declaration-only facts on both bundles — this check runs on both sides
+      if (this._getChannelPointOptions().resumable !== true) {
+        throw new Error(
+          `space \`resumable: false\` needs \`resumable: true\` on its channel (point ${this.toStringWithLocation()}) — a non-resumable channel has no resume to opt out of, so the option is a silent no-op; remove it or make the channel resumable`,
+        )
+      }
+      // self-defeating combination: a resume drops the client's enrolled memberships of an opt-out space (the server
+      // half is not restored), and the enroller re-runs only on a FULL connect — the enrollment would silently
+      // vanish on every resume. The enroller callback is stripped from the client bundle, so in a compiled app this
+      // check fires server-side (which fails the app at start all the same).
+      if (this._enrollerFn) {
+        throw new Error(
+          `.enroller is not allowed on a \`resumable: false\` space (point ${this.toStringWithLocation()}) — a resume never restores an opt-out space's enrollments and the enroller only re-runs on a full connect, so the enrollment would silently vanish on every resume; remove the opt-out or the enroller`,
+        )
+      }
+    }
+    // the `server.resume` ceilings tune streams this space only HAS while it takes part in the resume — accepted
+    // outside that, the group would sit dead and lie about being in force (same posture as the channel's leg)
+    const resolvedSpaceResume = mergeSpaceOptions(this._defaultSpaceOptions, spaceOptions).resume
+    if (resolvedSpaceResume !== undefined) {
+      if (this._getChannelPointOptions().resumable !== true) {
+        throw new Error(
+          `space \`server.resume\` needs \`resumable: true\` on its channel (point ${this.toStringWithLocation()}) — the stream buffers only exist on a resumable channel; remove the group or make the channel resumable`,
+        )
+      }
+      if (resolvedResumable === false) {
+        throw new Error(
+          `space \`server.resume\` is not allowed together with \`resumable: false\` (point ${this.toStringWithLocation()}) — an opt-out space has no streams to tune; remove one of the two`,
+        )
+      }
+    }
+    const point = this._continue({
+      type: 'space',
+      _spaceOptions: spaceOptions,
+      _letsReadyPointType: undefined,
+      // a space is a mountable like a provider — `<space.Membership>` runs the same interpreter, closed by the
+      // space's own terminal step (join, gate, provide the space context). Route-bound actions are dropped like on
+      // the channel closer — a space has no route surface.
+      _mountActions: [
+        ...this._mountActions.filter((action) => action.type !== 'search' && action.type !== 'params'),
+        { type: 'selfMembership', unstableId: Point0._getNextUnstableId() },
+      ],
+    })
+    // the client resolves ENROLLED spaces from the claimed frame by name — register at close time (module load),
+    // like clientHandler points do for dispatch. The closer's own feature guard already refused a stripped build
+    // above (declaring a socket point NEEDS the feature), so the registry call is unconditional here.
+    registerSpacePoint(point as never)
+    return point as never
+  }
+
+  /**
+   * Close a serverHandler point: a client → server message type inside a channel. `.serverReply` is required before
+   * closing. The optional argument is the handler options, grouped by side: `client` (`timeout`, `queue`,
+   * `onReplyFromServer`), `server` (`onBeforeServerReply`, `onAfterServerReply`).
+   *
+   * Server-and-client — the closer is kept on both bundles; the compiler drops the wrong group per bundle, so the
+   * argument must be an object literal without spreads.
+   *
+   *     export const messageSendHandler = chatChannel.lets
+   *       .serverHandler()
+   *       .clientSend(schema)
+   *       .serverReply(reply)
+   *       .serverHandler()
+   *     // .serverHandler({ client: { onReplyFromServer: ({ data }) => analytics.track('sent', data) } })   // options form
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  serverHandler(
+    ...args: TLetsReadyPointType extends 'serverHandler'
+      ? TServerLoaderOutput extends LoaderOutput
+        ? [
+            serverHandlerOptions?: ServerHandlerPointOptions<
+              TServerLoaderOutput,
+              InputParsed<TServerInputSchema>,
+              TIdentity,
+              TRoom,
+              InputRaw<TServerInputSchema>
+            >,
+          ]
+        : [ShowError<`Point has no reply. Please add .serverReply() before calling .serverHandler()`>]
+      : never
+  ): NiceServerHandlerReadyPoint<
+    'serverHandler',
+    UndefinedReadyPointType,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
+  >
+  serverHandler(...args: any) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`serverHandler, point ${this.id}`)
+    }
+    if (this._letsReadyPointType !== 'serverHandler') {
+      throw new Error(`serverHandler() closes a serverHandler point only, got ${this.toStringWithLocation()}`)
+    }
+    // the client bundle has `.serverReply()` stripped — the runtime guard belongs to the server, where the reply runs
+    if (_point0_env.side.is.server && !this._serverReplyFn) {
+      throw new Error(
+        `Point has no reply. Please add .serverReply() before calling .serverHandler() on ${this.toStringWithLocation()}`,
+      )
+    }
+    const [serverHandlerOptionsGrouped = {}] = args as [ServerHandlerPointOptions | undefined]
+    const serverHandlerOptions = flattenSidedOptions<ServerHandlerOptionsResolved>(serverHandlerOptionsGrouped)
+    const point = this._continue({
+      type: 'serverHandler',
+      _serverHandlerOptions: serverHandlerOptions,
+      _letsReadyPointType: undefined,
+    })
+    // the export is the CALLABLE binder — `handler(connection).sendToServer(input)`; the point rides on `.point`
+    return point._getCallableHandler() as never
+  }
+
+  /**
+   * Close a clientHandler point: a server → client message type inside a channel. Everything inside is optional — the
+   * minimal one is a pure trigger. The optional argument is the handler options, grouped by side: `client`
+   * (`onMessageFromServer` — a module-level listener here makes connecting all a client ever needs to do), `server`
+   * (`timeout` — the reply-collection window), plus the top-level `resumable` (opt this handler's pushes into a
+   * resumable channel's replay buffer — `true` or a per-connection frame ceiling).
+   *
+   * Server-and-client — the closer is kept on both bundles; the compiler drops the wrong group per bundle, so the
+   * argument must be an object literal without spreads.
+   *
+   *     export const ideasChangedHandler = ideasChannel.lets.clientHandler().clientHandler()
+   *     // .clientHandler({ client: { onMessageFromServer: ({ message }) => notify(message) } })   // options form
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  clientHandler(
+    ...args: TLetsReadyPointType extends 'clientHandler'
+      ? [clientHandlerOptions?: ClientHandlerPointOptions<InputParsed<TClientInputSchema>, TRoom>]
+      : never
+  ): NiceClientHandlerReadyPoint<
+    'clientHandler',
+    UndefinedReadyPointType,
+    TRequiredCtx,
+    TError,
+    TCtx,
+    TCtxExposedKeys,
+    TServerLoaderOutput,
+    TClientLoaderOutput,
+    TMapperOutput,
+    TRouteDefinition,
+    TServerInputSchema,
+    TClientInputSchema,
+    TParamsSchema,
+    TSearchSchema,
+    TBodySchema,
+    THeadersSchema,
+    TCookiesSchema,
+    TQueryResultType,
+    TOuterProps,
+    TInnerProps,
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
+  >
+  clientHandler(...args: any) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`clientHandler, point ${this.id}`)
+    }
+    if (this._letsReadyPointType !== 'clientHandler') {
+      throw new Error(`clientHandler() closes a clientHandler point only, got ${this.toStringWithLocation()}`)
+    }
+    const [clientHandlerOptionsGrouped = {}] = args as [ClientHandlerPointOptions | undefined]
+    const clientHandlerOptions = flattenSidedOptions<ClientHandlerOptionsResolved>(clientHandlerOptionsGrouped)
+    // the resume-buffer opt-in must not lie about itself: buffering frames a resume can never replay is a config
+    // error, not a silent no-op. Both facts are declaration-only (top-level, on both bundles), so the check runs on
+    // both sides and fails at module load — the closer is the start-time gate a point has
+    const resolvedResumable = mergeClientHandlerOptions(
+      this._defaultClientHandlerOptions,
+      clientHandlerOptions,
+    ).resumable
+    if (resolvedResumable !== undefined) {
+      if (this._getChannelPointOptions().resumable !== true) {
+        throw new Error(
+          `clientHandler resumable needs \`resumable: true\` on its channel (point ${this.toStringWithLocation()}) — the buffer only replays over a resumable connection`,
+        )
+      }
+      if (this._spacePoint && this._spacePoint._getSpacePointOptions().resumable === false) {
+        throw new Error(
+          `clientHandler resumable is not allowed on a handler of a \`resumable: false\` space (point ${this.toStringWithLocation()}) — a resume never restores that space's rooms, so there is nowhere to replay the buffer to`,
+        )
+      }
+      // an ambiguous shape must not resolve silently: `0` reads as "don't buffer" but the engine floors every
+      // buffering handler at one frame — the honest spellings are omitting the option, a positive integer, `true`,
+      // or the object form with the same rules on `buffer` and a known `replay` policy
+      if (typeof resolvedResumable === 'number') {
+        if (!Number.isInteger(resolvedResumable) || resolvedResumable < 1) {
+          throw new Error(
+            `clientHandler resumable must be \`true\`, a positive integer, or \`{ buffer?, replay? }\`, got ${String(resolvedResumable)} (point ${this.toStringWithLocation()}) — to not buffer this handler, omit the option`,
+          )
+        }
+      } else if (resolvedResumable !== true) {
+        // read through unknown on purpose: the closer guards UNTYPED misuse too, and the declared union would
+        // otherwise let the lint call the junk-value comparisons impossible
+        const { buffer, replay } = resolvedResumable as { buffer?: unknown; replay?: unknown }
+        if (
+          buffer !== undefined &&
+          buffer !== true &&
+          (typeof buffer !== 'number' || !Number.isInteger(buffer) || buffer < 1)
+        ) {
+          throw new Error(
+            `clientHandler resumable.buffer must be \`true\` or a positive integer, got ${String(buffer)} (point ${this.toStringWithLocation()}) — to not buffer this handler, omit the resumable option`,
+          )
+        }
+        if (replay !== undefined && replay !== 'always' && replay !== 'gapless') {
+          throw new Error(
+            `clientHandler resumable.replay must be 'always' or 'gapless', got ${String(replay)} (point ${this.toStringWithLocation()})`,
+          )
+        }
+      }
+    }
+    const point = this._continue({
+      type: 'clientHandler',
+      _clientHandlerOptions: clientHandlerOptions,
+      _letsReadyPointType: undefined,
+    })
+    // module-level listeners fire once the module is loaded — closing is the moment the client knows the handler.
+    // Register the POINT (dispatch looks handlers up by point id), not the callable export (the closer's own feature
+    // guard already refused a stripped build above; registerClientHandlerPoint no-ops on the server itself).
+    if (_point0_env.side.is.client) {
+      registerClientHandlerPoint(point as never)
+    }
+    // the export is the CALLABLE binder — `handler(connection).onMessageFromServer(cb)`; the point rides on `.point`
+    return point._getCallableHandler() as never
+  }
+
+  /**
+   * Hold a connection to this channel while the component is mounted — a regular connect request (the connector runs,
+   * any server check applies), then messages flow over the client's one WebSocket. Holds are counted: every
+   * `useConnection` / `<Connection>` / `connect()` with an equal input shares one real connection. Returns the
+   * connection facade: `status`, `error`, `isLoading`, `input`, `id`, `connectionIndex`, `disconnect()` — no `data` and
+   * no `room` (the connector's return is the server-side identity; rooms come from space memberships); re-renders on
+   * status changes. During SSR nothing connects — it reports `'connecting'` on the server and does the real work after
+   * mount.
+   *
+   * Server-and-client — kept on both bundles (the server render sees the `'connecting'` state).
+   *
+   *     const connection = chatChannel.useConnection({ chatId })
+   *     // chatChannel.useConnection(
+   *     //   { chatId },
+   *     //   { onConnect: ({ connectionIndex }) => connectionIndex > 0 && chatMessagesQuery.invalidateQuery({ chatId }) },
+   *     // )
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  useConnection(
+    input: FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
+    options?: ExtraUseConnectionOptions<
+      TError,
+      ClientChannelConnection<
+        FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+        TError
+      >
+    >,
+  ): ClientChannelConnection<
+    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+    TError
+  >
+  useConnection(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`useConnection, point ${this.id}`)
+    }
+    return useSocketConnection(this as never, args[0], args[1]) as never
+  }
+
+  /**
+   * The imperative `useConnection`: open (or share) a connection to this channel and hold it until `disconnect()`. Same
+   * dedup rules; the returned object is live — `status` updates as the connect settles.
+   *
+   * Server-and-client — kept on both bundles (on the server it returns the inert `'connecting'` connection).
+   *
+   *     const connection = chatChannel.connect({ chatId })
+   *     connection.disconnect()
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  connect(
+    input: FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
+    options?: ExtraUseConnectionOptions<
+      TError,
+      ClientChannelConnection<
+        FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+        TError
+      >
+    >,
+  ): ClientChannelConnection<
+    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+    TError
+  >
+  connect(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`connect, point ${this.id}`)
+    }
+    return connectToChannel(this as never, args[0], args[1]) as never
+  }
+
+  /**
+   * Look up the live connection of this channel for an input — the connection `useConnection`/`connect` opened with an
+   * equal input, if one is live right now. Purely a lookup: no hold is added, nothing connects, and the returned object
+   * is the same live facade the holders see (`status` updates as the connection moves). Throws when nothing matches —
+   * reach for {@link getConnectionOrUndefined} to probe.
+   *
+   * Client-side — connections live in the browser (a runtime error on the server).
+   *
+   *     const connection = chatChannel.getConnection({ chatId })
+   *     connection.status
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getConnection(
+    input: FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
+  ): ClientChannelConnection<
+    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+    TError
+  >
+  getConnection(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getConnection, point ${this.id}`)
+    }
+    if (_point0_env.side.is.server) {
+      throw new Error(`getConnection() is client-side — nothing is ever connected on the server (point ${this.id})`)
+    }
+    const connection = getChannelConnectionOrUndefined(this as never, args[0])
+    if (!connection) {
+      throw new Error(`No live connection of channel ${this.id} for this input — connect first`)
+    }
+    return connection as never
+  }
+
+  /**
+   * The probing twin of {@link getConnection}: the live connection for an input, or `undefined` when nothing matches.
+   * Same lookup, no hold, nothing connects.
+   *
+   * Client-side — on the server it always returns `undefined` (nothing is ever connected there).
+   *
+   *     chatChannel.getConnectionOrUndefined({ chatId })?.status
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getConnectionOrUndefined(
+    input: FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
+  ):
+    | ClientChannelConnection<
+        FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+        TError
+      >
+    | undefined
+  getConnectionOrUndefined(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getConnectionOrUndefined, point ${this.id}`)
+    }
+    return getChannelConnectionOrUndefined(this as never, args[0]) as never
+  }
+
+  /**
+   * Hold a connection while mounted and provide it to the subtree — inside, handlers of this channel may omit the
+   * `connection` argument (`sendToServer(input)`, `useOnMessageFromServer(cb)`).
+   *
+   * The children are gated on the connection per `gate`, mountable-style — DEFAULT `{ loading: false, error: true }`:
+   * the children render right away while it connects (the handlers inside wait for the connect on their own), and a
+   * failed connect renders the nearest `.error()` up the channel's chain with the typed error. `gate={{ loading: true
+   * }}` (or `gate` / `true`) also shows the nearest `.loading()` while connecting — during SSR too, nothing connects
+   * there. `gate={false}` renders through everything (the old `passthrough`). Once open (or closed later), the children
+   * render.
+   *
+   * Server-and-client — kept on both bundles (renders the loading state on the server, connects after mount).
+   *
+   *     <chatChannel.Connection input={{ chatId }}>
+   *       <Chat />
+   *     </chatChannel.Connection>
+   *     // <chatChannel.Connection input={{ chatId }} gate={false}> — never gate, render <Chat /> immediately
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  Connection: TPointType extends 'channel'
+    ? (
+        props: ChannelConnectionComponentProps<
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+          ExtraUseConnectionOptions<
+            TError,
+            ClientChannelConnection<
+              FinalInputRaw<
+                TPointType,
+                TServerInputSchema,
+                TClientInputSchema,
+                TParamsSchema,
+                TSearchSchema,
+                TBodySchema
+              >,
+              TError
+            >
+          >
+        >,
+      ) => React.ReactNode
+    : never = ((props: { input?: unknown; options?: unknown; gate?: Gate; children?: React.ReactNode }) => {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`Connection, point ${this.id}`)
+    }
+    // a channel renders as a MOUNTABLE, exactly like a Provider: the chain's mount actions (inherited wrappers,
+    // .loading()/.error(), .with injections) run through the interpreter, and the channel's own `selfConnection`
+    // terminal step holds the connection and gates it per `gate` (default errors-only — `closed` does NOT gate: it is
+    // either `enabled: false` or a later kick/logout — the children are already there and see the status), and provides
+    // the channel context. `mountComponent: 'children'` — once past the terminal step the children render as-is.
+    const {
+      input = {},
+      options,
+      gate,
+      LoadingComponent,
+      ErrorComponent,
+      children,
+    } = props as typeof props & {
+      LoadingComponent?: LoadingComponentType<any>
+      ErrorComponent?: ErrorComponentType<any, ErrorPoint0>
+    }
+    return this._applyWrappers(
+      this._MountableWithBoundaries({
+        layers: [
+          {
+            inputRaw: input as InputRaw,
+            outerProps: {} as TOuterProps,
+            selfConnectionOptions: options as ExtraUseConnectionOptions<any, any> | undefined,
+            selfGate: normalizeGate(gate),
+            SelfLoadingComponent: LoadingComponent,
+            SelfErrorComponent: ErrorComponent,
+          },
+        ],
+        extraProps: () => ({ children }),
+        mountComponent: 'children',
+      }),
+      { outerProps: {} },
+    )
+  }) as never
+
+  /**
+   * Hold a membership of this space while the component is mounted — a `join` over the socket (the `.joiner` decides
+   * which rooms), riding a live connection of the space's channel (the ambient `<channel.Connection>`, else the single
+   * live one — it never connects). Holds are counted like connections. Returns the membership object (`status`,
+   * `rooms`, `error`, `isLoading`, `input`, `membershipIndex`, `connection`, `leave()`); re-renders as it settles.
+   * During SSR nothing joins, and a space with no `.joiner` never joins at all (it takes no client joins).
+   *
+   * Server-and-client — kept on both bundles (the server render sees the `'joining'` state).
+   *
+   *     const membership = chatSpace.useMembership({ chatId })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  useMembership(
+    input: FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
+    options?: ExtraUseMembershipOptions<
+      ClientSpaceMembership<
+        FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+        TRoom,
+        TError,
+        TChannelInput
+      >
+    >,
+  ): ClientSpaceMembership<
+    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+    TRoom,
+    TError,
+    TChannelInput
+  >
+  useMembership(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`useMembership, point ${this.id}`)
+    }
+    return useSpaceMembership(this as never, args[0], args[1]) as never
+  }
+
+  /**
+   * The imperative `useMembership`: join (or share) a membership of this space and hold it until `leave()`. Same dedup
+   * and linger; the returned object is live. Optional `channelInput` names which connection to ride when the channel
+   * has several. Throws synchronously — nothing leaves the client — when the space declares no `.joiner` (it takes no
+   * client joins) or when no live connection of its channel exists.
+   *
+   * Server-and-client — kept on both bundles (on the server it returns the inert `'joining'` membership).
+   *
+   *     const membership = chatSpace.join({ chatId })
+   *     membership.leave()
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  join(
+    input: FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
+    options?: ExtraUseMembershipOptions<
+      ClientSpaceMembership<
+        FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+        TRoom,
+        TError,
+        TChannelInput
+      >
+    >,
+    channelInput?: TChannelInput,
+  ): ClientSpaceMembership<
+    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+    TRoom,
+    TError,
+    TChannelInput
+  >
+  join(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`join, point ${this.id}`)
+    }
+    return joinSpace(this as never, args[0], args[1], args[2] as never) as never
+  }
+
+  /**
+   * Look up the live membership of this space for an input, if one is live right now — a pure lookup, no hold, nothing
+   * joins. Optional `channelInput` names which connection to look on. Throws when nothing matches — reach for
+   * {@link getMembershipOrUndefined} to probe.
+   *
+   * Client-side — memberships live in the browser (a runtime error on the server).
+   *
+   *     chatSpace.getMembership({ chatId }).rooms
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getMembership(
+    input: FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
+    channelInput?: TChannelInput,
+  ): ClientSpaceMembership<
+    FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+    TRoom,
+    TError,
+    TChannelInput
+  >
+  getMembership(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getMembership, point ${this.id}`)
+    }
+    if (_point0_env.side.is.server) {
+      throw new Error(`getMembership() is client-side — nothing is ever joined on the server (point ${this.id})`)
+    }
+    const membership = getSpaceMembershipOrUndefined(this as never, args[0], args[1] as never)
+    if (!membership) {
+      throw new Error(`No live membership of space ${this.id} for this input — join first`)
+    }
+    return membership as never
+  }
+
+  /**
+   * The probing twin of {@link getMembership}: the live membership for an input, or `undefined` when nothing matches.
+   *
+   * Client-side — on the server it always returns `undefined`.
+   *
+   *     chatSpace.getMembershipOrUndefined({ chatId })?.rooms
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getMembershipOrUndefined(
+    input: FinalInputRawOrUndefinedOrVoid<
+      TPointType,
+      TServerInputSchema,
+      TClientInputSchema,
+      TParamsSchema,
+      TSearchSchema,
+      TBodySchema
+    >,
+    channelInput?: TChannelInput,
+  ):
+    | ClientSpaceMembership<
+        FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+        TRoom,
+        TError,
+        TChannelInput
+      >
+    | undefined
+  getMembershipOrUndefined(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getMembershipOrUndefined, point ${this.id}`)
+    }
+    return getSpaceMembershipOrUndefined(this as never, args[0], args[1] as never) as never
+  }
+
+  /**
+   * Hold a membership while mounted and provide it to the subtree — inside, handlers of this space may omit the
+   * `membership` argument. The children gate on the join per `gate`, mountable-style — DEFAULT `{ loading: false,
+   * error: true }`: they render right away while joining and the chain's `.error()` shows on a failed join. `gate={{
+   * loading: true }}` (or `true`) also shows `.loading()` while joining; `gate={false}` renders through everything.
+   * Requires a live connection of the space's channel above it.
+   *
+   * Server-and-client — kept on both bundles (renders the loading state on the server, joins after mount).
+   *
+   *     <chatSpace.Membership input={{ chatId }}>
+   *       <Chat />
+   *     </chatSpace.Membership>
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  Membership: TPointType extends 'space'
+    ? (
+        props: SpaceMembershipComponentProps<
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+          ExtraUseMembershipOptions<
+            ClientSpaceMembership<
+              FinalInputRaw<
+                TPointType,
+                TServerInputSchema,
+                TClientInputSchema,
+                TParamsSchema,
+                TSearchSchema,
+                TBodySchema
+              >,
+              TRoom,
+              TError,
+              TChannelInput
+            >
+          >
+        >,
+      ) => React.ReactNode
+    : never = ((props: { input?: unknown; options?: unknown; gate?: Gate; children?: React.ReactNode }) => {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`Membership, point ${this.id}`)
+    }
+    // the space mirror of `<channel.Connection>` — the same mountable render, closed by the space's own
+    // `selfMembership` terminal step (join, gate per `gate` — default errors-only, provide the space context)
+    const {
+      input = {},
+      options,
+      gate,
+      LoadingComponent,
+      ErrorComponent,
+      children,
+    } = props as typeof props & {
+      LoadingComponent?: LoadingComponentType<any>
+      ErrorComponent?: ErrorComponentType<any, ErrorPoint0>
+    }
+    return this._applyWrappers(
+      this._MountableWithBoundaries({
+        layers: [
+          {
+            inputRaw: input as InputRaw,
+            outerProps: {} as TOuterProps,
+            selfMembershipOptions: options as ExtraUseMembershipOptions | undefined,
+            selfGate: normalizeGate(gate),
+            SelfLoadingComponent: LoadingComponent,
+            SelfErrorComponent: ErrorComponent,
+          },
+        ],
+        extraProps: () => ({ children }),
+        mountComponent: 'children',
+      }),
+      { outerProps: {} },
+    )
+  }) as never
+
+  /**
+   * Send a message to the server (a **serverHandler**, client side) — resolves with the `.serverReply` return. Don't
+   * await it and it's fire-and-forget. The bare form resolves the connection on its own (the single live connection of
+   * the channel); bind an explicit one by calling the handler — `handler(connection).sendToServer(input)`. During a
+   * reconnect the send queues up to the handler's `timeout` (opt out with `queue: false`).
+   *
+   * Client-side — sending happens over the client's WebSocket (a runtime error on the server).
+   *
+   *     const { message } = await messageSendHandler.sendToServer({ text })
+   *     void markReadHandler.sendToServer() // no input declared — none passed
+   *     void typingHandler.sendToServer({}, { queue: false }) // fail fast during a reconnect
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  sendToServer<
+    TArgs extends TPointType extends 'serverHandler'
+      ? ServerHandlerSendArgs<
+          InputRaw<TServerInputSchema>,
+          ServerHandlerCallOptions<TServerLoaderOutput, InputRaw<TServerInputSchema>>
+        >
+      : never[],
+  >(...args: TArgs): TPointType extends 'serverHandler' ? Promise<TServerLoaderOutput> : never
+  sendToServer(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`sendToServer, point ${this.id}`)
+    }
+    if (this.type !== 'serverHandler') {
+      throw new Error(`sendToServer() lives on serverHandler points only, got ${this.toStringWithLocation()}`)
+    }
+    return sendToServerHandler(this as never, undefined, args[0], args[1] as never)
+  }
+
+  /**
+   * Send a message to clients (a **clientHandler**, server side) — `sendToClient(message, target?, replies?)`. The
+   * target is the `$`-dictionary, parts AND-combined: a CHANNEL handler addresses connections (`connectionId`,
+   * `$identity`; bare = everyone in the channel), a SPACE handler addresses rooms (`room` snapshot(s) — the hot pub/sub
+   * path — plus `connectionId` / `$identity` narrowing; bare = everyone in the space). `except` skips connection ids
+   * (or, on a space handler, whole rooms). Matchers are Mongo-style sift selections over declared identity/room keys
+   * (`{ userId: { $in: [...] } }`). Pass `replies` (exists only with `.clientReply`) to collect each client's reply,
+   * validated by its schema.
+   *
+   * Server-side — callable anywhere on the server: mutation loaders, other handlers, crons (a runtime error on the
+   * client — the client listens with `onMessageFromServer`).
+   *
+   *     void messageNewHandler.sendToClient({ message }, { room: { chatId } })
+   *     void announceHandler.sendToClient({ text }) // channel handler — everyone connected
+   *     const replies = await pingHandler.sendToClient({ ask }, { room }, { waitForAll: true })
+   *     for await (const reply of pingHandler.sendToClient({ ask }, { room }, true)) { ... }
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  sendToClient(
+    ...args: TPointType extends 'clientHandler'
+      ? [...head: ClientHandlerSendHeadArgs<TRoom, InputRaw<TClientInputSchema>, TIdentity>, replies?: undefined]
+      : never[]
+  ): TPointType extends 'clientHandler' ? void : never
+  sendToClient(
+    ...args: TPointType extends 'clientHandler'
+      ? [TServerLoaderOutput] extends [undefined]
+        ? never
+        : [...head: ClientHandlerSendHeadArgs<TRoom, InputRaw<TClientInputSchema>, TIdentity>, replies?: true]
+      : never[]
+  ): TPointType extends 'clientHandler' ? AsyncIterable<ClientHandlerReply<TServerLoaderOutput>> : never
+  sendToClient(
+    ...args: TPointType extends 'clientHandler'
+      ? [TServerLoaderOutput] extends [undefined]
+        ? never
+        : [
+            ...head: ClientHandlerSendHeadArgs<TRoom, InputRaw<TClientInputSchema>, TIdentity>,
+            replies?: ClientHandlerSendRepliesObject<TServerLoaderOutput> & { waitForAll: true },
+          ]
+      : never[]
+  ): TPointType extends 'clientHandler' ? Promise<Array<ClientHandlerReply<TServerLoaderOutput>>> : never
+  sendToClient(
+    ...args: TPointType extends 'clientHandler'
+      ? [TServerLoaderOutput] extends [undefined]
+        ? never
+        : [
+            ...head: ClientHandlerSendHeadArgs<TRoom, InputRaw<TClientInputSchema>, TIdentity>,
+            replies?: ClientHandlerSendRepliesObject<TServerLoaderOutput>,
+          ]
+      : never[]
+  ): TPointType extends 'clientHandler' ? Promise<void> : never
+  sendToClient(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`sendToClient, point ${this.id}`)
+    }
+    if (this.type !== 'clientHandler') {
+      throw new Error(`sendToClient() lives on clientHandler points only, got ${this.toStringWithLocation()}`)
+    }
+    return this._sendClientHandler(
+      args[0],
+      args[1] as ClientHandlerSendTarget<any, any> | undefined,
+      args[2] as ClientHandlerSendReplies<any> | undefined,
+    )
+  }
+
+  /** Normalize a `x | x[]` target part to an array (`undefined` stays `undefined`). */
+  private static _toArrayPart<T>(value: T | T[] | undefined): T[] | undefined {
+    if (value === undefined) {
+      return undefined
+    }
+    return Array.isArray(value) ? value : [value]
+  }
+
+  /**
+   * Build the serialized push target from the `$`-dictionary: rooms ride the SPACE transformer (they address room
+   * topics, whose keys the space serialized), the identity matcher rides the CHANNEL transformer (identity lives on the
+   * channel). A space handler splits `except` by element kind — strings are connection ids, objects are rooms.
+   */
+  private _buildPushTarget(target: ClientHandlerSendTarget<any, any> | undefined): SocketServerPushTarget {
+    if (_point0_env.side.is.client) {
+      throw new Error(`Push targeting is server-side (point ${this.id})`)
+    }
+    const opts = (target ?? {}) as {
+      room?: UnknownData | UnknownData[]
+      $room?: UnknownData
+      connectionId?: string | string[]
+      $identity?: UnknownData
+      except?: string | string[] | UnknownData | UnknownData[]
+    }
+    const space = this._spacePoint
+    const channel = this._channelPointOrThrow()
+    if (opts.$identity !== undefined) {
+      Point0._assertNoWhereOperator(opts.$identity, this.id)
+    }
+    if (opts.$room !== undefined) {
+      Point0._assertNoWhereOperator(opts.$room, this.id)
+    }
+    const rooms = Point0._toArrayPart(opts.room as UnknownData | UnknownData[] | undefined)
+    if ((rooms !== undefined || opts.$room !== undefined) && !space) {
+      throw new Error(`Point ${this.id} has no space — room targeting lives on space handlers`)
+    }
+    const spaceTransformer = space?._getSocketTransformer()
+    const exceptRaw = Point0._toArrayPart(opts.except as (string | UnknownData)[] | (string | UnknownData) | undefined)
+    const exceptConnectionIds = exceptRaw?.filter((item): item is string => typeof item === 'string')
+    const exceptRoomObjects = exceptRaw?.filter((item): item is UnknownData => typeof item !== 'string')
+    if (exceptRoomObjects !== undefined && exceptRoomObjects.length > 0 && !space) {
+      throw new Error(`Point ${this.id} has no space — room excepts live on space handlers`)
+    }
+    return {
+      connectionId: Point0._toArrayPart(opts.connectionId),
+      identityMatcher:
+        opts.$identity === undefined
+          ? undefined
+          : stringifyOrThrow(channel._getSocketTransformer(), opts.$identity, channel.id),
+      space: space?.name,
+      rooms:
+        rooms === undefined ? undefined : rooms.map((room) => stringifyOrThrow(spaceTransformer!, room, space!.id)),
+      roomMatcher: opts.$room === undefined ? undefined : stringifyOrThrow(spaceTransformer!, opts.$room, space!.id),
+      exceptConnectionIds:
+        exceptConnectionIds === undefined || exceptConnectionIds.length === 0 ? undefined : exceptConnectionIds,
+      exceptRooms:
+        exceptRoomObjects === undefined || exceptRoomObjects.length === 0
+          ? undefined
+          : exceptRoomObjects.map((room) => stringifyOrThrow(spaceTransformer!, room, space!.id)),
+    }
+  }
+
+  private _sendClientHandler(
+    message: unknown,
+    target: ClientHandlerSendTarget<any, any> | undefined,
+    replies: ClientHandlerSendReplies<any> | undefined,
+  ): any {
+    if (_point0_env.side.is.client) {
+      throw new Error(
+        `clientHandler.sendToClient() is server-side — the client listens with onMessageFromServer (point ${this.id})`,
+      )
+    }
+    const channel = this._channelPointOrThrow()
+    const adapter = getSocketServerAdapterOrThrow(this.scope, this.id)
+    const transformer = this._getSocketTransformer()
+    const pushTarget = this._buildPushTarget(target)
+    // the wire frame field stays `input` (internal protocol) — the developer-facing name is `message`
+    const messageSerialized = message === undefined ? undefined : stringifyOrThrow(transformer, message, this.id)
+    if (replies === undefined) {
+      adapter.push({ channel, handler: this as never, target: pushTarget, input: messageSerialized })
+      return undefined
+    }
+    const repliesOptions = replies === true ? {} : replies
+    const resolvedOptions = mergeClientHandlerOptions(this._defaultClientHandlerOptions, this._clientHandlerOptions)
+    const timeoutMs = repliesOptions.timeout ?? resolvedOptions.timeout ?? 5000
+    const buffered: Array<ClientHandlerReply<unknown>> = []
+    let done = false
+    const notifiers = new Set<() => void>()
+    const notify = () => {
+      for (const notifier of [...notifiers]) {
+        notifier()
+      }
+    }
+    const onReplyRaw = (reply: { cid: string; data: string | undefined; room?: string | undefined }) => {
+      let data: unknown = reply.data === undefined ? undefined : transformer.parse(reply.data)
+      if (this._clientReplySchema) {
+        const parsed = this.parseInputSafeSync(this._clientReplySchema, data as never)
+        if (!parsed.success) {
+          // clients can send anything — an invalid reply is dropped, never surfaced as a valid one
+          getLogFnForPoint(this)({
+            level: 'warn',
+            category: ['point0', 'socket'],
+            message: `A client reply failed the .clientReply schema and was dropped (point ${this.id}, connection ${reply.cid})`,
+            error: parsed.error,
+          })
+          return
+        }
+        data = parsed.data
+      }
+      const replyOut: ClientHandlerReply<unknown> = { data, connectionId: reply.cid }
+      buffered.push(replyOut)
+      if (repliesOptions.onReply) {
+        void repliesOptions.onReply(replyOut)
+      }
+      notify()
+    }
+    const onDone = () => {
+      done = true
+      notify()
+    }
+    adapter.push({
+      channel,
+      handler: this as never,
+      target: pushTarget,
+      input: messageSerialized,
+      collect: { timeoutMs, onReply: onReplyRaw, onDone },
+    })
+    // the object form settles when the window closes: with `waitForAll` — with the full array, else with nothing
+    if (replies !== true) {
+      return new Promise((resolve) => {
+        const check = () => {
+          if (done) {
+            resolve(repliesOptions.waitForAll ? [...buffered] : undefined)
+          }
+        }
+        notifiers.add(check)
+        check()
+      })
+    }
+    const iterable: AsyncIterable<ClientHandlerReply<unknown>> = {
+      [Symbol.asyncIterator]() {
+        let index = 0
+        return {
+          next: async (): Promise<IteratorResult<ClientHandlerReply<unknown>>> => {
+            for (;;) {
+              if (index < buffered.length) {
+                return { value: buffered[index++], done: false }
+              }
+              if (done) {
+                return { value: undefined, done: true }
+              }
+              await new Promise<void>((resolve) => {
+                const notifier = () => {
+                  notifiers.delete(notifier)
+                  resolve()
+                }
+                notifiers.add(notifier)
+              })
+            }
+          },
+        }
+      },
+    }
+    return iterable
+  }
+
+  /**
+   * Listen to this clientHandler's messages while the component is mounted. The callback receives `{ message,
+   * connection, point }` (a space handler's adds `room`) and fires immediately on arrival — decoupled from the
+   * `.clientReply` auto-responder, so a slow or throwing reply never delays or suppresses it. The bare form resolves
+   * the connection on its own: the ambient `<channel.Connection>`, else the single live connection — bind an explicit
+   * one by calling the handler (`handler(connection).useOnMessageFromServer(cb)`). A connection that opens later is
+   * picked up automatically. The options take `enabled` (`false` detaches the listener) and
+   * `lastMessageFromServerAsData` — keep the latest message in state: the result gains `data` and re-renders on every
+   * push (by default nothing re-renders and the hook returns nothing).
+   *
+   * Server-and-client — kept on both bundles (a no-op during SSR).
+   *
+   *     typingHandler.useOnMessageFromServer(({ message }) => setWho(message.userName)) // under <chatChannel.Connection>
+   *     // const { data } = tickHandler.useOnMessageFromServer(() => {}, { lastMessageFromServerAsData: true })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  useOnMessageFromServer<
+    TOptions extends UseOnMessageFromServerOptions | undefined = UseOnMessageFromServerOptions | undefined,
+  >(
+    ...args: TPointType extends 'clientHandler'
+      ? [listener: ClientHandlerListenerFn<InputParsed<TClientInputSchema>, TRoom>, options?: TOptions]
+      : never
+  ): TPointType extends 'clientHandler'
+    ? UseOnMessageFromServerResultFor<TOptions, InputParsed<TClientInputSchema>>
+    : never
+  useOnMessageFromServer(...args: any[]): any {
+    const [listener, options] = args as [ClientHandlerListenerFn<any, any>, UseOnMessageFromServerOptions | undefined]
+    const facade = this._useHandlerConnectionFacade({ target: undefined, consultAmbient: true })
+    return this._useOnMessageFromServerInner({ facade, listener, options })
+  }
+
+  /** The shared body of `useOnMessageFromServer` (bare + bound) — the listener plus the opt-in latest-input state. */
+  private _useOnMessageFromServerInner({
+    facade,
+    boundRoom,
+    listener,
+    options,
+  }: {
+    facade: AnyClientChannelConnection | AnyClientSpaceMembership | undefined
+    /** `handler(room)` — the listener then hears only that room's pushes */
+    boundRoom?: unknown
+    listener: ClientHandlerListenerFn<any, any>
+    options: UseOnMessageFromServerOptions | undefined
+  }): unknown {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_useOnMessageFromServerInner, point ${this.id}`)
+    }
+    const enabled = options?.enabled !== false
+    const trackData = options?.lastMessageFromServerAsData === true
+    const [data, setData] = React.useState<unknown>(undefined)
+    const optionsRef = React.useRef(options)
+    optionsRef.current = options
+    const listenerRef = React.useRef(listener)
+    listenerRef.current = listener
+    useSocketOnMessage(
+      this as never,
+      facade as never,
+      (listenerProps) => {
+        void listenerRef.current(listenerProps as never)
+        // messages re-render only when the caller asked for `data` — the reactive path stays render-free
+        if (optionsRef.current?.lastMessageFromServerAsData === true) {
+          setData((listenerProps as { message: unknown }).message)
+        }
+      },
+      { enabled },
+      boundRoom,
+    )
+    return trackData ? { data } : undefined
+  }
+
+  /**
+   * Iterate this handler's messages imperatively — the server's pushes as an async iterable, `for await` it. No request
+   * leaves the client and there is no transport of its own: iterating attaches a listener to the resolved target (the
+   * ambient `<channel.Connection>`, else the single live connection; bind an explicit one by calling the handler —
+   * `handler(connection).iterateMessagesFromServer()`). Yields ride while the target lives (a drop parks the loop while
+   * the channel's reconnect policy redials); the iteration ends when the target closes for good and throws its typed
+   * error when it fails. Break out (or abort `options.signal`) to detach the listener.
+   *
+   * Client-side — a runtime error on the server.
+   *
+   *     for await (const tick of tickHandler.iterateMessagesFromServer()) render(tick)
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  iterateMessagesFromServer(
+    ...args: TPointType extends 'clientHandler' ? [options?: IterateMessagesFromServerOptions] : never
+  ): TPointType extends 'clientHandler' ? AsyncGenerator<InputParsed<TClientInputSchema>, void, undefined> : never
+  iterateMessagesFromServer(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`iterateMessagesFromServer, point ${this.id}`)
+    }
+    if (this.type !== 'clientHandler') {
+      throw new Error(
+        `iterateMessagesFromServer() lives on clientHandler points only, got ${this.toStringWithLocation()}`,
+      )
+    }
+    return iterateClientHandlerMessages(this as never, undefined, args[0] as never)
+  }
+
+  /**
+   * The imperative `useOnMessageFromServer`: register a listener, get `{ remove() }` back. Same callback payload; the
+   * bare form resolves the single live connection (there is no React context outside components) — bind an explicit one
+   * by calling the handler (`handler(connection).onMessageFromServer(cb)`).
+   *
+   * Server-and-client — kept on both bundles (returns an inert remover during SSR).
+   *
+   *     const listener = messageReceivedHandler.onMessageFromServer(({ message }) => render(message.message))
+   *     listener.remove()
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  onMessageFromServer(
+    ...args: TPointType extends 'clientHandler'
+      ? [listener: ClientHandlerListenerFn<InputParsed<TClientInputSchema>, TRoom>]
+      : never
+  ): { remove: () => void }
+  onMessageFromServer(...args: any[]) {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`onMessageFromServer, point ${this.id}`)
+    }
+    return addClientHandlerListener(this as AnyPoint, undefined, args[0])
+  }
+
+  private _channelPointOrThrow(): AnyPoint {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_channelPointOrThrow, point ${this.id}`)
+    }
+    const channel = this._channelPoint
+    if (!channel) {
+      throw new Error(`Point ${this.id} has no channel — handlers grow from a channel point`)
+    }
+    return channel
+  }
+
+  private _reactConnectionContextCache: React.Context<AnyClientChannelConnection | undefined> | undefined
+  /**
+   * The ambient CONNECTION React context of this channel — what `<channel.Connection>` provides and the handler hooks
+   * beneath consume. A lazy per-point instance (the same pattern as `_callableHandlerCache`): the Provider and every
+   * consumer reach the context through this very channel point object, so identity holds on any executor — server
+   * render, browser, fake client — with no registry anywhere.
+   */
+  _getReactConnectionContext(): React.Context<AnyClientChannelConnection | undefined> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getReactConnectionContext, point ${this.id}`)
+    }
+    if (this.type !== 'channel') {
+      throw new Error(`The connection context lives on channel points only, got ${this.toStringWithLocation()}`)
+    }
+    return (this._reactConnectionContextCache ??= React.createContext<AnyClientChannelConnection | undefined>(
+      undefined,
+    ))
+  }
+
+  private _reactMembershipContextCache: React.Context<AnyClientSpaceMembership | undefined> | undefined
+  /**
+   * The ambient MEMBERSHIP React context of this space — what `<space.Membership>` provides and the handler hooks
+   * beneath consume. The space twin of {@link _getReactConnectionContext}.
+   */
+  _getReactMembershipContext(): React.Context<AnyClientSpaceMembership | undefined> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getReactMembershipContext, point ${this.id}`)
+    }
+    if (this.type !== 'space') {
+      throw new Error(`The membership context lives on space points only, got ${this.toStringWithLocation()}`)
+    }
+    return (this._reactMembershipContextCache ??= React.createContext<AnyClientSpaceMembership | undefined>(undefined))
+  }
+
+  private _callableHandlerCache: ((target: unknown, channelInput?: unknown) => unknown) | undefined
+  /**
+   * The handler point's runtime export: a callable binder — `handler(connection)` returns the bound surface — carrying
+   * every nice point method. Built once per point (`_assignNicePointMethodsToComponent` refuses a second decoration)
+   * and returned by both the closer (`.serverHandler()` / `.clientHandler()`) and `_tail` (the compiled path), so the
+   * two roads export the SAME function.
+   */
+  _getCallableHandler(): (target: unknown, channelInput?: unknown) => unknown {
+    if (this._callableHandlerCache) {
+      return this._callableHandlerCache
+    }
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const point = this
+    // a space handler's bind takes a second arg — `handler(membership | room, channelInput?)` — a channel handler ignores it
+    const callable = (target: unknown, channelInput?: unknown) => point._bindHandler(target, channelInput)
+    Point0._assignNicePointMethodsToComponent({
+      component: callable as never,
+      point: point,
+      // the ready types expose `id` and `type` — the generic map leaves them to real point instances, so carry them here
+      extra: { id: point.id, type: point.type },
+    })
+    this._callableHandlerCache = callable
+    return callable
+  }
+
+  /**
+   * The room a space-handler binding addresses, read off the bind argument alone: a plain object IS the room, a
+   * membership facade (the stamp/duck check) is the "take my single room" convenience, and a bare/channel binding has
+   * none. Pure classification — no registry lookup.
+   *
+   * The room stays UNTYPED here and in every `boundRoom` parameter below it: its shape lives in the space point's
+   * `TRoom` generic, and the binder runs on the erased point — the typed layer above is what guarantees it.
+   */
+  private _boundSpaceRoom(target: unknown): unknown {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_boundSpaceRoom, point ${this.id}`)
+    }
+    return this._spacePoint !== undefined && target !== undefined && !isMembershipFacade(target) ? target : undefined
+  }
+
+  /**
+   * Build the bound surface `handler(target)` returns — a plain object of closures over the target (the point is never
+   * mutated). The target resolves LAZILY per call/render: a facade through the live registry, a ROOM (a space handler's
+   * plain-object form) by searching the live memberships covering it (never joining one). Bound methods do NOT consult
+   * the ambient `<channel.Connection>` / `<space.Membership>` — an explicit target wins.
+   */
+  _bindHandler(target: unknown, channelInput?: unknown): unknown {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_bindHandler, point ${this.id}`)
+    }
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const point = this
+    const isSpace = point._spacePoint !== undefined
+    // what room this binding addresses — `handler(room)`; a membership facade / bare binding leaves it undefined and
+    // the membership's single room is taken at send/key time
+    const boundRoom = point._boundSpaceRoom(target)
+    // the strict target resolution for a send/listen: a space handler resolves a membership (target + channelInput), a
+    // channel handler a connection. The transport (`sendToServerHandler` / `addClientHandlerListener`) then treats the
+    // returned facade as the right kind by looking at `handler._spacePoint`.
+    const resolveStrictFacade = (): unknown =>
+      isSpace
+        ? resolveSpaceHandlerTarget(point as never, target as never, channelInput as never, undefined, { strict: true })
+        : resolveHandlerTarget(point as never, target as never, undefined, { strict: true })
+    if (this.type === 'serverHandler') {
+      return {
+        point,
+        sendToServer: (input?: unknown, options?: unknown) => {
+          if (_point0_env.side.is.server) {
+            // let the transport throw its own "client only" error instead of a misleading "not live" one
+            return sendToServerHandler(point as never, undefined, input, options as never, boundRoom)
+          }
+          const facade = resolveStrictFacade()
+          return sendToServerHandler(point as never, facade as never, input, options as never, boundRoom)
+        },
+        useSocketQuery: (input?: unknown, queryOptions?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'useSocketQuery')
+          const facade = point._useHandlerConnectionFacade({ target, channelInput, consultAmbient: false })
+          return point._useSocketQueryInner({
+            facade,
+            boundRoom,
+            input: input as never,
+            queryOptions: queryOptions as never,
+          })
+        },
+        useSocketInfiniteQuery: (input?: unknown, infiniteQueryOptions?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'useSocketInfiniteQuery')
+          const facade = point._useHandlerConnectionFacade({ target, channelInput, consultAmbient: false })
+          return point._useSocketInfiniteQueryInner({
+            facade,
+            boundRoom,
+            input: input as never,
+            infiniteQueryOptions: infiniteQueryOptions as never,
+          })
+        },
+        useSocketMutation: (mutationOptions?: unknown) => {
+          point._assertServerHandlerFlavor('mutation', 'useSocketMutation')
+          return point._useSocketMutationInner({
+            target,
+            channelInput,
+            consultAmbient: false,
+            mutationOptions: mutationOptions as never,
+          })
+        },
+        useSuspenseSocketQuery: (input?: unknown, queryOptions?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'useSuspenseSocketQuery')
+          return point._useSuspenseSocketQueryInner({
+            target,
+            channelInput,
+            consultAmbient: false,
+            input: input as never,
+            queryOptions,
+            isInfiniteQuery: false,
+          })
+        },
+        useSuspenseSocketInfiniteQuery: (input?: unknown, queryOptions?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'useSuspenseSocketInfiniteQuery')
+          return point._useSuspenseSocketQueryInner({
+            target,
+            channelInput,
+            consultAmbient: false,
+            input: input as never,
+            queryOptions,
+            isInfiniteQuery: true,
+          })
+        },
+        fetchSocketQuery: (input?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'fetchSocketQuery')
+          return point._fetchSocketQueryInner({ target, channelInput, input: input as never })
+        },
+        fetchSocketInfiniteQuery: (input?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'fetchSocketInfiniteQuery')
+          return point._fetchSocketInfiniteQueryInner({ target, channelInput, input: input as never })
+        },
+        prefetchSocketQuery: (input?: unknown, queryOptions?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'prefetchSocketQuery')
+          return point._prefetchSocketQueryInner({
+            target,
+            channelInput,
+            input: input as never,
+            queryOptions,
+            isInfiniteQuery: false,
+          })
+        },
+        prefetchSocketInfiniteQuery: (input?: unknown, queryOptions?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'prefetchSocketInfiniteQuery')
+          return point._prefetchSocketQueryInner({
+            target,
+            channelInput,
+            input: input as never,
+            queryOptions,
+            isInfiniteQuery: true,
+          })
+        },
+        ensureSocketQueryData: (input?: unknown, queryOptions?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'ensureSocketQueryData')
+          return point._ensureSocketQueryDataInner({
+            target,
+            channelInput,
+            input: input as never,
+            queryOptions,
+            isInfiniteQuery: false,
+          })
+        },
+        ensureSocketInfiniteQueryData: (input?: unknown, queryOptions?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'ensureSocketInfiniteQueryData')
+          return point._ensureSocketQueryDataInner({
+            target,
+            channelInput,
+            input: input as never,
+            queryOptions,
+            isInfiniteQuery: true,
+          })
+        },
+        getSocketQueryOptions: (input?: unknown, queryOptions?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'getSocketQueryOptions')
+          return point._getSocketQueryOptionsInner({
+            target,
+            channelInput,
+            input: input as never,
+            queryOptions,
+            isInfiniteQuery: false,
+          })
+        },
+        getSocketInfiniteQueryOptions: (input?: unknown, queryOptions?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueryOptions')
+          return point._getSocketQueryOptionsInner({
+            target,
+            channelInput,
+            input: input as never,
+            queryOptions,
+            isInfiniteQuery: true,
+          })
+        },
+        getSocketQueryKey: (input?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'getSocketQueryKey')
+          return point._getSocketQueryKeyInner({
+            target,
+            channelInput,
+            input: input as never,
+            isInfiniteQuery: false,
+          })
+        },
+        getSocketInfiniteQueryKey: (input?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueryKey')
+          return point._getSocketQueryKeyInner({ target, channelInput, input: input as never, isInfiniteQuery: true })
+        },
+        getSocketQueryData: (input?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'getSocketQueryData')
+          return point._getSocketQueryDataInner({
+            target,
+            channelInput,
+            input: input as never,
+            isInfiniteQuery: false,
+          })
+        },
+        getSocketInfiniteQueryData: (input?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueryData')
+          return point._getSocketQueryDataInner({
+            target,
+            channelInput,
+            input: input as never,
+            isInfiniteQuery: true,
+          })
+        },
+        setSocketQueryData: (input: unknown, updater: (old: unknown) => unknown) => {
+          point._assertServerHandlerFlavor('query', 'setSocketQueryData')
+          return point._setSocketQueryDataInner({
+            target,
+            channelInput,
+            input: input as never,
+            updater,
+            isInfiniteQuery: false,
+          })
+        },
+        setSocketInfiniteQueryData: (input: unknown, updater: (old: unknown) => unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'setSocketInfiniteQueryData')
+          return point._setSocketQueryDataInner({
+            target,
+            channelInput,
+            input: input as never,
+            updater,
+            isInfiniteQuery: true,
+          })
+        },
+        getSocketQueryState: (input?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'getSocketQueryState')
+          return point._getSocketQueryStateInner({
+            target,
+            channelInput,
+            input: input as never,
+            isInfiniteQuery: false,
+          })
+        },
+        getSocketInfiniteQueryState: (input?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueryState')
+          return point._getSocketQueryStateInner({
+            target,
+            channelInput,
+            input: input as never,
+            isInfiniteQuery: true,
+          })
+        },
+        getSocketQueryCache: (input?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'getSocketQueryCache')
+          return point._getSocketQueryCacheInner({
+            target,
+            channelInput,
+            input: input as never,
+            isInfiniteQuery: false,
+          })
+        },
+        getSocketInfiniteQueryCache: (input?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueryCache')
+          return point._getSocketQueryCacheInner({
+            target,
+            channelInput,
+            input: input as never,
+            isInfiniteQuery: true,
+          })
+        },
+        getSocketQueriesCache: (input?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'getSocketQueriesCache')
+          return point._getSocketQueriesCacheInner({
+            target,
+            channelInput,
+            input: input as never,
+            isInfiniteQuery: false,
+          })
+        },
+        getSocketInfiniteQueriesCache: (input?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueriesCache')
+          return point._getSocketQueriesCacheInner({
+            target,
+            channelInput,
+            input: input as never,
+            isInfiniteQuery: true,
+          })
+        },
+        refetchSocketQuery: (input?: unknown, refetchOptions?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'refetchSocketQuery')
+          return point._refetchSocketQueryInner({
+            target,
+            channelInput,
+            input: input as never,
+            refetchOptions: refetchOptions as never,
+            isInfiniteQuery: false,
+          })
+        },
+        refetchSocketInfiniteQuery: (input?: unknown, refetchOptions?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'refetchSocketInfiniteQuery')
+          return point._refetchSocketQueryInner({
+            target,
+            channelInput,
+            input: input as never,
+            refetchOptions: refetchOptions as never,
+            isInfiniteQuery: true,
+          })
+        },
+        invalidateSocketQuery: (input?: unknown, invalidateOptions?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'invalidateSocketQuery')
+          return point._invalidateSocketQueryInner({
+            target,
+            channelInput,
+            input: input as never,
+            invalidateOptions: invalidateOptions as never,
+            isInfiniteQuery: false,
+          })
+        },
+        invalidateSocketInfiniteQuery: (input?: unknown, invalidateOptions?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'invalidateSocketInfiniteQuery')
+          return point._invalidateSocketQueryInner({
+            target,
+            channelInput,
+            input: input as never,
+            invalidateOptions: invalidateOptions as never,
+            isInfiniteQuery: true,
+          })
+        },
+        cancelSocketQuery: (input?: unknown, cancelOptions?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'cancelSocketQuery')
+          return point._cancelSocketQueryInner({
+            target,
+            channelInput,
+            input: input as never,
+            cancelOptions: cancelOptions as never,
+            isInfiniteQuery: false,
+          })
+        },
+        cancelSocketInfiniteQuery: (input?: unknown, cancelOptions?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'cancelSocketInfiniteQuery')
+          return point._cancelSocketQueryInner({
+            target,
+            channelInput,
+            input: input as never,
+            cancelOptions: cancelOptions as never,
+            isInfiniteQuery: true,
+          })
+        },
+        removeSocketQuery: (input?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'removeSocketQuery')
+          return point._removeSocketQueryInner({
+            target,
+            channelInput,
+            input: input as never,
+            isInfiniteQuery: false,
+          })
+        },
+        removeSocketInfiniteQuery: (input?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'removeSocketInfiniteQuery')
+          return point._removeSocketQueryInner({ target, channelInput, input: input as never, isInfiniteQuery: true })
+        },
+        resetSocketQuery: (input?: unknown) => {
+          point._assertServerHandlerFlavor('query', 'resetSocketQuery')
+          return point._resetSocketQueryInner({ target, channelInput, input: input as never, isInfiniteQuery: false })
+        },
+        resetSocketInfiniteQuery: (input?: unknown) => {
+          point._assertServerHandlerFlavor('infiniteQuery', 'resetSocketInfiniteQuery')
+          return point._resetSocketQueryInner({ target, channelInput, input: input as never, isInfiniteQuery: true })
+        },
+        fetchSocketMutation: (input?: unknown, mutationOptions?: unknown) => {
+          point._assertServerHandlerFlavor('mutation', 'fetchSocketMutation')
+          return point._fetchSocketMutationInner({
+            target,
+            channelInput,
+            input: input as never,
+            mutationOptions: mutationOptions as never,
+          })
+        },
+        getSocketMutationKey: () => {
+          point._assertServerHandlerFlavor('mutation', 'getSocketMutationKey')
+          return point.getMutationKey()
+        },
+        getSocketMutationOptions: (mutationOptions?: unknown) => {
+          point._assertServerHandlerFlavor('mutation', 'getSocketMutationOptions')
+          return point._getSocketMutationOptionsInner({
+            target,
+            channelInput,
+            mutationOptions: mutationOptions as never,
+          })
+        },
+        getSocketMutationCache: (input?: unknown) => {
+          point._assertServerHandlerFlavor('mutation', 'getSocketMutationCache')
+          return (point.getMutationCache as (input: unknown) => unknown)(input)
+        },
+        getSocketMutationsCache: (input?: unknown) => {
+          point._assertServerHandlerFlavor('mutation', 'getSocketMutationsCache')
+          return (point.getMutationsCache as (input: unknown) => unknown)(input)
+        },
+      }
+    }
+    if (this.type === 'clientHandler') {
+      return {
+        point,
+        useOnMessageFromServer: (
+          listener: ClientHandlerListenerFn<any, any>,
+          options?: UseOnMessageFromServerOptions,
+        ) => {
+          const facade = point._useHandlerConnectionFacade({ target, channelInput, consultAmbient: false })
+          return point._useOnMessageFromServerInner({ facade, boundRoom, listener, options })
+        },
+        onMessageFromServer: (listener: ClientHandlerListenerFn<any, any>) => {
+          if (_point0_env.side.is.server) {
+            return { remove: () => {} }
+          }
+          const facade = resolveStrictFacade()
+          return addClientHandlerListener(point as never, facade as never, listener, boundRoom)
+        },
+        iterateMessagesFromServer: (options?: unknown) => {
+          if (_point0_env.side.is.server) {
+            // let the iterator throw its own "client only" error instead of a misleading "not live" one
+            return iterateClientHandlerMessages(point as never, undefined, options as never)
+          }
+          const facade = resolveStrictFacade()
+          return iterateClientHandlerMessages(point as never, facade as never, options as never, boundRoom)
+        },
+      }
+    }
+    throw new Error(
+      `Handler binding lives on serverHandler/clientHandler points only, got ${this.toStringWithLocation()}`,
+    )
+  }
+
+  /** Runtime mirror of the type-level flavor gate on the socket-query family. */
+  private _assertServerHandlerFlavor(
+    expected: 'query' | 'infiniteQuery' | 'mutation' | 'anyQuery',
+    method: string,
+  ): void {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_assertServerHandlerFlavor, point ${this.id}`)
+    }
+    if (this.type !== 'serverHandler') {
+      throw new Error(`${method}() lives on serverHandler points only, got ${this.toStringWithLocation()}`)
+    }
+    const actual = (this._queryResultType as QueryResultType | undefined) ?? 'mutation'
+    const suits = expected === 'anyQuery' ? actual !== 'mutation' : actual === expected
+    if (!suits) {
+      const wanted = expected === 'anyQuery' ? 'the .query() or .infiniteQuery() flavor' : `the .${expected}() flavor`
+      throw new Error(`${method}() needs ${wanted} on ${this.id} — this serverHandler is a ${actual}`)
+    }
+  }
+
+  /**
+   * The socket query's cache key: `mode: 'socket'` plus the parent channel name, the connection's serialized channel
+   * input (channel transformer), and the message input (handler transformer). The connection fields are what makes
+   * react-query's partial deep matching scope an invalidation to one connection for free. A SPACE handler's key adds
+   * the space name and the serialized ROOM the binding addresses — the address, and the whole address: the membership
+   * INPUT is deliberately absent (a membership is information about participation, a client-side hold-dedup key, never
+   * an address), so two memberships of the same room share one cache entry and a multi-room membership gets one entry
+   * per room through `handler(room)`.
+   */
+  _getSocketQueryKey({
+    facade,
+    boundRoom,
+    input = {},
+    isInfiniteQuery,
+  }: {
+    facade: AnyClientChannelConnection | AnyClientSpaceMembership | undefined
+    /** `handler(room)` — undefined means "the bound membership's single room" */
+    boundRoom?: unknown
+    input?: InputRaw | undefined
+    isInfiniteQuery: boolean
+  }): QueryKey {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSocketQueryKey, point ${this.id}`)
+    }
+    const channel = this._channelPointOrThrow()
+    const base = {
+      scope: this.scope,
+      type: this.type,
+      name: this.name,
+      mode: 'socket' as const,
+      finiteness: (isInfiniteQuery ? 'infinite' : 'finite') as 'infinite' | 'finite',
+      tags: this.tags,
+      output: 'data' as const,
+      channel: channel.name,
+      input: stringifyOrThrow(this._getSocketTransformer(), input, this.id),
+    }
+    const channelTransformer = channel._getSocketTransformer()
+    // a SPACE handler's socket query is scoped by the connection it rides plus the space and the addressed ROOM —
+    // serialized with the SPACE transformer; a CHANNEL handler by its connection's channel input
+    const space = this._spacePoint
+    if (space) {
+      // the space branch resolves against a MEMBERSHIP facade (a space handler's target is a membership) — `.rooms`
+      // lives on memberships only, so this is the one place the union narrows
+      const membership = facade as AnyClientSpaceMembership | undefined
+      const spaceTransformer = space._getSocketTransformer()
+      const { room } = readBoundSpaceRoom(this as never, membership, boundRoom, { strict: true })
+      return [
+        POINT0_QUERY_KEY_NAMESPACE,
+        {
+          ...base,
+          connectionInput: stringifyOrThrow(channelTransformer, membership?.connection.input ?? {}, channel.id),
+          space: space.name,
+          room: room === undefined ? undefined : stringifyOrThrow(spaceTransformer, room, space.id),
+        },
+      ]
+    }
+    return [
+      POINT0_QUERY_KEY_NAMESPACE,
+      {
+        ...base,
+        connectionInput: stringifyOrThrow(channelTransformer, facade?.input ?? {}, channel.id),
+      },
+    ]
+  }
+
+  /**
+   * A socket query runs once its facade is READY: an OPEN connection (channel handler) or, for a space handler, a
+   * JOINED membership that currently COVERS the addressed room (the bound one, or its single one).
+   */
+  private _connectionFacadeReady(
+    facade: AnyClientChannelConnection | AnyClientSpaceMembership | undefined,
+    boundRoom?: unknown,
+  ): boolean {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_connectionFacadeReady, point ${this.id}`)
+    }
+    const status = (facade as { status?: string } | undefined)?.status
+    if (!this._spacePoint) {
+      return status === 'open'
+    }
+    return (
+      status === 'joined' &&
+      readBoundSpaceRoom(this as never, facade as AnyClientSpaceMembership | undefined, boundRoom, { strict: false })
+        .live
+    )
+  }
+
+  /**
+   * The resolved react-query options of a socket query: `queryFn` is a `sendToServer` over the resolved connection (the
+   * transport already emits the `pointHandler*` events — no extra event family), and `enabled` is gated on the
+   * connection being OPEN — a socket query never runs before the connect lands. That gate also covers SSR: nothing is
+   * ever open on the server, so the hook renders pending, nothing fetches and nothing reaches the dehydrated state. No
+   * redirect handling in `retry` — redirects don't travel the socket — but `preventRetry` does (it rides the reply
+   * frame's serialized error), so the wrapper honors it like the HTTP query's does.
+   */
+  private _getSocketQueryOptions({
+    facade,
+    boundRoom,
+    input = {} as never,
+    queryOptions,
+  }: {
+    facade: AnyClientChannelConnection | AnyClientSpaceMembership | undefined
+    boundRoom?: unknown
+    input?: InputRaw | undefined
+    queryOptions?: ExtraUseQueryOptions | undefined
+  }): UseQueryOptions<TServerLoaderOutput, TError, TServerLoaderOutput, QueryKey> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSocketQueryOptions, point ${this.id}`)
+    }
+    const queryKey = this._getSocketQueryKey({ facade, boundRoom, input, isInfiniteQuery: false })
+    const queryFn = async () => {
+      return await sendToServerHandler(this as never, facade as never, input, {}, boundRoom)
+    }
+    const megedQueryOptions = mergeQueryOptions(this._defaultQueryOptions, this._queryOptions, queryOptions)
+    return {
+      ...megedQueryOptions,
+      queryKey,
+      queryFn,
+      // see _getServerQueryOptions — a legacy `suspense` key must never reach TanStack
+      suspense: undefined,
+      // a socket query can never run during SSR (nothing is ever connected on the server) — say so explicitly, so
+      // every consumer of these options reads the same `ssr: false` a regular query would declare
+      ssr: false,
+      enabled: this._connectionFacadeReady(facade, boundRoom) && megedQueryOptions.enabled !== false,
+      retry: Point0._retryHonoringPreventRetry(megedQueryOptions.retry),
+    } as never
+  }
+
+  /**
+   * Wrap a react-query `retry` option so an error marked `preventRetry` is never retried; otherwise the caller's option
+   * (or react-query's default of 3) decides.
+   */
+  private static _retryHonoringPreventRetry(
+    retry: UseQueryOptions['retry'],
+    defaultRetries = 3, // react-query's query default; mutations pass 0
+  ): (failureCount: number, error: ErrorPoint0) => boolean {
+    return (failureCount, error) => {
+      if (error.preventRetry) {
+        return false
+      }
+      if (typeof retry === 'boolean') {
+        return retry
+      }
+      if (typeof retry === 'function') {
+        return retry(failureCount, error)
+      }
+      return (retry ?? defaultRetries) > failureCount
+    }
+  }
+
+  /** The infinite twin of {@link _getSocketQueryOptions} — the page cursor folds into the message input. */
+  private _getSocketInfiniteQueryOptions({
+    facade,
+    boundRoom,
+    input = {} as never,
+    infiniteQueryOptions,
+  }: {
+    facade: AnyClientChannelConnection | AnyClientSpaceMembership | undefined
+    boundRoom?: unknown
+    input?: InputRaw | undefined
+    infiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
+  }): UseInfiniteQueryOptions<InputRaw, InfiniteData<TServerLoaderOutput>, TError, TServerLoaderOutput, QueryKey> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSocketInfiniteQueryOptions, point ${this.id}`)
+    }
+    const queryKey = this._getSocketQueryKey({ facade, boundRoom, input, isInfiniteQuery: true })
+    const queryFn = async ({ pageParam }: { pageParam: unknown }) => {
+      const inputWithPageParam = this._toInputWithPageParam({ input, pageParam })
+      return await sendToServerHandler(this as never, facade as never, inputWithPageParam, {}, boundRoom)
+    }
+    const megedQueryOptions = mergeInfiniteQueryOptions(
+      this._defaultQueryOptions as UseInfiniteQueryOptions<any> | undefined,
+      this._defaultInfiniteQueryOptions as UseInfiniteQueryOptions<any> | undefined,
+      this._infiniteQueryOptions as UseInfiniteQueryOptions<any> | undefined,
+      infiniteQueryOptions as UseInfiniteQueryOptions<any> | undefined,
+    )
+    return {
+      ...megedQueryOptions,
+      queryKey,
+      queryFn,
+      // see _getServerQueryOptions — a legacy `suspense` key must never reach TanStack
+      suspense: undefined,
+      // see _getSocketQueryOptions — a socket query is `ssr: false` by construction
+      ssr: false,
+      enabled: this._connectionFacadeReady(facade, boundRoom) && megedQueryOptions.enabled !== false,
+      retry: Point0._retryHonoringPreventRetry(megedQueryOptions.retry as UseQueryOptions['retry']),
+    } as never
+  }
+
+  /**
+   * The one facade-resolving hook under every handler hook — subscribes through `useBoundConnection` (channel) or
+   * `useBoundMembership` (space), so a target (or ambient) that opens/joins later re-renders the consumer. Hook order
+   * stays stable: both context and store subscriptions run unconditionally; the ambient is consulted only for bare
+   * forms.
+   */
+  private _useHandlerConnectionFacade({
+    target,
+    channelInput,
+    consultAmbient,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    consultAmbient: boolean
+  }): AnyClientChannelConnection | AnyClientSpaceMembership | undefined {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_useHandlerConnectionFacade, point ${this.id}`)
+    }
+    const space = this._spacePoint
+    if (space) {
+      const ambient = useAmbientSpaceMembership(space)
+      return useBoundMembership(
+        this as never,
+        target as never,
+        channelInput as never,
+        consultAmbient ? ambient : undefined,
+      )
+    }
+    const channel = this._channelPointOrThrow()
+    const ambient = useAmbientChannelConnection(channel)
+    return useBoundConnection(this as never, target as never, consultAmbient ? ambient : undefined)
+  }
+
+  private _useSocketQueryInner({
+    facade,
+    boundRoom,
+    input,
+    queryOptions,
+  }: {
+    facade: AnyClientChannelConnection | AnyClientSpaceMembership | undefined
+    boundRoom?: unknown
+    input?: InputRaw | undefined
+    queryOptions?: ExtraUseQueryOptions | undefined
+  }): UseQueryResult<TServerLoaderOutput, TError> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_useSocketQueryInner, point ${this.id}`)
+    }
+    const socketQueryOptions = this._getSocketQueryOptions({ facade, boundRoom, input, queryOptions })
+    return useQuery(socketQueryOptions)
+  }
+
+  private _useSocketInfiniteQueryInner({
+    facade,
+    boundRoom,
+    input,
+    infiniteQueryOptions,
+  }: {
+    facade: AnyClientChannelConnection | AnyClientSpaceMembership | undefined
+    boundRoom?: unknown
+    input?: InputRaw | undefined
+    infiniteQueryOptions?: PartialUseInfiniteQueryOptions | undefined
+  }): UseInfiniteQueryResult<InfiniteData<TServerLoaderOutput>, TError> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_useSocketInfiniteQueryInner, point ${this.id}`)
+    }
+    const socketInfiniteQueryOptions = this._getSocketInfiniteQueryOptions({
+      facade,
+      boundRoom,
+      input,
+      infiniteQueryOptions,
+    })
+    return useInfiniteQuery(socketInfiniteQueryOptions as never) as never
+  }
+
+  /**
+   * A promise that resolves once the target lands in a TERMINAL-or-ready state — what the suspense socket hooks throw
+   * while the connect is still running. It resolves (never rejects) on ready AND on a failed connect alike: the retry
+   * render re-reads the live status and throws the connect's error synchronously to the ErrorBoundary.
+   */
+  private _facadeReadySuspensePromise(
+    resolveFacade: () => AnyClientChannelConnection | AnyClientSpaceMembership | undefined,
+    boundRoom?: unknown,
+  ): Promise<void> {
+    return new Promise<void>((resolve) => {
+      // the poll backs off (25 ms → ×1.5 → cap 1 s): a suspended-then-unmounted consumer (or a target that never
+      // starts) must not keep a 40 Hz timer chain alive for the life of the page
+      let waitMs = 25
+      const check = (): void => {
+        const facade = resolveFacade()
+        const status = (facade as { status?: string } | undefined)?.status
+        if (this._connectionFacadeReady(facade, boundRoom) || status === 'error' || status === 'closed') {
+          resolve()
+          return
+        }
+        setTimeout(check, waitMs)
+        waitMs = Math.min(waitMs * 1.5, 1000)
+      }
+      check()
+    })
+  }
+
+  /**
+   * The shared body of `useSuspenseSocketQuery` / `useSuspenseSocketInfiniteQuery`. Suspends in two stages: first on
+   * the CONNECT (the resolved connection landing open / the membership joined — so the cache key, which carries the
+   * room, is only ever built from a ready target), then on the fetch through the regular suspense tail. During SSR
+   * nothing is ever connected — the socket `ssr: false` behavior: the render phase throws a descriptive error (the HTML
+   * ships the fallback, the client resolves after hydration), discovery pauses the subtree.
+   */
+  private _useSuspenseSocketQueryInner({
+    target,
+    channelInput,
+    consultAmbient,
+    input,
+    queryOptions,
+    isInfiniteQuery,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    consultAmbient: boolean
+    input?: InputRaw | undefined
+    queryOptions?: unknown
+    isInfiniteQuery: boolean
+  }): unknown {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_useSuspenseSocketQueryInner, point ${this.id}`)
+    }
+    const resolvedFacade = this._useHandlerConnectionFacade({ target, channelInput, consultAmbient })
+    // hydration hands the ambient slot a DEAD placeholder facade (the SSR stand-in created before the connect effect
+    // runs) whose status is frozen forever — for the suspense flow that is "no facade yet": the ready-poll below must
+    // fall through to live re-resolution, or it parks on the frozen 'connecting' for good (the dead-facade trap)
+    const facade = resolvedFacade && isDeadSocketFacade(resolvedFacade as object) ? undefined : resolvedFacade
+    const boundRoom = this._boundSpaceRoom(target)
+    // a suspense query can never be disabled — force `enabled: true` over the readiness gate the options builder set:
+    // by the time the query actually runs the facade is ready (the connect suspension below ran first)
+    const options = (
+      isInfiniteQuery
+        ? this._getSocketInfiniteQueryOptions({ facade, boundRoom, input, infiniteQueryOptions: queryOptions as never })
+        : this._getSocketQueryOptions({ facade, boundRoom, input, queryOptions: queryOptions as never })
+    ) as { queryKey: QueryKey } & Record<string, unknown>
+    const finalOptions = { ...options, enabled: true }
+    const result = (isInfiniteQuery ? useInfiniteQuery(finalOptions as never) : useQuery(finalOptions as never)) as {
+      status: 'pending' | 'error' | 'success'
+      error: unknown
+    }
+    if (!this._connectionFacadeReady(facade, boundRoom)) {
+      if (_point0_env.side.is.server) {
+        if (_ss.__POINT0_SSR_PHASE__.get() === 'render') {
+          throw new Error(
+            `${isInfiniteQuery ? 'useSuspenseSocketInfiniteQuery' : 'useSuspenseSocketQuery'} on point ${this.toStringWithLocation()} cannot resolve during SSR (nothing is ever connected on the server); the HTML ships the Suspense fallback and the client resolves after hydration`,
+          )
+        }
+        // discovery — a paused subtree, exactly the regular suspense hooks' marker
+        throw new Promise(() => undefined)
+      }
+      const status = (facade as { status?: string } | undefined)?.status
+      if (status === 'error' || status === 'closed') {
+        const error = (facade as { error?: unknown } | undefined)?.error
+        throw (
+          error ??
+          new Error(
+            `The socket suspense query on point ${this.id} could not reach a ready ${this._spacePoint ? 'membership' : 'connection'} — it is "${status}"`,
+          )
+        )
+      }
+      // suspend on the connect itself — thrown AFTER every hook ran, so the hook order stays stable across retries.
+      // The render-resolved facade (live status getters) is polled when it exists; only a still-unresolved target
+      // falls back to lax re-resolution (an ambient wrapper's connection is in the live registry too)
+      throw this._facadeReadySuspensePromise(
+        () => facade ?? this._resolveBoundHandlerFacade(target, channelInput, undefined, false),
+        boundRoom,
+      )
+    }
+    return this._suspenseHookResult({
+      result: result,
+      mergedQueryOptions: finalOptions,
+      ensure: () =>
+        isInfiniteQuery
+          ? _ss.__POINT0_QUERY_CLIENT__.get().ensureInfiniteQueryData(finalOptions as never)
+          : _ss.__POINT0_QUERY_CLIENT__.get().ensureQueryData(finalOptions),
+      loaderSide: 'server',
+    })
+  }
+
+  /** Resolve a handler's bound target strictly — a connection (channel handler) or a membership (space handler). */
+  private _resolveBoundHandlerFacade(
+    target: unknown,
+    channelInput: unknown,
+    // the ambient `<channel.Connection>` / `<space.Membership>` value — a facade of the same kind this returns
+    ambient: AnyClientChannelConnection | AnyClientSpaceMembership | undefined,
+    strict: boolean,
+  ): AnyClientChannelConnection | AnyClientSpaceMembership | undefined {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_resolveBoundHandlerFacade, point ${this.id}`)
+    }
+    return this._spacePoint
+      ? resolveSpaceHandlerTarget(this as never, target as never, channelInput as never, ambient as never, { strict })
+      : resolveHandlerTarget(this as never, target as never, ambient as never, { strict })
+  }
+
+  /**
+   * Build the resolved socket mutation options — the shared body of `useSocketMutation` / `fetchSocketMutation` /
+   * `getSocketMutationOptions`. The `mutationFn` resolves the target at MUTATE time through `resolveFacade` and sends
+   * over the socket (the send queues until the connection claims, like every socket send).
+   */
+  private _buildSocketMutationOptions({
+    resolveFacade,
+    boundRoom,
+    mutationOptions,
+  }: {
+    resolveFacade: () => AnyClientChannelConnection | AnyClientSpaceMembership | undefined
+    boundRoom?: unknown
+    mutationOptions?: ExtraUseMutationOptions | undefined
+  }): MutationOptions<TServerLoaderOutput, TError, InputRaw<TServerInputSchema>> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_buildSocketMutationOptions, point ${this.id}`)
+    }
+    const mutationFn = async (messageInput: unknown) => {
+      const facade = resolveFacade()
+      return await sendToServerHandler(this as never, facade as never, messageInput, {}, boundRoom)
+    }
+    const megedMutationOptions = mergeMutationOptions(
+      this._defaultMutationOptions,
+      this._mutationOptions,
+      mutationOptions,
+    )
+    return {
+      ...megedMutationOptions,
+      mutationKey: this.getMutationKey(),
+      mutationFn,
+      retry: Point0._retryHonoringPreventRetry(megedMutationOptions.retry as UseQueryOptions['retry'], 0),
+    } as never
+  }
+
+  private _useSocketMutationInner({
+    target,
+    channelInput,
+    consultAmbient,
+    mutationOptions,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    consultAmbient: boolean
+    mutationOptions?: ExtraUseMutationOptions | undefined
+  }): UseMutationResult<TServerLoaderOutput, TError, InputRaw<TServerInputSchema>> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_useSocketMutationInner, point ${this.id}`)
+    }
+    const space = this._spacePoint
+    // the ambient (connection or membership) at render rides along in a ref; the target resolves at MUTATE time
+    const ambient = space ? useAmbientSpaceMembership(space) : useAmbientChannelConnection(this._channelPointOrThrow())
+    const ambientRef = React.useRef<AnyClientChannelConnection | AnyClientSpaceMembership | undefined>(undefined)
+    ambientRef.current = consultAmbient ? ambient : undefined
+    return useMutation(
+      this._buildSocketMutationOptions({
+        resolveFacade: () => this._resolveBoundHandlerFacade(target, channelInput, ambientRef.current, true),
+        boundRoom: this._boundSpaceRoom(target),
+        mutationOptions,
+      }),
+    )
+  }
+
+  private _getSocketMutationOptionsInner({
+    target,
+    channelInput,
+    mutationOptions,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    mutationOptions?: ExtraUseMutationOptions | undefined
+  }): MutationOptions<TServerLoaderOutput, TError, InputRaw<TServerInputSchema>> {
+    return this._buildSocketMutationOptions({
+      resolveFacade: () => this._resolveBoundHandlerFacade(target, channelInput, undefined, true),
+      boundRoom: this._boundSpaceRoom(target),
+      mutationOptions,
+    })
+  }
+
+  private async _fetchSocketMutationInner({
+    target,
+    channelInput,
+    input,
+    mutationOptions,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input?: InputRaw | undefined
+    mutationOptions?: ExtraUseMutationOptions | undefined
+  }): Promise<TServerLoaderOutput> {
+    if (_point0_env.side.is.server) {
+      throw new Error(
+        `fetchSocketMutation() is client-side — mutating happens over the client's WebSocket (point ${this.id})`,
+      )
+    }
+    const normalizedMutationOptions = this._getSocketMutationOptionsInner({ target, channelInput, mutationOptions })
+    const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
+    const mutation = queryClient.getMutationCache().build(queryClient, normalizedMutationOptions as any)
+    return (await mutation.execute(input as any)) as TServerLoaderOutput
+  }
+
+  /** The shared server guard of the socket cache/key methods. */
+  private _assertSocketClientSide(method: string): void {
+    if (_point0_env.side.is.server) {
+      throw new Error(
+        `${method}() is client-side — socket queries live in the browser cache, keyed by a live connection (point ${this.id})`,
+      )
+    }
+  }
+
+  /**
+   * The imperative socket fetches AWAIT the connect like the send queue: the connection/membership must have been
+   * STARTED (strict resolve — the cascade does not auto-connect), then its OPEN/JOINED landing is awaited up to the
+   * handler's `timeout`. They fail only when the connect fails (or the window runs out).
+   */
+  private async _awaitReadyFacadeForFetch(
+    target: unknown,
+    channelInput: unknown,
+    method: string,
+  ): Promise<AnyClientChannelConnection | AnyClientSpaceMembership> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_awaitReadyFacadeForFetch, point ${this.id}`)
+    }
+    if (_point0_env.side.is.server) {
+      throw new Error(`${method}() is client-side — a socket query runs over the client's WebSocket (point ${this.id})`)
+    }
+    const boundRoom = this._boundSpaceRoom(target)
+    const facade = this._resolveBoundHandlerFacade(target, channelInput, undefined, true)!
+    if (this._connectionFacadeReady(facade, boundRoom)) {
+      return facade
+    }
+    // the send queue's window — the handler's resolved timeout (point-level; there is no call-site options object here)
+    const timeoutMs =
+      mergeServerHandlerOptions(this._defaultServerHandlerOptions, this._serverHandlerOptions).timeout ??
+      DEFAULT_SEND_TIMEOUT_MS
+    const kind = this._spacePoint ? 'membership' : 'connection'
+    const startedAt = Date.now()
+    for (;;) {
+      // the facade's `status` is a live getter — a short poll is plenty for an imperative, non-render path
+      await new Promise<void>((resolve) => setTimeout(resolve, 25))
+      if (this._connectionFacadeReady(facade, boundRoom)) {
+        return facade
+      }
+      const status = (facade as { status?: string }).status
+      if (status === 'error' || status === 'closed') {
+        const error = (facade as { error?: unknown }).error
+        if (error) {
+          throw error
+        }
+        throw new Error(`${method}() could not reach a ready ${kind} — it is "${status}" (point ${this.id})`)
+      }
+      if (Date.now() - startedAt >= timeoutMs) {
+        throw new Error(
+          `${method}() timed out after ${timeoutMs} ms waiting for the ${kind} to ${this._spacePoint ? 'join' : 'open'} (point ${this.id})`,
+        )
+      }
+    }
+  }
+
+  private async _fetchSocketQueryInner({
+    target,
+    channelInput,
+    input,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input?: InputRaw | undefined
+  }): Promise<TServerLoaderOutput> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_fetchSocketQueryInner, point ${this.id}`)
+    }
+    const facade = await this._awaitReadyFacadeForFetch(target, channelInput, 'fetchSocketQuery')
+    const socketQueryOptions = this._getSocketQueryOptions({ facade, boundRoom: this._boundSpaceRoom(target), input })
+    return await _ss.__POINT0_QUERY_CLIENT__.get().fetchQuery(socketQueryOptions)
+  }
+
+  private async _fetchSocketInfiniteQueryInner({
+    target,
+    channelInput,
+    input,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input?: InputRaw | undefined
+  }): Promise<InfiniteData<TServerLoaderOutput>> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_fetchSocketInfiniteQueryInner, point ${this.id}`)
+    }
+    const facade = await this._awaitReadyFacadeForFetch(target, channelInput, 'fetchSocketInfiniteQuery')
+    const socketInfiniteQueryOptions = this._getSocketInfiniteQueryOptions({
+      facade,
+      boundRoom: this._boundSpaceRoom(target),
+      input,
+    })
+    return (await _ss.__POINT0_QUERY_CLIENT__.get().fetchInfiniteQuery(socketInfiniteQueryOptions as never)) as never
+  }
+
+  private async _prefetchSocketQueryInner({
+    target,
+    channelInput,
+    input,
+    queryOptions,
+    isInfiniteQuery,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input?: InputRaw | undefined
+    queryOptions?: unknown
+    isInfiniteQuery: boolean
+  }): Promise<void> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_prefetchSocketQueryInner, point ${this.id}`)
+    }
+    const method = isInfiniteQuery ? 'prefetchSocketInfiniteQuery' : 'prefetchSocketQuery'
+    const facade = await this._awaitReadyFacadeForFetch(target, channelInput, method)
+    const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
+    if (isInfiniteQuery) {
+      const options = this._getSocketInfiniteQueryOptions({
+        facade,
+        boundRoom: this._boundSpaceRoom(target),
+        input,
+        infiniteQueryOptions: queryOptions as never,
+      })
+      await queryClient.prefetchInfiniteQuery(options)
+      return
+    }
+    const options = this._getSocketQueryOptions({
+      facade,
+      boundRoom: this._boundSpaceRoom(target),
+      input,
+      queryOptions: queryOptions as never,
+    })
+    await queryClient.prefetchQuery(options)
+  }
+
+  private async _ensureSocketQueryDataInner({
+    target,
+    channelInput,
+    input,
+    queryOptions,
+    isInfiniteQuery,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input?: InputRaw | undefined
+    queryOptions?: unknown
+    isInfiniteQuery: boolean
+  }): Promise<unknown> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_ensureSocketQueryDataInner, point ${this.id}`)
+    }
+    const method = isInfiniteQuery ? 'ensureSocketInfiniteQueryData' : 'ensureSocketQueryData'
+    const facade = await this._awaitReadyFacadeForFetch(target, channelInput, method)
+    const queryClient = _ss.__POINT0_QUERY_CLIENT__.get()
+    if (isInfiniteQuery) {
+      const options = this._getSocketInfiniteQueryOptions({
+        facade,
+        boundRoom: this._boundSpaceRoom(target),
+        input,
+        infiniteQueryOptions: queryOptions as never,
+      })
+      return await queryClient.ensureInfiniteQueryData(options)
+    }
+    const options = this._getSocketQueryOptions({
+      facade,
+      boundRoom: this._boundSpaceRoom(target),
+      input,
+      queryOptions: queryOptions as never,
+    })
+    return await queryClient.ensureQueryData(options)
+  }
+
+  private _getSocketQueryOptionsInner({
+    target,
+    channelInput,
+    input,
+    queryOptions,
+    isInfiniteQuery,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input?: InputRaw | undefined
+    queryOptions?: unknown
+    isInfiniteQuery: boolean
+  }): unknown {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSocketQueryOptionsInner, point ${this.id}`)
+    }
+    this._assertSocketClientSide(isInfiniteQuery ? 'getSocketInfiniteQueryOptions' : 'getSocketQueryOptions')
+    const facade = this._resolveBoundHandlerFacade(target, channelInput, undefined, true)
+    return isInfiniteQuery
+      ? this._getSocketInfiniteQueryOptions({
+          facade,
+          boundRoom: this._boundSpaceRoom(target),
+          input,
+          infiniteQueryOptions: queryOptions as never,
+        })
+      : this._getSocketQueryOptions({
+          facade,
+          boundRoom: this._boundSpaceRoom(target),
+          input,
+          queryOptions: queryOptions as never,
+        })
+  }
+
+  private _getSocketQueryKeyInner({
+    target,
+    channelInput,
+    input,
+    isInfiniteQuery,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input?: InputRaw | undefined
+    isInfiniteQuery: boolean
+  }): QueryKey {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSocketQueryKeyInner, point ${this.id}`)
+    }
+    this._assertSocketClientSide(isInfiniteQuery ? 'getSocketInfiniteQueryKey' : 'getSocketQueryKey')
+    const facade = this._resolveBoundHandlerFacade(target, channelInput, undefined, true)
+    return this._getSocketQueryKey({ facade, boundRoom: this._boundSpaceRoom(target), input, isInfiniteQuery })
+  }
+
+  private _getSocketQueryDataInner({
+    target,
+    channelInput,
+    input,
+    isInfiniteQuery,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input?: InputRaw | undefined
+    isInfiniteQuery: boolean
+  }): unknown {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSocketQueryDataInner, point ${this.id}`)
+    }
+    this._assertSocketClientSide(isInfiniteQuery ? 'getSocketInfiniteQueryData' : 'getSocketQueryData')
+    const facade = this._resolveBoundHandlerFacade(target, channelInput, undefined, true)
+    const queryKey = this._getSocketQueryKey({
+      facade,
+      boundRoom: this._boundSpaceRoom(target),
+      input,
+      isInfiniteQuery,
+    })
+    return _ss.__POINT0_QUERY_CLIENT__.get().getQueryData(queryKey)
+  }
+
+  private _setSocketQueryDataInner({
+    target,
+    channelInput,
+    input,
+    updater,
+    isInfiniteQuery,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input?: InputRaw | undefined
+    updater: (old: unknown) => unknown
+    isInfiniteQuery: boolean
+  }): unknown {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_setSocketQueryDataInner, point ${this.id}`)
+    }
+    this._assertSocketClientSide(isInfiniteQuery ? 'setSocketInfiniteQueryData' : 'setSocketQueryData')
+    // exact-key write (setQueryData semantics): the connection resolves strictly, like getSocketQueryKey
+    const facade = this._resolveBoundHandlerFacade(target, channelInput, undefined, true)
+    const queryKey = this._getSocketQueryKey({
+      facade,
+      boundRoom: this._boundSpaceRoom(target),
+      input,
+      isInfiniteQuery,
+    })
+    return _ss.__POINT0_QUERY_CLIENT__.get().setQueryData(queryKey, updater)
+  }
+
+  private _getSocketQueryStateInner({
+    target,
+    channelInput,
+    input,
+    isInfiniteQuery,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input?: InputRaw | undefined
+    isInfiniteQuery: boolean
+  }): unknown {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSocketQueryStateInner, point ${this.id}`)
+    }
+    this._assertSocketClientSide(isInfiniteQuery ? 'getSocketInfiniteQueryState' : 'getSocketQueryState')
+    const facade = this._resolveBoundHandlerFacade(target, channelInput, undefined, true)
+    const queryKey = this._getSocketQueryKey({
+      facade,
+      boundRoom: this._boundSpaceRoom(target),
+      input,
+      isInfiniteQuery,
+    })
+    return _ss.__POINT0_QUERY_CLIENT__.get().getQueryState(queryKey)
+  }
+
+  private _getSocketQueryCacheInner({
+    target,
+    channelInput,
+    input,
+    isInfiniteQuery,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input?: InputRaw | undefined
+    isInfiniteQuery: boolean
+  }): unknown {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSocketQueryCacheInner, point ${this.id}`)
+    }
+    this._assertSocketClientSide(isInfiniteQuery ? 'getSocketInfiniteQueryCache' : 'getSocketQueryCache')
+    const facade = this._resolveBoundHandlerFacade(target, channelInput, undefined, true)
+    const queryKey = this._getSocketQueryKey({
+      facade,
+      boundRoom: this._boundSpaceRoom(target),
+      input,
+      isInfiniteQuery,
+    })
+    return _ss.__POINT0_QUERY_CLIENT__.get().getQueryCache().find({ queryKey: queryKey, exact: true })
+  }
+
+  /**
+   * The socket twin of `_getQueryPredicate` — matches this handler's socket cache entries: same
+   * scope/type/name/channel, the requested finiteness, scoped to the resolved connection/membership when there is one
+   * (with none, the handler across ALL connections), the input by exact serialized match or a predicate over the parsed
+   * input (`true`/omitted = every input). A space handler's `room` is matched only when the binding NAMED one
+   * (`handler(room)`); a membership-bound / bare fuzzy form scopes by the connection and sweeps every room of the space
+   * on it — including entries left under rooms a re-join replaced, which is exactly what you want. The exact-key path
+   * (which always carries the room) is `_getSocketQueryKey`.
+   */
+  private _getSocketQueryPredicate({
+    facade,
+    boundRoom,
+    input,
+    isInfiniteQuery,
+  }: {
+    facade: AnyClientChannelConnection | AnyClientSpaceMembership | undefined
+    boundRoom?: unknown
+    input: InputRaw | ((input: InputRaw) => boolean) | true | undefined
+    isInfiniteQuery: boolean
+  }): (query: Query) => boolean {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSocketQueryPredicate, point ${this.id}`)
+    }
+    const channel = this._channelPointOrThrow()
+    const space = this._spacePoint
+    const transformer = this._getSocketTransformer()
+    const inputFunctionProvided = typeof input === 'function' ? input : undefined
+    const inputStringifiedProvided =
+      input !== true && typeof input !== 'function' && input !== undefined
+        ? stringifyOrThrow(transformer, input, this.id)
+        : undefined
+    // a space handler's entries are keyed by the CONNECTION its membership rides — the membership input is not part of
+    // the key (it is a hold-dedup key, not an address)
+    const connectionInputSource = space
+      ? (facade as AnyClientSpaceMembership | undefined)?.connection.input
+      : facade?.input
+    const connectionInputStringified = facade
+      ? stringifyOrThrow(channel._getSocketTransformer(), connectionInputSource ?? {}, channel.id)
+      : undefined
+    const roomStringified =
+      space && boundRoom !== undefined
+        ? stringifyOrThrow(space._getSocketTransformer(), boundRoom, space.id)
+        : undefined
+    return (query) => {
+      const obj = parseQueryKey(query.queryKey) as
+        | {
+            scope?: unknown
+            type?: unknown
+            name?: unknown
+            mode?: unknown
+            finiteness?: unknown
+            channel?: unknown
+            space?: unknown
+            room?: unknown
+            connectionInput?: unknown
+            input?: unknown
+          }
+        | undefined
+      if (!obj) {
+        return false
+      }
+      if (obj.scope !== this.scope || obj.type !== this.type || obj.name !== this.name) {
+        return false
+      }
+      if (obj.mode !== 'socket' || obj.channel !== channel.name) {
+        return false
+      }
+      if (obj.finiteness !== (isInfiniteQuery ? 'infinite' : 'finite')) {
+        return false
+      }
+      if (space && obj.space !== space.name) {
+        return false
+      }
+      if (connectionInputStringified !== undefined && obj.connectionInput !== connectionInputStringified) {
+        return false
+      }
+      if (roomStringified !== undefined && obj.room !== roomStringified) {
+        return false
+      }
+      if (inputStringifiedProvided !== undefined) {
+        if (obj.input !== inputStringifiedProvided) {
+          return false
+        }
+      } else if (inputFunctionProvided) {
+        const inputParsed = transformer.parse<InputRaw>(obj.input as string)
+        if (inputFunctionProvided(inputParsed) === false) {
+          return false
+        }
+      }
+      return true
+    }
+  }
+
+  /**
+   * The socket twin of `_getQueryFilters` — an exact input (object / omitted) is an exact-key filter over the strictly
+   * resolved connection; a predicate or `true` is a predicate filter, scoped to the laxly resolved connection (a bound
+   * target must exist; the bare form with no live connection matches the handler across all connections).
+   */
+  private _getSocketQueryFiltersInner({
+    target,
+    channelInput,
+    input,
+    isInfiniteQuery,
+    method,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input: InputRaw | ((input: InputRaw) => boolean) | true | undefined
+    isInfiniteQuery: boolean
+    method: string
+  }): QueryFilters {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSocketQueryFiltersInner, point ${this.id}`)
+    }
+    this._assertSocketClientSide(method)
+    const fuzzy = input === true || typeof input === 'function'
+    const facade = this._resolveBoundHandlerFacade(target, channelInput, undefined, fuzzy ? target !== undefined : true)
+    if (fuzzy) {
+      return {
+        predicate: this._getSocketQueryPredicate({
+          facade,
+          boundRoom: this._boundSpaceRoom(target),
+          input,
+          isInfiniteQuery,
+        }),
+      }
+    }
+    return {
+      queryKey: this._getSocketQueryKey({ facade, boundRoom: this._boundSpaceRoom(target), input, isInfiniteQuery }),
+      exact: true,
+    }
+  }
+
+  private _getSocketQueriesCacheInner({
+    target,
+    channelInput,
+    input,
+    isInfiniteQuery,
+  }: {
+    target: unknown
+    channelInput?: unknown
+    input: InputRaw | ((input: InputRaw) => boolean) | true | undefined
+    isInfiniteQuery: boolean
+  }): unknown[] {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSocketQueriesCacheInner, point ${this.id}`)
+    }
+    this._assertSocketClientSide(isInfiniteQuery ? 'getSocketInfiniteQueriesCache' : 'getSocketQueriesCache')
+    const facade = this._resolveBoundHandlerFacade(target, channelInput, undefined, target !== undefined)
+    return _ss.__POINT0_QUERY_CLIENT__
+      .get()
+      .getQueryCache()
+      .findAll({
+        predicate: this._getSocketQueryPredicate({
+          facade,
+          boundRoom: this._boundSpaceRoom(target),
+          input,
+          isInfiniteQuery,
+        }),
+      })
+  }
+
+  private async _refetchSocketQueryInner(args: {
+    target: unknown
+    channelInput?: unknown
+    input: InputRaw | ((input: InputRaw) => boolean) | true | undefined
+    isInfiniteQuery: boolean
+    refetchOptions?: RefetchOptions | undefined
+  }): Promise<void> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_refetchSocketQueryInner, point ${this.id}`)
+    }
+    const filters = this._getSocketQueryFiltersInner({
+      ...args,
+      method: args.isInfiniteQuery ? 'refetchSocketInfiniteQuery' : 'refetchSocketQuery',
+    })
+    await _ss.__POINT0_QUERY_CLIENT__.get().refetchQueries(filters, args.refetchOptions)
+  }
+
+  private async _invalidateSocketQueryInner(args: {
+    target: unknown
+    channelInput?: unknown
+    input: InputRaw | ((input: InputRaw) => boolean) | true | undefined
+    isInfiniteQuery: boolean
+    invalidateOptions?: InvalidateOptions | undefined
+  }): Promise<void> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_invalidateSocketQueryInner, point ${this.id}`)
+    }
+    const filters = this._getSocketQueryFiltersInner({
+      ...args,
+      method: args.isInfiniteQuery ? 'invalidateSocketInfiniteQuery' : 'invalidateSocketQuery',
+    })
+    await _ss.__POINT0_QUERY_CLIENT__.get().invalidateQueries(filters, args.invalidateOptions)
+  }
+
+  private async _cancelSocketQueryInner(args: {
+    target: unknown
+    channelInput?: unknown
+    input: InputRaw | ((input: InputRaw) => boolean) | true | undefined
+    isInfiniteQuery: boolean
+    cancelOptions?: CancelOptions | undefined
+  }): Promise<void> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_cancelSocketQueryInner, point ${this.id}`)
+    }
+    const filters = this._getSocketQueryFiltersInner({
+      ...args,
+      method: args.isInfiniteQuery ? 'cancelSocketInfiniteQuery' : 'cancelSocketQuery',
+    })
+    await _ss.__POINT0_QUERY_CLIENT__.get().cancelQueries(filters, args.cancelOptions)
+  }
+
+  private _removeSocketQueryInner(args: {
+    target: unknown
+    channelInput?: unknown
+    input: InputRaw | ((input: InputRaw) => boolean) | true | undefined
+    isInfiniteQuery: boolean
+  }): void {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_removeSocketQueryInner, point ${this.id}`)
+    }
+    const filters = this._getSocketQueryFiltersInner({
+      ...args,
+      method: args.isInfiniteQuery ? 'removeSocketInfiniteQuery' : 'removeSocketQuery',
+    })
+    _ss.__POINT0_QUERY_CLIENT__.get().removeQueries(filters)
+  }
+
+  private async _resetSocketQueryInner(args: {
+    target: unknown
+    channelInput?: unknown
+    input: InputRaw | ((input: InputRaw) => boolean) | true | undefined
+    isInfiniteQuery: boolean
+  }): Promise<void> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_resetSocketQueryInner, point ${this.id}`)
+    }
+    const filters = this._getSocketQueryFiltersInner({
+      ...args,
+      method: args.isInfiniteQuery ? 'resetSocketInfiniteQuery' : 'resetSocketQuery',
+    })
+    await _ss.__POINT0_QUERY_CLIENT__.get().resetQueries(filters)
+  }
+
+  /**
+   * The socket query's `useQuery` hook (the `.query()` flavor) — the message input first, react-query options second;
+   * the cache key carries the address of the level next to the message input: the channel's connection input, plus —
+   * for a space handler — the space and the BOUND room (never the membership input). The connection resolves like every
+   * bare handler method: the ambient `<channel.Connection>`, else the single live connection — bind an explicit one
+   * with `handler(connection).useSocketQuery(...)`. The query never runs before the connection opens; during SSR
+   * nothing is ever open, so it renders pending and never lands in the dehydrated state.
+   *
+   * Client-side — fetching happens over the client's WebSocket (renders pending during SSR).
+   *
+   *     const { data } = chatInfoHandler.useSocketQuery({ q })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  useSocketQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? ServerHandlerSendArgs<
+          InputRaw<TServerInputSchema>,
+          ExtraUseQueryOptions<TServerLoaderOutput, TError, TServerLoaderOutput, QueryKey>
+        >
+      : never
+  ): TPointType extends 'serverHandler' ? UseQueryResult<TServerLoaderOutput, TError> : never
+  useSocketQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`useSocketQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'useSocketQuery')
+    const facade = this._useHandlerConnectionFacade({ target: undefined, consultAmbient: true })
+    return this._useSocketQueryInner({ facade, input: args[0], queryOptions: args[1] })
+  }
+
+  /**
+   * The socket query's `useInfiniteQuery` hook (the `.infiniteQuery()` flavor) — the page cursor folds into the message
+   * input under the flavor's `pageParamFromInput` key, each page is one `sendToServer`. Same connection resolution and
+   * open-gating as `useSocketQuery`.
+   *
+   * Client-side — fetching happens over the client's WebSocket (renders pending during SSR).
+   *
+   *     const feed = chatFeedHandler.useSocketInfiniteQuery({ q })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  useSocketInfiniteQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? ServerHandlerSendArgs<
+          InputRaw<TServerInputSchema>,
+          PartialUseInfiniteQueryOptions<
+            InputRaw<TServerInputSchema>,
+            TServerLoaderOutput,
+            TError,
+            InfiniteData<TServerLoaderOutput>,
+            QueryKey,
+            unknown
+          >
+        >
+      : never
+  ): TPointType extends 'serverHandler' ? UseInfiniteQueryResult<InfiniteData<TServerLoaderOutput>, TError> : never
+  useSocketInfiniteQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`useSocketInfiniteQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'useSocketInfiniteQuery')
+    const facade = this._useHandlerConnectionFacade({ target: undefined, consultAmbient: true })
+    return this._useSocketInfiniteQueryInner({ facade, input: args[0], infiniteQueryOptions: args[1] })
+  }
+
+  /**
+   * The handler as a TanStack `useMutation` (the default mutation flavor) — pass the message input to `mutate` /
+   * `mutateAsync`, the `.serverReply` return is the mutation data. The connection resolves at MUTATE time: the ambient
+   * `<channel.Connection>`, else the single live connection — bind an explicit one with
+   * `handler(connection).useSocketMutation()`.
+   *
+   * Client-side — mutating happens over the client's WebSocket (a runtime error on the server).
+   *
+   *     const send = messageSendHandler.useSocketMutation()
+   *     send.mutate({ text })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  useSocketMutation(
+    ...args: TPointType extends 'serverHandler'
+      ? [mutationOptions?: ExtraUseMutationOptions<TServerLoaderOutput, TError, InputRaw<TServerInputSchema>>]
+      : never
+  ): TPointType extends 'serverHandler'
+    ? UseMutationResult<TServerLoaderOutput, TError, InputRaw<TServerInputSchema>>
+    : never
+  useSocketMutation(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`useSocketMutation, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('mutation', 'useSocketMutation')
+    return this._useSocketMutationInner({ target: undefined, consultAmbient: true, mutationOptions: args[0] })
+  }
+
+  /**
+   * The socket query's `useSuspenseQuery` (the `.query()` flavor) — TanStack suspense semantics over the socket: the
+   * hook first suspends on the CONNECT itself, then on the fetch. During SSR nothing is ever connected — the HTML ships
+   * the Suspense fallback and the client resolves after hydration (the socket `ssr: false` behavior).
+   *
+   * Client-side — fetching happens over the client's WebSocket (renders the fallback during SSR).
+   *
+   *     const { data } = chatInfoHandler.useSuspenseSocketQuery({ q })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  useSuspenseSocketQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? ServerHandlerSendArgs<
+          InputRaw<TServerInputSchema>,
+          ExtraUseSuspenseQueryOptions<TServerLoaderOutput, TError, TServerLoaderOutput, QueryKey>
+        >
+      : never
+  ): TPointType extends 'serverHandler' ? UseSuspenseQueryResult<TServerLoaderOutput, TError> : never
+  useSuspenseSocketQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`useSuspenseSocketQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'useSuspenseSocketQuery')
+    return this._useSuspenseSocketQueryInner({
+      target: undefined,
+      consultAmbient: true,
+      input: args[0],
+      queryOptions: args[1],
+      isInfiniteQuery: false,
+    })
+  }
+
+  /**
+   * The infinite socket query's `useSuspenseInfiniteQuery` (the `.infiniteQuery()` flavor) — suspends on the connect,
+   * then on the first page; during SSR the HTML ships the fallback (the socket `ssr: false` behavior).
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  useSuspenseSocketInfiniteQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? ServerHandlerSendArgs<
+          InputRaw<TServerInputSchema>,
+          PartialUseSuspenseInfiniteQueryOptions<
+            InputRaw<TServerInputSchema>,
+            TServerLoaderOutput,
+            TError,
+            InfiniteData<TServerLoaderOutput>,
+            QueryKey,
+            unknown
+          >
+        >
+      : never
+  ): TPointType extends 'serverHandler'
+    ? UseSuspenseInfiniteQueryResult<InfiniteData<TServerLoaderOutput>, TError>
+    : never
+  useSuspenseSocketInfiniteQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`useSuspenseSocketInfiniteQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'useSuspenseSocketInfiniteQuery')
+    return this._useSuspenseSocketQueryInner({
+      target: undefined,
+      consultAmbient: true,
+      input: args[0],
+      queryOptions: args[1],
+      isInfiniteQuery: true,
+    })
+  }
+
+  /**
+   * Imperatively fetch and cache the socket query (the `.query()` flavor) — reads the cache if fresh, otherwise sends
+   * the message over the resolved connection, AWAITING the connect first (up to the handler's `timeout`; it fails only
+   * when the connect fails). Resolves the single live connection; bind an explicit one with
+   * `handler(connection).fetchSocketQuery(...)`. A runtime error on the server.
+   *
+   * Client-side.
+   *
+   *     const info = await chatInfoHandler.fetchSocketQuery({ q })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  fetchSocketQuery(
+    ...args: TPointType extends 'serverHandler' ? ServerHandlerInputArgs<InputRaw<TServerInputSchema>> : never
+  ): TPointType extends 'serverHandler' ? Promise<TServerLoaderOutput> : never
+  fetchSocketQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`fetchSocketQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'fetchSocketQuery')
+    return this._fetchSocketQueryInner({ target: undefined, input: args[0] })
+  }
+
+  /**
+   * Imperatively fetch and cache the infinite socket query (the `.infiniteQuery()` flavor). Same connection resolution
+   * and await-the-connect as `fetchSocketQuery`.
+   *
+   * Client-side.
+   *
+   *     const feed = await chatFeedHandler.fetchSocketInfiniteQuery({ q })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  fetchSocketInfiniteQuery(
+    ...args: TPointType extends 'serverHandler' ? ServerHandlerInputArgs<InputRaw<TServerInputSchema>> : never
+  ): TPointType extends 'serverHandler' ? Promise<InfiniteData<TServerLoaderOutput>> : never
+  fetchSocketInfiniteQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`fetchSocketInfiniteQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'fetchSocketInfiniteQuery')
+    return this._fetchSocketInfiniteQueryInner({ target: undefined, input: args[0] })
+  }
+
+  /**
+   * Warm the socket query's cache without returning the data — fetches only if not already cached, awaiting the connect
+   * like `fetchSocketQuery`.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  prefetchSocketQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          ...ServerHandlerInputArgs<InputRaw<TServerInputSchema>>,
+          queryOptions?: ExtraUseQueryOptions<TServerLoaderOutput, TError, TServerLoaderOutput, QueryKey>,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<void> : never
+  prefetchSocketQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`prefetchSocketQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'prefetchSocketQuery')
+    return this._prefetchSocketQueryInner({
+      target: undefined,
+      input: args[0],
+      queryOptions: args[1],
+      isInfiniteQuery: false,
+    })
+  }
+
+  /**
+   * Warm the infinite socket query's cache without returning the data — fetches only if not already cached, awaiting
+   * the connect like `fetchSocketInfiniteQuery`.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  prefetchSocketInfiniteQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          ...ServerHandlerInputArgs<InputRaw<TServerInputSchema>>,
+          infiniteQueryOptions?: PartialUseInfiniteQueryOptions<
+            InputRaw<TServerInputSchema>,
+            TServerLoaderOutput,
+            TError,
+            InfiniteData<TServerLoaderOutput>,
+            QueryKey,
+            unknown
+          >,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<void> : never
+  prefetchSocketInfiniteQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`prefetchSocketInfiniteQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'prefetchSocketInfiniteQuery')
+    return this._prefetchSocketQueryInner({
+      target: undefined,
+      input: args[0],
+      queryOptions: args[1],
+      isInfiniteQuery: true,
+    })
+  }
+
+  /**
+   * The cached data for an input if present, otherwise fetch it — like `fetchSocketQuery` but never refetches when data
+   * already exists.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  ensureSocketQueryData(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          ...ServerHandlerInputArgs<InputRaw<TServerInputSchema>>,
+          queryOptions?: ExtraUseQueryOptions<TServerLoaderOutput, TError, TServerLoaderOutput, QueryKey>,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<TServerLoaderOutput> : never
+  ensureSocketQueryData(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`ensureSocketQueryData, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'ensureSocketQueryData')
+    return this._ensureSocketQueryDataInner({
+      target: undefined,
+      input: args[0],
+      queryOptions: args[1],
+      isInfiniteQuery: false,
+    })
+  }
+
+  /**
+   * The cached pages for an input if present, otherwise fetch the first page — like `fetchSocketInfiniteQuery` but
+   * never refetches when data already exists.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  ensureSocketInfiniteQueryData(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          ...ServerHandlerInputArgs<InputRaw<TServerInputSchema>>,
+          infiniteQueryOptions?: PartialUseInfiniteQueryOptions<
+            InputRaw<TServerInputSchema>,
+            TServerLoaderOutput,
+            TError,
+            InfiniteData<TServerLoaderOutput>,
+            QueryKey,
+            unknown
+          >,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<InfiniteData<TServerLoaderOutput>> : never
+  ensureSocketInfiniteQueryData(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`ensureSocketInfiniteQueryData, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'ensureSocketInfiniteQueryData')
+    return this._ensureSocketQueryDataInner({
+      target: undefined,
+      input: args[0],
+      queryOptions: args[1],
+      isInfiniteQuery: true,
+    })
+  }
+
+  /**
+   * The resolved react-query `UseQueryOptions` of the socket query (key over the strictly resolved connection,
+   * `queryFn` as a `sendToServer`, merged defaults) — ready to hand to TanStack directly.
+   *
+   * Client-side — the key carries the live connection's room and input.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketQueryOptions(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          ...ServerHandlerInputArgs<InputRaw<TServerInputSchema>>,
+          queryOptions?: ExtraUseQueryOptions<TServerLoaderOutput, TError, TServerLoaderOutput, QueryKey>,
+        ]
+      : never
+  ): TPointType extends 'serverHandler'
+    ? UseQueryOptions<TServerLoaderOutput, TError, TServerLoaderOutput, QueryKey>
+    : never
+  getSocketQueryOptions(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketQueryOptions, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'getSocketQueryOptions')
+    return this._getSocketQueryOptionsInner({
+      target: undefined,
+      input: args[0],
+      queryOptions: args[1],
+      isInfiniteQuery: false,
+    })
+  }
+
+  /**
+   * The resolved react-query `UseInfiniteQueryOptions` of the infinite socket query — ready to hand to TanStack
+   * directly.
+   *
+   * Client-side — the key carries the live connection's room and input.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketInfiniteQueryOptions(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          ...ServerHandlerInputArgs<InputRaw<TServerInputSchema>>,
+          infiniteQueryOptions?: PartialUseInfiniteQueryOptions<
+            InputRaw<TServerInputSchema>,
+            TServerLoaderOutput,
+            TError,
+            InfiniteData<TServerLoaderOutput>,
+            QueryKey,
+            unknown
+          >,
+        ]
+      : never
+  ): TPointType extends 'serverHandler'
+    ? UseInfiniteQueryOptions<
+        InputRaw<TServerInputSchema>,
+        TServerLoaderOutput,
+        TError,
+        InfiniteData<TServerLoaderOutput>,
+        QueryKey
+      >
+    : never
+  getSocketInfiniteQueryOptions(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketInfiniteQueryOptions, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueryOptions')
+    return this._getSocketQueryOptionsInner({
+      target: undefined,
+      input: args[0],
+      queryOptions: args[1],
+      isInfiniteQuery: true,
+    })
+  }
+
+  /**
+   * The socket query's key tuple for an input — the same key the hooks cache under; it carries the resolved
+   * connection's serialized room and channel input. Resolves the connection strictly (the single live one; bind an
+   * explicit one with `handler(connection).getSocketQueryKey(...)`).
+   *
+   * Client-side — resolving the connection needs the live client runtime.
+   *
+   *     chatInfoHandler.getSocketQueryKey({ q })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketQueryKey(
+    ...args: TPointType extends 'serverHandler' ? ServerHandlerInputArgs<InputRaw<TServerInputSchema>> : never
+  ): TPointType extends 'serverHandler' ? QueryKey : never
+  getSocketQueryKey(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketQueryKey, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'getSocketQueryKey')
+    return this._getSocketQueryKeyInner({ target: undefined, input: args[0], isInfiniteQuery: false })
+  }
+
+  /**
+   * The infinite socket query's key tuple for an input — the same key the hooks cache under. Resolves the connection
+   * strictly.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketInfiniteQueryKey(
+    ...args: TPointType extends 'serverHandler' ? ServerHandlerInputArgs<InputRaw<TServerInputSchema>> : never
+  ): TPointType extends 'serverHandler' ? QueryKey : never
+  getSocketInfiniteQueryKey(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketInfiniteQueryKey, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueryKey')
+    return this._getSocketQueryKeyInner({ target: undefined, input: args[0], isInfiniteQuery: true })
+  }
+
+  /**
+   * Read the socket query's cached data for an exact input — `undefined` if uncached. Exact-key, no fetch.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketQueryData(
+    ...args: TPointType extends 'serverHandler' ? ServerHandlerInputArgs<InputRaw<TServerInputSchema>> : never
+  ): TPointType extends 'serverHandler' ? TServerLoaderOutput | undefined : never
+  getSocketQueryData(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketQueryData, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'getSocketQueryData')
+    return this._getSocketQueryDataInner({ target: undefined, input: args[0], isInfiniteQuery: false })
+  }
+
+  /**
+   * Read the infinite socket query's cached pages for an exact input — `undefined` if uncached.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketInfiniteQueryData(
+    ...args: TPointType extends 'serverHandler' ? ServerHandlerInputArgs<InputRaw<TServerInputSchema>> : never
+  ): TPointType extends 'serverHandler' ? InfiniteData<TServerLoaderOutput> | undefined : never
+  getSocketInfiniteQueryData(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketInfiniteQueryData, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueryData')
+    return this._getSocketQueryDataInner({ target: undefined, input: args[0], isInfiniteQuery: true })
+  }
+
+  /**
+   * Write the socket query's cached data directly — the push-driven mirror of `setQueryData`: a clientHandler push
+   * carrying the READY data lands it in the cache with zero refetch requests. Exact-key: the connection resolves
+   * strictly (the ambient `<channel.Connection>`, else the single live one — bind an explicit target with
+   * `handler(connection).setSocketQueryData(...)`); `old` is `undefined` until the query has resolved once. Returns the
+   * new data.
+   *
+   * Client-side — socket queries live in the browser cache (a runtime error on the server).
+   *
+   *     presenceChangedHandler(membership).useOnMessageFromServer(({ message }) => {
+   *       whoIsHereHandler(membership).setSocketQueryData(undefined, () => ({ nicknames: message.nicknames }))
+   *     })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  setSocketQueryData(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          input: InputRaw<TServerInputSchema> | undefined,
+          updater: Updater<TServerLoaderOutput | undefined, TServerLoaderOutput>,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? TServerLoaderOutput : never
+  setSocketQueryData(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`setSocketQueryData, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'setSocketQueryData')
+    return this._setSocketQueryDataInner({
+      target: undefined,
+      input: args[0],
+      updater: args[1],
+      isInfiniteQuery: false,
+    })
+  }
+
+  /**
+   * Write the infinite socket query's cached pages directly — exact-key, `old` is `undefined` until the query has
+   * resolved once. Returns the new pages.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  setSocketInfiniteQueryData(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          input: InputRaw<TServerInputSchema> | undefined,
+          updater: Updater<InfiniteData<TServerLoaderOutput> | undefined, InfiniteData<TServerLoaderOutput>>,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? InfiniteData<TServerLoaderOutput> : never
+  setSocketInfiniteQueryData(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`setSocketInfiniteQueryData, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'setSocketInfiniteQueryData')
+    return this._setSocketQueryDataInner({
+      target: undefined,
+      input: args[0],
+      updater: args[1],
+      isInfiniteQuery: true,
+    })
+  }
+
+  /**
+   * Read the TanStack `QueryState` of the socket query for an exact input — `undefined` if uncached.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketQueryState(
+    ...args: TPointType extends 'serverHandler' ? ServerHandlerInputArgs<InputRaw<TServerInputSchema>> : never
+  ): TPointType extends 'serverHandler' ? QueryState<TServerLoaderOutput, TError> | undefined : never
+  getSocketQueryState(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketQueryState, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'getSocketQueryState')
+    return this._getSocketQueryStateInner({ target: undefined, input: args[0], isInfiniteQuery: false })
+  }
+
+  /**
+   * Read the TanStack `QueryState` of the infinite socket query for an exact input — `undefined` if uncached.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketInfiniteQueryState(
+    ...args: TPointType extends 'serverHandler' ? ServerHandlerInputArgs<InputRaw<TServerInputSchema>> : never
+  ): TPointType extends 'serverHandler' ? QueryState<InfiniteData<TServerLoaderOutput>, TError> | undefined : never
+  getSocketInfiniteQueryState(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketInfiniteQueryState, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueryState')
+    return this._getSocketQueryStateInner({ target: undefined, input: args[0], isInfiniteQuery: true })
+  }
+
+  /**
+   * The single TanStack `Query` cache entry of the socket query for an exact input (`undefined` if none). For many
+   * entries use `getSocketQueriesCache`.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketQueryCache(
+    ...args: TPointType extends 'serverHandler' ? ServerHandlerInputArgs<InputRaw<TServerInputSchema>> : never
+  ): TPointType extends 'serverHandler'
+    ? Query<TServerLoaderOutput, TError, TServerLoaderOutput, QueryKey> | undefined
+    : never
+  getSocketQueryCache(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketQueryCache, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'getSocketQueryCache')
+    return this._getSocketQueryCacheInner({ target: undefined, input: args[0], isInfiniteQuery: false })
+  }
+
+  /**
+   * The single TanStack `Query` cache entry of the infinite socket query for an exact input (`undefined` if none).
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketInfiniteQueryCache(
+    ...args: TPointType extends 'serverHandler' ? ServerHandlerInputArgs<InputRaw<TServerInputSchema>> : never
+  ): TPointType extends 'serverHandler'
+    ? Query<InfiniteData<TServerLoaderOutput>, TError, InfiniteData<TServerLoaderOutput>, QueryKey> | undefined
+    : never
+  getSocketInfiniteQueryCache(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketInfiniteQueryCache, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueryCache')
+    return this._getSocketQueryCacheInner({ target: undefined, input: args[0], isInfiniteQuery: true })
+  }
+
+  /**
+   * An array of `Query` cache entries of this handler — match by exact input, a predicate over the parsed input, or
+   * `true`/omitted for every entry (scoped to the resolved connection; with none, across all connections).
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketQueriesCache(
+    ...args: TPointType extends 'serverHandler'
+      ? [input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true]
+      : never
+  ): TPointType extends 'serverHandler'
+    ? Array<Query<TServerLoaderOutput, TError, TServerLoaderOutput, QueryKey>>
+    : never
+  getSocketQueriesCache(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketQueriesCache, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'getSocketQueriesCache')
+    return this._getSocketQueriesCacheInner({ target: undefined, input: args[0], isInfiniteQuery: false })
+  }
+
+  /**
+   * An array of `Query` cache entries of this infinite handler — match by exact input, a predicate over the parsed
+   * input, or `true`/omitted for every entry.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketInfiniteQueriesCache(
+    ...args: TPointType extends 'serverHandler'
+      ? [input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true]
+      : never
+  ): TPointType extends 'serverHandler'
+    ? Array<Query<InfiniteData<TServerLoaderOutput>, TError, InfiniteData<TServerLoaderOutput>, QueryKey>>
+    : never
+  getSocketInfiniteQueriesCache(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketInfiniteQueriesCache, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'getSocketInfiniteQueriesCache')
+    return this._getSocketQueriesCacheInner({ target: undefined, input: args[0], isInfiniteQuery: true })
+  }
+
+  /**
+   * Force a refetch of the socket query, ignoring staleness — target by exact input, a predicate over the parsed input,
+   * or `true` for every entry of this handler on the resolved connection.
+   *
+   * Client-side.
+   *
+   *     await chatInfoHandler.refetchSocketQuery({ q })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  refetchSocketQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true,
+          refetchOptions?: RefetchOptions,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<void> : never
+  refetchSocketQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`refetchSocketQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'refetchSocketQuery')
+    return this._refetchSocketQueryInner({
+      target: undefined,
+      input: args[0],
+      refetchOptions: args[1],
+      isInfiniteQuery: false,
+    })
+  }
+
+  /**
+   * Force a refetch of the infinite socket query, ignoring staleness — target by exact input, a predicate over the
+   * parsed input, or `true`.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  refetchSocketInfiniteQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true,
+          refetchOptions?: RefetchOptions,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<void> : never
+  refetchSocketInfiniteQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`refetchSocketInfiniteQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'refetchSocketInfiniteQuery')
+    return this._refetchSocketQueryInner({
+      target: undefined,
+      input: args[0],
+      refetchOptions: args[1],
+      isInfiniteQuery: true,
+    })
+  }
+
+  /**
+   * Mark the socket query stale and refetch it if active — target by exact input, a predicate over the parsed input, or
+   * `true` for every entry of this handler on the resolved connection (with no resolvable connection, across ALL
+   * connections).
+   *
+   * Client-side.
+   *
+   *     await chatInfoHandler.invalidateSocketQuery({ q }) // one input on the resolved connection
+   *     await chatInfoHandler.invalidateSocketQuery(true) // every entry of this handler
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  invalidateSocketQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true,
+          invalidateOptions?: InvalidateOptions,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<void> : never
+  invalidateSocketQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`invalidateSocketQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'invalidateSocketQuery')
+    return this._invalidateSocketQueryInner({
+      target: undefined,
+      input: args[0],
+      invalidateOptions: args[1],
+      isInfiniteQuery: false,
+    })
+  }
+
+  /**
+   * Mark the infinite socket query stale and refetch it if active — target by exact input, a predicate over the parsed
+   * input, or `true` (the infinite pair of `invalidateSocketQuery`).
+   *
+   * Client-side.
+   *
+   *     await chatFeedHandler.invalidateSocketInfiniteQuery({ q })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  invalidateSocketInfiniteQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true,
+          invalidateOptions?: InvalidateOptions,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<void> : never
+  invalidateSocketInfiniteQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`invalidateSocketInfiniteQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'invalidateSocketInfiniteQuery')
+    return this._invalidateSocketQueryInner({
+      target: undefined,
+      input: args[0],
+      invalidateOptions: args[1],
+      isInfiniteQuery: true,
+    })
+  }
+
+  /**
+   * Cancel any in-flight fetch of the socket query — target by exact input, a predicate over the parsed input, or
+   * `true`. Typically before an optimistic `setSocketQueryData`.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  cancelSocketQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true,
+          cancelOptions?: CancelOptions,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<void> : never
+  cancelSocketQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`cancelSocketQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'cancelSocketQuery')
+    return this._cancelSocketQueryInner({
+      target: undefined,
+      input: args[0],
+      cancelOptions: args[1],
+      isInfiniteQuery: false,
+    })
+  }
+
+  /**
+   * Cancel any in-flight fetch of the infinite socket query — target by exact input, a predicate over the parsed input,
+   * or `true`.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  cancelSocketInfiniteQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true,
+          cancelOptions?: CancelOptions,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<void> : never
+  cancelSocketInfiniteQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`cancelSocketInfiniteQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'cancelSocketInfiniteQuery')
+    return this._cancelSocketQueryInner({
+      target: undefined,
+      input: args[0],
+      cancelOptions: args[1],
+      isInfiniteQuery: true,
+    })
+  }
+
+  /**
+   * Drop the socket query from the cache entirely — no refetch, the entry is gone. Target by exact input, a predicate
+   * over the parsed input, or `true`.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  removeSocketQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true]
+      : never
+  ): TPointType extends 'serverHandler' ? void : never
+  removeSocketQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`removeSocketQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'removeSocketQuery')
+    return this._removeSocketQueryInner({ target: undefined, input: args[0], isInfiniteQuery: false })
+  }
+
+  /**
+   * Drop the infinite socket query from the cache entirely — no refetch. Target by exact input, a predicate over the
+   * parsed input, or `true`.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  removeSocketInfiniteQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true]
+      : never
+  ): TPointType extends 'serverHandler' ? void : never
+  removeSocketInfiniteQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`removeSocketInfiniteQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'removeSocketInfiniteQuery')
+    return this._removeSocketQueryInner({ target: undefined, input: args[0], isInfiniteQuery: true })
+  }
+
+  /**
+   * Reset the socket query to its initial state and refetch if active — clears data/error, not just staleness. Target
+   * by exact input, a predicate over the parsed input, or `true`.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  resetSocketQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<void> : never
+  resetSocketQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`resetSocketQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('query', 'resetSocketQuery')
+    return this._resetSocketQueryInner({ target: undefined, input: args[0], isInfiniteQuery: false })
+  }
+
+  /**
+   * Reset the infinite socket query to its initial state and refetch if active — clears data/error, not just staleness.
+   * Target by exact input, a predicate over the parsed input, or `true`.
+   *
+   * Client-side.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  resetSocketInfiniteQuery(
+    ...args: TPointType extends 'serverHandler'
+      ? [input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<void> : never
+  resetSocketInfiniteQuery(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`resetSocketInfiniteQuery, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('infiniteQuery', 'resetSocketInfiniteQuery')
+    return this._resetSocketQueryInner({ target: undefined, input: args[0], isInfiniteQuery: true })
+  }
+
+  /**
+   * Run the handler through the mutation machinery imperatively, outside React — the non-hook `useSocketMutation` (the
+   * mutation cache entry, its callbacks and retry policy all apply; the plain `sendToServer` bypasses all of that). The
+   * send queues until the connection claims, like every socket send.
+   *
+   * Client-side.
+   *
+   *     const { message } = await messageSendHandler.fetchSocketMutation({ text })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  fetchSocketMutation(
+    ...args: TPointType extends 'serverHandler'
+      ? [
+          ...ServerHandlerInputArgs<InputRaw<TServerInputSchema>>,
+          mutationOptions?: ExtraUseMutationOptions<TServerLoaderOutput, TError, InputRaw<TServerInputSchema>>,
+        ]
+      : never
+  ): TPointType extends 'serverHandler' ? Promise<TServerLoaderOutput> : never
+  fetchSocketMutation(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`fetchSocketMutation, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('mutation', 'fetchSocketMutation')
+    return this._fetchSocketMutationInner({ target: undefined, input: args[0], mutationOptions: args[1] })
+  }
+
+  /**
+   * The socket mutation's key — what `useSocketMutation` / `fetchSocketMutation` file their cache entries under.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketMutationKey(
+    ...args: TPointType extends 'serverHandler' ? [] : never
+  ): TPointType extends 'serverHandler' ? MutationKey : never
+  getSocketMutationKey(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketMutationKey, point ${this.id}`)
+    }
+    void args
+    this._assertServerHandlerFlavor('mutation', 'getSocketMutationKey')
+    return this.getMutationKey()
+  }
+
+  /**
+   * The resolved TanStack `MutationOptions` of the socket mutation (key, `mutationFn` over the resolved connection,
+   * merged defaults) — ready to hand to `useMutation` / the mutation cache directly.
+   *
+   * Client-side — the `mutationFn` resolves the connection at mutate time.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketMutationOptions(
+    ...args: TPointType extends 'serverHandler'
+      ? [mutationOptions?: ExtraUseMutationOptions<TServerLoaderOutput, TError, InputRaw<TServerInputSchema>>]
+      : never
+  ): TPointType extends 'serverHandler'
+    ? MutationOptions<TServerLoaderOutput, TError, InputRaw<TServerInputSchema>>
+    : never
+  getSocketMutationOptions(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketMutationOptions, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('mutation', 'getSocketMutationOptions')
+    return this._getSocketMutationOptionsInner({ target: undefined, mutationOptions: args[0] })
+  }
+
+  /**
+   * The single `Mutation` cache entry matching an exact input (`undefined` if none) — for inspecting a specific call's
+   * state. For an array of matches use `getSocketMutationsCache`.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketMutationCache(
+    ...args: TPointType extends 'serverHandler' ? ServerHandlerInputArgs<InputRaw<TServerInputSchema>> : never
+  ): TPointType extends 'serverHandler'
+    ? Mutation<TServerLoaderOutput, TError, InputRaw<TServerInputSchema>> | undefined
+    : never
+  getSocketMutationCache(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketMutationCache, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('mutation', 'getSocketMutationCache')
+    // the socket mutation files under the same `{ scope, type, name }` mutation key — the regular finder matches it
+    return (this.getMutationCache as (input: unknown) => unknown)(args[0])
+  }
+
+  /**
+   * An array of `Mutation` cache entries of this handler — match by exact input (variables), a predicate over
+   * variables, or `true` for all entries.
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  getSocketMutationsCache(
+    ...args: TPointType extends 'serverHandler'
+      ? [input?: InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true]
+      : never
+  ): TPointType extends 'serverHandler'
+    ? Array<Mutation<TServerLoaderOutput, TError, InputRaw<TServerInputSchema>>>
+    : never
+  getSocketMutationsCache(...args: any[]): any {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`getSocketMutationsCache, point ${this.id}`)
+    }
+    this._assertServerHandlerFlavor('mutation', 'getSocketMutationsCache')
+    // same delegation as getSocketMutationCache — one predicate, one key shape
+    return (this.getMutationsCache as (input: unknown) => unknown)(args[0])
+  }
+
+  /** The connect fetch used by the client runtime — the standard endpoint fetch, typed to the connect envelope. */
+  async _fetchChannelConnect(
+    input: unknown,
+  ): Promise<{ data: ChannelConnectOutput | undefined; error: TError | undefined }> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_fetchChannelConnect, point ${this.id}`)
+    }
+    const result = await this._fetchServerDetailed({ input: input as never })
+    return { data: result.data as ChannelConnectOutput | undefined, error: result.error }
+  }
+
+  /**
+   * The ws:// URL of the cold-start upgrade-connect — the channel endpoint itself with the input riding `?input=` (the
+   * WebSocket handshake is GET by spec, so this exists only while the input fits the same URL-length cap the query GET
+   * fallback uses). `undefined` = take the ticket path: input too long, binary, or no resolvable base.
+   */
+  _getChannelConnectUpgradeUrl(input: unknown): string | undefined {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getChannelConnectUpgradeUrl, point ${this.id}`)
+    }
+    if (this.type !== 'channel' || !this._endpoint) {
+      return undefined
+    }
+    if (isContainsBinary(input as Record<string, unknown> | undefined)) {
+      return undefined
+    }
+    const base = this._getServerUrl() || (typeof location !== 'undefined' ? location.origin : undefined)
+    if (!base) {
+      return undefined
+    }
+    const transformer = this._getSocketTransformer()
+    const transformed = transformer.serialize(input) as Record<string, unknown> | undefined
+    const inputJson = JSON.stringify(transformed)
+    const search: Record<string, string> = {
+      ...(inputJson && inputJson !== '{}' ? { [POINT0_QUERY_GET_INPUT_SEARCH_PARAM]: inputJson } : {}),
+      // browser JS cannot attach CUSTOM headers to the handshake GET (`new WebSocket(url)` exposes none), so the
+      // transform fact rides the URL — the query twin of the `x-point0-transform` header the ticket fetch sends
+      ...(transformer !== blankDataTransformerExtended ? { [POINT0_UPGRADE_TRANSFORM_SEARCH_PARAM]: 'true' } : {}),
+    }
+    const url = new URL(this._endpoint.route.get(Object.keys(search).length ? { '?': search } : undefined), base)
+    if (url.toString().length > this._getQueryMaxUrlLength()) {
+      return undefined
+    }
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+    return url.toString()
+  }
+
+  /**
+   * The channel options with defaults applied, chain → close — what the engine enforces limits from. The RESOLVED
+   * (flat) shape: on the client bundle the `server` group was cut at compile time, so the caps below fall back to these
+   * defaults there — harmless, since only the server ever reads them (the mirror holds for the client keys on the
+   * server bundle).
+   */
+  _getChannelPointOptions(): Required<
+    Pick<
+      ChannelOptionsResolved<TError>,
+      'maxMessageSize' | 'maxConnections' | 'linger' | 'ping' | 'connectionTtl' | 'upgradeTimeout' | 'resumeTimeout'
+    >
+  > & { resume: Required<ChannelResumeOptions> } & ChannelOptionsResolved<TError> {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getChannelPointOptions, point ${this.id}`)
+    }
+    return mergeChannelOptions(
+      {
+        reconnect: { delay: 300, maxDelay: 5000 },
+        linger: 1000,
+        ping: 30_000,
+        upgradeTimeout: 5000,
+        resumeTimeout: 5000,
+        maxMessageSize: 1_048_576,
+        maxConnections: 32,
+        connectionTtl: 90_000,
+        resume: { parkWindow: 30_000, streamMaxFrames: 1024, streamMaxBytes: 4_194_304 },
+      },
+      this._defaultChannelOptions,
+      this._channelOptions,
+    ) as never
+  }
+
+  /**
+   * The space options with defaults applied, chain → close (RESOLVED, flat) — what the engine enforces the room cap
+   * from.
+   */
+  _getSpacePointOptions(): Required<Pick<SpaceOptionsResolved, 'maxRooms' | 'linger'>> & SpaceOptionsResolved {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getSpacePointOptions, point ${this.id}`)
+    }
+    return mergeSpaceOptions(
+      {
+        linger: 1000,
+        maxRooms: 256,
+      },
+      this._defaultSpaceOptions,
+      this._spaceOptions,
+    ) as never
+  }
+
+  /**
+   * The clientHandler options resolved, chain → close (RESOLVED, flat) — what the engine reads the resume-buffer opt-in
+   * (`resumable`) and the reply-collection window from.
+   */
+  _getClientHandlerPointOptions(): ClientHandlerOptionsResolved {
+    if (!_point0_env.feature.socket) {
+      throw socketFeatureOffError(`_getClientHandlerPointOptions, point ${this.id}`)
+    }
+    return mergeClientHandlerOptions(this._defaultClientHandlerOptions, this._clientHandlerOptions)
+  }
+
+  /**
+   * Close matching live connections of this channel from the server — remove them from their rooms, stop sending,
+   * notify each client with a `closed` frame. What happens next follows the hold's nature: connections held by
+   * hooks/components auto-revive through the reconnect policy (the connector re-judges), imperative `connect()` holders
+   * stay closed until a remount or `reconnectAll()`. The target is the `$`-dictionary, parts AND-combined; a bare
+   * `kick()` closes every connection of the channel. On a SPACE point a kick is NOT a connection kill — it is a forced
+   * LEAVE of the matching rooms (`left` frames; the connection lives on). Works across processes through the backplane
+   * bus. A real ban still belongs in the connector — it re-applies on every connect.
+   *
+   * Server-only — a runtime error on the client.
+   *
+   *     await chatChannel.kick({ $identity: { userId: '42' } })
+   *     await chatChannel.kick({ connectionId, reason: 'signed-out' })
+   *     await chatSpace.kick({ room: { chatId: '5' } }) // forced leave — "the room closed"
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  kick(
+    target?: (TPointType extends 'space' ? SpaceAdminTarget<TRoom, TIdentity> : ChannelAdminTarget<TIdentity>) & {
+      reason?: string
+    },
+  ): Promise<void>
+  async kick(...args: any[]): Promise<void> {
+    if (_point0_env.side.is.client) {
+      throw new Error(`kick() is server-side (point ${this.id})`)
+    }
+    const [target] = args as [((ChannelAdminTarget | SpaceAdminTarget) & { reason?: string }) | undefined]
+    const { adapter, adminTarget } = this._resolveAdminTarget(target, 'kick')
+    await adapter.kick({ ...adminTarget, reason: target?.reason })
+  }
+
+  /**
+   * Enroll matching live connections of this space into rooms from the server — the imperative twin of `.enroller` and
+   * the mirror of `space.kick` (kick = a forced leave, enroll = a forced join). The FIRST argument selects WHO (the
+   * usual `$`-dictionary, parts AND-combined; bare = every connection of the channel; the room parts read "already in
+   * these rooms"), the SECOND names the rooms to enroll them into. Each match's server-side enrollment grows by those
+   * rooms and the client learns the new set from an `enrolled` frame — the rooms behave exactly like `.enroller` rooms
+   * (hold-less, no client join behind them, and the client may `leave()` them like any others). Works across processes
+   * through the backplane bus.
+   *
+   * EPHEMERAL by design: an imperative enrollment lives until the connection does — a reconnect or a `refresh` rebuilds
+   * enrollments from `.enroller` alone. A durable enrollment is DATA: write the fact, have `.enroller` read it —
+   * `enroll` is how the fact reaches the connections that are ALREADY live.
+   *
+   * Server-only — a runtime error on the client.
+   *
+   *     await notificationsSpace.enroll({ $identity: { userId: '42' } }, { threadId: 't1' })
+   *     await chatSpace.enroll({ connectionId }, [{ chatId: '5' }, { chatId: '6' }])
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  enroll<
+    // the third WRITE path for rooms — the same AssertRoomNotWider verdict as the `.joiner`/`.enroller` returns (an
+    // extra key on a VARIABLE room would enroll into a room nothing ever pushes to). Unlike the joiner (a callback,
+    // where the verdict needs its own inferred type parameter), a VALUE argument takes the verdict inline — and the
+    // parameters are DIRECT (only the target rides the point-type conditional): inference cannot see through a
+    // conditional args tuple, and an un-inferred verdict never fires
+    TEnrollRoom extends TRoom | readonly TRoom[],
+  >(
+    target: TPointType extends 'space' ? SpaceAdminTarget<TRoom, TIdentity> | undefined : never,
+    room: TEnrollRoom &
+      AssertRoomNotWider<TEnrollRoom extends readonly (infer TElement)[] ? TElement : TEnrollRoom, TRoom>,
+  ): TPointType extends 'space' ? Promise<void> : never
+  async enroll(...args: any[]): Promise<void> {
+    if (_point0_env.side.is.client) {
+      throw new Error(`enroll() is server-side (point ${this.id})`)
+    }
+    const [target, room] = args as [SpaceAdminTarget | undefined, UnknownData | UnknownData[] | undefined]
+    if (this.type !== 'space') {
+      throw new Error(`enroll() lives on space points only, got ${this.toStringWithLocation()}`)
+    }
+    const roomsRaw = Point0._toArrayPart(room)
+    if (!roomsRaw || roomsRaw.length === 0) {
+      throw new Error(`enroll() needs the room(s) to enroll into as its second argument (point ${this.id})`)
+    }
+    const { adapter, adminTarget, roomTransformer } = this._resolveAdminTarget(target, 'enroll')
+    const enrollRooms = [...new Set(roomsRaw.map((each) => stringifyOrThrow(roomTransformer!, each, this.id)))]
+    await adapter.enroll({ ...adminTarget, enrollRooms })
+  }
+
+  /**
+   * Ask matching live connections to re-run their connect request — the connector re-applies, the identity is rebuilt,
+   * the socket stays up (the client also re-joins its spaces). The server-side "this user's identity changed" signal
+   * (roles granted, plan changed). Same targeting as `kick`; works across processes through the backplane bus.
+   *
+   * Server-only — a runtime error on the client.
+   *
+   *     await chatChannel.refresh({ $identity: { userId: '42' } })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  refresh(target?: ChannelAdminTarget<TIdentity>): Promise<void>
+  async refresh(...args: any[]): Promise<void> {
+    if (_point0_env.side.is.client) {
+      throw new Error(`refresh() is server-side (point ${this.id})`)
+    }
+    const [target] = args as [ChannelAdminTarget | undefined]
+    const { adapter, adminTarget } = this._resolveAdminTarget(target, 'refresh')
+    await adapter.refresh(adminTarget)
+  }
+
+  /**
+   * Shallow-merge a patch into the stored identity of matching connections — the server-side "this connection's DATA
+   * changed" signal (a display name, a plan flag). It amends what selections and pushes match over; it does NOT
+   * re-evaluate rights: rooms already granted stay granted (narrowed rights = add a `space.kick`; a full re-evaluation
+   * = `refresh`). The client learns nothing — identity never leaves the server. The patch is a plain object (it travels
+   * the backplane bus; a function cannot). A CONNECTORLESS channel has no amendable identity at all — its identity is
+   * the strict `{}`, so `amendIdentity` on it is a compile error (`AssertIdentityAmendable`) and a runtime one (the
+   * `_connectorDeclared` guard), never a silent identity growing keys the type never admitted.
+   *
+   * Server-only — a runtime error on the client.
+   *
+   *     await chatChannel.amendIdentity({ $identity: { userId: '42' } }, { plan: 'pro' })
+   *     await chatChannel.amendIdentity({ connectionId }, { displayName })
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  amendIdentity(
+    ...args: TPointType extends 'channel'
+      ? [target: ChannelAdminTarget<TIdentity> & AssertIdentityAmendable<TIdentity>, patch: Partial<TIdentity>]
+      : never
+  ): TPointType extends 'channel' ? Promise<void> : never
+  async amendIdentity(...args: any[]): Promise<void> {
+    if (_point0_env.side.is.client) {
+      throw new Error(`amendIdentity() is server-side (point ${this.id})`)
+    }
+    const [target, patch] = args as [ChannelAdminTarget | undefined, UnknownData | undefined]
+    if (this.type !== 'channel') {
+      throw new Error(`amendIdentity() lives on channel points only, got ${this.toStringWithLocation()}`)
+    }
+    // the runtime twin of `AssertIdentityAmendable` — the DECLARATION fact, never the runtime identity value (which
+    // this very method could have grown behind the type's back before the guard existed)
+    if (!this._connectorDeclared) {
+      throw new Error(
+        `amendIdentity() needs a connector-declared identity — a connectorless channel has nothing to amend (point ${this.id})`,
+      )
+    }
+    const { adapter, adminTarget, transformer } = this._resolveAdminTarget(target, 'amendIdentity')
+    await adapter.amendIdentity({
+      ...adminTarget,
+      patchSerialized: stringifyOrThrow(transformer, patch ?? {}, this.id),
+    })
+  }
+
+  /**
+   * The live-connection enumerations of this channel, in two FLOORS — `connections.server.*` reads the CLUSTER (every
+   * process, over the backplane bus; each read is a snapshot over a gather window, default 1000 ms, and its `local`
+   * sub-floor is this process alone, synchronously), `connections.client.*` reads THIS BROWSER TAB (the live connection
+   * facades it holds, synchronously). Server targets are the `$`-dictionary; the client floor takes none — a bare call
+   * is every live connection of this channel on this client.
+   *
+   * `connections.server.*` is server-only and `connections.client.*` client-only — the wrong side is a runtime error,
+   * never a silent empty answer.
+   *
+   *     await appChannel.connections.server.count({ $identity: { plan: 'free' } }) // numbers-only on the bus
+   *     const list = await appChannel.connections.server.list()
+   *     for await (const { connectionId, identity } of appChannel.connections.server.forEach()) { ... }
+   *     await appChannel.connections.server.forEach({}, { onConnection: async (c) => { ... } }) // → processed count
+   *     appChannel.connections.server.local.count() // SYNCHRONOUS — this process only, no bus
+   *     appChannel.connections.client.list() // SYNCHRONOUS — this tab's connection facades
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  get connections(): TPointType extends 'channel'
+    ? ChannelConnectionsEnumeration<
+        TIdentity,
+        ClientChannelConnection<
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+          TError
+        >
+      >
+    : never {
+    this._connectionsEnumerationCache ??= this._buildEnumeration('connections')
+    return this._connectionsEnumerationCache as never
+  }
+  private _connectionsEnumerationCache: unknown
+
+  /**
+   * The live-membership enumerations of this space — the same two floors as `channel.connections.*`, one level down.
+   * `memberships.server.*` reads the cluster (items are `{ connectionId, identity, rooms }`; the target adds `room` —
+   * exact snapshot(s), the presence read — and `$room`, a sift selection over rooms), `memberships.client.*` reads this
+   * browser tab's live membership facades, ENROLLED ones included (which is how a space with no `.joiner` is read one
+   * membership at a time).
+   *
+   * `memberships.server.*` is server-only and `memberships.client.*` client-only — the wrong side is a runtime error.
+   *
+   *     await chatSpace.memberships.server.count({ room: { chatId: '5' } }) // the presence counter
+   *     const list = await chatSpace.memberships.server.list({ room })
+   *     await chatSpace.memberships.server.forEach({ room }, { onMembership: async ({ connectionId }) => { ... } })
+   *     chatSpace.memberships.server.local.rooms({ connectionId }) // SYNCHRONOUS local rooms — the join-guard read
+   *     chatSpace.memberships.client.list() // SYNCHRONOUS — this tab's membership facades, enrolled included
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  get memberships(): TPointType extends 'space'
+    ? SpaceMembershipsEnumeration<
+        TRoom,
+        TIdentity,
+        ClientSpaceMembership<
+          FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
+          TRoom,
+          TError,
+          TChannelInput
+        >
+      >
+    : never {
+    this._membershipsEnumerationCache ??= this._buildEnumeration('memberships')
+    return this._membershipsEnumerationCache as never
+  }
+  private _membershipsEnumerationCache: unknown
+
+  /**
+   * Build the `connections.*` / `memberships.*` namespace — the `server` floor's closures (plus its `local` sub-floor)
+   * and the `client` floor's. Every guard runs at CALL time (the namespace object itself is built on any point the
+   * getter is touched on).
+   */
+  private _buildEnumeration(kind: 'connections' | 'memberships'): {
+    server: {
+      count: (target?: unknown, options?: EnumerationOptions) => Promise<number>
+      list: (target?: unknown, options?: EnumerationOptions) => Promise<unknown[]>
+      forEach: (
+        target?: unknown,
+        options?: EnumerationOptions & {
+          onConnection?: (item: never) => void | Promise<void>
+          onMembership?: (item: never) => void | Promise<void>
+        },
+      ) => Promise<number> | AsyncIterable<unknown>
+      // the synchronous local sub-floor — this process's slice, no bus/window/promise (see `LocalChannelConnectionsEnumeration`)
+      local: {
+        count: (target?: unknown) => number
+        list: (target?: unknown) => unknown[]
+        rooms: (target?: unknown) => unknown[]
+      }
+    }
+    // the client floor — this tab's live facades, synchronous, no targets (see `ClientChannelConnectionsEnumeration`)
+    client: {
+      count: () => number
+      list: () => unknown[]
+    }
+  } {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const point = this
+    const assertKind = (): void => {
+      const expectedType: PointType = kind === 'connections' ? 'channel' : 'space'
+      if (point.type !== expectedType) {
+        throw new Error(
+          kind === 'connections'
+            ? `connections.* lives on channel points only (a space enumerates memberships.*), got ${point.toStringWithLocation()}`
+            : `memberships.* lives on space points only (a channel enumerates connections.*), got ${point.toStringWithLocation()}`,
+        )
+      }
+    }
+    // every SERVER-floor closure below opens with a LITERAL side guard, one by one rather than through a shared
+    // helper: a call into a helper is not dead code to a bundler, an inline `throw` under a constant-folded condition
+    // is — that is what lets an app's client build cut each body. The namespace object itself, `assertKind` and the
+    // CLIENT floor stay guard-free: they run in the browser.
+    const resolve = (target: unknown) => {
+      if (_point0_env.side.is.client) {
+        throw new Error(`${kind}.server.* is server-side (point ${point.id})`)
+      }
+      assertKind()
+      return point._resolveAdminTarget(target as ChannelAdminTarget | SpaceAdminTarget | undefined, `${kind}.server.*`)
+    }
+    // the client floor's read: the live facades of this channel/space on THIS client, straight off the socket manager's
+    // registries — no bus, no window, no promise, and no targets (a bare call is all of them)
+    const clientFacades = (): unknown[] => {
+      if (!_point0_env.feature.socket) {
+        throw socketFeatureOffError(`${kind}.client.*, point ${point.id}`)
+      }
+      if (_point0_env.side.is.server) {
+        throw new Error(
+          kind === 'connections'
+            ? `connections.client.* is client-side — nothing is ever connected on the server (point ${point.id})`
+            : `memberships.client.* is client-side — nothing is ever joined on the server (point ${point.id})`,
+        )
+      }
+      assertKind()
+      return kind === 'connections'
+        ? listChannelConnectionFacades(point as AnyPoint)
+        : listSpaceMembershipFacades(point as AnyPoint)
+    }
+    const itemFromSnapshot = (
+      snapshot: SocketConnectionSnapshot,
+      transformer: DataTransformerExtended,
+      roomTransformer: DataTransformerExtended | undefined,
+    ): unknown => {
+      if (_point0_env.side.is.client) {
+        throw new Error(`${kind}.server.* is server-side (point ${point.id})`)
+      }
+      if (kind === 'memberships' && roomTransformer) {
+        return {
+          connectionId: snapshot.cid,
+          identity: transformer.parse(snapshot.identity),
+          rooms: (snapshot.spaces?.[point.name] ?? []).map((room) => roomTransformer.parse(room)),
+        } satisfies SpaceMembershipListed
+      }
+      return {
+        connectionId: snapshot.cid,
+        identity: transformer.parse(snapshot.identity),
+        spaces: snapshot.spacesParsed ?? {},
+      } satisfies ChannelConnectionListed
+    }
+    return {
+      server: {
+        count: async (target, options) => {
+          if (_point0_env.side.is.client) {
+            throw new Error(`${kind}.server.* is server-side (point ${point.id})`)
+          }
+          const { adapter, adminTarget } = resolve(target)
+          return await adapter.count({ ...adminTarget, timeoutMs: options?.timeout })
+        },
+        list: async (target, options) => {
+          if (_point0_env.side.is.client) {
+            throw new Error(`${kind}.server.* is server-side (point ${point.id})`)
+          }
+          const { adapter, adminTarget, transformer, roomTransformer } = resolve(target)
+          const snapshots = await adapter.list({ ...adminTarget, timeoutMs: options?.timeout })
+          return snapshots.map((snapshot) => itemFromSnapshot(snapshot, transformer, roomTransformer))
+        },
+        forEach: (target, options) => {
+          if (_point0_env.side.is.client) {
+            throw new Error(`${kind}.server.* is server-side (point ${point.id})`)
+          }
+          const { adapter, adminTarget, transformer, roomTransformer } = resolve(target)
+          const callback = (kind === 'connections' ? options?.onConnection : options?.onMembership) as
+            | ((item: unknown) => void | Promise<void>)
+            | undefined
+          if (callback) {
+            // the streaming-callback form: fire per item as it arrives, resolve with the processed count once the
+            // window closed AND every callback settled (an async callback that throws is logged, still counted)
+            return new Promise<number>((resolvePromise) => {
+              let processed = 0
+              const settled: Array<Promise<void>> = []
+              adapter.forEach({
+                ...adminTarget,
+                timeoutMs: options?.timeout,
+                onItem: (snapshot) => {
+                  processed++
+                  settled.push(
+                    (async () => {
+                      try {
+                        await callback(itemFromSnapshot(snapshot, transformer, roomTransformer))
+                      } catch (error) {
+                        getLogFnForPoint(point)({
+                          level: 'error',
+                          category: ['point0', 'socket'],
+                          message: `A ${kind}.forEach callback threw (point ${point.id})`,
+                          error,
+                        })
+                      }
+                    })(),
+                  )
+                },
+                onDone: () => {
+                  void Promise.all(settled).then(() => resolvePromise(processed))
+                },
+              })
+            })
+          }
+          // the iterable form — buffer items as they arrive, end the iteration when the window closes
+          const buffered: unknown[] = []
+          let done = false
+          const notifiers = new Set<() => void>()
+          const notify = (): void => {
+            for (const notifier of [...notifiers]) {
+              notifier()
+            }
+          }
+          adapter.forEach({
+            ...adminTarget,
+            timeoutMs: options?.timeout,
+            onItem: (snapshot) => {
+              buffered.push(itemFromSnapshot(snapshot, transformer, roomTransformer))
+              notify()
+            },
+            onDone: () => {
+              done = true
+              notify()
+            },
+          })
+          const iterable: AsyncIterable<unknown> = {
+            [Symbol.asyncIterator]() {
+              let index = 0
+              return {
+                next: async (): Promise<IteratorResult<unknown>> => {
+                  for (;;) {
+                    if (index < buffered.length) {
+                      return { value: buffered[index++], done: false }
+                    }
+                    if (done) {
+                      return { value: undefined, done: true }
+                    }
+                    await new Promise<void>((resolveNext) => {
+                      const notifier = (): void => {
+                        notifiers.delete(notifier)
+                        resolveNext()
+                      }
+                      notifiers.add(notifier)
+                    })
+                  }
+                },
+              }
+            },
+          }
+          return iterable
+        },
+        // the synchronous local floor: this process's matching slice, straight off the room index — no bus, no gather
+        // window, no promise. The join path (joiner/enroller/guards) runs on the socket's process, so its local slice is
+        // the full truth about the connection; elsewhere it is local only (the async count/list are the global truth).
+        local: {
+          count: (target) => {
+            if (_point0_env.side.is.client) {
+              throw new Error(`${kind}.server.* is server-side (point ${point.id})`)
+            }
+            const { adapter, adminTarget } = resolve(target)
+            return adapter.localCount(adminTarget)
+          },
+          list: (target) => {
+            if (_point0_env.side.is.client) {
+              throw new Error(`${kind}.server.* is server-side (point ${point.id})`)
+            }
+            const { adapter, adminTarget, transformer, roomTransformer } = resolve(target)
+            return adapter
+              .localList(adminTarget)
+              .map((snapshot) => itemFromSnapshot(snapshot, transformer, roomTransformer))
+          },
+          // memberships only (the type withholds it from a channel): the flat, deduped rooms the matching local
+          // memberships hold — the join guard's `{ connectionId }` room read that replaced the per-callback `rooms()`
+          rooms: (target) => {
+            if (_point0_env.side.is.client) {
+              throw new Error(`${kind}.server.* is server-side (point ${point.id})`)
+            }
+            const { adapter, adminTarget, transformer, roomTransformer } = resolve(target)
+            const seen = new Set<string>()
+            const rooms: unknown[] = []
+            for (const snapshot of adapter.localList(adminTarget)) {
+              const item = itemFromSnapshot(snapshot, transformer, roomTransformer) as SpaceMembershipListed
+              for (const room of item.rooms) {
+                const key = roomTransformer ? stringifyOrThrow(roomTransformer, room, this.id) : JSON.stringify(room)
+                if (seen.has(key)) {
+                  continue
+                }
+                seen.add(key)
+                rooms.push(room)
+              }
+            }
+            return rooms
+          },
+        },
+      },
+      // the client floor: this tab's live facades — synchronous, hold-less, no targets. Client-only: on the
+      // server it throws (nothing is ever connected/joined there — the cluster picture is the `server` floor).
+      client: {
+        count: () => clientFacades().length,
+        list: () => clientFacades(),
+      },
+    }
+  }
+
+  /**
+   * Shared guard + serialization for the admin/enumeration surface. A CHANNEL point addresses connections (identity
+   * matcher, its own transformer). A SPACE point addresses rooms of its channel: the identity matcher rides the CHANNEL
+   * transformer (identity lives on the channel), the room parts the SPACE transformer. The `$`-rule maps straight onto
+   * the wire: bare keys become exact address lists, `$`-keys become serialized sift matchers.
+   */
+  private _resolveAdminTarget(
+    target: ChannelAdminTarget | SpaceAdminTarget | undefined,
+    what: string,
+  ): {
+    adapter: SocketServerAdapter
+    adminTarget: SocketAdminTarget
+    /** the transformer for the identity (channel-side) — used to parse listed identities */
+    transformer: DataTransformerExtended
+    /** the space's transformer for rooms — present only for a space point */
+    roomTransformer: DataTransformerExtended | undefined
+  } {
+    // FIRST — everything below is dead code in a client build (the app bundler cuts it), which is the point
+    if (_point0_env.side.is.client) {
+      throw new Error(`${what} is server-side (point ${this.id})`)
+    }
+    const isSpace = this.type === 'space'
+    const isChannel = this.type === 'channel'
+    if (!isSpace && !isChannel) {
+      throw new Error(`${what} lives on channel or space points only, got ${this.toStringWithLocation()}`)
+    }
+    // for a space, identity lives on its channel; the space's own transformer serializes rooms
+    const channel = isSpace ? this._channelPointOrThrow() : (this as AnyPoint)
+    const adapter = getSocketServerAdapterOrThrow(this.scope, this.id)
+    const identityTransformer = channel._getSocketTransformer()
+    const roomTransformer = isSpace ? this._getSocketTransformer() : undefined
+    const t = target as
+      | {
+          connectionId?: string | string[]
+          $identity?: unknown
+          room?: UnknownData | UnknownData[]
+          $room?: unknown
+        }
+      | undefined
+    if (t?.$identity !== undefined) {
+      Point0._assertNoWhereOperator(t.$identity, this.id)
+    }
+    if (isSpace && t?.$room !== undefined) {
+      Point0._assertNoWhereOperator(t.$room, this.id)
+    }
+    const rooms = isSpace ? Point0._toArrayPart(t?.room) : undefined
+    return {
+      adapter,
+      transformer: identityTransformer,
+      roomTransformer,
+      adminTarget: {
+        channel,
+        ...(isSpace ? { space: this.name } : {}),
+        matcher:
+          t?.$identity === undefined ? undefined : stringifyOrThrow(identityTransformer, t.$identity, channel.id),
+        roomMatcher:
+          isSpace && t?.$room !== undefined && roomTransformer
+            ? stringifyOrThrow(roomTransformer, t.$room, this.id)
+            : undefined,
+        rooms:
+          rooms === undefined || !roomTransformer
+            ? undefined
+            : rooms.map((room) => stringifyOrThrow(roomTransformer, room, this.id)),
+        connectionId: Point0._toArrayPart(t?.connectionId),
+      },
+    }
+  }
+
+  /** `$where` takes a function — it cannot travel the backplane bus and is an eval hole; reject it everywhere. */
+  private static _assertNoWhereOperator(matcher: unknown, pointId: string): void {
+    if (_point0_env.side.is.client) {
+      throw new Error(`Matcher validation is server-side (point ${pointId})`)
+    }
+    if (!matcher || typeof matcher !== 'object') {
+      return
+    }
+    for (const [key, value] of Object.entries(matcher)) {
+      if (key === '$where') {
+        throw new Error(`$where is not allowed in an identity/room matcher (point ${pointId})`)
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          Point0._assertNoWhereOperator(item, pointId)
+        }
+      } else {
+        Point0._assertNoWhereOperator(value, pointId)
+      }
+    }
+  }
+
+  /**
+   * Execute this serverHandler's `.serverReply` for one incoming socket message — the engine's dispatch entry. Parses
+   * the input with `.clientSend`, runs the reply, emits the `pointHandler*` events, returns the serialized reply.
+   * Throws the typed error on failure (the engine serializes it into the `sendErr` frame).
+   */
+  async _executeServerReply({
+    inputSerialized,
+    room,
+    identity,
+    connectionId,
+    messageId,
+    points,
+    sendReply,
+  }: {
+    inputSerialized: string | undefined
+    /** the concrete room this message addresses (a space handler); `undefined` for a channel handler */
+    room: unknown
+    identity: unknown
+    connectionId: string
+    /** the server-generated message id — what `.serverReply` sees as `messageId` */
+    messageId: string
+    points: NiceServerPoints
+    /** delivers an EARLY reply the moment the callback calls its imperative `reply()` — the engine frames it */
+    sendReply?: (early: { dataSerialized: string | undefined } | { error: ErrorPoint0 }) => void
+  }): Promise<{ dataSerialized: string | undefined; data: unknown; replied?: boolean }> {
+    if (_point0_env.side.is.client) {
+      throw new Error(`.serverReply execution is server-side (point ${this.id})`)
+    }
+    const replyFn = this._serverReplyFn
+    if (!replyFn) {
+      throw new this._Error(`Point ${this.id} has no .serverReply`, { status: 400 })
+    }
+    const transformer = this._getSocketTransformer()
+    const inputRaw = inputSerialized === undefined ? {} : transformer.parse(inputSerialized)
+    const input = (() => {
+      if (!this._clientSendSchema) {
+        return inputRaw
+      }
+      const parsed = this.parseInputSafeSync(this._clientSendSchema, inputRaw as never)
+      if (!parsed.success) {
+        parsed.error.status ??= 400
+        throw parsed.error
+      }
+      return parsed.data
+    })()
+    const eventData = {
+      input: input as InputRawUnknown,
+      point: this,
+      connectionId,
+      identity,
+    }
+    const meta = { point: this.id, connection: connectionId }
+    this._emit('pointHandlerServerStart', eventData as never, meta)
+    // the server-side customizers (chain → closer, callbacks stacked in order): the BEFORE guard may refuse the
+    // message (throw → sendErr, the reply never runs); AFTER observes the settled reply and never affects it
+    const serverHandlerOptions = mergeServerHandlerOptions(
+      this._defaultServerHandlerOptions,
+      this._serverHandlerOptions,
+    ) as {
+      onBeforeServerReply?: (input: unknown) => unknown
+      onAfterServerReply?: (input: unknown) => unknown
+    }
+    // room rides the callback input only for a space handler (`undefined` = a channel handler, no room prop)
+    const roomPart = room !== undefined ? { room } : {}
+    const customizerBase = {
+      input,
+      identity,
+      connectionId,
+      messageId,
+      point: this,
+      points,
+      ...roomPart,
+    }
+    const runAfterServerReply = (output: unknown, error: ErrorPoint0 | undefined): void => {
+      const callback = serverHandlerOptions.onAfterServerReply
+      if (!callback) {
+        return
+      }
+      void (async () => {
+        try {
+          await callback({ ...customizerBase, output, error })
+        } catch (callbackError) {
+          getLogFnForPoint(this)({
+            level: 'error',
+            category: ['point0', 'socket'],
+            message: `An onAfterServerReply callback threw (point ${this.id})`,
+            error: callbackError,
+          })
+        }
+      })()
+    }
+    // the imperative reply (`.serverReply<T>()`'s `reply`): answer now, keep running. First call wins — it emits the
+    // events and frames the envelope through `sendReply`; everything after it (later calls, the return, a throw) no
+    // longer reaches the client. (A ref, not a `let` — the mutation happens inside the closure, past narrowing.)
+    const repliedRef = { current: false }
+    const replyImperative = (data: unknown): void => {
+      if (repliedRef.current) {
+        getLogFnForPoint(this)({
+          level: 'warn',
+          category: ['point0', 'socket'],
+          message: `reply() called more than once — the reply already left (point ${this.id})`,
+        })
+        return
+      }
+      repliedRef.current = true
+      if (data instanceof Error) {
+        const error0 = this._Error.from(data)
+        this._emit('pointHandlerServerSettled', { ...eventData, output: undefined, error: error0 } as never, meta)
+        this._emit('pointHandlerServerError', { ...eventData, output: undefined, error: error0 } as never, meta)
+        runAfterServerReply(undefined, error0)
+        sendReply?.({ error: error0 })
+        return
+      }
+      this._emit('pointHandlerServerSettled', { ...eventData, output: data, error: undefined } as never, meta)
+      this._emit('pointHandlerServerSuccess', { ...eventData, output: data, error: undefined } as never, meta)
+      runAfterServerReply(data, undefined)
+      sendReply?.({ dataSerialized: data === undefined ? undefined : stringifyOrThrow(transformer, data, this.id) })
+    }
+    try {
+      await serverHandlerOptions.onBeforeServerReply?.(customizerBase)
+      const output = await replyFn({
+        input,
+        identity,
+        connectionId,
+        messageId,
+        reply: replyImperative,
+        points,
+        ...roomPart,
+      } as never)
+      if (repliedRef.current) {
+        // the imperative reply already answered (events included) — the return is ignored by contract
+        return { dataSerialized: undefined, data: undefined, replied: true }
+      }
+      this._emit('pointHandlerServerSettled', { ...eventData, output, error: undefined } as never, meta)
+      this._emit('pointHandlerServerSuccess', { ...eventData, output, error: undefined } as never, meta)
+      runAfterServerReply(output, undefined)
+      return {
+        dataSerialized: output === undefined ? undefined : stringifyOrThrow(transformer, output, this.id),
+        data: output,
+      }
+    } catch (error) {
+      if (repliedRef.current) {
+        // the client already has its answer — the late failure is the server's business only
+        getLogFnForPoint(this)({
+          level: 'error',
+          category: ['point0', 'socket'],
+          message: `.serverReply threw after reply() was already sent (point ${this.id})`,
+          error,
+        })
+        return { dataSerialized: undefined, data: undefined, replied: true }
+      }
+      const error0 = this._Error.from(error)
+      this._emit('pointHandlerServerSettled', { ...eventData, output: undefined, error: error0 } as never, meta)
+      this._emit('pointHandlerServerError', { ...eventData, output: undefined, error: error0 } as never, meta)
+      runAfterServerReply(undefined, error0)
+      throw error0
+    }
+  }
+
+  /**
+   * Execute this space's `.joiner` for one incoming `join` frame — the engine's join entry. Refuses outright when the
+   * space declares no `.joiner` (a `POINT0_SOCKET_JOIN_NOT_ALLOWED` typed error, before the guards run: such a space is
+   * server-enrolled only). Otherwise parses the input with the space transformer, validates it through the space's
+   * `.input` schema (a 400-coded typed error on failure), runs the joiner, normalizes the return (one room | array |
+   * nothing) into a deduped, serialized room list, and returns the rooms (parsed + serialized) plus the validated
+   * `input`. Throws the typed error on failure (the engine frames it into a `joinErr`).
+   *
+   * Events: `pointSpaceJoinServerStart` fires here, before the run, and a throw emits `Settled`/`Error` here too. The
+   * SUCCESS pair does NOT fire here — the engine emits it (`_emitSpaceJoinSettled`, the returned `input` is what it
+   * needs) once the rooms are registered, so the event means "the join is done".
+   */
+  async _executeJoiner({
+    inputSerialized,
+    identity,
+    connectionId,
+    points,
+  }: {
+    inputSerialized: string | undefined
+    identity: unknown
+    connectionId: string
+    points: NiceServerPoints
+  }): Promise<{ rooms: unknown[]; roomsSerialized: string[]; input: InputRawUnknown }> {
+    if (_point0_env.side.is.client) {
+      throw new Error(`.joiner execution is server-side (point ${this.id})`)
+    }
+    if (this.type !== 'space') {
+      throw new this._Error(`Point ${this.id} is not a space — join runs on space points`, { status: 400 })
+    }
+    // no `.joiner` — the space takes no client joins at all. The server puts connections into it itself (`.enroller`
+    // at connection setup, `space.enroll()` imperatively), so a join frame is refused before anything runs: no input
+    // parse, no guards, no events. The client refuses the same join locally (`_joinerDeclared`); this is the wire-side
+    // half of the same rule — a space whose rooms the server chooses must never take a room the client authored.
+    if (!this._joinerFn) {
+      throw new this._Error(`Space ${this.id} takes no client joins — it declares no .joiner`, {
+        status: 403,
+        code: POINT0_ERROR_CODES_MAP.SOCKET_JOIN_NOT_ALLOWED,
+        meta: { point: this.id },
+      })
+    }
+    const transformer = this._getSocketTransformer()
+    const inputRaw = inputSerialized === undefined ? {} : transformer.parse(inputSerialized)
+    // the space keeps its `.input` schema(s) in the server execute actions (the joiner-side validation) — parse each,
+    // same 400-coded pattern as `_executeServerReply`'s clientSend parse
+    let input = inputRaw
+    for (const action of this._serverExecuteActions) {
+      if (action.type !== 'input') {
+        continue
+      }
+      const parsed = this.parseInputSafeSync(action.schema, input as never)
+      if (!parsed.success) {
+        parsed.error.status ??= 400
+        throw parsed.error
+      }
+      input = parsed.data
+    }
+    const eventData = {
+      input: input as InputRawUnknown,
+      point: this,
+      connectionId,
+      // the server side of the universal family carries the identity — presence recipes key off it
+      identity,
+    }
+    const meta = { point: this.id, connection: connectionId }
+    // a real joiner run, never a resume re-announce (those are emitted by the engine's unpark/restore paths)
+    this._emit('pointSpaceJoinServerStart', { ...eventData, resumed: false } as never, meta)
+    // the join guards (chain `.spaceOptions()` → the closing `.space({...})`, callbacks stacked in order): the BEFORE
+    // guard may refuse the join (throw → joinErr, the joiner never runs); AFTER observes the settled join
+    const spaceOptions = mergeSpaceOptions(this._defaultSpaceOptions, this._spaceOptions)
+    const guardBase = { input, identity, connectionId, point: this, points }
+    const runAfterJoiner = (output: unknown[] | undefined, error: ErrorPoint0 | undefined): void => {
+      const callback = spaceOptions.onAfterJoiner
+      if (!callback) {
+        return
+      }
+      void (async () => {
+        try {
+          await callback({ ...guardBase, output, error } as never)
+        } catch (callbackError) {
+          getLogFnForPoint(this)({
+            level: 'error',
+            category: ['point0', 'socket'],
+            message: `An onAfterJoiner callback threw (point ${this.id})`,
+            error: callbackError,
+          })
+        }
+      })()
+    }
+    try {
+      await spaceOptions.onBeforeJoiner?.(guardBase as never)
+      const output = await this._joinerFn({ input, identity, connectionId, points })
+      const { rooms, roomsSerialized } = this._normalizeRooms(output)
+      // no Settled/Success emit here — the caller fires it through `_emitSpaceJoinSettled` after the rooms are in the
+      // participation and the room index; a handler on `pointSpaceJoinServerSuccess` must see the joiner in the room
+      runAfterJoiner(rooms, undefined)
+      return { rooms, roomsSerialized, input: eventData.input }
+    } catch (error) {
+      const error0 = this._Error.from(error)
+      this._emit('pointSpaceJoinServerSettled', { ...eventData, rooms: undefined, error: error0 } as never, meta)
+      this._emit('pointSpaceJoinServerError', { ...eventData, rooms: undefined, error: error0 } as never, meta)
+      runAfterJoiner(undefined, error0)
+      throw error0
+    }
+  }
+
+  /** Normalize a joiner/enroller return (one room | array | undefined/void) into a deduped, serialized room list. */
+  private _normalizeRooms(output: unknown): { rooms: unknown[]; roomsSerialized: string[] } {
+    if (_point0_env.side.is.client) {
+      throw new Error(`Room normalization is server-side (point ${this.id})`)
+    }
+    const transformer = this._getSocketTransformer()
+    const roomsList = output === undefined || output === null ? [] : Array.isArray(output) ? output : [output]
+    const rooms: unknown[] = []
+    const roomsSerialized: string[] = []
+    const seen = new Set<string>()
+    for (const room of roomsList) {
+      const serialized = stringifyOrThrow(transformer, room, this.id)
+      if (seen.has(serialized)) {
+        continue
+      }
+      seen.add(serialized)
+      rooms.push(room)
+      roomsSerialized.push(serialized)
+    }
+    return { rooms, roomsSerialized }
+  }
+
+  /**
+   * Execute this space's `.enroller` for one fresh connection — the engine's connection-setup entry (both connect
+   * paths). Runs the enroller with the frozen identity and normalizes the return into a deduped, serialized room list
+   * (the engine installs the membership and subscribes the topics). An enrollment IS a join, server-initiated, so it
+   * rides the same `pointSpaceJoin*` family with an empty input (and the later `pointSpaceLeaveServer` has its opening
+   * pair): `Start` fires here, a throw emits `Settled`/`Error` here, and the engine emits the SUCCESS pair
+   * (`_emitSpaceJoinSettled`) after it registered the rooms. Returns `{ rooms: [], roomsSerialized: [] }` when the
+   * space has no `.enroller`. A throw fails the CONNECTION setup (the engine answers `claimErr`) — a connection missing
+   * its enrolled rooms would drop pushes silently.
+   */
+  async _executeEnroller({
+    identity,
+    connectionId,
+    points,
+  }: {
+    identity: unknown
+    connectionId: string
+    points: NiceServerPoints
+  }): Promise<{ rooms: unknown[]; roomsSerialized: string[] }> {
+    if (_point0_env.side.is.client) {
+      throw new Error(`.enroller execution is server-side (point ${this.id})`)
+    }
+    if (this.type !== 'space') {
+      throw new this._Error(`Point ${this.id} is not a space — enrollment runs on space points`, {
+        status: 400,
+      })
+    }
+    if (!this._enrollerFn) {
+      return { rooms: [], roomsSerialized: [] }
+    }
+    const eventData = {
+      input: {} as InputRawUnknown,
+      point: this,
+      connectionId,
+      identity,
+    }
+    const meta = { point: this.id, connection: connectionId }
+    // a real enroller run, never a resume re-announce (those are emitted by the engine's unpark/restore paths)
+    this._emit('pointSpaceJoinServerStart', { ...eventData, resumed: false } as never, meta)
+    try {
+      const output = await this._enrollerFn({ identity, connectionId, points })
+      const { rooms, roomsSerialized } = this._normalizeRooms(output)
+      // same as `_executeJoiner`: the Settled/Success pair belongs after the engine's `addRoomsToEntry`
+      return { rooms, roomsSerialized }
+    } catch (error) {
+      const error0 = this._Error.from(error)
+      this._emit('pointSpaceJoinServerSettled', { ...eventData, rooms: undefined, error: error0 } as never, meta)
+      this._emit('pointSpaceJoinServerError', { ...eventData, rooms: undefined, error: error0 } as never, meta)
+      throw error0
+    }
+  }
+
+  /**
+   * Close the `pointSpaceJoinServer*` family from the ENGINE's side — `Settled` then `Success` (or `Settled` then
+   * `Error` when the engine refused the join after the run). Deliberately NOT emitted inside
+   * `_executeJoiner`/`_executeEnroller`: the engine calls this right after it registered the rooms (`addRoomsToEntry` —
+   * participation, index, topics), so a handler on `pointSpaceJoinServerSuccess` reading
+   * `space.memberships.server.list({ room })` SEES the connection that just joined — that is the presence recipe, and
+   * it is symmetric with `pointSpaceLeaveServer`, which fires after the removal. A join the engine REFUSES after the
+   * run (`maxRooms`, the socket dying mid-join) closes the family with the `error` variant — a `Start` never dangles.
+   *
+   * `input` is the join input; an enrollment — a server-initiated join, `.enroller` or the imperative `space.enroll` —
+   * has none, and the empty object is what its events carry.
+   *
+   * `resumed: true` marks a resume RE-ANNOUNCE (the engine's unpark/restore paths re-enter the restored rooms through
+   * the same family) — no `.joiner`/`.enroller` ran for it. The default is the real-join truth: `false`.
+   */
+  _emitSpaceJoinSettled({
+    rooms,
+    identity,
+    connectionId,
+    input = {},
+    error,
+    resumed = false,
+  }: {
+    rooms: unknown[] | undefined
+    identity: unknown
+    connectionId: string
+    input?: InputRawUnknown
+    error?: ErrorPoint0
+    resumed?: boolean
+  }): void {
+    if (_point0_env.side.is.client) {
+      throw new Error(`The server-side space-join events are server-side (point ${this.id})`)
+    }
+    const meta = { point: this.id, connection: connectionId }
+    if (error) {
+      // mirrors the throw path inside `_executeJoiner` — rooms undefined, the typed error on both events; an errored
+      // join is never a resume, so the error side carries no `resumed`
+      const eventData = { input, point: this, connectionId, identity, rooms: undefined, error }
+      this._emit('pointSpaceJoinServerSettled', eventData as never, meta)
+      this._emit('pointSpaceJoinServerError', eventData as never, meta)
+      return
+    }
+    const eventData = { input, point: this, connectionId, identity, resumed, rooms, error: undefined }
+    this._emit('pointSpaceJoinServerSettled', eventData as never, meta)
+    this._emit('pointSpaceJoinServerSuccess', eventData as never, meta)
   }
 
   action<TNewServerLoaderOutput extends LoaderOutput = LoaderOutput>(
@@ -8043,7 +16139,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   /**
    * Close an action point: a real HTTP endpoint with a method and path you choose (`.action('GET', '/api/health')`),
@@ -8059,9 +16161,13 @@ export class Point0<
    * Full reference: https://1gr14.dev/point0/latest/action
    */
   action(
-    ...args: FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
-      ? []
-      : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .action()`>]
+    ...args: TQueryResultType extends 'subscription'
+      ? [
+          ShowError<`This action's .loader is an async generator — a stream closes with .subscription(), .action() cannot`>,
+        ]
+      : FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput> extends LoaderOutput
+        ? []
+        : [ShowError<`Point has no loaders. Please add .loader() or .clientLoader() before calling .action()`>]
   ): NiceActionReadyPoint<
     'action',
     UndefinedReadyPointType,
@@ -8083,7 +16189,13 @@ export class Point0<
     TQueryResultType,
     TOuterProps,
     TInnerProps,
-    TQueriesDefinitions
+    TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
+    TChannelInput,
+    TIdentity,
+    TSpaceInput,
+    TRoom
   >
   action(...args: any[]) {
     const [loaderFn] = args as [LoaderFn<any, any, any, any, any, any, any, any, any, any, any> | undefined]
@@ -8096,7 +16208,7 @@ export class Point0<
             _serverExecuteActions: [
               ...this._serverExecuteActions,
               { type: 'loader', fn: loaderFn, unstableId: Point0._getNextUnstableId() },
-            ] as never,
+            ],
           }
         : {}),
     })
@@ -8116,6 +16228,10 @@ export class Point0<
    *   with the point's methods.
    */
   _tail(decoy: React.Component): typeof this {
+    // handler points export their callable binder — same function the closer returned, the decoy stays a decoy
+    if (this.type === 'serverHandler' || this.type === 'clientHandler') {
+      return this._getCallableHandler() as never
+    }
     if (this.X) {
       return this.X as never
     }
@@ -8215,6 +16331,72 @@ export class Point0<
       getValue: point.getValue.bind(point),
       getValueOrUndefined: point.getValueOrUndefined.bind(point),
 
+      // socket — the channel's connection surface and the handlers' messaging surface
+      useConnection: point.useConnection.bind(point),
+      connect: point.connect.bind(point),
+      Connection: point.Connection, // a class-field arrow — already closed over the point instance
+      kick: point.kick.bind(point),
+      refresh: point.refresh.bind(point),
+      amendIdentity: point.amendIdentity.bind(point),
+      enroll: point.enroll.bind(point),
+      // the enumeration namespaces are objects of closures over the point — no bind needed
+      connections: point.connections,
+      memberships: point.memberships,
+      sendToServer: point.sendToServer.bind(point),
+      sendToClient: point.sendToClient.bind(point),
+      useOnMessageFromServer: point.useOnMessageFromServer.bind(point),
+      onMessageFromServer: point.onMessageFromServer.bind(point),
+      useSocketQuery: point.useSocketQuery.bind(point),
+      useSuspenseSocketQuery: point.useSuspenseSocketQuery.bind(point),
+      useSocketInfiniteQuery: point.useSocketInfiniteQuery.bind(point),
+      useSuspenseSocketInfiniteQuery: point.useSuspenseSocketInfiniteQuery.bind(point),
+      useSocketMutation: point.useSocketMutation.bind(point),
+      fetchSocketQuery: point.fetchSocketQuery.bind(point),
+      fetchSocketInfiniteQuery: point.fetchSocketInfiniteQuery.bind(point),
+      prefetchSocketQuery: point.prefetchSocketQuery.bind(point),
+      prefetchSocketInfiniteQuery: point.prefetchSocketInfiniteQuery.bind(point),
+      ensureSocketQueryData: point.ensureSocketQueryData.bind(point),
+      ensureSocketInfiniteQueryData: point.ensureSocketInfiniteQueryData.bind(point),
+      getSocketQueryOptions: point.getSocketQueryOptions.bind(point),
+      getSocketInfiniteQueryOptions: point.getSocketInfiniteQueryOptions.bind(point),
+      getSocketQueryKey: point.getSocketQueryKey.bind(point),
+      getSocketInfiniteQueryKey: point.getSocketInfiniteQueryKey.bind(point),
+      getSocketQueryData: point.getSocketQueryData.bind(point),
+      getSocketInfiniteQueryData: point.getSocketInfiniteQueryData.bind(point),
+      setSocketQueryData: point.setSocketQueryData.bind(point),
+      setSocketInfiniteQueryData: point.setSocketInfiniteQueryData.bind(point),
+      getSocketQueryState: point.getSocketQueryState.bind(point),
+      getSocketInfiniteQueryState: point.getSocketInfiniteQueryState.bind(point),
+      getSocketQueryCache: point.getSocketQueryCache.bind(point),
+      getSocketInfiniteQueryCache: point.getSocketInfiniteQueryCache.bind(point),
+      getSocketQueriesCache: point.getSocketQueriesCache.bind(point),
+      getSocketInfiniteQueriesCache: point.getSocketInfiniteQueriesCache.bind(point),
+      refetchSocketQuery: point.refetchSocketQuery.bind(point),
+      refetchSocketInfiniteQuery: point.refetchSocketInfiniteQuery.bind(point),
+      invalidateSocketQuery: point.invalidateSocketQuery.bind(point),
+      invalidateSocketInfiniteQuery: point.invalidateSocketInfiniteQuery.bind(point),
+      cancelSocketQuery: point.cancelSocketQuery.bind(point),
+      cancelSocketInfiniteQuery: point.cancelSocketInfiniteQuery.bind(point),
+      removeSocketQuery: point.removeSocketQuery.bind(point),
+      removeSocketInfiniteQuery: point.removeSocketInfiniteQuery.bind(point),
+      resetSocketQuery: point.resetSocketQuery.bind(point),
+      resetSocketInfiniteQuery: point.resetSocketInfiniteQuery.bind(point),
+      fetchSocketMutation: point.fetchSocketMutation.bind(point),
+      getSocketMutationKey: point.getSocketMutationKey.bind(point),
+      getSocketMutationOptions: point.getSocketMutationOptions.bind(point),
+      getSocketMutationCache: point.getSocketMutationCache.bind(point),
+      getSocketMutationsCache: point.getSocketMutationsCache.bind(point),
+      iterateMessagesFromServer: point.iterateMessagesFromServer.bind(point),
+      useSubscription: point.useSubscription.bind(point),
+      fetchSubscription: point.fetchSubscription.bind(point),
+
+      // socket — the space's membership surface
+      useMembership: point.useMembership.bind(point),
+      join: point.join.bind(point),
+      Membership: point.Membership, // a class-field arrow — already closed over the point instance
+      getMembership: point.getMembership.bind(point),
+      getMembershipOrUndefined: point.getMembershipOrUndefined.bind(point),
+
       route: point.route,
       _tail: point._tail.bind(point),
       ...extra,
@@ -8231,20 +16413,25 @@ export class Point0<
     return this._isMountablePoint() && this.type === 'loadedStage'
   }
 
-  private static _canHaveQueryEndpoint(type: PointType): boolean {
-    return type === 'query' || type === 'infiniteQuery' || type === 'component' || type === 'provider'
-  }
-  private _canHaveQueryEndpointCache: boolean | undefined
+  private _usesQueryTransportCache: boolean | undefined
   /**
-   * Whether this point's kind can carry a "query endpoint" — a read whose input has no route slot: query,
-   * infiniteQuery, and the queries behind component and provider loaders. Such endpoints default to GET and carry their
-   * input in the URL as a `?input=<json>` search param (see {@link _getFetchServerOptions}); the server registers them
-   * under GET and POST (their `_endpoint.methods`) so a binary/over-long input can fall back to a POST body.
-   * Pages/layouts are GET too but encode input as route params/search; mutations are POST. Constant per point —
-   * computed once and memoized.
+   * Whether this point rides the query transport — a read whose JSON input travels as the `?input=` search param on a
+   * GET with a POST-body fallback (see {@link _getFetchServerOptions}), the endpoint registered under BOTH methods (its
+   * `_endpoint.methods`). The kind list is the shared {@link pointTypeUsesQueryTransport} — one source of truth with the
+   * engine and the compiler. Constant per point — computed once and memoized.
    */
-  _canHaveQueryEndpoint(): boolean {
-    return (this._canHaveQueryEndpointCache ??= Point0._canHaveQueryEndpoint(this.type))
+  _usesQueryTransport(): boolean {
+    return (this._usesQueryTransportCache ??= pointTypeUsesQueryTransport(this.type))
+  }
+
+  /**
+   * Is this point an HTTP-stream subscription — a `.lets.subscription()` point, or an action whose generator loader
+   * closed with `.subscription()`? The FLAVOR (`_queryResultType`) marks the stream; the action keeps `type: 'action'`
+   * exactly as `.query()`/`.mutation()` closers keep it. Only these two forms exist — sockets have no subscription
+   * anything (a clientHandler's pushes ride `iterateMessagesFromServer` / the listeners).
+   */
+  _isHttpSubscription(): boolean {
+    return this.type === 'subscription' || (this.type === 'action' && this._queryResultType === 'subscription')
   }
 
   private _queryMaxUrlLength: number | undefined
@@ -8271,7 +16458,10 @@ export class Point0<
       component: 'component' as const,
       layout: 'layout' as const,
       provider: 'page' as const,
-    }[this.type as MountablePointType]
+      // channel/space render as components (`<channel.Connection>` / `<space.Membership>`)
+      channel: 'component' as const,
+      space: 'component' as const,
+    }[this.type as RenderablePointType]
   }
 
   _hasClientLoader(): boolean {
@@ -8841,7 +17031,8 @@ export class Point0<
     }) as never
   }
 
-  private getServerUrl(): string | undefined {
+  /** The server origin this point's fetches target — `.serverUrl` first, then the ambient request/window/port. */
+  _getServerUrl(): string | undefined {
     if (this._serverUrl) {
       return this._serverUrl
     }
@@ -8859,7 +17050,8 @@ export class Point0<
     return undefined
   }
 
-  private _getFetchServerOptions({
+  /** Build the fetch for this point's endpoint — URL, method (GET `?input=` vs POST by length), headers, transform. */
+  _getFetchServerOptions({
     input = {},
     fetchOptions: _fetchOptions,
     outputType = 'data',
@@ -8869,8 +17061,11 @@ export class Point0<
     outputType?: FetchServerOutputType
   }): { url: string; init: RequestInit; request: Request; transform: boolean } {
     const baseFetchOptions = this._fetchOptions?.() || {}
-    const { transform = true, ...fetchOptions } = { ...baseFetchOptions, ..._fetchOptions }
-    const serverUrl = this.getServerUrl()
+    const { transform: transformOption = true, ...fetchOptions } = { ...baseFetchOptions, ..._fetchOptions }
+    // a `preventTransformer` channel's connect leg is a transform-less request BY DECLARATION — plain JSON both ways,
+    // no transform header: the same shape a raw external client states by sending no header at all
+    const transform = this._preventSocketTransformer ? false : transformOption
+    const serverUrl = this._getServerUrl()
     if (!serverUrl) {
       throw new Error(`Server URL is not set on point ${this.toStringWithLocation()}`)
     }
@@ -8880,14 +17075,19 @@ export class Point0<
     const isAction = this.type === 'action'
     const isPage = this.type === 'page'
     const isLayout = this.type === 'layout'
-    const isQueryEndpoint = this._canHaveQueryEndpoint()
+    // a channel connect is a query-shaped read too: same GET-with-?input= / POST-by-length duality (the response is
+    // `private, no-store`, so the GET buys no caching — it buys ONE rule for method choice across the wire surface)
+    const usesQueryTransport = this._usesQueryTransport()
     const route = this._endpoint.route
     const endpointMethod = this._endpoint.method
 
     const fromScope = _ss.__POINT0_CLIENT_POINTS__.getOrUndefined()?.manager.scope ?? _getFakeClient()?.scope
     const baseHeaders = mergeHeaders(baseFetchOptions.headers, _fetchOptions?.headers)
     const headers = mergeHeaders(baseHeaders, {
-      ...(baseHeaders.has('Accept') ? {} : { Accept: 'application/json' }),
+      // a subscription fetch names our native framing — a foreign client without it (EventSource) gets SSE instead
+      ...(baseHeaders.has('Accept')
+        ? {}
+        : { Accept: this._isHttpSubscription() ? 'application/x-ndjson' : 'application/json' }),
       ...(fromScope ? { [POINT0_FROM_SCOPE_HEADER]: fromScope } : {}),
       [POINT0_TO_SCOPE_HEADER]: this.scope,
       [POINT0_CLIENT_REQUEST_ID_HEADER]: generateId(),
@@ -8966,7 +17166,7 @@ export class Point0<
       // (SSR, server-to-server) never reaches a CDN, so it skips the URL encoding and POSTs the body directly. On the
       // client, fall back to a POST body when the input carries binary (can't ride in a URL) or the URL would overflow
       // proxy/CDN limits — the endpoint answers to both methods.
-      if (isQueryEndpoint) {
+      if (usesQueryTransport) {
         const isBinary = isContainsBinary(input)
         if (_point0_env.side.is.client && !isBinary) {
           const transformed = (transform ? this._getTransformer().serialize(input) : input) as
@@ -9140,7 +17340,7 @@ export class Point0<
     let res: Response | undefined
     const _eventData = {
       input,
-      point: this as never as AnyPoint,
+      point: this as AnyPoint,
       error: undefined,
       output: undefined,
     }
@@ -9521,7 +17721,7 @@ export class Point0<
     const maybeRedirect = (query?.state.error as Record<string, unknown> | undefined)?.redirect
     const redirect = RedirectTask.is(maybeRedirect) ? maybeRedirect : undefined
     const _eventData = {
-      point: this as never as AnyPoint,
+      point: this as AnyPoint,
       input,
       queryKey,
       mode: 'server' as const,
@@ -9624,18 +17824,8 @@ export class Point0<
             gcTime: Infinity,
           }
         : {
-            retry: ((failureCount, error) => {
-              if (error.redirect) {
-                return false
-              }
-              if (typeof megedQueryOptions.retry === 'boolean') {
-                return megedQueryOptions.retry
-              }
-              if (typeof megedQueryOptions.retry === 'function') {
-                return megedQueryOptions.retry(failureCount, error)
-              }
-              return (megedQueryOptions.retry ?? 3) > failureCount
-            }) satisfies UseQueryOptions['retry'],
+            // redirects, `preventRetry` and the caller's own option — the shared wrapper handles all three
+            retry: Point0._retryHonoringPreventRetry(megedQueryOptions.retry as UseQueryOptions['retry']),
           }),
     } as never
     return result
@@ -9657,7 +17847,7 @@ export class Point0<
   > {
     const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: false })
     const _eventData = {
-      point: this as never as AnyPoint,
+      point: this as AnyPoint,
       input,
       queryKey,
       mode: 'client' as const,
@@ -9724,18 +17914,8 @@ export class Point0<
       queryFn,
       // see _getServerQueryOptions — a legacy `suspense` key must never reach TanStack
       suspense: undefined,
-      retry: ((failureCount, error) => {
-        if (error.redirect) {
-          return false
-        }
-        if (typeof megedQueryOptions.retry === 'boolean') {
-          return megedQueryOptions.retry
-        }
-        if (typeof megedQueryOptions.retry === 'function') {
-          return megedQueryOptions.retry(failureCount, error)
-        }
-        return (megedQueryOptions.retry ?? 3) > failureCount
-      }) satisfies UseQueryOptions['retry'],
+      // redirects, `preventRetry` and the caller's own option — the shared wrapper handles all three
+      retry: Point0._retryHonoringPreventRetry(megedQueryOptions.retry as UseQueryOptions['retry']),
     } as never
   }
 
@@ -9852,7 +18032,7 @@ export class Point0<
   > {
     const queryKey = this._getServerQueryKey({ input: input as never, outputType, isInfiniteQuery: true })
     const _eventData = {
-      point: this as never as AnyPoint,
+      point: this as AnyPoint,
       input: input as InputRaw,
       queryKey,
       mode: 'server' as const,
@@ -9940,18 +18120,8 @@ export class Point0<
             gcTime: Infinity,
           }
         : {
-            retry: ((failureCount, error) => {
-              if (error.redirect) {
-                return false
-              }
-              if (typeof megedQueryOptions.retry === 'boolean') {
-                return megedQueryOptions.retry
-              }
-              if (typeof megedQueryOptions.retry === 'function') {
-                return megedQueryOptions.retry(failureCount, error)
-              }
-              return (megedQueryOptions.retry ?? 3) > failureCount
-            }) satisfies UseQueryOptions['retry'],
+            // redirects, `preventRetry` and the caller's own option — the shared wrapper handles all three
+            retry: Point0._retryHonoringPreventRetry(megedQueryOptions.retry as UseQueryOptions['retry']),
           }),
     }
     return result as never
@@ -9983,7 +18153,7 @@ export class Point0<
   > {
     const queryKey = this._getClientQueryKey({ input, isInfiniteQuery: true })
     const _eventData = {
-      point: this as never as AnyPoint,
+      point: this as AnyPoint,
       input,
       queryKey,
       mode: 'client' as const,
@@ -10044,18 +18214,8 @@ export class Point0<
       queryFn,
       // see _getServerQueryOptions — a legacy `suspense` key must never reach TanStack
       suspense: undefined,
-      retry: ((failureCount, error) => {
-        if (error.redirect) {
-          return false
-        }
-        if (typeof megedQueryOptions.retry === 'boolean') {
-          return megedQueryOptions.retry
-        }
-        if (typeof megedQueryOptions.retry === 'function') {
-          return megedQueryOptions.retry(failureCount, error)
-        }
-        return (megedQueryOptions.retry ?? 3) > failureCount
-      }) satisfies UseQueryOptions['retry'],
+      // redirects, `preventRetry` and the caller's own option — the shared wrapper handles all three
+      retry: Point0._retryHonoringPreventRetry(megedQueryOptions.retry as UseQueryOptions['retry']),
     } as never
   }
 
@@ -10445,7 +18605,7 @@ export class Point0<
   > {
     const mutationFn = async (input: Record<string, any> = {}) => {
       const eventData = {
-        point: this as never as AnyPoint,
+        point: this as AnyPoint,
         input,
         error: undefined,
         output: undefined,
@@ -10514,10 +18674,16 @@ export class Point0<
       }
     }
     const mutationKey = this.getMutationKey()
+    const megedMutationOptions = mergeMutationOptions(
+      this._defaultMutationOptions,
+      this._mutationOptions,
+      mutationOptions,
+    )
     return {
-      ...mergeMutationOptions(this._defaultMutationOptions, this._mutationOptions, mutationOptions),
+      ...megedMutationOptions,
       mutationFn,
       mutationKey,
+      retry: Point0._retryHonoringPreventRetry(megedMutationOptions.retry as UseQueryOptions['retry'], 0),
     } as MutationOptions<
       FinalLoaderOutput<TServerLoaderOutput, TClientLoaderOutput>,
       TError,
@@ -11048,7 +19214,9 @@ export class Point0<
       TBodySchema
     >,
     updater: Updater<
-      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>,
+      // react-query passes `undefined` to the functional updater when the cache is empty (no entry yet), so the `old`
+      // param is nullable — matching runtime, letting recipes write `(old) => old?.field ?? …` without a widening cast.
+      FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput> | undefined,
       FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>
     >,
     setDataOptions?: SetDataOptions,
@@ -11590,7 +19758,8 @@ export class Point0<
       TBodySchema
     >,
     updater: Updater<
-      InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>,
+      // nullable `old` — react-query passes `undefined` to the functional updater when there is no cache entry yet.
+      InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>> | undefined,
       InfiniteData<FinalLoaderData<TServerLoaderOutput, TClientLoaderOutput>>
     >,
     setDataOptions?: SetDataOptions,
@@ -12017,7 +20186,7 @@ export class Point0<
     // later may be we will have prefetchComponent and prefetchWrapper, so there will be props
     const outerProps = {} as Props
     const eventData = {
-      point: this as never as AnyPoint,
+      point: this as AnyPoint,
       input,
       options,
       error: undefined,
@@ -12306,7 +20475,7 @@ export class Point0<
     pageState: NavigationPageState
     prevMountActions: Array<{
       action: MountAction
-      state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
+      state: MountableState<any, any, any, any, any, any, any, any, any, any, ErrorPoint0>
     }>
     skipPageStateRelated: boolean
   }) => {
@@ -12352,7 +20521,7 @@ export class Point0<
     componentVariant: DestinationComponentVariant
     prevMountActions: Array<{
       action: MountAction
-      state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
+      state: MountableState<any, any, any, any, any, any, any, any, any, any, ErrorPoint0>
     }>
     isHeadable: boolean
     fallbackLoadingComponent: LoadingComponentType<any>
@@ -12390,7 +20559,7 @@ export class Point0<
     componentVariant: DestinationComponentVariant
     prevMountActions: Array<{
       action: MountAction
-      state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
+      state: MountableState<any, any, any, any, any, any, any, any, any, any, ErrorPoint0>
     }>
     isHeadable: boolean
     fallbackErrorComponent: ErrorComponentType<any, any>
@@ -12627,22 +20796,35 @@ export class Point0<
   // position with its own (un-leaked) props/queries.
   private readonly _Mountable = (props: {
     mountComponent:
-      | LayoutSuccessComponentType<any, any, any, any, any, any, any>
-      | PageSuccessComponentType<any, any, any, any, any, any, any>
-      | ComponentSuccessComponentType<any, any, any, any, any, any>
+      | LayoutSuccessComponentType<any, any, any, any, any, any, any, any, any>
+      | PageSuccessComponentType<any, any, any, any, any, any, any, any, any>
+      | ComponentSuccessComponentType<any, any, any, any, any, any, any, any>
       | 'children'
     extraProps: (
-      mountableState: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>,
+      mountableState: MountableState<any, any, any, any, any, any, any, any, any, any, ErrorPoint0>,
     ) => Record<string, any>
     location?: AnyLocation
     layers: Array<{
       inputRaw: InputRaw
       outerProps: TOuterProps
       queryIndex?: number
+      /** `<channel.Connection>` per-mount call options — the `useConnection` options prop (membership mirror below) */
+      selfConnectionOptions?: ExtraUseConnectionOptions<any, any> | undefined
+      /** `<space.Membership>` per-mount call options — the `useMembership` options prop */
+      selfMembershipOptions?: ExtraUseMembershipOptions | undefined
+      /**
+       * the normalized `gate` prop — which non-ready states hold the children back (default `{ loading: false, error:
+       * true }`)
+       */
+      selfGate?: { loading: boolean; error: boolean } | undefined
+      /** the `LoadingComponent` prop — an on-the-spot override of the gate's loading component for THIS mount */
+      SelfLoadingComponent?: LoadingComponentType<any> | undefined
+      /** the `ErrorComponent` prop — an on-the-spot override of the gate's error component for THIS mount */
+      SelfErrorComponent?: ErrorComponentType<any, ErrorPoint0> | undefined
       prev?: {
         prevMountActions: Array<{
           action: MountAction
-          state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
+          state: MountableState<any, any, any, any, any, any, any, any, any, any, ErrorPoint0>
         }>
         nextMountActions: MountAction[]
         innerProps: Props
@@ -12650,6 +20832,8 @@ export class Point0<
         paramsParsed: Data | UndefinedData
         inputParsed: Data | UndefinedData
         queries: QueriesResults
+        connections: AnyClientChannelConnection[]
+        memberships: AnyClientSpaceMembership[]
         mappedData: Data | undefined
         LoadingComponent: React.ComponentType<{ _isHeadable?: boolean }>
         ErrorComponent: React.ComponentType<{ error: Error; _isHeadable?: boolean }>
@@ -12710,6 +20894,8 @@ export class Point0<
       prevParamsParsed,
       prevInputParsed,
       prevQueries,
+      prevConnections,
+      prevMemberships,
       prevMappedData,
     } = (() => {
       const prev = currentLayer.prev
@@ -12718,7 +20904,7 @@ export class Point0<
           nextMountActions: this._mountActions,
           prevMountActions: [] as Array<{
             action: MountAction
-            state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
+            state: MountableState<any, any, any, any, any, any, any, any, any, any, ErrorPoint0>
           }>,
           PrevLoadingComponent: undefined,
           PrevErrorComponent: undefined,
@@ -12727,6 +20913,8 @@ export class Point0<
           prevParamsParsed: undefined,
           prevInputParsed: undefined,
           prevQueries: [],
+          prevConnections: [] as AnyClientChannelConnection[],
+          prevMemberships: [] as AnyClientSpaceMembership[],
           prevMappedData: undefined,
         }
       } else {
@@ -12740,6 +20928,8 @@ export class Point0<
           prevParamsParsed: prev.paramsParsed,
           prevInputParsed: prev.inputParsed,
           prevQueries: prev.queries,
+          prevConnections: prev.connections,
+          prevMemberships: prev.memberships,
           prevMappedData: prev.mappedData,
         }
       }
@@ -12780,7 +20970,7 @@ export class Point0<
         data: prevMappedData ?? prevQueries.at(0)?.data ?? {},
       }
     })() as Pick<
-      MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>,
+      MountableState<any, any, any, any, any, any, any, any, any, any, ErrorPoint0>,
       'status' | 'error' | 'loading' | 'data'
     >
 
@@ -12791,8 +20981,22 @@ export class Point0<
       search: prevSearchParsed,
       params: prevParamsParsed,
       queries: prevQueries,
+      connections: prevConnections,
+      memberships: prevMemberships,
       input: prevInputParsed,
-    } as MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
+    } as MountableState<
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      AnyClientChannelConnection[],
+      AnyClientSpaceMembership[],
+      any,
+      ErrorPoint0
+    >
     let nextMappedData = prevMappedData
     // The `??` around React.useCallback LOOKS like a conditional hook, but it is deterministic
     // per React instance: continuation elements always have `currentLayer.prev` (so the hook is
@@ -12860,6 +21064,8 @@ export class Point0<
         paramsParsed: (mountState as Record<string, Data | UndefinedData>).params,
         inputParsed: (mountState as Record<string, Data | UndefinedData>).input,
         queries: mountState.queries,
+        connections: mountState.connections,
+        memberships: mountState.memberships,
         mappedData: nextMappedData,
       }
       const _nextLayers: Array<{
@@ -12869,7 +21075,7 @@ export class Point0<
         prev?: {
           prevMountActions: Array<{
             action: MountAction
-            state: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>
+            state: MountableState<any, any, any, any, any, any, any, any, any, any, ErrorPoint0>
           }>
           nextMountActions: MountAction[]
           innerProps: Props
@@ -12877,6 +21083,8 @@ export class Point0<
           paramsParsed: Data | UndefinedData
           inputParsed: Data | UndefinedData
           queries: QueriesResults
+          connections: AnyClientChannelConnection[]
+          memberships: AnyClientSpaceMembership[]
           mappedData: Data | undefined
           LoadingComponent: React.ComponentType<{ _isHeadable?: boolean }>
           ErrorComponent: React.ComponentType<{ error: Error; _isHeadable?: boolean }>
@@ -12938,6 +21146,8 @@ export class Point0<
                   nextMountActions: [..._nextPrev.nextMountActions],
                   innerProps: {},
                   queries: [],
+                  connections: [],
+                  memberships: [],
                   mappedData: undefined,
                 },
               },
@@ -12996,6 +21206,8 @@ export class Point0<
           const mapperLocation = (mountState as any).location as AnyLocation | undefined
           const mapperProps = mountState.props
           const mapperQueries = mountState.queries
+          const mapperConnections = mountState.connections
+          const mapperMemberships = mountState.memberships
           const mapperInputData = nextMappedData ?? mountState.data ?? {}
           // Memoize the mapped result keyed on the mapper inputs, so a re-render
           // that doesn't change those inputs returns the same reference. Without
@@ -13010,6 +21222,8 @@ export class Point0<
                     location: mapperLocation,
                     props: mapperProps,
                     queries: mapperQueries,
+                    connections: mapperConnections,
+                    memberships: mapperMemberships,
                     data: mapperInputData,
                   })
                 : undefined,
@@ -13019,6 +21233,10 @@ export class Point0<
               mapperProps,
               mapperInputData,
               ...mapperQueries.map((query: { data?: unknown }) => query.data),
+              // the connection facade reference is stable (live getters) — the deps must read the values
+              ...mapperConnections.flatMap((connection) => [connection.status, connection.id]),
+              // same for membership facades: read the values, not the (stable) reference
+              ...mapperMemberships.flatMap((membership) => [membership.status, membership.rooms.length]),
             ],
           )
           if (isSuccess) {
@@ -13047,7 +21265,14 @@ export class Point0<
           })
         }
         case 'input': {
-          if (this.type !== 'component' && this.type !== 'provider') {
+          // channel/space included: `.sharedInput` promises a client-side parse of the connect/join input, and the
+          // mountable render (`<Connection>`/`<Membership>`) is where it runs
+          if (
+            this.type !== 'component' &&
+            this.type !== 'provider' &&
+            this.type !== 'channel' &&
+            this.type !== 'space'
+          ) {
             return React.createElement(ErrorComponent, {
               error: new this._Error(
                 `Usual input schema are not allowed for this point: ${this.toStringWithLocation()}`,
@@ -13149,7 +21374,9 @@ export class Point0<
           }
         }
         case 'with': {
-          const result = action.fn({
+          // the fn union's return types multiply into a too-complex union for TS — the branches below narrow the
+          // result by shape anyway, so call through one erased signature
+          const result = (action.fn as (options: unknown) => unknown)({
             ...mountState,
             resolve: resolveQuery,
             children: React.createElement(this._Mountable, _nextMountableProps),
@@ -13185,6 +21412,61 @@ export class Point0<
                   : undefined,
               })),
             })
+          }
+
+          // with connection fn — `.with(channel)` returned its facade (recognized by the socket registry, exactly
+          // as a query result is recognized by shape): land it in `connections` next to `queries` and provide the
+          // channel context, so handlers inside may omit the connection argument. During SSR the facade is the dead
+          // 'connecting' one — the context still mounts, gating (if any) already happened inside the closure.
+          //
+          // Feature-gated, and NOT with a throw: this is classification, not a call — with the socket off no facade
+          // can exist to recognize, so the honest shape is "skip", and the whole branch (with the socket-registry
+          // reads behind it) folds away in a client build that never turned the feature on.
+          if (_point0_env.feature.socket) {
+            const connectionChannel = getConnectionFacadeChannel(result)
+            if (connectionChannel) {
+              const connection = result as AnyClientChannelConnection
+              const ChannelContext = getChannelReactContext(connectionChannel as never)
+              return React.createElement(
+                ChannelContext.Provider,
+                { value: connection },
+                React.createElement(this._Mountable, {
+                  ..._nextMountableProps,
+                  layers: _nextLayers.map((layer) => ({
+                    ...layer,
+                    prev: layer.prev
+                      ? {
+                          ...layer.prev,
+                          connections: [...layer.prev.connections, connection],
+                        }
+                      : undefined,
+                  })),
+                }),
+              )
+            }
+
+            // with membership fn — the space mirror: `memberships` layer + the space context
+            const membershipSpace = getMembershipFacadeSpace(result)
+            if (membershipSpace) {
+              const membership = result as AnyClientSpaceMembership
+              const SpaceContext = getSpaceReactContext(membershipSpace as never)
+              return React.createElement(
+                SpaceContext.Provider,
+                { value: membership },
+                React.createElement(this._Mountable, {
+                  ..._nextMountableProps,
+                  layers: _nextLayers.map((layer) => ({
+                    ...layer,
+                    prev: layer.prev
+                      ? {
+                          ...layer.prev,
+                          memberships: [...layer.prev.memberships, membership],
+                        }
+                      : undefined,
+                  })),
+                }),
+              )
+            }
           }
 
           // with fn
@@ -13228,6 +21510,98 @@ export class Point0<
               })),
             })
           }
+        }
+        case 'selfConnection': {
+          if (!_point0_env.feature.socket) {
+            throw socketFeatureOffError(`<channel.Connection>, point ${this.id}`)
+          }
+          // the channel's own terminal render step — `<channel.Connection>`: hold the connection, gate the connect per
+          // `gate` (default `{ loading: false, error: true }`) with the channel's OWN bound loading/error components,
+          // provide the channel context, and land the facade in `connections` — uniform with an injected
+          // `.with(channel)`. During SSR nothing connects — the connection reports `connecting`, so with `loading`
+          // gated a Connection server-renders its loading state, like a clientOnly query.
+          const connection = useSocketConnection(
+            this as never,
+            currentLayer.inputRaw as never,
+            currentLayer.selfConnectionOptions as never,
+          ) as AnyClientChannelConnection
+          {
+            const selfGate = currentLayer.selfGate ?? { loading: false, error: true }
+            if (selfGate.loading && connection.status === 'connecting') {
+              // the LoadingComponent/ErrorComponent PROPS override the bound chain components for this mount
+              return currentLayer.SelfLoadingComponent
+                ? React.createElement(currentLayer.SelfLoadingComponent, { type: 'component' })
+                : React.createElement(LoadingComponent)
+            }
+            if (selfGate.error && connection.status === 'error' && connection.error) {
+              return currentLayer.SelfErrorComponent
+                ? React.createElement(currentLayer.SelfErrorComponent, { error: connection.error, type: 'component' })
+                : React.createElement(ErrorComponent, { error: connection.error })
+            }
+          }
+          const { _nextMountableProps, _nextLayers } = getNextProps()
+          const ChannelContext = getChannelReactContext(this as never)
+          return React.createElement(
+            ChannelContext.Provider,
+            { value: connection },
+            React.createElement(this._Mountable, {
+              ..._nextMountableProps,
+              layers: _nextLayers.map((layer) => ({
+                ...layer,
+                prev: layer.prev
+                  ? {
+                      ...layer.prev,
+                      connections: [...layer.prev.connections, connection],
+                    }
+                  : undefined,
+              })),
+            }),
+          )
+        }
+        case 'selfMembership': {
+          if (!_point0_env.feature.socket) {
+            throw socketFeatureOffError(`<space.Membership>, point ${this.id}`)
+          }
+          // the space's mirror — `<space.Membership>`: join, gate per `gate` (default `{ loading: false, error: true }`)
+          // with the space's own bound components, provide the space context, land the facade in `memberships`. The
+          // hook resolves the underlying channel connection through the ambient `<channel.Connection>` (or the single
+          // live connection). During SSR nothing joins — the membership reports `joining`.
+          const membership = useSpaceMembership(
+            this as never,
+            currentLayer.inputRaw as never,
+            currentLayer.selfMembershipOptions as never,
+          ) as AnyClientSpaceMembership
+          {
+            const selfGate = currentLayer.selfGate ?? { loading: false, error: true }
+            if (selfGate.loading && membership.status === 'joining') {
+              return currentLayer.SelfLoadingComponent
+                ? React.createElement(currentLayer.SelfLoadingComponent, { type: 'component' })
+                : React.createElement(LoadingComponent)
+            }
+            if (selfGate.error && membership.status === 'error' && membership.error) {
+              return currentLayer.SelfErrorComponent
+                ? React.createElement(currentLayer.SelfErrorComponent, { error: membership.error, type: 'component' })
+                : React.createElement(ErrorComponent, { error: membership.error })
+            }
+          }
+          const { _nextMountableProps, _nextLayers } = getNextProps()
+          const SpaceContext = getSpaceReactContext(this as never)
+          return React.createElement(
+            SpaceContext.Provider,
+            { value: membership },
+            React.createElement(this._Mountable, {
+              ..._nextMountableProps,
+              layers: _nextLayers.map((layer) => ({
+                ...layer,
+                prev: layer.prev
+                  ? {
+                      ...layer.prev,
+                      memberships: [...layer.prev.memberships, membership],
+                    }
+                  : undefined,
+              })),
+            }),
+          )
         }
         case 'relatedQuery': {
           const query = (() => {
@@ -13353,6 +21727,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TMapperOutput
     >,
   ): React.ReactNode => {
@@ -13401,6 +21777,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TMapperOutput
     >,
   ): React.ReactNode => {
@@ -13442,6 +21820,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TMapperOutput
     >,
   ): React.ReactNode => {
@@ -13466,7 +21846,7 @@ export class Point0<
             outerProps,
           },
         ],
-        extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>) => {
+        extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, any, any, any, ErrorPoint0>) => {
           if (!this._ProviderReactContext) {
             throw new Error(`ProviderReactContext not found on point ${this.toStringWithLocation()}`)
           }
@@ -13560,6 +21940,8 @@ export class Point0<
       TOuterProps,
       TInnerProps,
       TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TMapperOutput
     >,
   ): React.ReactNode => {
@@ -13581,7 +21963,7 @@ export class Point0<
             outerProps,
           },
         ],
-        extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, any, ErrorPoint0>) => {
+        extraProps: (mountableState: MountableState<any, any, any, any, any, any, any, any, any, any, ErrorPoint0>) => {
           if (!this._ProviderReactContext) {
             throw new Error(`ProviderReactContext not found on point ${this.toStringWithLocation()}`)
           }

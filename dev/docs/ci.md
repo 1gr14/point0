@@ -108,10 +108,15 @@ lanes. The matrices below **self-size from the plan** — nothing is hardcoded i
 the workflows.
 
 - **`test-fast`** — one runner per (OS × group): the `unit` group, the auto
-  `int-N` groups, plus a few known-long files pinned to their own named groups
-  (`PINNED_GROUPS`). Files run in parallel within a runner, each in its own
-  process with a wall-clock guard. **No browser anywhere in this lane** (every
-  browser file is `.e2e` ⇒ solo), so it skips the Playwright install.
+  `int-N` groups, plus a few files pinned to their own named groups
+  (`PINNED_GROUPS`) — known-long ones, and `engine-backplane`, the real-store
+  lane: its Linux runner provisions a `redis-server` binary, a running Redis
+  (`REDIS_URL`) and the runner image's PostgreSQL (`POSTGRES_URL`) before the
+  run, so the five redis/postgres suites actually gate there instead of skipping
+  (on other OSes they skip themselves, like on a dev machine without the
+  binaries). Files run in parallel within a runner, each in its own process with
+  a wall-clock guard. **No browser anywhere in this lane** (every browser file
+  is `.e2e` ⇒ solo), so it skips the Playwright install.
 - **`test-solo`** — one runner per (OS × file): every `.e2e` file plus the heavy
   solo `.int` files (`SOLO_INT`: build/cli/mcp/…). One file per runner keeps
   failures attributable and stops leaked browser/dev processes from starving a

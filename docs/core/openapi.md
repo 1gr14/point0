@@ -67,6 +67,17 @@ Each point with an endpoint becomes one `path` → `method` → operation:
 - A **query** → `GET`/`POST` `/_point0/<scope>/query/<kebab-name>` — the input
   is a JSON-encoded `?input=` query parameter on GET, a body on POST
 - A **mutation** → `POST /_point0/<scope>/mutation/<kebab-name>`
+- A **subscription** → `GET`/`POST` `/_point0/<scope>/subscription/<kebab-name>`
+  — the streaming endpoint of a [subscription](subscription), dual-method like a
+  query; the line-by-line stream body is not expressible in OpenAPI, so the
+  operation describes the endpoint, not the values
+- A **channel connect** → `GET`/`POST` `/_point0/<scope>/channel/<kebab-name>` —
+  the connect endpoint of a [channel](socket), dual-method like a query (input
+  in `?input=` on GET, a body on POST). A scope with at least one channel in the
+  list also gets the bare WebSocket endpoint — `GET /_point0/<scope>/websocket`,
+  the handshake itself (filter the channels out to hide it). The space joins and
+  the messages on the socket don't appear (OpenAPI can't express them); spaces
+  and handlers get no path at all
 - An **action** → its declared method and route, e.g. `PUT /api/ideas/:id`
 - A **page/layout** → `GET` at its route — but only when it's an endpoint (SSR
   on, or it has a server `.loader`); see [page or endpoint](page).

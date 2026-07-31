@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { Point0, defer } from '@point0/core'
-import type { FetcherFetchDetailedResult, MiddlewareFnOptions } from '@point0/core'
+import type { FetcherFetchDetailedResult, MiddlewareProps } from '@point0/core'
 import { brotliDecompressSync, gunzipSync } from 'node:zlib'
 import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
 import { compress, tuneCompress } from '../src/index.js'
@@ -45,7 +45,7 @@ const run = async ({
     }),
   }
   const middleware = compress(options)
-  const middlewareOptions = { request, next: async () => result } as unknown as MiddlewareFnOptions<any>
+  const middlewareOptions = { request, next: async () => result } as unknown as MiddlewareProps<any>
   const output = await middleware(middlewareOptions)
   return output instanceof Response ? output : output.response
 }

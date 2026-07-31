@@ -1,8 +1,11 @@
 import {
+  POINT0_INTERNAL_PATH_PREFIX,
   POINT0_OUTPUT_TYPE_HEADER,
   POINT0_QUERY_GET_INPUT_SEARCH_PARAM,
   POINT0_TRANSFORM_HEADER,
+  POINT0_WEBSOCKET_ENDPOINT_SEGMENT,
   toCamelCase,
+  toKebabCase,
 } from '@point0/core'
 import type {
   InputSchema,
@@ -458,10 +461,58 @@ const getOpenapiSchemaFromPoint = (
     }
   }
 
-  // A query endpoint always answers to BOTH methods, input or not: GET with the input (if any) in the `?input=` param
-  // (cacheable), and POST with the input (if any) in the body — the client's fallback for binary or over-long input.
-  // Document both so a Scalar/Swagger user can pick either — e.g. just fill a JSON body instead of hand-encoding the URL.
-  if (normalizedPoint._canHaveQueryEndpoint()) {
+  // A channel connect endpoint is dual-method exactly like a query (GET with `?input=`, POST with the body — the
+  // client picks by input length), and it answers `{ id, ticket }` the socket claims. Document both methods, plus the
+  // one thing HTTP tooling cannot see from the schema alone: a GET with `Upgrade: websocket` IS the WebSocket
+  // handshake (the cold-start upgrade-connect) — the same pipeline, upgraded instead of answered.
+  if (normalizedPoint.type === 'channel') {
+    const connectResponses: OpenAPIV3.ResponsesObject = {
+      200: {
+        description: 'Connection registered — the connection id and the one-time ticket the WebSocket claims',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: { id: { type: 'string' }, ticket: { type: 'string' } },
+              required: ['id', 'ticket'],
+            },
+          },
+        },
+      },
+    }
+    const getOperation: OpenAPIV3.OperationObject = {
+      ...baseOperation,
+      responses: connectResponses,
+      description: [
+        baseOperation.description,
+        'A socket channel connect. With an `Upgrade: websocket` header this GET becomes the WebSocket handshake itself (the cold-start upgrade-connect); without it, the answer carries the one-time ticket a separate socket claims.',
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
+    }
+    if (inputQueryParameter) {
+      getOperation.parameters = [...parameters, inputQueryParameter]
+    }
+    const postOperation: OpenAPIV3.OperationObject = { ...baseOperation, responses: connectResponses }
+    if (requestBody) {
+      postOperation.requestBody = requestBody
+    }
+    if (baseOperation.operationId) {
+      postOperation.operationId = `${baseOperation.operationId}Post`
+    }
+    return {
+      [path]: {
+        get: getOperation,
+        post: postOperation,
+      },
+    }
+  }
+
+  // A query-transport endpoint always answers to BOTH methods, input or not: GET with the input (if any) in the
+  // `?input=` param (cacheable), and POST with the input (if any) in the body — the client's fallback for binary or
+  // over-long input. Document both so a Scalar/Swagger user can pick either — e.g. just fill a JSON body instead of
+  // hand-encoding the URL. (Channels are query-transport too, documented by the dedicated branch above.)
+  if (normalizedPoint._usesQueryTransport()) {
     const getOperation: OpenAPIV3.OperationObject = { ...baseOperation }
     if (inputQueryParameter) {
       getOperation.parameters = [...parameters, inputQueryParameter]
@@ -559,6 +610,40 @@ export function getOpenapiSchemaFromPoints(
     }
     return { ...acc, ...pointSchema }
   }, {})
+
+  // The bare `websocket` endpoint — a real engine endpoint, documented for every scope with a channel point in the
+  // list (filtering the channels out of `points` hides it too): `GET /_point0/<scope>/websocket` with an `Upgrade:
+  // websocket` header IS the WebSocket handshake of the one socket per client that the scope's channels multiplex
+  // over. It exists only when the engine's `socket` server option is on.
+  const channelScopes = new Set(
+    points
+      .map((point) => point.point)
+      .filter((point) => point.type === 'channel')
+      .map((point) => point.scope),
+  )
+  for (const scope of channelScopes) {
+    const path = `/${POINT0_INTERNAL_PATH_PREFIX}/${toKebabCase(scope)}/${POINT0_WEBSOCKET_ENDPOINT_SEGMENT}`
+    paths[path] ??= {
+      get: {
+        operationId: toCamelCase(`${scope}_websocket`),
+        summary: `${scope}:websocket`,
+        description:
+          "The socket WebSocket endpoint — one socket per client, every channel of the scope multiplexes over it. A GET with an `Upgrade: websocket` header IS the handshake; the endpoint exists only when the engine's `socket` server option is on.",
+        parameters: [
+          {
+            in: 'header',
+            name: 'Upgrade',
+            required: true,
+            schema: { type: 'string', enum: ['websocket'] },
+            description: 'The WebSocket handshake header',
+          },
+        ],
+        responses: {
+          101: { description: 'Switching Protocols — the WebSocket handshake completed' },
+        },
+      } satisfies OpenAPIV3.OperationObject,
+    }
+  }
 
   const version = providedDocument.openapi ?? '3.0.0'
 

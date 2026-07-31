@@ -4,9 +4,19 @@ import {
   generateId,
   POINT0_ENV_CONSTS_GLOBAL,
   POINT0_ENV_VARS_GLOBAL,
+  POINT0_WEBSOCKET_UPGRADE_HEADER,
   superstore,
 } from '@point0/core'
-import type { ClientPoints, ClientRuntime, PointsScope, RichFetchFn } from '@point0/core'
+// The socket surface lives behind its own subpath — the main entry does not re-export it, so an app without the
+// feature strips the module out of its client bundle entirely.
+import { registerClientHandlerPoint, registerSpacePoint } from '@point0/core/socket'
+import type {
+  ClientPoints,
+  ClientRuntime,
+  PointsScope,
+  RichFetchFn,
+  SuperStoreInternalValuesOrErrors,
+} from '@point0/core'
 import { Effects, type CookieOptionsInput } from '@point0/core/effects'
 import fetchCookie from 'fetch-cookie'
 import { CookieJar } from 'tough-cookie'
@@ -101,11 +111,169 @@ class GlobalThisItemProxy {
   }
 }
 
+/**
+ * The fake client's `WebSocket` — the browser socket without a network: the constructor replays the REAL upgrade
+ * handshake through the engine's fetch pipeline (middlewares, cookies from the fake client's jar, the marker response),
+ * then swaps the `bunServer.upgrade` step for an in-memory socket pair straight into EngineSocket. The surface is
+ * exactly what the core client runtime uses: `readyState`, `send`, `close`, `onopen` / `onmessage` / `onclose` /
+ * `onerror`. Injected as the `WebSocket` global of every fake client — `channel.connect()` and everything above it work
+ * with no listening server.
+ */
+/**
+ * Run the server end of an in-memory socket the way PRODUCTION runs a frame — in a BARE server context. Two facts at
+ * once: the fake client's ALS must not leak into server handlers (`sendToClient` would see itself client-side), and no
+ * request state exists either — the real Bun `message:` handler wraps nothing, so `getFetch()` / `getQueryClient()`
+ * throw there and must throw here too (socket callbacks reach the world through `points` and the adapter seam, never
+ * ambient stores). Every known store key becomes a loud error, `__POINT0_FAKE_CLIENT__` included — which is exactly
+ * what un-fakes the context.
+ */
+const runAsBareSocketServer = <TResult>(callback: () => TResult): TResult =>
+  _ssRunWithServerStorageState(
+    _getSsItemsWithRestErrors(
+      {},
+      'Value "%s" does not exist in the socket server context — frames run bare, like the production message handler: reach the world through `points` and the admin surface, not ambient stores',
+    ),
+    callback,
+  )
+
+const createFakeClientWebSocketClass = ({
+  engine,
+  fakeClient,
+}: {
+  engine: Engine<any, any, true>
+  fakeClient: FakeClient<any, any>
+}): typeof WebSocket => {
+  class FakeClientWebSocket {
+    static readonly CONNECTING = 0
+    static readonly OPEN = 1
+    static readonly CLOSING = 2
+    static readonly CLOSED = 3
+
+    url: string
+    readyState = 0
+    onopen: ((event: unknown) => void) | null = null
+    onmessage: ((event: { data: string }) => void) | null = null
+    onclose: ((event: { code: number; reason: string }) => void) | null = null
+    onerror: ((event: unknown) => void) | null = null
+
+    private serverEnd: { open: () => void; sendText: (text: string) => void; close: () => void } | undefined
+    /**
+     * The storage state of the run that opened this socket — a `run()` is one loaded page, and frames arrive from
+     * SERVER context (the engine processed a message or published to a topic), so every client dispatch re-enters
+     * exactly THIS page's state: the socket managers, listeners and facades all live there.
+     */
+    private runStorageState = superstore.serverStorage?.getStore()
+
+    constructor(url: string | URL) {
+      this.url = String(url)
+      // the handshake is async, like a real socket — handlers are assigned right after the constructor returns
+      void this.dial()
+    }
+
+    private runAsPage(fn: () => void): void {
+      if (this.runStorageState) {
+        superstore.runWithServerStorageState(this.runStorageState, fn)
+        return
+      }
+      fn()
+    }
+
+    private async dial(): Promise<void> {
+      try {
+        const httpUrl = this.url.replace(/^ws/, 'http')
+        const response = await fakeClient.fetch(httpUrl, {
+          headers: { upgrade: 'websocket', connection: 'Upgrade' },
+        })
+        const marker = response.headers.get(POINT0_WEBSOCKET_UPGRADE_HEADER)
+        const socket = engine.server.socket as {
+          openInMemorySocket: (
+            marker: string,
+            hooks: { onFrame: (json: string) => void },
+          ) => { open: () => void; sendText: (text: string) => void; close: () => void } | undefined
+        } | null
+        const serverEnd =
+          marker && socket && this.readyState === 0
+            ? socket.openInMemorySocket(marker, {
+                // frames can leave the server as soon as handleOpen's microtasks resolve (a cold-start upgrade
+                // answers `claimed` right after its enrollers) — a microtask keeps the browser ordering: open
+                // first, then messages
+                onFrame: (json) => {
+                  queueMicrotask(() => {
+                    if (this.readyState === 1) {
+                      this.runAsPage(() => this.onmessage?.({ data: json }))
+                    }
+                  })
+                },
+              })
+            : undefined
+        if (!serverEnd) {
+          // no marker (socket off, bad path) or a stale token — the browser handshake would fail the same way
+          this.settleClosed(1006, 'handshake failed')
+          return
+        }
+        this.serverEnd = serverEnd
+        this.readyState = 1
+        this.onopen?.({})
+        // the server end processes in BARE server context — exactly what a production socket message runs in
+        runAsBareSocketServer(() => {
+          serverEnd.open()
+        })
+      } catch (error) {
+        this.onerror?.(error)
+        this.settleClosed(1006, 'handshake failed')
+      }
+    }
+
+    send(text: string): void {
+      if (this.readyState !== 1) {
+        return
+      }
+      const serverEnd = this.serverEnd
+      if (!serverEnd) {
+        return
+      }
+      runAsBareSocketServer(() => {
+        serverEnd.sendText(text)
+      })
+    }
+
+    close(code = 1000, reason = ''): void {
+      if (this.readyState === 2 || this.readyState === 3) {
+        return
+      }
+      this.readyState = 2
+      const serverEnd = this.serverEnd
+      this.serverEnd = undefined
+      if (serverEnd) {
+        runAsBareSocketServer(() => {
+          serverEnd.close()
+        })
+      }
+      this.settleClosed(code, reason)
+    }
+
+    private settleClosed(code: number, reason: string): void {
+      if (this.readyState === 3) {
+        return
+      }
+      this.readyState = 3
+      this.onclose?.({ code, reason })
+    }
+  }
+  return FakeClientWebSocket as never
+}
+
 export type FakeClientCallback<TState extends FakeClientState = FakeClientState> = (
   state: TState,
 ) => void | Promise<void>
 export type FakeClientState = {
   [key: string]: unknown
+}
+
+/** One loaded page of a fake client — pass it to `run(fn, { state })` to continue the same page (see createRunState). */
+export type FakeClientRunState = {
+  /** the storage state every run with this handle re-enters — the page's whole superstore world */
+  _storageState: SuperStoreInternalValuesOrErrors
 }
 
 export class FakeClient<TState extends FakeClientState, TError extends ErrorPoint0> {
@@ -316,6 +484,11 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
     })
     const globalsWithClientEnv = {
       ...globals,
+      // the in-memory socket transport — the browser WebSocket without a network (see the class above); an explicit
+      // WebSocket in `globals` wins, like any other injected global
+      WebSocket:
+        (globals as Record<string, unknown>).WebSocket ??
+        createFakeClientWebSocketClass({ engine: engine as Engine<any, any, true>, fakeClient }),
       [POINT0_ENV_VARS_GLOBAL]: {
         ...client.envVars,
       },
@@ -425,7 +598,49 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
         })
       }
     } finally {
-      GlobalThisItemProxy.destroy(this as never)
+      GlobalThisItemProxy.destroy(this)
+    }
+  }
+
+  /**
+   * Build the storage state one `run()` enters — one loaded PAGE of this client's "browser". `run()` builds a fresh one
+   * by default (every run is a new page load, like a browser reload: sockets, managers, caches start over). Create one
+   * explicitly and pass it as `run(fn, { state })` to CONTINUE the same page across several runs — an open socket
+   * connection made in one run stays live for the next.
+   */
+  createRunState(): FakeClientRunState {
+    return {
+      _storageState: _getSsItemsWithRestErrors(
+        {
+          __POINT0_FAKE_CLIENT__: this,
+          __POINT0_CLIENT_POINTS__: this.points,
+        },
+        'Not yet exists in test client run',
+      ),
+    }
+  }
+
+  /**
+   * The page's "module load": in a real browser, closing a space / clientHandler registers the point for enrollment
+   * resolution and push dispatch (a client-side module-eval effect). Under FakeClient the point modules evaluated
+   * SERVER-side, where that registration is a deliberate no-op — so every run replays it into the page's own state
+   * (idempotent map writes; only materialized points — a FakeClient engine holds its points as objects).
+   */
+  private registerPagePoints(): void {
+    for (const record of this.points.manager.collection) {
+      if (record.type !== 'space' && record.type !== 'clientHandler') {
+        continue
+      }
+      const point = record.point
+      // only materialized points (a lazy record's import ran server-side anyway) — a FakeClient engine holds objects
+      if (typeof point !== 'object' || !('type' in point)) {
+        continue
+      }
+      if (record.type === 'space') {
+        registerSpacePoint(point)
+      } else {
+        registerClientHandlerPoint(point)
+      }
     }
   }
 
@@ -436,21 +651,18 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
       onEndInside?: FakeClientCallback<TState> | undefined
       onStartOutside?: FakeClientCallback<TState> | undefined
       onEndOutside?: FakeClientCallback<TState> | undefined
+      /** re-enter this page's state instead of loading a fresh page (see {@link FakeClient.createRunState}) */
+      state?: FakeClientRunState | undefined
     },
   ): Promise<TResult> {
     await this.onRunStartOutside?.(this.state)
     await options?.onStartOutside?.(this.state)
     try {
       const result = (await _ssRunWithServerStorageState(
-        _getSsItemsWithRestErrors(
-          {
-            __POINT0_FAKE_CLIENT__: this,
-            __POINT0_CLIENT_POINTS__: this.points,
-          },
-          'Not yet exists in test client run',
-        ),
+        (options?.state ?? this.createRunState())._storageState,
         async () => {
           try {
+            this.registerPagePoints()
             await this.onRunStartInside?.(this.state)
             await options?.onStartInside?.(this.state)
             const result = await fn(this.state)

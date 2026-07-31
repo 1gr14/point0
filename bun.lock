@@ -5,7 +5,7 @@
     "": {
       "name": "point0",
       "dependencies": {
-        "@1gr14/error0": "^0.4.7",
+        "@1gr14/error0": "^0.4.8",
         "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.3.0",
       },
@@ -34,19 +34,19 @@
     },
     "examples/basic": {
       "name": "@point0/example-basic",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "dependencies": {
-        "@1gr14/error0": "^0.4.7",
+        "@1gr14/error0": "^0.4.8",
         "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.3.0",
-        "@point0/basic-auth": "^0.2.7",
-        "@point0/cache-control": "^0.2.7",
-        "@point0/compiler": "^0.2.7",
-        "@point0/compress": "^0.2.7",
-        "@point0/core": "^0.2.7",
-        "@point0/engine": "^0.2.7",
-        "@point0/openapi": "^0.2.7",
-        "@point0/react-dom": "^0.2.7",
+        "@point0/basic-auth": "^0.2.8",
+        "@point0/cache-control": "^0.2.8",
+        "@point0/compiler": "^0.2.8",
+        "@point0/compress": "^0.2.8",
+        "@point0/core": "^0.2.8",
+        "@point0/engine": "^0.2.8",
+        "@point0/openapi": "^0.2.8",
+        "@point0/react-dom": "^0.2.8",
         "@prisma/adapter-libsql": "^7.8.0",
         "@prisma/client": "^7.8.0",
         "@tanstack/react-query": "^5.101.0",
@@ -80,19 +80,19 @@
     },
     "examples/better-auth": {
       "name": "@point0/example-better-auth",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "dependencies": {
-        "@1gr14/error0": "^0.4.7",
+        "@1gr14/error0": "^0.4.8",
         "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.3.0",
-        "@point0/basic-auth": "^0.2.7",
-        "@point0/cache-control": "^0.2.7",
-        "@point0/compiler": "^0.2.7",
-        "@point0/compress": "^0.2.7",
-        "@point0/core": "^0.2.7",
-        "@point0/engine": "^0.2.7",
-        "@point0/openapi": "^0.2.7",
-        "@point0/react-dom": "^0.2.7",
+        "@point0/basic-auth": "^0.2.8",
+        "@point0/cache-control": "^0.2.8",
+        "@point0/compiler": "^0.2.8",
+        "@point0/compress": "^0.2.8",
+        "@point0/core": "^0.2.8",
+        "@point0/engine": "^0.2.8",
+        "@point0/openapi": "^0.2.8",
+        "@point0/react-dom": "^0.2.8",
         "@prisma/adapter-libsql": "^7.8.0",
         "@prisma/client": "^7.8.0",
         "@tanstack/react-query": "^5.101.0",
@@ -126,15 +126,15 @@
     },
     "examples/capacitor": {
       "name": "@point0/example-capacitor",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "dependencies": {
-        "@1gr14/error0": "^0.4.7",
+        "@1gr14/error0": "^0.4.8",
         "@1gr14/route0": "^0.3.0",
         "@capacitor/core": "^8.4.0",
-        "@point0/compiler": "^0.2.7",
-        "@point0/core": "^0.2.7",
-        "@point0/engine": "^0.2.7",
-        "@point0/react-dom": "^0.2.7",
+        "@point0/compiler": "^0.2.8",
+        "@point0/core": "^0.2.8",
+        "@point0/engine": "^0.2.8",
+        "@point0/react-dom": "^0.2.8",
         "@prisma/adapter-libsql": "^7.8.0",
         "@prisma/client": "^7.8.0",
         "prisma": "^7.8.0",
@@ -160,7 +160,7 @@
     },
     "examples/expo": {
       "name": "@point0/example-expo",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "dependencies": {
         "@babel/core": "^7.29.7",
         "@babel/plugin-transform-flow-strip-types": "^7.29.7",
@@ -188,21 +188,68 @@
         "typescript": "^6.0.3",
       },
     },
-    "examples/vite": {
-      "name": "@point0/example-vite",
-      "version": "0.2.7",
+    "examples/socket": {
+      "name": "@point0/example-socket",
+      "version": "0.2.6",
       "dependencies": {
-        "@1gr14/error0": "^0.4.7",
+        "@1gr14/error0": "^0.4.8",
         "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.3.0",
-        "@point0/basic-auth": "^0.2.7",
-        "@point0/cache-control": "^0.2.7",
-        "@point0/compiler": "^0.2.7",
-        "@point0/compress": "^0.2.7",
-        "@point0/core": "^0.2.7",
-        "@point0/engine": "^0.2.7",
-        "@point0/openapi": "^0.2.7",
-        "@point0/react-dom": "^0.2.7",
+        "@point0/basic-auth": "^0.2.8",
+        "@point0/cache-control": "^0.2.8",
+        "@point0/compiler": "^0.2.8",
+        "@point0/compress": "^0.2.8",
+        "@point0/core": "^0.2.8",
+        "@point0/engine": "^0.2.8",
+        "@point0/openapi": "^0.2.8",
+        "@point0/react-dom": "^0.2.8",
+        "@prisma/adapter-libsql": "^7.8.0",
+        "@prisma/client": "^7.8.0",
+        "@tanstack/react-query": "^5.101.0",
+        "@unhead/react": "^3.1.1",
+        "bun-plugin-tailwind": "^0.1.2",
+        "dotenv": "^17.4.2",
+        "openapi-types": "^12.0.0",
+        "prisma": "^7.8.0",
+        "react": "^19.2.7",
+        "react-dom": "^19.2.7",
+        "superjson": "^2.2.6",
+        "tailwindcss": "^4.3.0",
+        "unhead": "^3.1.1",
+        "wouter": "^3.10.0",
+      },
+      "devDependencies": {
+        "@faker-js/faker": "^10.4.0",
+        "@svgr/core": "^8.1.0",
+        "@svgr/plugin-jsx": "^8.1.0",
+        "@tailwindcss/typography": "^0.5.19",
+        "@tanstack/react-query-devtools": "^5.101.0",
+        "@types/bun": "^1.3.14",
+        "@types/react": "^19.2.16",
+        "@types/react-dom": "^19.2.3",
+        "babel-plugin-react-compiler": "^1.0.0",
+        "cross-env": "^10.0.0",
+        "ncp": "^2.0.0",
+        "playwright": "^1.60.0",
+        "rimraf": "^6.0.1",
+        "typescript": "^6.0.3",
+      },
+    },
+    "examples/vite": {
+      "name": "@point0/example-vite",
+      "version": "0.2.8",
+      "dependencies": {
+        "@1gr14/error0": "^0.4.8",
+        "@1gr14/flat": "^0.1.4",
+        "@1gr14/route0": "^0.3.0",
+        "@point0/basic-auth": "^0.2.8",
+        "@point0/cache-control": "^0.2.8",
+        "@point0/compiler": "^0.2.8",
+        "@point0/compress": "^0.2.8",
+        "@point0/core": "^0.2.8",
+        "@point0/engine": "^0.2.8",
+        "@point0/openapi": "^0.2.8",
+        "@point0/react-dom": "^0.2.8",
         "@prisma/adapter-libsql": "^7.8.0",
         "@prisma/client": "^7.8.0",
         "@tailwindcss/vite": "^4.3.0",
@@ -241,7 +288,7 @@
     },
     "packages/basic-auth": {
       "name": "@point0/basic-auth",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "devDependencies": {
         "@scalar/types": "^0.12.3",
         "@types/bun": "^1.3.14",
@@ -251,13 +298,13 @@
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@point0/core": "^0.2.7",
-        "@point0/engine": "^0.2.7",
+        "@point0/core": "^0.2.8",
+        "@point0/engine": "^0.2.8",
       },
     },
     "packages/cache-control": {
       "name": "@point0/cache-control",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "devDependencies": {
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
@@ -266,13 +313,13 @@
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@point0/core": "^0.2.7",
-        "@point0/engine": "^0.2.7",
+        "@point0/core": "^0.2.8",
+        "@point0/engine": "^0.2.8",
       },
     },
     "packages/compiler": {
       "name": "@point0/compiler",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "dependencies": {
         "@babel/core": "^7.29.7",
         "@babel/generator": "^7.29.7",
@@ -295,7 +342,7 @@
       },
       "devDependencies": {
         "@1gr14/flat": "^0.1.4",
-        "@point0/engine": "^0.2.7",
+        "@point0/engine": "^0.2.8",
         "@types/babel__core": "^7.20.5",
         "@types/babel__generator": "^7.27.0",
         "@types/babel__traverse": "^7.28.0",
@@ -310,12 +357,12 @@
       "peerDependencies": {
         "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.3.0",
-        "@point0/core": "^0.2.7",
+        "@point0/core": "^0.2.8",
       },
     },
     "packages/compress": {
       "name": "@point0/compress",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "devDependencies": {
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
@@ -324,13 +371,13 @@
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@point0/core": "^0.2.7",
-        "@point0/engine": "^0.2.7",
+        "@point0/core": "^0.2.8",
+        "@point0/engine": "^0.2.8",
       },
     },
     "packages/core": {
       "name": "@point0/core",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "dependencies": {
         "@standard-schema/spec": "^1.1.0",
         "safe-stable-stringify": "^2.5.0",
@@ -386,7 +433,7 @@
     },
     "packages/cors": {
       "name": "@point0/cors",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "devDependencies": {
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
@@ -395,13 +442,13 @@
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@point0/core": "^0.2.7",
-        "@point0/engine": "^0.2.7",
+        "@point0/core": "^0.2.8",
+        "@point0/engine": "^0.2.8",
       },
     },
     "packages/create-app": {
       "name": "create-point0-app",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "bin": {
         "create-point0-app": "dist/index.js",
       },
@@ -420,19 +467,19 @@
     },
     "packages/create-app/template": {
       "name": "my-app",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "dependencies": {
-        "@1gr14/error0": "^0.4.7",
+        "@1gr14/error0": "^0.4.8",
         "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.3.0",
-        "@point0/basic-auth": "^0.2.7",
-        "@point0/cache-control": "^0.2.7",
-        "@point0/compiler": "^0.2.7",
-        "@point0/compress": "^0.2.7",
-        "@point0/core": "^0.2.7",
-        "@point0/engine": "^0.2.7",
-        "@point0/openapi": "^0.2.7",
-        "@point0/react-dom": "^0.2.7",
+        "@point0/basic-auth": "^0.2.8",
+        "@point0/cache-control": "^0.2.8",
+        "@point0/compiler": "^0.2.8",
+        "@point0/compress": "^0.2.8",
+        "@point0/core": "^0.2.8",
+        "@point0/engine": "^0.2.8",
+        "@point0/openapi": "^0.2.8",
+        "@point0/react-dom": "^0.2.8",
         "@prisma/adapter-libsql": "^7.8.0",
         "@prisma/client": "^7.8.0",
         "@tailwindcss/typography": "^0.5.19",
@@ -452,7 +499,7 @@
       },
       "devDependencies": {
         "@faker-js/faker": "^10.4.0",
-        "@point0/docs": "^0.2.7",
+        "@point0/docs": "^0.2.8",
         "@svgr/core": "^8.1.0",
         "@svgr/plugin-jsx": "^8.1.0",
         "@tanstack/react-query-devtools": "^5.101.0",
@@ -474,7 +521,7 @@
     },
     "packages/docs": {
       "name": "@point0/docs",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "bin": {
         "point0-docs-mcp": "dist/mcp.js",
       },
@@ -496,7 +543,7 @@
     },
     "packages/engine": {
       "name": "@point0/engine",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "bin": {
         "point0": "dist/cli.js",
         "point0-project-mcp": "dist/mcp.js",
@@ -515,15 +562,16 @@
         "fetch-cookie": "^3.2.0",
         "fetch-to-node": "^2.1.0",
         "minimatch": "^10.0.1",
+        "sift": "^17.1.3",
         "source-map-support": "^0.5.21",
         "tough-cookie": "^6.0.0",
         "zod": "^4.4.3",
       },
       "devDependencies": {
-        "@1gr14/error0": "^0.4.7",
+        "@1gr14/error0": "^0.4.8",
         "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.3.0",
-        "@point0/docs": "^0.2.7",
+        "@point0/docs": "^0.2.8",
         "@tanstack/query-core": "^5.101.0",
         "@testing-library/react": "^16.3.1",
         "@types/babel__traverse": "^7.28.0",
@@ -536,9 +584,12 @@
         "@typescript/native": "npm:typescript@^7.0.2",
         "@vitejs/plugin-react": "^6.0.2",
         "happy-dom": "20.10.6",
+        "ioredis": "^5.4.1",
         "playwright": "^1.60.0",
+        "postgres": "^3.4.5",
         "react": "^19.2.7",
         "react-dom": "^19.2.7",
+        "redis": "^5.0.0",
         "safe-stable-stringify": "^2.5.0",
         "superjson": "^2.2.6",
         "tsdown": "^0.22.2",
@@ -550,17 +601,101 @@
       "peerDependencies": {
         "@1gr14/flat": "^0.1.4",
         "@1gr14/route0": "^0.3.0",
-        "@point0/compiler": "^0.2.7",
-        "@point0/core": "^0.2.7",
+        "@point0/compiler": "^0.2.8",
+        "@point0/core": "^0.2.8",
         "@tanstack/react-query": "^5.101.0",
         "@unhead/react": "^3.1.1",
         "react": "^19.2.7",
         "react-dom": "^19.2.7",
       },
     },
+    "packages/engine/tests/temp/socket-backplane/test-cadbe4e3-8f2b-4a2f-a1aa-70944ecf47d5": {
+      "name": "@point0/test-cadbe4e3-8f2b-4a2f-a1aa-70944ecf47d5",
+      "version": "0.2.8",
+      "dependencies": {
+        "@1gr14/route0": "^0.3.0",
+        "@point0/compiler": "^0.2.8",
+        "@point0/core": "^0.2.8",
+        "@point0/cors": "^0.2.8",
+        "@point0/engine": "^0.2.8",
+        "@point0/react-dom": "^0.2.8",
+        "react": "^19.2.7",
+        "react-dom": "^19.2.7",
+        "server-only": "^0.0.1",
+        "superjson": "^2.2.6",
+      },
+      "devDependencies": {
+        "@svgr/core": "^8.1.0",
+        "@svgr/plugin-jsx": "^8.1.0",
+        "@types/bun": "^1.3.14",
+        "@types/react": "^19.2.16",
+        "@types/react-dom": "^19.2.3",
+        "@typescript/native": "npm:typescript@^7.0.2",
+        "cross-env": "^10.0.0",
+        "ncp": "^2.0.0",
+        "rimraf": "^6.0.1",
+        "typescript": "^6.0.3",
+      },
+    },
+    "packages/engine/tests/temp/socket-client/test-13f06694-bae9-42d2-81a2-64abe2a35516": {
+      "name": "@point0/test-13f06694-bae9-42d2-81a2-64abe2a35516",
+      "version": "0.2.8",
+      "dependencies": {
+        "@1gr14/route0": "^0.3.0",
+        "@point0/compiler": "^0.2.8",
+        "@point0/core": "^0.2.8",
+        "@point0/cors": "^0.2.8",
+        "@point0/engine": "^0.2.8",
+        "@point0/react-dom": "^0.2.8",
+        "react": "^19.2.7",
+        "react-dom": "^19.2.7",
+        "server-only": "^0.0.1",
+        "superjson": "^2.2.6",
+      },
+      "devDependencies": {
+        "@svgr/core": "^8.1.0",
+        "@svgr/plugin-jsx": "^8.1.0",
+        "@types/bun": "^1.3.14",
+        "@types/react": "^19.2.16",
+        "@types/react-dom": "^19.2.3",
+        "@typescript/native": "npm:typescript@^7.0.2",
+        "cross-env": "^10.0.0",
+        "ncp": "^2.0.0",
+        "rimraf": "^6.0.1",
+        "typescript": "^6.0.3",
+      },
+    },
+    "packages/engine/tests/temp/socket-connectorless/test-860339f8-44ce-4557-a4b1-0405c45fb150": {
+      "name": "@point0/test-860339f8-44ce-4557-a4b1-0405c45fb150",
+      "version": "0.2.8",
+      "dependencies": {
+        "@1gr14/route0": "^0.3.0",
+        "@point0/compiler": "^0.2.8",
+        "@point0/core": "^0.2.8",
+        "@point0/cors": "^0.2.8",
+        "@point0/engine": "^0.2.8",
+        "@point0/react-dom": "^0.2.8",
+        "react": "^19.2.7",
+        "react-dom": "^19.2.7",
+        "server-only": "^0.0.1",
+        "superjson": "^2.2.6",
+      },
+      "devDependencies": {
+        "@svgr/core": "^8.1.0",
+        "@svgr/plugin-jsx": "^8.1.0",
+        "@types/bun": "^1.3.14",
+        "@types/react": "^19.2.16",
+        "@types/react-dom": "^19.2.3",
+        "@typescript/native": "npm:typescript@^7.0.2",
+        "cross-env": "^10.0.0",
+        "ncp": "^2.0.0",
+        "rimraf": "^6.0.1",
+        "typescript": "^6.0.3",
+      },
+    },
     "packages/engine/tests/templates/one-client": {
       "name": "@point0/test-one-client",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "dependencies": {
         "@1gr14/route0": "^0.3.0",
         "@point0/compiler": "^0.2.7",
@@ -588,7 +723,7 @@
     },
     "packages/engine/tests/templates/two-clients": {
       "name": "@point0/test-two-clients",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "dependencies": {
         "@1gr14/route0": "^0.3.0",
         "@point0/compiler": "^0.2.7",
@@ -616,9 +751,9 @@
     },
     "packages/openapi": {
       "name": "@point0/openapi",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "devDependencies": {
-        "@point0/basic-auth": "^0.2.7",
+        "@point0/basic-auth": "^0.2.8",
         "@scalar/types": "^0.12.3",
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
@@ -629,8 +764,8 @@
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@point0/core": "^0.2.7",
-        "@point0/engine": "^0.2.7",
+        "@point0/core": "^0.2.8",
+        "@point0/engine": "^0.2.8",
         "@scalar/types": "^0.12.3",
         "@types/swagger-ui": "^5.32.0",
         "openapi-types": "^12.0.0",
@@ -639,10 +774,10 @@
     },
     "packages/react-dom": {
       "name": "@point0/react-dom",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "devDependencies": {
         "@1gr14/route0": "^0.3.0",
-        "@point0/core": "^0.2.7",
+        "@point0/core": "^0.2.8",
         "@types/bun": "^1.3.14",
         "@types/node": "^20.0.0",
         "@types/react": "^19.2.16",
@@ -656,7 +791,7 @@
       },
       "peerDependencies": {
         "@1gr14/route0": "^0.3.0",
-        "@point0/core": "^0.2.7",
+        "@point0/core": "^0.2.8",
         "@types/react": "^19.2.16",
         "@types/react-dom": "^19.2.3",
         "react": "^19.2.7",
@@ -672,7 +807,7 @@
     "zod": "^4.4.3",
   },
   "catalog": {
-    "@1gr14/error0": "^0.4.7",
+    "@1gr14/error0": "^0.4.8",
     "@1gr14/flat": "^0.1.4",
     "@1gr14/route0": "^0.3.0",
     "@huggingface/transformers": "^4.2.0",
@@ -697,11 +832,15 @@
     "fast-glob": "^3.3.2",
     "get-tsconfig": "^4.14.0",
     "gray-matter": "^4.0.3",
+    "ioredis": "^5.4.1",
     "openapi-types": "^12.0.0",
+    "postgres": "^3.4.5",
     "prettier": "^3.8.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "redis": "^5.0.0",
     "safe-stable-stringify": "^2.5.0",
+    "sift": "^17.1.3",
     "source-map-support": "^0.5.21",
     "superjson": "^2.2.6",
     "superstruct": "^2.0.2",
@@ -719,7 +858,7 @@
     "zod": "^4.4.3",
   },
   "packages": {
-    "@1gr14/error0": ["@1gr14/error0@0.4.7", "", {}, "sha512-woqhB4vLAotyBHlMwQAceD80JRJV/lRliebHe9bCqaOLGBzlTmNPOW4eT0AqtLyvh5smtw5+X3jca8Nvoq6ZkQ=="],
+    "@1gr14/error0": ["@1gr14/error0@0.4.8", "", {}, "sha512-7iGmmpI9tXGDdd7Kc+6MtUYT0QKisKPmjwROXXUd2IABamtAyVTxvX9RSDI8LNsBQql4UY6ENBPKJHhOna7FQA=="],
 
     "@1gr14/flat": ["@1gr14/flat@0.1.4", "", {}, "sha512-M5QU8ShQojb/bI6I/otPOmENWLtp07fmE9jusKaLjmc9LUj9Owbrwk3JhbK47sMD10RrIkiJ+tuv3cW4Nh3SkQ=="],
 
@@ -1177,6 +1316,8 @@
 
     "@ionic/utils-terminal": ["@ionic/utils-terminal@2.3.5", "", { "dependencies": { "@types/slice-ansi": "^4.0.0", "debug": "^4.0.0", "signal-exit": "^3.0.3", "slice-ansi": "^4.0.0", "string-width": "^4.1.0", "strip-ansi": "^6.0.0", "tslib": "^2.0.1", "untildify": "^4.0.0", "wrap-ansi": "^7.0.0" } }, "sha512-3cKScz9Jx2/Pr9ijj1OzGlBDfcmx7OMVBt4+P1uRR0SSW4cm1/y3Mo4OY3lfkuaYifMNBW8Wz6lQHbs1bihr7A=="],
 
+    "@ioredis/commands": ["@ioredis/commands@1.10.0", "", {}, "sha512-UmeW7z4LfctwoQ5wkhVzgq8tXkreED2xZGpX+Bg+zA+WJFZCT6c062AfCK/Dfk81xZnnwdhJCUMkitihRaoC2Q=="],
+
     "@isaacs/fs-minipass": ["@isaacs/fs-minipass@4.0.1", "", { "dependencies": { "minipass": "^7.0.4" } }, "sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w=="],
 
     "@isaacs/ttlcache": ["@isaacs/ttlcache@1.4.1", "", {}, "sha512-RQgQ4uQ+pLbqXfOmieB91ejmLwvSgv9nLx6sT6sD83s7umBypgg+OIBOBbEUiJXrfpnp9j0mRhYYdzp9uqq3lA=="],
@@ -1387,11 +1528,19 @@
 
     "@point0/example-expo": ["@point0/example-expo@workspace:examples/expo"],
 
+    "@point0/example-socket": ["@point0/example-socket@workspace:examples/socket"],
+
     "@point0/example-vite": ["@point0/example-vite@workspace:examples/vite"],
 
     "@point0/openapi": ["@point0/openapi@workspace:packages/openapi"],
 
     "@point0/react-dom": ["@point0/react-dom@workspace:packages/react-dom"],
+
+    "@point0/test-13f06694-bae9-42d2-81a2-64abe2a35516": ["@point0/test-13f06694-bae9-42d2-81a2-64abe2a35516@workspace:packages/engine/tests/temp/socket-client/test-13f06694-bae9-42d2-81a2-64abe2a35516"],
+
+    "@point0/test-860339f8-44ce-4557-a4b1-0405c45fb150": ["@point0/test-860339f8-44ce-4557-a4b1-0405c45fb150@workspace:packages/engine/tests/temp/socket-connectorless/test-860339f8-44ce-4557-a4b1-0405c45fb150"],
+
+    "@point0/test-cadbe4e3-8f2b-4a2f-a1aa-70944ecf47d5": ["@point0/test-cadbe4e3-8f2b-4a2f-a1aa-70944ecf47d5@workspace:packages/engine/tests/temp/socket-backplane/test-cadbe4e3-8f2b-4a2f-a1aa-70944ecf47d5"],
 
     "@point0/test-one-client": ["@point0/test-one-client@workspace:packages/engine/tests/templates/one-client"],
 
@@ -1520,6 +1669,16 @@
     "@react-native/normalize-colors": ["@react-native/normalize-colors@0.85.3", "", {}, "sha512-hj0PScZEhIbcOvQV5yMKX3ha4XEIOy/SVE1Rrpp0beW0dpNLOgSC7KDxGewmDnIHK9YdQUXGY9eMEfShUMIaZw=="],
 
     "@react-native/virtualized-lists": ["@react-native/virtualized-lists@0.85.3", "", { "dependencies": { "invariant": "^2.2.4", "nullthrows": "^1.1.1" }, "peerDependencies": { "@types/react": "^19.2.0", "react": "*", "react-native": "0.85.3" }, "optionalPeers": ["@types/react"] }, "sha512-dsCjI//OIPEUJMyNHp4l7zNLVjCx7bcaRUceOCkU+IB17hkbtbGWvi7HjGFSzy7FJGmS/MOlcfpb72xXiy1Oig=="],
+
+    "@redis/bloom": ["@redis/bloom@5.12.1", "", { "peerDependencies": { "@redis/client": "^5.12.1" } }, "sha512-PUUfv+ms7jgPSBVoo/DN4AkPHj4D5TZSd6SbJX7egzBplkYUcKmHRE8RKia7UtZ8bSQbLguLvxVO+asKtQfZWA=="],
+
+    "@redis/client": ["@redis/client@5.12.1", "", { "dependencies": { "cluster-key-slot": "1.1.2" }, "peerDependencies": { "@node-rs/xxhash": "^1.1.0", "@opentelemetry/api": ">=1 <2" }, "optionalPeers": ["@node-rs/xxhash", "@opentelemetry/api"] }, "sha512-7aPGWeqA3uFm43o19umzdl16CEjK/JQGtSXVPevplTaOU3VJA/rseBC1QvYUz9lLDIMBimc4SW/zrW4S89BaCA=="],
+
+    "@redis/json": ["@redis/json@5.12.1", "", { "peerDependencies": { "@redis/client": "^5.12.1" } }, "sha512-eOze75esLve4vfqDel7aMX08CNaiLLQS2fV8mpRN9NxPe1rVR4vQyYiW/OgtGUysF6QOr9ANhfxABKNOJfXdKg=="],
+
+    "@redis/search": ["@redis/search@5.12.1", "", { "peerDependencies": { "@redis/client": "^5.12.1" } }, "sha512-ItlxbxC9cKI6IU1TLWoczwJCRb6TdmkEpWv05UrPawqaAnWGRu3rcIqsc5vN483T2fSociuyV1UkWIL5I4//2w=="],
+
+    "@redis/time-series": ["@redis/time-series@5.12.1", "", { "peerDependencies": { "@redis/client": "^5.12.1" } }, "sha512-c6JL6E3EcZJuNqKFz+KM+l9l5mpcQiKvTwgA3blt5glWJ8hjDk0yeHN3beE/MpqYIQ8UEX44ItQzgkE/gCBELQ=="],
 
     "@rolldown/binding-android-arm64": ["@rolldown/binding-android-arm64@1.1.0", "", { "os": "android", "cpu": "arm64" }, "sha512-gCYzGOSkYY6Z034suzd20euvds7lPzMEEla62DJGE/ZAlR4OMBnNbvnBSsIGUCAr52gaWMsloGxP4tVGtN5aCA=="],
 
@@ -2077,6 +2236,8 @@
 
     "clone-response": ["clone-response@1.0.3", "", { "dependencies": { "mimic-response": "^1.0.0" } }, "sha512-ROoL94jJH2dUVML2Y/5PEDNaSHgeOdSDicUyS7izcF63G6sTc/FTjLub4b8Il9S8S0beOfYt0TaA5qvFK+w0wA=="],
 
+    "cluster-key-slot": ["cluster-key-slot@1.1.1", "", {}, "sha512-rwHwUfXL40Chm1r08yrhU3qpUvdVlgkKNeyeGPOxnW8/SyVDvgRaed/Uz54AqWNaTCAThlj6QAs3TZcKI0xDEw=="],
+
     "collapse-white-space": ["collapse-white-space@2.1.0", "", {}, "sha512-loKTxY1zCOuG4j9f6EPnuyyYkf58RnhhWTvRoZEokgB+WbdXehfjFviyOVYkqzEWz1Q5kRiZdBYS5SwxbQYwzw=="],
 
     "color": ["color@4.2.3", "", { "dependencies": { "color-convert": "^2.0.1", "color-string": "^1.9.0" } }, "sha512-1rXeuUUiGGrykh+CeBdu5Ie7OJwinCgQY0bc7GCRxy5xVHy+moaqkpL/jqQq0MtQOeYcrqEz4abc5f0KtU7W4A=="],
@@ -2610,6 +2771,8 @@
     "inline-style-prefixer": ["inline-style-prefixer@7.0.1", "", { "dependencies": { "css-in-js-utils": "^3.1.0" } }, "sha512-lhYo5qNTQp3EvSSp3sRvXMbVQTLrvGV6DycRMJ5dm2BLMiJ30wpXKdDdgX+GmJZ5uQMucwRKHamXSst3Sj/Giw=="],
 
     "invariant": ["invariant@2.2.4", "", { "dependencies": { "loose-envify": "^1.0.0" } }, "sha512-phJfQVBuaJM5raOpJjSfkiD6BpbCE4Ns//LaXl6wGYtUBY83nWS6Rf9tXm2e8VaK60JEjYldbPif/A2B1C2gNA=="],
+
+    "ioredis": ["ioredis@5.11.1", "", { "dependencies": { "@ioredis/commands": "1.10.0", "cluster-key-slot": "1.1.1", "debug": "4.4.3", "denque": "2.1.0", "redis-errors": "1.2.0", "redis-parser": "3.0.0", "standard-as-callback": "2.1.0" } }, "sha512-ehuGcf94bQXhfagULNXrJdfnWO38v070jxSx/qE87Kjzmu2fU7ro5EFAb+OPituLqgfyuQaym5DlrNydW2sJ9A=="],
 
     "ip-address": ["ip-address@10.2.0", "", {}, "sha512-/+S6j4E9AHvW9SWMSEY9Xfy66O5PWvVEJ08O0y5JGyEKQpojb0K0GKpz/v5HJ/G0vi3D2sjGK78119oXZeE0qA=="],
 
@@ -3271,6 +3434,12 @@
 
     "redent": ["redent@3.0.0", "", { "dependencies": { "indent-string": "^4.0.0", "strip-indent": "^3.0.0" } }, "sha512-6tDA8g98We0zd0GvVeMT9arEOnTw9qM03L9cJXaCjrip1OO764RDBLBfrB4cwzNGDj5OA5ioymC9GkizgWJDUg=="],
 
+    "redis": ["redis@5.12.1", "", { "dependencies": { "@redis/bloom": "5.12.1", "@redis/client": "5.12.1", "@redis/json": "5.12.1", "@redis/search": "5.12.1", "@redis/time-series": "5.12.1" } }, "sha512-LDsoVvb/CpoV9EN3FXvgvSHNJWuCIzl9MiO3ppOevuGLpSGJhwfQjpEwfFJcQvNSddHADDdZaWx0HnmMxRXG7g=="],
+
+    "redis-errors": ["redis-errors@1.2.0", "", {}, "sha512-1qny3OExCf0UvUV/5wpYKf2YwPcOqXzkwKKSmKHiE6ZMQs5heeE/c8eXK+PNllPvmjgAbfnsbpkGZWy8cBpn9w=="],
+
+    "redis-parser": ["redis-parser@3.0.0", "", { "dependencies": { "redis-errors": "^1.0.0" } }, "sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A=="],
+
     "regenerate": ["regenerate@1.4.2", "", {}, "sha512-zrceR/XhGYU/d/opr2EKO7aRHUeiBI8qjtfHqADTwZd6Szfy16la6kqD0MIUs5z5hx6AaKa+PixpPrR289+I0A=="],
 
     "regenerate-unicode-properties": ["regenerate-unicode-properties@10.2.2", "", { "dependencies": { "regenerate": "^1.4.2" } }, "sha512-m03P+zhBeQd1RGnYxrGyDAPpWX/epKirLrp8e3qevZdVkKtnCrjjWczIbYc8+xd6vcTStVlqfycTx1KR4LOr0g=="],
@@ -3395,6 +3564,8 @@
 
     "side-channel-weakmap": ["side-channel-weakmap@1.0.2", "", { "dependencies": { "call-bound": "^1.0.2", "es-errors": "^1.3.0", "get-intrinsic": "^1.2.5", "object-inspect": "^1.13.3", "side-channel-map": "^1.0.1" } }, "sha512-WPS/HvHQTYnHisLo9McqBHOJk2FkHO/tlpvldyrnem4aeQp4hai3gythswg6p01oSoTl58rcpiFAjF2br2Ak2A=="],
 
+    "sift": ["sift@17.1.3", "", {}, "sha512-Rtlj66/b0ICeFzYTuNvX/EF1igRbbnGSvEyT79McoZa/DeGhMyC5pWKOEsZKnpkqtSeovd5FL/bjHWC3CIIvCQ=="],
+
     "signal-exit": ["signal-exit@4.1.0", "", {}, "sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw=="],
 
     "simple-plist": ["simple-plist@1.3.1", "", { "dependencies": { "bplist-creator": "0.1.0", "bplist-parser": "0.3.1", "plist": "^3.0.5" } }, "sha512-iMSw5i0XseMnrhtIzRb7XpQEXepa9xhWxGUojHBL43SIpQuDQkh3Wpy67ZbDzZVr6EKxvwVChnVpdl8hEVLDiw=="],
@@ -3436,6 +3607,8 @@
     "stackframe": ["stackframe@1.3.4", "", {}, "sha512-oeVtt7eWQS+Na6F//S4kJ2K2VbRlS9D43mAlMyVpVWovy9o+jfgH8O9agzANzaiLjclA0oYzUXEM4PurhSUChw=="],
 
     "stacktrace-parser": ["stacktrace-parser@0.1.11", "", { "dependencies": { "type-fest": "^0.7.1" } }, "sha512-WjlahMgHmCJpqzU8bIBy4qtsZdU9lRlcZE3Lvyej6t4tuOuv1vk57OW3MBrj6hXBFx/nNoC9MPMTcr5YA7NQbg=="],
+
+    "standard-as-callback": ["standard-as-callback@2.1.0", "", {}, "sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A=="],
 
     "statuses": ["statuses@2.0.2", "", {}, "sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw=="],
 
@@ -3858,6 +4031,8 @@
     "@react-native/dev-middleware/open": ["open@7.4.2", "", { "dependencies": { "is-docker": "^2.0.0", "is-wsl": "^2.1.1" } }, "sha512-MVHddDVweXZF3awtlAS+6pgKLlm/JgxZ90+/NBurBoQctVOOB/zDdVjcyPzQ+0laDGbsWgrRkflI65sQeOgT9Q=="],
 
     "@react-native/dev-middleware/ws": ["ws@7.5.11", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": "^5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-zS54Oen9bITtp7kp2XM3AydrCIq1D+HwJOuH+c+e4LfpL/lotP5osijd+UoMnxwAam1GN8R4KtLAyIrIcBNpiA=="],
+
+    "@redis/client/cluster-key-slot": ["cluster-key-slot@1.1.2", "", {}, "sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA=="],
 
     "@rollup/pluginutils/estree-walker": ["estree-walker@2.0.2", "", {}, "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w=="],
 

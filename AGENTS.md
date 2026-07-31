@@ -71,7 +71,7 @@ packages/
   basic-auth/  basic-auth helper points.    cors/  CORS helper.
   create-app/  scaffolding CLI (`create-point0-app`).
   docs/        docs content + search/embeddings; owns the `point0-docs-mcp` bin.
-examples/      basic (canonical: Prisma + tailwind + wouter), better-auth, capacitor, expo, vite.
+examples/      basic (canonical: Prisma + tailwind + wouter), better-auth, capacitor, expo, socket (channels/spaces/handlers), vite.
 docs/          user-facing docs (don't write here unless asked).
 scripts/       repo tooling (publish, local-registry, test runner/planner, setup, release).
 ```

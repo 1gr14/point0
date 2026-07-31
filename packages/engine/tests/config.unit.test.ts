@@ -520,6 +520,114 @@ describe('config', () => {
     })
   })
 
+  describe('features resolution', () => {
+    it('defaults every side to server.socket — off', () => {
+      const parsed = parseEngineOptions(base({ clients: [{ scope: 'web' }] }))
+      expect(parsed.server.features).toEqual({ socket: false })
+      expect(parsed.clients[0].features).toEqual({ socket: false })
+    })
+
+    it('defaults every side to server.socket — on', () => {
+      const parsed = parseEngineOptions(base({ server: { socket: true }, clients: [{ scope: 'web' }] }))
+      expect(parsed.server.features).toEqual({ socket: true })
+      expect(parsed.clients[0].features).toEqual({ socket: true })
+    })
+
+    it('normalizes the partial general option into a full record on both sides', () => {
+      const parsed = parseEngineOptions(base({ general: { features: { socket: true } }, clients: [{ scope: 'web' }] }))
+      expect(parsed.server.features).toEqual({ socket: true })
+      expect(parsed.clients[0].features).toEqual({ socket: true })
+    })
+
+    it('a side-level features wins over the general one', () => {
+      const parsed = parseEngineOptions(
+        base({
+          general: { features: { socket: true } },
+          server: { features: { socket: true } },
+          clients: [{ scope: 'web', features: { socket: false } }, { scope: 'mobile' }],
+        }),
+      )
+      // one client opting out strips only its own bundle — the server still serves the socket
+      expect(parsed.server.features).toEqual({ socket: true })
+      expect(parsed.clients[0].features).toEqual({ socket: false })
+      expect(parsed.clients[1].features).toEqual({ socket: true })
+    })
+
+    it('refuses server.socket: true with the socket feature turned off', () => {
+      expect(() =>
+        parseEngineOptions(base({ general: { features: { socket: false } }, server: { socket: true } })),
+      ).toThrow(/`server.socket` is on but the `socket` feature is off/)
+      expect(() => parseEngineOptions(base({ server: { socket: true, features: { socket: false } } }))).toThrow(
+        /`server.socket` is on but the `socket` feature is off/,
+      )
+    })
+
+    it('allows the socket feature on with no endpoint — the code ships, the endpoint does not', () => {
+      const parsed = parseEngineOptions(base({ general: { features: { socket: true } }, clients: [{ scope: 'web' }] }))
+      expect(parsed.server.socket).toBe(false)
+      expect(parsed.server.features).toEqual({ socket: true })
+      expect(parsed.clients[0].features).toEqual({ socket: true })
+    })
+
+    it('resolves per feature against the defaults record — `server.socket` is the `socket` default, not a blanket one', () => {
+      // The client's default comes from the SERVER's socket option (one endpoint, every client of the scope talks to
+      // it), so a server that serves the socket keeps the code in every client that did not opt out.
+      const parsed = parseEngineOptions(
+        base({ server: { socket: true }, clients: [{ scope: 'web' }, { scope: 'admin', features: {} }] }),
+      )
+      expect(parsed.clients[0].features).toEqual({ socket: true })
+      // an empty partial names nothing — it must not read as "off"
+      expect(parsed.clients[1].features).toEqual({ socket: true })
+    })
+
+    it('the resolved record reaches the compiler record of both sides', () => {
+      const parsed = parseEngineOptions(base({ server: { socket: true }, clients: [{ scope: 'web' }] }))
+      if (parsed.server.compiler === false || parsed.clients[0].compiler === false) throw new Error('unreachable')
+      // the server compile never strips, but it is still handed the record — that is the compiler's call, not config's
+      expect(parsed.server.compiler.features).toEqual({ socket: true })
+      expect(parsed.clients[0].compiler.features).toEqual({ socket: true })
+    })
+
+    it('`compiler.features` at the specific level overrides the compile alone — the side keeps its runtime record', () => {
+      const parsed = parseEngineOptions(
+        base({
+          general: { features: { socket: true } },
+          clients: [{ scope: 'web', compiler: { features: { socket: false } } }],
+        }),
+      )
+      if (parsed.clients[0].compiler === false) throw new Error('unreachable')
+      expect(parsed.clients[0].compiler.features).toEqual({ socket: false })
+      expect(parsed.clients[0].features).toEqual({ socket: true })
+    })
+
+    it('`compiler.features` precedence: side block → general block → the resolved record of that side', () => {
+      const parsed = parseEngineOptions(
+        base({
+          general: { compiler: { features: { socket: true } } },
+          server: { compiler: { features: { socket: false } } },
+          clients: [{ scope: 'web' }],
+        }),
+      )
+      if (parsed.server.compiler === false || parsed.clients[0].compiler === false) throw new Error('unreachable')
+      // the server's own compiler block wins over the general one
+      expect(parsed.server.compiler.features).toEqual({ socket: false })
+      // the client has no block of its own, so the general one wins over its resolved record (which is `false` here)
+      expect(parsed.clients[0].features).toEqual({ socket: false })
+      expect(parsed.clients[0].compiler.features).toEqual({ socket: true })
+    })
+
+    it('`compiler: true` still carries the merged features', () => {
+      const parsed = parseEngineOptions(
+        base({
+          general: { compiler: { features: { socket: true } } },
+          clients: [{ scope: 'web', compiler: true }],
+        }),
+      )
+      if (parsed.clients[0].compiler === false) throw new Error('unreachable')
+      expect(parsed.clients[0].compiler.features).toEqual({ socket: true })
+    })
+  })
+
   describe('client shorthand', () => {
     it('treats `client: {...}` the same as a single-element `clients: [{...}]`', () => {
       const withShorthand = parseEngineOptions(

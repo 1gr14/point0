@@ -27,6 +27,7 @@ const HEADERS = {
   POINT0_TRANSFORM_HEADER: 'x-point0-transform',
   POINT0_NOT_JSON_DATA_HEADER: 'x-point0-not-json-data',
   POINT0_REDIRECT_HEADER: 'x-point0-redirect',
+  POINT0_WEBSOCKET_UPGRADE_HEADER: 'x-point0-websocket-upgrade',
 } as const
 
 const GLOBALS = {
@@ -44,6 +45,7 @@ const PATHS = {
   POINT0_INTERNAL_PATH_PREFIX: '_point0',
   POINT0_INTERNAL_URL_PREFIX: '/_point0/',
   POINT0_ASSETS_DIR_NAME: 'assets',
+  POINT0_WEBSOCKET_ENDPOINT_SEGMENT: 'websocket',
   POINT0_BUILD_VERSION_FILE_NAME: 'build-version.json',
   POINT0_BUILD_ASSETS_FILE_NAME: 'build-assets.json',
   POINT0_PRELOAD_MANIFEST_FILE_NAME: 'preload-manifest.json',
@@ -52,6 +54,8 @@ const PATHS = {
 const MISC = {
   POINT0_QUERY_KEY_NAMESPACE: 'point0',
   POINT0_QUERY_GET_INPUT_SEARCH_PARAM: 'input',
+  // deliberately the same string as the header — the upgrade handshake carries the transform fact in the URL
+  POINT0_UPGRADE_TRANSFORM_SEARCH_PARAM: 'x-point0-transform',
 } as const
 
 const ALL = { ...HEADERS, ...GLOBALS, ...PATHS, ...MISC }
@@ -87,8 +91,13 @@ describe('protocol constants keep their shape', () => {
     }
   })
 
-  it('no two constants share a value', () => {
-    const values = Object.values(ALL)
+  it('no two constants share a value — except the one deliberate alias', () => {
+    // the upgrade search param IS the transform header string: the same wire fact in a different carrier (a
+    // handshake cannot bear custom headers), pinned as an alias rather than a coincidence
+    expect(protocol.POINT0_UPGRADE_TRANSFORM_SEARCH_PARAM).toBe(protocol.POINT0_TRANSFORM_HEADER)
+    const values = Object.entries(ALL)
+      .filter(([name]) => name !== 'POINT0_UPGRADE_TRANSFORM_SEARCH_PARAM')
+      .map(([, value]) => value)
     expect(new Set(values).size).toBe(values.length)
   })
 })

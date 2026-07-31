@@ -17,12 +17,12 @@ surface (`.useQuery`, `.route`, `.id`, …) covered on each point's own page.
 
 This page is the reference for stage-methods (and the **closing** methods that
 finalize the chain — `.page`/`.layout`/`.component`/`.provider`/`.query`/
-`.infiniteQuery`/`.mutation`/`.action`/`.root`/`.base`/`.plugin`). Most have
-their own page — this one links there and gives the one-line gist. A few small
-setters live only here and are described in full. Each entry says **which point
-types accept it** and **what the compiler does with it** — which of the four
-strip categories below it falls in, and how `ssr` and `.clientOnly()` change
-that.
+`.infiniteQuery`/`.mutation`/`.action`/`.subscription`/`.root`/`.base`/`.plugin`).
+Most have their own page — this one links there and gives the one-line gist. A
+few small setters live only here and are described in full. Each entry says
+**which point types accept it** and **what the compiler does with it** — which
+of the four strip categories below it falls in, and how `ssr` and
+`.clientOnly()` change that.
 
 ```tsx
 export const ideaPage = root.lets
@@ -86,8 +86,13 @@ The one callback that produces the point's data. `.loader` is **server-only** �
 cut from the client bundle (it runs on the server); `.clientLoader` is
 **client-only** — cut from the server bundle (it runs in the browser). A
 mountable (page/layout/component/provider) that declares a loader **also becomes
-a query** — it gains `.useQuery`, `.fetchQuery`, and the rest. Available on
-**every point type** except the structural ones. Full page: [loader](loader).
+a query** — it gains `.useQuery`, `.fetchQuery`, and the rest. On a
+[subscription](subscription) the loader is an async **generator** — each `yield`
+is one streamed value. Available on **every point type** except the structural
+ones — and except the channel and the space, whose callbacks are their own
+methods: `.connector` (the channel's connect callback, returning the connection
+identity) and `.joiner` (the space's join callback, returning the rooms a client
+enters — see [channel & handlers](socket)). Full page: [loader](loader).
 
 ### .input / .clientInput / .sharedInput
 
@@ -96,7 +101,9 @@ from the client bundle (it validates on the server); `.clientInput` is
 **client-only** — cut from the server bundle (it validates in the browser);
 `.sharedInput` is **server-and-client** — not cut from either bundle (it runs on
 both). On **query, infinite-query, mutation, component, provider** (and the
-chain heads — root, base, plugin). Full page: [validation](validation).
+chain heads — root, base, plugin); a [subscription](subscription) takes `.input`
+too — its stream is server-generated, so the server schema is the one that
+matters. Full page: [validation](validation).
 
 ### .params / .search / .body
 
@@ -246,8 +253,10 @@ cut from the client bundle. Full page: [middleware](middleware).
 Customize the `fetch` Point0 makes for server queries and mutations — an object
 (merged) or a function (re-evaluated per request, for a fresh token each time).
 Calls **stack**: headers merge, later non-header keys override. On **every point
-type**. **Server-and-client** — not cut from either bundle (the browser makes
-most of these calls).
+type** — a [channel](socket)'s ticket connect is such a fetch, so channel-level
+fetch options apply to it (they cannot ride the opt-in upgrade handshake — see
+[the two connect paths](socket#the-two-connect-paths)). **Server-and-client** —
+not cut from either bundle (the browser makes most of these calls).
 
 ```tsx
 .fetchOptions({ credentials: 'include' })
@@ -326,16 +335,21 @@ export const root = Point0.lets
   .root()
 ```
 
-| Method                             | Defaults the…                           | Lives on                         |
-| ---------------------------------- | --------------------------------------- | -------------------------------- |
-| `.queryOptions`                    | every query                             | root, base, plugin               |
-| `.mutationOptions`                 | every mutation                          | root, base, plugin               |
-| `.infiniteQueryOptions`            | every infinite query                    | root, base, plugin               |
-| `.pageQueryOptions`                | a page self query                       | root, base, layout, plugin       |
-| `.componentQueryOptions`           | a component self query                  | root, base, plugin               |
-| `.layoutQueryOptions`              | a layout self query                     | root, base, layout, plugin       |
-| `.providerQueryOptions`            | a provider self query                   | root, base, plugin               |
-| `.pageDehydratedStateQueryOptions` | the SSR dehydrated-state prefetch query | root, base, page, layout, plugin |
+| Method                             | Defaults the…                           | Lives on                           |
+| ---------------------------------- | --------------------------------------- | ---------------------------------- |
+| `.queryOptions`                    | every query                             | root, base, plugin                 |
+| `.mutationOptions`                 | every mutation                          | root, base, plugin                 |
+| `.infiniteQueryOptions`            | every infinite query                    | root, base, plugin                 |
+| `.pageQueryOptions`                | a page self query                       | root, base, layout, plugin         |
+| `.componentQueryOptions`           | a component self query                  | root, base, plugin                 |
+| `.layoutQueryOptions`              | a layout self query                     | root, base, layout, plugin         |
+| `.providerQueryOptions`            | a provider self query                   | root, base, plugin                 |
+| `.pageDehydratedStateQueryOptions` | the SSR dehydrated-state prefetch query | root, base, page, layout, plugin   |
+| `.channelOptions`                  | every channel                           | root, base, plugin                 |
+| `.spaceOptions`                    | every space                             | root, base, plugin, channel        |
+| `.subscriptionOptions`             | every subscription                      | root, base, plugin                 |
+| `.serverHandlerOptions`            | every serverHandler                     | root, base, plugin, channel, space |
+| `.clientHandlerOptions`            | every clientHandler                     | root, base, plugin, channel, space |
 
 Each takes the TanStack option type with `queryKey`/`queryFn` (or
 `mutationKey`/`mutationFn`) stripped — Point0 owns those — plus Point0's
@@ -349,6 +363,18 @@ As a defaults setter, `.infiniteQueryOptions` takes a **partial** object, so
 keys (last call wins per key); the callback keys `onSuccess` / `onError` /
 `onSettled` (plus `onMutate`) **chain** so every registered callback runs. How
 these layer with a query's own options is on the [query](query) page.
+
+The four socket setters are the exception in SHAPE: `.channelOptions`,
+`.spaceOptions`, `.serverHandlerOptions` and `.clientHandlerOptions` take their
+options GROUPED by the side that reads them —
+`.channelOptions({ server: { maxConnections: 8 }, client: { linger: 3000 } })`,
+with a both-sides option (`preventTransformer`) top-level next to the groups.
+Merging is per group, otherwise identical (plain keys last-wins, callbacks
+chain). The compiler drops the whole `server` group from the client bundle and
+the whole `client` group from the server one, so their argument must be an
+object literal without a top-level spread — a variable, a call or a spread there
+is a compile error. Full option sets:
+[channel, space, handlers](socket#options).
 
 ## Events
 
@@ -479,12 +505,14 @@ its strip category.
   **Server-SSR-and-client**: cut from the server bundle under `.clientOnly()` or
   `ssr: false`; kept in the client build always. Pages: [page](page),
   [layout](layout), [component](component), [provider](provider).
-- **`.query` / `.infiniteQuery` / `.mutation`** — the data closers.
-  **Server-and-client**: the closer itself is not cut from either bundle; the
-  loader it wraps is the part that's cut from the client. Pages: [query](query),
-  [mutation](mutation). Any mountable with a `.loader` can close with
-  `.infiniteQuery({...})` to make its self-query infinite instead of the default
-  finite.
+- **`.query` / `.infiniteQuery` / `.mutation` / `.subscription`** — the data
+  closers. **Server-and-client**: the closer itself is not cut from either
+  bundle; the loader it wraps is the part that's cut from the client. Pages:
+  [query](query), [mutation](mutation), [subscription](subscription) (its loader
+  is an async generator; the same `.subscription()` on an [action](action) is a
+  flavor, not a closer — the point stays an action and streams). Any mountable
+  with a `.loader` can close with `.infiniteQuery({...})` to make its self-query
+  infinite instead of the default finite.
 - **`.action`** — the endpoint closer. The action's server handler is
   **server-only** — cut from the client bundle; only the route metadata the
   client needs to call it stays. Page: [action](action).
@@ -496,53 +524,65 @@ its strip category.
 
 The authoritative per-type availability, straight from the builder types. "all"
 = every point type (page, layout, component, provider, action, query,
-infinite-query, mutation, root, base, plugin).
+infinite-query, mutation, subscription, root, base, plugin).
 
-| Method                                                            | Available on                                                             | Strip category                                     |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------- |
-| `.ctx`                                                            | all                                                                      | server-only                                        |
-| `.loader`                                                         | all                                                                      | server-only                                        |
-| `.clientLoader`                                                   | all but action                                                           | client-only                                        |
-| `.input`                                                          | query, infinite-query, mutation, component, provider; root, base, plugin | server-only                                        |
-| `.clientInput`                                                    | same as `.input`                                                         | client-only                                        |
-| `.sharedInput`                                                    | same as `.input`                                                         | server-and-client                                  |
-| `.params` / `.search`                                             | page, layout, action; root, base, plugin                                 | server-and-client, but server-only under an action |
-| `.body`                                                           | action; root, base, plugin                                               | server-only                                        |
-| `.headers` / `.cookies`                                           | all                                                                      | server-only                                        |
-| `.with` / `.mapper` / `.wrapper`                                  | mountables; root, base, plugin                                           | server-SSR-and-client                              |
-| `.loading` / `.error`                                             | mountables; root, base, plugin                                           | server-SSR-and-client                              |
-| `.pageLoading` / `.pageError` / `.layoutLoading` / `.layoutError` | root, base, plugin, layout                                               | server-SSR-and-client                              |
-| `.componentLoading` / `.componentError`                           | root, base, plugin                                                       | server-SSR-and-client                              |
-| `.head`                                                           | page, layout; root, base, plugin                                         | server-SSR-and-client                              |
-| `.clientOnly`                                                     | page, layout, component, provider; root, plugin                          | server-and-client                                  |
-| `.relatedQuery`                                                   | mountables; plugin                                                       | server-and-client                                  |
-| `.use`                                                            | all                                                                      | per contributed method                             |
-| `.middleware`                                                     | all                                                                      | server-only                                        |
-| `.fetchOptions`                                                   | all                                                                      | server-and-client                                  |
-| `.rsc`                                                            | all                                                                      | server-and-client                                  |
-| `.transformer`                                                    | root, plugin                                                             | server-and-client                                  |
-| `.serverUrl` / `.clientUrl`                                       | root, plugin                                                             | server-and-client                                  |
-| `.basePath`                                                       | root, base, plugin                                                       | server-and-client                                  |
-| `.schemaHelper` / `.errorClass`                                   | root                                                                     | server-and-client                                  |
-| `.queryOptions` / `.mutationOptions` / `.infiniteQueryOptions`    | root, base, plugin                                                       | server-and-client                                  |
-| `.componentQueryOptions` / `.providerQueryOptions`                | root, base, plugin                                                       | server-and-client                                  |
-| `.pageQueryOptions` / `.layoutQueryOptions`                       | root, base, layout, plugin                                               | server-and-client                                  |
-| `.pageDehydratedStateQueryOptions`                                | root, base, page, layout, plugin                                         | server-and-client                                  |
-| `.on`                                                             | all                                                                      | server-and-client                                  |
-| `.serverOn`                                                       | all                                                                      | server-only                                        |
-| `.clientOn`                                                       | all                                                                      | client-only                                        |
-| `.prefetchPageOnNavigate` / `.prefetchPageOnLinkHover`            | root, base, page, layout                                                 | client-only                                        |
-| `.prefetchPagePolicy`                                             | root, base, page, layout                                                 | client-only                                        |
-| `.onPrefetchPage`                                                 | base, page, layout, plugin                                               | server-and-client (client + server prefetch)       |
-| `.serverOnPrefetchPage`                                           | base, page, layout, plugin                                               | server-only                                        |
-| `.clientOnPrefetchPage`                                           | base, page, layout, plugin                                               | client-only                                        |
-| `.scrollRestore` / `.scrollPosition`                              | root, base, page, layout, plugin                                         | client-only — see [navigation](navigation)         |
-| `.response`                                                       | action                                                                   | server-only                                        |
-| `.openapi`                                                        | action; base, plugin                                                     | server-only                                        |
-| `.models`                                                         | root, base                                                               | server-only                                        |
-| `.tag`                                                            | all                                                                      | server-and-client                                  |
-| `.description`                                                    | all                                                                      | server-only                                        |
-| `.page` / `.layout` / `.component` / `.provider` (closers)        | their own type                                                           | server-SSR-and-client                              |
-| `.query` / `.infiniteQuery` / `.mutation` (closers)               | their own type                                                           | server-and-client                                  |
-| `.action` (closer)                                                | action                                                                   | server-only handler                                |
-| `.root` / `.base` / `.plugin` (closers)                           | their own type                                                           | server-and-client                                  |
+The four socket types ([channel, space, serverHandler, clientHandler](socket))
+sit outside "all" and carry their own subset: all four take `.tag` and `.on` /
+`.serverOn` / `.clientOn`; a channel also takes `.use`, `.middleware`, and
+`.ctx` (a connect is an ordinary request). On a space or a handler, `.ctx` and
+`.use` are a type error.
+
+| Method                                                                                  | Available on                                                                                           | Strip category                                             |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `.ctx`                                                                                  | all                                                                                                    | server-only                                                |
+| `.loader`                                                                               | all                                                                                                    | server-only                                                |
+| `.connector`                                                                            | channel                                                                                                | server-only                                                |
+| `.joiner`                                                                               | space                                                                                                  | server-only                                                |
+| `.enroller`                                                                             | space                                                                                                  | server-only                                                |
+| `.clientLoader`                                                                         | all but action and subscription                                                                        | client-only                                                |
+| `.input`                                                                                | query, infinite-query, mutation, subscription, channel, component, provider, space; root, base, plugin | server-only                                                |
+| `.clientInput`                                                                          | same as `.input`, minus subscription                                                                   | client-only                                                |
+| `.sharedInput`                                                                          | same as `.input`, minus subscription                                                                   | server-and-client                                          |
+| `.params` / `.search`                                                                   | page, layout, action; root, base, plugin                                                               | server-and-client, but server-only under an action         |
+| `.body`                                                                                 | action; root, base, plugin                                                                             | server-only                                                |
+| `.headers` / `.cookies`                                                                 | all                                                                                                    | server-only                                                |
+| `.with` / `.mapper` / `.wrapper`                                                        | mountables; root, base, plugin                                                                         | server-SSR-and-client                                      |
+| `.loading` / `.error`                                                                   | mountables; root, base, plugin                                                                         | server-SSR-and-client                                      |
+| `.pageLoading` / `.pageError` / `.layoutLoading` / `.layoutError`                       | root, base, plugin, layout                                                                             | server-SSR-and-client                                      |
+| `.componentLoading` / `.componentError`                                                 | root, base, plugin                                                                                     | server-SSR-and-client                                      |
+| `.head`                                                                                 | page, layout; root, base, plugin                                                                       | server-SSR-and-client                                      |
+| `.clientOnly`                                                                           | page, layout, component, provider; root, plugin                                                        | server-and-client                                          |
+| `.relatedQuery`                                                                         | mountables; plugin                                                                                     | server-and-client                                          |
+| `.use`                                                                                  | all                                                                                                    | per contributed method                                     |
+| `.middleware`                                                                           | all                                                                                                    | server-only                                                |
+| `.fetchOptions`                                                                         | all                                                                                                    | server-and-client                                          |
+| `.rsc`                                                                                  | all but subscription                                                                                   | server-and-client                                          |
+| `.transformer`                                                                          | root, plugin                                                                                           | server-and-client                                          |
+| `.serverUrl` / `.clientUrl`                                                             | root, plugin                                                                                           | server-and-client                                          |
+| `.basePath`                                                                             | root, base, plugin                                                                                     | server-and-client                                          |
+| `.schemaHelper` / `.errorClass`                                                         | root                                                                                                   | server-and-client                                          |
+| `.queryOptions` / `.mutationOptions` / `.infiniteQueryOptions` / `.subscriptionOptions` | root, base, plugin                                                                                     | server-and-client                                          |
+| `.channelOptions` / `.spaceOptions` / `.serverHandlerOptions` / `.clientHandlerOptions` | root, base, plugin (space and handler options on a channel too, handler options on a space)            | server-and-client                                          |
+| `.clientSend` / `.serverReply`                                                          | serverHandler                                                                                          | server-only                                                |
+| `.serverSend` / `.clientReply`                                                          | clientHandler                                                                                          | client-only (the `.clientReply` schema arg is server-only) |
+| `.componentQueryOptions` / `.providerQueryOptions`                                      | root, base, plugin                                                                                     | server-and-client                                          |
+| `.pageQueryOptions` / `.layoutQueryOptions`                                             | root, base, layout, plugin                                                                             | server-and-client                                          |
+| `.pageDehydratedStateQueryOptions`                                                      | root, base, page, layout, plugin                                                                       | server-and-client                                          |
+| `.on`                                                                                   | all                                                                                                    | server-and-client                                          |
+| `.serverOn`                                                                             | all                                                                                                    | server-only                                                |
+| `.clientOn`                                                                             | all                                                                                                    | client-only                                                |
+| `.prefetchPageOnNavigate` / `.prefetchPageOnLinkHover`                                  | root, base, page, layout                                                                               | client-only                                                |
+| `.prefetchPagePolicy`                                                                   | root, base, page, layout                                                                               | client-only                                                |
+| `.onPrefetchPage`                                                                       | base, page, layout, plugin                                                                             | server-and-client (client + server prefetch)               |
+| `.serverOnPrefetchPage`                                                                 | base, page, layout, plugin                                                                             | server-only                                                |
+| `.clientOnPrefetchPage`                                                                 | base, page, layout, plugin                                                                             | client-only                                                |
+| `.scrollRestore` / `.scrollPosition`                                                    | root, base, page, layout, plugin                                                                       | client-only — see [navigation](navigation)                 |
+| `.response`                                                                             | action                                                                                                 | server-only                                                |
+| `.openapi`                                                                              | action; base, plugin                                                                                   | server-only                                                |
+| `.models`                                                                               | root, base                                                                                             | server-only                                                |
+| `.tag`                                                                                  | all                                                                                                    | server-and-client                                          |
+| `.description`                                                                          | all                                                                                                    | server-only                                                |
+| `.page` / `.layout` / `.component` / `.provider` (closers)                              | their own type                                                                                         | server-SSR-and-client                                      |
+| `.query` / `.infiniteQuery` / `.mutation` / `.subscription` (closers)                   | their own type (`.subscription` also flavors an ACTION whose loader is a generator)                    | server-and-client                                          |
+| `.action` (closer)                                                                      | action                                                                                                 | server-only handler                                        |
+| `.root` / `.base` / `.plugin` (closers)                                                 | their own type                                                                                         | server-and-client                                          |

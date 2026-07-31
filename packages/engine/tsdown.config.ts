@@ -3,6 +3,10 @@ import { defineConfig } from 'tsdown'
 export default defineConfig({
   entry: [
     'src/analyzer.ts',
+    'src/backplane/bun-redis.ts',
+    'src/backplane/ioredis.ts',
+    'src/backplane/node-redis.ts',
+    'src/backplane/postgres.ts',
     'src/cli.ts',
     'src/client.ts',
     'src/client.bun-build-fix.ts',

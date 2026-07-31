@@ -5,7 +5,7 @@ any prose.
 
 ## What & where
 
-- **`docs/`** holds the user-facing documentation — **66 markdown pages** across
+- **`docs/`** holds the user-facing documentation — **69 markdown pages** across
   7 categories. Each page is `docs/<category>/<slug>.md`.
 - **The slug is the filename, and it is GLOBALLY UNIQUE.** The category is only
   navigation decoration — it is **not** in the URL. The path on the site is
@@ -31,20 +31,24 @@ any prose.
   examples), `getting-started`, `full-overview` (the announcement article,
   translated — the long read), `benchmarks`, `points`.
 - **points:** `page`, `layout`, `component`, `provider`, `mountable`, `query`,
-  `infinite-query`, `mutation`, `action`, `root`, `base`, `plugin`.
+  `infinite-query`, `mutation`, `action`, `subscription` (the HTTP value stream
+  — generator loaders), `root`, `base`, `plugin`.
 - **methods:** `validation`, `loader`, `ctx`, `middleware`, `loading-error`,
   `with`, `mapper`, `transformer`, `stage-methods` (the hub for all builder
   methods).
-- **core:** `navigation`, `ssr`, `request`, `response`, `error-handling`, `env`,
-  `head`, `mdx`, `assets`, `file-upload`, `openapi`, `query-client`, `events`,
-  `infer`.
+- **core:** `navigation`, `ssr`, `rsc`, `socket` (the WebSocket SUBSYSTEM — the
+  channel, the spaces, both handlers, resume, observability; it sits in core
+  right after `rsc` because it is a whole feature, not one point's page),
+  `request`, `response`, `error-handling`, `env`, `head`, `mdx`, `assets`,
+  `file-upload`, `openapi`, `query-client`, `events`, `infer`.
 - **engine:** `engine-config`, `engine-runtime`, `cli`, `dev`, `build`,
   `compiler`, `generator`, `mcp-project`, `mcp-docs`, `importer`, `publicdir`,
   `testing`, `deploy`, `bun-vs-vite`.
 - **extra:** `ssr-store`, `cookie-store`, `basic-auth`, `cors`, `cache-control`,
   `compress`.
 - **examples:** `example-basic` (canonical), `example-vite`,
-  `example-better-auth`, `example-capacitor`, `example-expo`.
+  `example-better-auth`, `example-socket` (channels/spaces/handlers in one small
+  app), `example-capacitor`, `example-expo`.
 
 ## How to write a page
 
@@ -122,15 +126,26 @@ and prunes the now-dead imports, so the dependency never lands in that bundle.
 - **server-only** — cut from the **client** bundle. `.ctx`, the server
   `.loader`, `.input`, `.body`, `.headers`, `.cookies`, `.middleware`,
   `.serverOn`, `.serverOnPrefetchPage`, `.response`, `.openapi`, `.models`,
-  `.description`, the `.action` server fn. `.params`/`.search` are server-only
-  **only on an action** (isomorphic on a non-action mountable).
+  `.description`, the `.action` server fn, `.connector`, `.joiner`, `.enroller`,
+  `.clientSend` (named after its author — the client — but parsed by the server,
+  so it is cut from the CLIENT bundle), `.serverReply`, and the `.clientReply`
+  SCHEMA argument (the call is argument-split — see client-only).
+  `.params`/`.search` are server-only **only on an action** (isomorphic on a
+  non-action mountable).
 - **client-only** — cut from the **server** bundle, regardless of SSR.
-  `.clientLoader`, `.clientInput`, `.clientOn`, `.clientOnPrefetchPage`,
-  `.scrollRestore`, `.scrollPosition`, `.prefetchPageOnNavigate`,
-  `.prefetchPageOnLinkHover`, `.prefetchPagePolicy`.
+  `.clientLoader`, `.clientInput`, `.serverSend` (named after its author — the
+  server — but read by the client, so it is cut from the SERVER bundle),
+  `.clientOn`, `.clientOnPrefetchPage`, `.scrollRestore`, `.scrollPosition`,
+  `.prefetchPageOnNavigate`, `.prefetchPageOnLinkHover`, `.prefetchPagePolicy`,
+  and the `.clientReply` CALLBACK argument (in the server bundle it becomes
+  `() => {}` while the schema argument stays).
 - **server-and-client** — not cut from either bundle (isomorphic). Closers
-  `.root`/`.base`/`.plugin`/`.query`/`.infiniteQuery`/`.mutation`;
+  `.root`/`.base`/`.plugin`/`.query`/`.infiniteQuery`/`.mutation`/
+  `.subscription` (also the flavor of an ACTION whose loader is a
+  generator)/`.channel`/`.space`/`.serverHandler`/`.clientHandler`;
   `.queryOptions` + the `*QueryOptions` family + `.mutationOptions` +
+  `.subscriptionOptions` +
+  `.channelOptions`/`.spaceOptions`/`.serverHandlerOptions`/`.clientHandlerOptions`;
   `.fetchOptions`; `.transformer`/`.errorClass`/`.serverUrl`/`.clientUrl`/
   `.schemaHelper`/`.tag`/`.on`/`.use`; `.relatedQuery`; `.onPrefetchPage` (the
   one prefetch method that runs on both the client and server prefetch); and
@@ -155,6 +170,20 @@ and prunes the now-dead imports, so the dependency never lands in that bundle.
   `point._prefetchPage`, which iterates `_onPrefetchMountableFns`), so the
   compiler keeps it in both bundles. The other prefetch triggers
   (`.prefetchPageOnNavigate`/`.prefetchPageOnLinkHover`) stay client-only.
+- **The four socket option groups** — the closers `.channel` / `.space` /
+  `.serverHandler` / `.clientHandler` and their four `*Options` setters are
+  isomorphic (the call stays on both sides), but their options ARGUMENT is split
+  **structurally, by group**: point-level socket options are grouped
+  `{ server: {...}, client: {...} }` (both-sides ones — `preventTransformer` —
+  stay top-level), the client bundle loses the whole `server` property and the
+  server bundle the whole `client` one, imports pruning with them. There are no
+  per-key lists for these eight methods any more, so a new option cannot leak
+  into the wrong bundle. The price is the literal rule: that argument must be an
+  object **literal without a top-level spread**, or absent — a variable, a call
+  or a spread there is a **compile error** naming the method. Inside a group
+  anything goes (`server: caps` is fine — the whole property is dropped).
+  `.subscription` / `.subscriptionOptions` are the exception that stayed
+  PER-KEY: a one-sided family with no groups.
 - **`.relatedQuery`** — DOES add its query to the `queries` array (same as a
   `.with(query)` result). The difference is **prefetch**: a related query is
   statically discoverable, so it self-fetches WITHOUT rendering under the cheap

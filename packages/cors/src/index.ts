@@ -1,10 +1,10 @@
-import type { MiddlewareFn, MiddlewareFnOptionsBase } from '@point0/core'
+import type { MiddlewareFn, MiddlewarePropsBase } from '@point0/core'
 import type { WideRequestMethod } from '@point0/core/request0'
 
 // inspired by https://github.com/elysiajs/elysia-cors/tree/main
 // thanks a lot, SaltyAom https://saltyaom.com/
 
-type CorsOriginCheck = (context: MiddlewareFnOptionsBase<any>) => boolean | undefined | Promise<boolean | undefined>
+type CorsOriginCheck = (context: MiddlewarePropsBase<any>) => boolean | undefined | Promise<boolean | undefined>
 type CorsOriginValue = string | RegExp | CorsOriginCheck
 
 /**
@@ -86,7 +86,7 @@ export const cors = (options: CorsOptions = {}): MiddlewareFn<any> => {
   }: {
     requestOrigin: string | null
     originOption: CorsOptions['origin']
-    context: MiddlewareFnOptionsBase<any>
+    context: MiddlewarePropsBase<any>
   }): Promise<string | undefined> => {
     const evaluate = async (candidate: CorsOriginValue): Promise<string | undefined> => {
       if (typeof candidate === 'string') {

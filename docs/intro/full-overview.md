@@ -4438,6 +4438,108 @@ handlers — for first-paint interactivity keep the island top-level or give it
 its own `suspend: 'server'` query. The full picture — the wire format, error
 handling, and the live-where matrix — is in the docs [about RSC](rsc).
 
+## Sockets and subscriptions
+
+Queries and mutations are request/response. But sometimes the server has to
+speak first — a long task's progress, a live feed, a chat message someone else
+just sent. Point0 has two machines for that, from the cheap end up.
+
+A **subscription** is a loader that's an async generator: every `yield` streams
+to the client the moment it happens, over plain HTTP — no WebSocket, no rooms,
+nothing to keep alive. The data type is just the union of the yields; nothing is
+declared.
+
+```tsx
+export const taskProgressSubscription = root.lets
+  .subscription()
+  .input(z.object({ taskId: z.string() }))
+  .loader(async function* ({ input, signal }) {
+    // the generator runs on the server — stripped from the client bundle
+    for await (const percent of watchProgress(input.taskId, { signal })) {
+      yield { percent } // one streamed value per yield
+    }
+  })
+  .subscription()
+
+export const TaskProgress = ({ taskId }: { taskId: string }) => {
+  const { data } = taskProgressSubscription.useSubscription(
+    { taskId },
+    { lastMessageFromServerAsData: true }, // keep the latest message in `data`
+  )
+  return <progress value={data?.percent ?? 0} max={100} />
+}
+```
+
+And when the flow starts from outside — a push to many clients, two-way —
+there's the **channel**: one authenticated WebSocket per client. Its
+`.connector` runs like a loader and establishes who you are as an identity. A
+**space** grows rooms from the channel — the client joins, the server's
+`.joiner` decides which rooms it enters. Handlers are the typed messages that
+ride the socket: a serverHandler is client → server (the client sends, the
+server answers), a clientHandler is server → client (the server pushes to a
+room, subscribed components wake). One socket carries everything; joins and
+messages are cheap frames on it.
+
+```tsx
+export const appChannel = root.lets
+  .channel()
+  .connector(({ ctx }) => ({ userId: ctx.me.user.id })) // this connection's identity
+  .channel()
+
+export const chatSpace = appChannel.lets
+  .space<{ chatId: string }>() // the room shape, declared at the opener
+  .input(z.object({ chatId: z.string() }))
+  .joiner(({ input }) => ({ chatId: input.chatId })) // which room you enter
+  .space()
+
+// client → server: save the message, then push it to the whole room
+export const messageSend = chatSpace.lets
+  .serverHandler()
+  .clientSend(z.object({ text: z.string().min(1) }))
+  .serverReply(async ({ input, identity, room }) => {
+    const message = await createMessage(
+      room.chatId,
+      identity.userId,
+      input.text,
+    )
+    void messageAdded.sendToClient(message, { room }) // fan out to the room
+    return message
+  })
+  .serverHandler()
+
+// server → client: subscribed components wake on every push
+export const messageAdded = chatSpace.lets
+  .clientHandler()
+  .serverSend(messageSchema)
+  .clientHandler()
+
+export const ChatRoom = ({ chatId }: { chatId: string }) => {
+  const membership = chatSpace.useMembership({ chatId }) // join the room while mounted
+  const { data } = messageAdded(membership).useOnMessageFromServer(() => {}, {
+    lastMessageFromServerAsData: true, // keep the latest push in `data`
+  })
+  const send = (text: string) => messageSend(membership).sendToServer({ text })
+  // an <appChannel.Connection> at the app root holds the one socket every room rides
+  return <Chat newest={data} onSend={send} />
+}
+```
+
+Across several processes behind a load balancer, the rooms and pushes ride a
+Redis-shaped socket backplane you plug into the engine config — a `redis://`
+URL, a ready-made adapter (Postgres over `LISTEN`/`NOTIFY`, ioredis,
+node-redis), or any KV + pub/sub you bring. Channels, spaces, and handlers are
+points like the rest — same validation, transformer, events, and stripping.
+
+Sockets are an **optional feature**, and optional here means what it says: turn
+`socket` on and you get them, leave it alone and the client build never carries
+them. The compiler folds every socket body in `@point0/core` to a throw and
+`@point0/core/socket` — the client socket runtime and the wire protocol — simply
+is not in the bundle, some 52.5 KB raw / 13 KB gzip an app without sockets never
+downloads — the gap between the two `@point0/core` rows in the size table above.
+
+Read more in the docs [about subscriptions](subscription),
+[about channels, spaces & handlers](socket).
+
 ## SsrStore
 
 And since we can do server-side re-rendering, let's go ahead and introduce a
@@ -4877,19 +4979,23 @@ What Point0 adds to your client bundle.
 Every package a Point0 app ships to the browser, measured as npm delivers it:
 bundled, minified, with `react` and `react-dom` left out because you pay for
 those either way. Each row imports the whole surface of its package, so nothing
-tree-shakes away — these are ceilings, not best cases. **Total** is one bundle
-holding every non-optional row at once: what the browser actually downloads.
+tree-shakes away — these are ceilings, not best cases. The socket is the one
+opt-in: core is measured the way an app that never sets
+`server: { socket: true }` compiles it, and the row under it is the same core
+with the feature on. **Total** is one bundle holding every non-optional row at
+once: what the browser actually downloads.
 
-| package                 | role                                         |          raw |        gzip |      brotli |
-| ----------------------- | -------------------------------------------- | -----------: | ----------: | ----------: |
-| `@point0/core`          | the framework itself                         |     169.5 KB |     44.1 KB |     38.2 KB |
-| `@point0/react-dom`     | React/DOM bindings — `mount` and the router  |      13.4 KB |      4.9 KB |      4.4 KB |
-| `@1gr14/route0`         | peer — typed routes and URL building         |      19.0 KB |      6.1 KB |      5.5 KB |
-| `@tanstack/react-query` | peer — the cache every loader rides on       |      46.9 KB |     13.9 KB |     12.5 KB |
-| `wouter`                | peer — history and route matching            |       5.6 KB |      2.7 KB |      2.5 KB |
-| `unhead`                | peer — the `<head>`                          |      15.6 KB |      6.2 KB |      5.6 KB |
-| `@1gr14/error0`         | optional peer — typed errors across the wire |      10.8 KB |      3.1 KB |      2.8 KB |
-| **total**               | everything above, minus the optional peer    | **277.3 KB** | **78.5 KB** | **67.5 KB** |
+| package                  | role                                                                  |          raw |        gzip |      brotli |
+| ------------------------ | --------------------------------------------------------------------- | -----------: | ----------: | ----------: |
+| `@point0/core`           | the framework itself, without the socket feature                      |     218.4 KB |     55.8 KB |     47.6 KB |
+| `@point0/core` + sockets | optional — the same core with sockets on (`server: { socket: true }`) |     290.0 KB |     71.8 KB |     60.5 KB |
+| `@point0/react-dom`      | React/DOM bindings — `mount` and the router                           |      13.5 KB |      5.0 KB |      4.4 KB |
+| `@1gr14/route0`          | peer — typed routes and URL building                                  |      19.0 KB |      6.1 KB |      5.5 KB |
+| `@tanstack/react-query`  | peer — the cache every loader rides on                                |      46.9 KB |     13.9 KB |     12.5 KB |
+| `wouter`                 | peer — history and route matching                                     |       5.6 KB |      2.7 KB |      2.5 KB |
+| `unhead`                 | peer — the `<head>`                                                   |      15.6 KB |      6.2 KB |      5.6 KB |
+| `@1gr14/error0`          | optional peer — typed errors across the wire                          |      10.8 KB |      3.1 KB |      2.8 KB |
+| **total**                | everything above, minus the optional rows                             | **326.8 KB** | **90.3 KB** | **77.2 KB** |
 
 <!-- point0:size:end -->
 
@@ -4903,6 +5009,9 @@ The repository has several examples:
 - **vite** — the same app, but the client is built with Vite instead of Bun.
 - **better-auth** — the same collective blog, but with authorization hooked up
   through better-auth
+- **socket** — a chat, a collaborative board, presence, and notifications built
+  on channels, spaces, and handlers: a resumable channel, an enroller-only
+  personal space, the presence recipe, and real-browser e2e tests
 - **capacitor** — packaging the web app into a mobile app (iOS/Android) via
   Capacitor. (experimental)
 - **expo** — React Native via Expo: a single server on Bun, shared
@@ -5345,5 +5454,4 @@ on [YouTube](https://www.youtube.com/@s_1gr14) and
 [community](https://1gr14.dev/community) on [Telegram](https://t.me/s_1gr14)
 (Russian) and [Discord](https://discord.gg/hWgtn58FVv) (English).
 
-After that, I want to finish realtime points that work over WebSocket, in the
-same style as regular points. I also want to finish static site generation.
+After that, I want to finish static site generation.

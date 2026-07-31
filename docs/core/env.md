@@ -25,7 +25,7 @@ client bundle, and a server-only branch behind it is deleted as dead code.
 
 ## The `env` helper at a glance
 
-One import, seven fields:
+One import, eight fields:
 
 ```ts
 import { env } from '@point0/core'
@@ -36,13 +36,15 @@ env.scope // which client/root, in a multi-client app
 env.runtime // browser / nodejs / bun / deno / reactNative / worker
 env.os // ios / android / linux / mac / windows
 env.build // was this code bundled by `point0 build`?
+env.feature // which optional features this build carries
 env.vars // the env variables, as a typed record
 ```
 
-Every field but `vars` and `build` follows the same shape: `.name`,
+Every field but `vars`, `build`, and `feature` follows the same shape: `.name`,
 `.is.<value>`, and (except `mode`) a `.define(...)` that picks a value by the
 current field. `env.build` exposes `.was` (boolean) and `.define` instead of
-`.name`/`.is` (see its section below).
+`.name`/`.is`, and `env.feature` is a plain record of booleans (see their
+sections below).
 
 ## `env.side` — server or client
 
@@ -209,6 +211,27 @@ the build, so the unused branch is eliminated.
 > getter is dead code; if it weren't replaced, `build.was` would stay `false`
 > and the engine would assume an un-built app and serve nothing.
 
+## `env.feature` — which optional features this build carries
+
+Some of Point0 is optional. `env.feature` is the full record of those features
+for the current side — one boolean each, never "unspecified":
+
+```ts
+env.feature.socket // => true when this build carries the socket runtime
+```
+
+It answers "is this feature's code in this build", not "is it configured". The
+engine resolves one record per side from the
+[`features`](engine-config#optional-features-features) option (which defaults to
+`server.socket`), and the compiler inlines every access in the **client** build
+as a literal — so a feature that is off turns its own methods into dead code and
+its module out of the bundle. The server keeps the runtime read: nothing is ever
+cut there, and its socket methods answer with a clear throw instead of silently
+doing nothing.
+
+Reading it outside a Point0 build — a unit test on bare `@point0/core`, a side
+running `compiler: false` — gives `true`: nothing was cut, so the code is there.
+
 ## `env.vars` — reading env variables
 
 `env.vars` is a typed read of your env variables. It's a convenience, not a
@@ -303,9 +326,10 @@ export const engine = Engine.create({
 ### Always-injected keys
 
 Point0 always adds a small `POINT0_*` set to the client, regardless of your
-config: `NODE_ENV`, `POINT0_SCOPE`, `POINT0_SIDE` (`'client'`), and
-`POINT0_SSR_ENABLED_DEFAULT`. These are what power `env.mode`, `env.scope`, and
-`env.side` in the browser. You don't declare them.
+config: `NODE_ENV`, `POINT0_SCOPE`, `POINT0_SIDE` (`'client'`),
+`POINT0_SSR_ENABLED_DEFAULT`, and one `POINT0_FEATURE_*` per optional feature.
+These are what power `env.mode`, `env.scope`, `env.side`, and `env.feature` in
+the browser. You don't declare them.
 
 ## Validating env variables (the `sharedEnv` / `serverEnv` pattern)
 
@@ -429,7 +453,8 @@ if (false) {
 ```
 
 By default this rewrite covers `env.side.is.*`, `env.scope.is.*`,
-`env.mode.is.*`, `env.build.was`, and their `define(...)` calls — and env
+`env.mode.is.*`, `env.build.was`, `env.feature.*` (client build only — the
+server reads features at runtime), and their `define(...)` calls — and env
 variables declared as `consts`: `process.env.X` / `env.vars.X` /
 `import.meta.env.X` become literals when `X` is a const, which is what enables
 dead-stripping a feature flag. The pass runs several times so nested branches
@@ -476,6 +501,7 @@ and dead-strip the losing branch. Until you set them, a branch behind
 | `env.runtime` | runtime or `undefined`               | per runtime + `unknown`               | per runtime (+ `.unsafe`) |
 | `env.os`      | OS or `undefined`                    | per OS + `unknown`                    | per OS (+ `.unsafe`)      |
 | `env.build`   | — (`.was: boolean`)                  | —                                     | `{ before, after }`       |
+| `env.feature` | — (`.socket: boolean`)               | —                                     | —                         |
 | `env.vars`    | —                                    | —                                     | — (typed record getter)   |
 
 - `EnvRuntimeName` =

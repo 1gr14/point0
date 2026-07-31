@@ -275,6 +275,83 @@ describe('CompilerFile', () => {
       )
     })
 
+    describe('env.feature', () => {
+      it.concurrent(
+        'env.feature.socket = false on the client kills the guarded body',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { _point0_env } = await import('@point0/core')
+            if (!_point0_env.feature.socket) throw new Error('off')
+            // @ts-expect-error - the fixture stands in for a socket body
+            console.info(heavy())
+          })
+          cf.shakeForEnv({ side: 'client', scope: 'root', mode: 'development', features: { socket: false } })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { _point0_env } = await import('@point0/core')
+              if (!false) throw Error('off')
+              console.info(heavy())
+              "
+            `,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'env.feature.socket = true on the client keeps the body',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { _point0_env } = await import('@point0/core')
+            if (!_point0_env.feature.socket) throw new Error('off')
+          })
+          cf.shakeForEnv({ side: 'client', scope: 'root', mode: 'development', features: { socket: true } })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { _point0_env } = await import('@point0/core')
+              if (!true) throw Error('off')
+              "
+            `,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'the SERVER build never inlines a feature — it reads the flag at runtime',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { _point0_env } = await import('@point0/core')
+            if (!_point0_env.feature.socket) throw new Error('off')
+          })
+          cf.shakeForEnv({ side: 'server', scope: 'root', mode: 'development', features: { socket: false } })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { _point0_env } = await import('@point0/core')
+              if (!_point0_env.feature.socket) throw Error('off')
+              "
+            `,
+          )
+        }),
+      )
+
+      it.concurrent(
+        'no features given — nothing is inlined, even on the client',
+        helper(async ({ files: [file] }) => {
+          const cf = await file.wrp(async () => {
+            const { _point0_env } = await import('@point0/core')
+            if (!_point0_env.feature.socket) throw new Error('off')
+          })
+          cf.shakeForEnv({ side: 'client', scope: 'root', mode: 'development' })
+          expect(await cf.toCompressedPrettyCode()).toMatchInlineSnapshot(
+            `
+              "const { _point0_env } = await import('@point0/core')
+              if (!_point0_env.feature.socket) throw Error('off')
+              "
+            `,
+          )
+        }),
+      )
+    })
+
     describe('env.build', () => {
       it.concurrent(
         'env.build.was = true',

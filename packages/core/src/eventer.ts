@@ -192,6 +192,587 @@ export type EventerEventPointMutationError<TError extends ErrorPoint0> = Eventer
   }
 >
 
+// pointSubscription — one subscription stream attempt, split by side: the SERVER family fires per streamed response
+// (the loader running), the CLIENT family per fetch attempt (`attempt` counts the reconnects — 0 is the first; there
+// is no separate reconnect event, a reconnect is the next Start with `attempt > 0`; the consumer's own deliberate
+// stop — an unmount, breaking out of the loop — emits nothing further). `Data` fires on every streamed
+// value — the eventer is in-process, per-yield granularity is deliberate.
+export type EventerEventPointSubscriptionServerStart = EventerEvent<
+  'server',
+  'pointSubscriptionServerStart',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+  }
+>
+export type EventerEventPointSubscriptionServerData = EventerEvent<
+  'server',
+  'pointSubscriptionServerData',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    /** one streamed value — a loader yield, as it goes out */
+    value: unknown
+  }
+>
+export type EventerEventPointSubscriptionServerSettled<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointSubscriptionServerSettled',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+  } & (
+    | {
+        /** the loader completed (`d` line) — an answer */
+        outcome: 'completed'
+        error: undefined
+      }
+    | {
+        /** a typed error (loader throw) — an answer */
+        outcome: 'failed'
+        error: TError
+      }
+    | {
+        /** the consumer went away mid-stream */
+        outcome: 'broken'
+        error: undefined
+      }
+  )
+>
+export type EventerEventPointSubscriptionServerError<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointSubscriptionServerError',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    error: TError
+  }
+>
+export type EventerEventPointSubscriptionClientStart = EventerEvent<
+  'client',
+  'pointSubscriptionClientStart',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    /** 0 on the first attempt; a reconnect after a BROKEN stream increments it */
+    attempt: number
+  }
+>
+export type EventerEventPointSubscriptionClientData = EventerEvent<
+  'client',
+  'pointSubscriptionClientData',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    /** one streamed value, as it arrives */
+    value: unknown
+  }
+>
+export type EventerEventPointSubscriptionClientSettled<TError extends ErrorPoint0> = EventerEvent<
+  'client',
+  'pointSubscriptionClientSettled',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+  } & (
+    | {
+        /** the loader completed (`d` line) — an answer, never restarted */
+        outcome: 'completed'
+        error: undefined
+      }
+    | {
+        /** a typed error (`e` line / non-2xx) — an answer, never restarted */
+        outcome: 'failed'
+        error: TError
+      }
+    | {
+        /** the bytes just stopped (a network drop) — what `reconnect` retries */
+        outcome: 'broken'
+        error: undefined
+      }
+  )
+>
+export type EventerEventPointSubscriptionClientError<TError extends ErrorPoint0> = EventerEvent<
+  'client',
+  'pointSubscriptionClientError',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    error: TError
+  }
+>
+
+// pointChannelConnect — a channel connect, split by side: the SERVER family fires around the connector execution (its
+// data carries the identity the connector produced), the CLIENT family around the connect request. Two different
+// operations — two event families, not one name on two sides. The CLIENT family carries the same counters/markers as
+// the lifecycle callbacks: `connectionIndex` on every phase (successful claims BEFORE this operation — 0 = the first
+// connect, > 0 = a re-connect), `resumed`/`gapless` on the successful outcome only (they are the ENTRY's verdict — a
+// failed connect has no entry to describe, and a refused resume falls back into the full connect silently). A landed
+// RESUME closes the family with `Settled`/`Success` (`resumed: true`, `gapless` = the server's proof) WITHOUT a
+// `Start`: the resume is one shared frame at the socket's open, not a per-connection client operation, and its
+// fallback path runs the full family cycle — a resume `Start` would dangle there.
+export type EventerEventPointChannelConnectServerStart = EventerEvent<
+  'server',
+  'pointChannelConnectServerStart',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+  }
+>
+export type EventerEventPointChannelConnectServerSettled<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointChannelConnectServerSettled',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+  } & (
+    | {
+        connectionId: string
+        /** the connector's return — the connection's identity (server knowledge, never on the client family) */
+        identity: unknown
+        error: undefined
+      }
+    | {
+        connectionId: undefined
+        identity: undefined
+        error: TError
+      }
+  )
+>
+export type EventerEventPointChannelConnectServerSuccess = EventerEvent<
+  'server',
+  'pointChannelConnectServerSuccess',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** the connector's return — the connection's identity (server knowledge, never on the client family) */
+    identity: unknown
+    error: undefined
+  }
+>
+export type EventerEventPointChannelConnectServerError<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointChannelConnectServerError',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: undefined
+    identity: undefined
+    error: TError
+  }
+>
+export type EventerEventPointChannelConnectClientStart = EventerEvent<
+  'client',
+  'pointChannelConnectClientStart',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    /** successful claims before this operation — 0 = the first connect, > 0 = a re-connect */
+    connectionIndex: number
+  }
+>
+export type EventerEventPointChannelConnectClientSettled<TError extends ErrorPoint0> = EventerEvent<
+  'client',
+  'pointChannelConnectClientSettled',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    /** successful claims before this operation — 0 = the first connect, > 0 = a re-connect */
+    connectionIndex: number
+  } & (
+    | {
+        connectionId: string
+        /** the entry rode the resume path — no connect request, no connector run */
+        resumed: boolean
+        /** the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's
+verdict there; on the full path the client computes it as `index === 0`) */
+        gapless: boolean
+        error: undefined
+      }
+    | {
+        connectionId: undefined
+        error: TError
+      }
+  )
+>
+export type EventerEventPointChannelConnectClientSuccess = EventerEvent<
+  'client',
+  'pointChannelConnectClientSuccess',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** successful claims before this operation — 0 = the first connect, > 0 = a re-connect */
+    connectionIndex: number
+    /** the entry rode the resume path — no connect request, no connector run */
+    resumed: boolean
+    /** the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's verdict
+there; on the full path the client computes it as `index === 0`) */
+    gapless: boolean
+    error: undefined
+  }
+>
+export type EventerEventPointChannelConnectClientError<TError extends ErrorPoint0> = EventerEvent<
+  'client',
+  'pointChannelConnectClientError',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: undefined
+    /** successful claims before this operation — 0 = the first connect, > 0 = a re-connect */
+    connectionIndex: number
+    error: TError
+  }
+>
+
+// pointChannelOpenServer / pointChannelCloseServer — a connection actually became live (its ticket was claimed on a socket) /
+// went away. Server-only, single events (state transitions, not operations): pointChannelConnectServer* fires at
+// connector time, which is BEFORE the claim, so "connect succeeded" does not yet mean a live connection.
+export type EventerEventPointChannelOpenServer = EventerEvent<
+  'server',
+  'pointChannelOpenServer',
+  {
+    point: AnyNiceReadyPoint
+    connectionId: string
+    identity: unknown
+    /** the connection came back through a RESUME (an unpark or a KV restore) — no connector ran for this open */
+    resumed: boolean
+  }
+>
+export type EventerEventPointChannelCloseServer = EventerEvent<
+  'server',
+  'pointChannelCloseServer',
+  {
+    point: AnyNiceReadyPoint
+    connectionId: string
+    identity: unknown
+    /** what closed it: the client (`close`), the socket dying (`socket`), or a server-side kick (`kick`) */
+    reason: 'close' | 'socket' | 'kick'
+  }
+>
+
+// pointHandler — a socket message, split by side: the SERVER family fires around `.serverReply` (its data carries
+// the sender's identity), the CLIENT family around a clientHandler dispatch. Different operations — different events.
+// The payload field is `input` on BOTH sides on purpose — the one family shared with the server side keeps the wire
+// vocabulary (the payload-naming law's deliberate lower-layer exception; the user-facing push surfaces say `message`).
+export type EventerEventPointHandlerServerStart = EventerEvent<
+  'server',
+  'pointHandlerServerStart',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** the sending connection's identity (server knowledge, never on the client family) */
+    identity: unknown
+  }
+>
+export type EventerEventPointHandlerServerSettled<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointHandlerServerSettled',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** the sending connection's identity (server knowledge, never on the client family) */
+    identity: unknown
+  } & (
+    | {
+        output: unknown
+        error: undefined
+      }
+    | {
+        output: undefined
+        error: TError
+      }
+  )
+>
+export type EventerEventPointHandlerServerSuccess = EventerEvent<
+  'server',
+  'pointHandlerServerSuccess',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** the sending connection's identity (server knowledge, never on the client family) */
+    identity: unknown
+    output: unknown
+    error: undefined
+  }
+>
+export type EventerEventPointHandlerServerError<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointHandlerServerError',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** the sending connection's identity (server knowledge, never on the client family) */
+    identity: unknown
+    output: undefined
+    error: TError
+  }
+>
+export type EventerEventPointHandlerClientStart = EventerEvent<
+  'client',
+  'pointHandlerClientStart',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+  }
+>
+export type EventerEventPointHandlerClientSettled<TError extends ErrorPoint0> = EventerEvent<
+  'client',
+  'pointHandlerClientSettled',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+  } & (
+    | {
+        output: unknown
+        error: undefined
+      }
+    | {
+        output: undefined
+        error: TError
+      }
+  )
+>
+export type EventerEventPointHandlerClientSuccess = EventerEvent<
+  'client',
+  'pointHandlerClientSuccess',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    output: unknown
+    error: undefined
+  }
+>
+export type EventerEventPointHandlerClientError<TError extends ErrorPoint0> = EventerEvent<
+  'client',
+  'pointHandlerClientError',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    output: undefined
+    error: TError
+  }
+>
+
+// pointSpaceJoin — a space join, split by side: the SERVER family fires around the `.joiner`/`.enroller` execution
+// (its data carries the identity), the CLIENT family around the join frame. `Success` carries the rooms the server
+// admitted the client into (`[]` = a clean deny). The CLIENT family carries the lifecycle counters/markers like the
+// connect family: `membershipIndex` on every phase, `resumed`/`gapless` on the successful outcome (a landed resume
+// closes with `Settled`/`Success` and no `Start` — no join frame was sent). The SERVER family carries `resumed` on the
+// phases a resume can reach (`Start`, `Settled`'s success side, `Success`): the resume re-announces (an unpark, a KV
+// restore) ride the family `Start` included, so the flag is what tells a re-announce from a real `.joiner`/`.enroller`
+// run. An errored join is never a resume (a refused resume never reaches the family), so the error side carries none.
+export type EventerEventPointSpaceJoinServerStart = EventerEvent<
+  'server',
+  'pointSpaceJoinServerStart',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** the joining connection's identity (server knowledge, never on the client family) */
+    identity: unknown
+    /** a resume re-announce (an unpark or a KV restore) — the rooms were restored, no `.joiner`/`.enroller` ran */
+    resumed: boolean
+  }
+>
+export type EventerEventPointSpaceJoinServerSettled<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointSpaceJoinServerSettled',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** the joining connection's identity (server knowledge, never on the client family) */
+    identity: unknown
+  } & (
+    | {
+        rooms: unknown[]
+        error: undefined
+        /** a resume re-announce (an unpark or a KV restore) — the rooms were restored, no `.joiner`/`.enroller` ran */
+        resumed: boolean
+      }
+    | {
+        rooms: undefined
+        error: TError
+      }
+  )
+>
+export type EventerEventPointSpaceJoinServerSuccess = EventerEvent<
+  'server',
+  'pointSpaceJoinServerSuccess',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** the joining connection's identity (server knowledge, never on the client family) */
+    identity: unknown
+    /** a resume re-announce (an unpark or a KV restore) — the rooms were restored, no `.joiner`/`.enroller` ran */
+    resumed: boolean
+    rooms: unknown[]
+    error: undefined
+  }
+>
+export type EventerEventPointSpaceJoinServerError<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointSpaceJoinServerError',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** the joining connection's identity (server knowledge, never on the client family) */
+    identity: unknown
+    rooms: undefined
+    error: TError
+  }
+>
+export type EventerEventPointSpaceJoinClientStart = EventerEvent<
+  'client',
+  'pointSpaceJoinClientStart',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** successful joins before this operation — 0 = the first join, > 0 = a replay */
+    membershipIndex: number
+  }
+>
+export type EventerEventPointSpaceJoinClientSettled<TError extends ErrorPoint0> = EventerEvent<
+  'client',
+  'pointSpaceJoinClientSettled',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** successful joins before this operation — 0 = the first join, > 0 = a replay */
+    membershipIndex: number
+  } & (
+    | {
+        rooms: unknown[]
+        /** the entry rode the resume path — no join frame, no `.joiner` run */
+        resumed: boolean
+        /** the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's
+verdict there; on the full path the client computes it as `index === 0`) */
+        gapless: boolean
+        error: undefined
+      }
+    | {
+        rooms: undefined
+        error: TError
+      }
+  )
+>
+export type EventerEventPointSpaceJoinClientSuccess = EventerEvent<
+  'client',
+  'pointSpaceJoinClientSuccess',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** successful joins before this operation — 0 = the first join, > 0 = a replay */
+    membershipIndex: number
+    rooms: unknown[]
+    /** the entry rode the resume path — no join frame, no `.joiner` run */
+    resumed: boolean
+    /** the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's verdict
+there; on the full path the client computes it as `index === 0`) */
+    gapless: boolean
+    error: undefined
+  }
+>
+export type EventerEventPointSpaceJoinClientError<TError extends ErrorPoint0> = EventerEvent<
+  'client',
+  'pointSpaceJoinClientError',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** successful joins before this operation — 0 = the first join, > 0 = a replay */
+    membershipIndex: number
+    rooms: undefined
+    error: TError
+  }
+>
+
+// pointSpaceLeaveServer — a membership leaving its rooms. Server-only, single event (a state transition): the client
+// released its last hold (`leave`), the socket died (`socket`), a room was closed by a kick (`kick`), or the
+// connection itself closed (`close`).
+export type EventerEventPointSpaceLeaveServer = EventerEvent<
+  'server',
+  'pointSpaceLeaveServer',
+  {
+    point: AnyNiceReadyPoint
+    connectionId: string
+    identity: unknown
+    /** the rooms that LEFT in this change (parsed) — not the rooms the connection still holds */
+    rooms: unknown[]
+    /** what took them out: the client's `leave` frame, the socket dying, a `space.kick`/`channel.kick`, or the
+connection itself closing */
+    reason: 'leave' | 'socket' | 'kick' | 'close'
+  }
+>
+
+// socket — socket-level lifecycle, split by side: the SERVER family is a socket landing on / leaving this process,
+// the CLIENT family is the one client WebSocket opening, closing, and coming back.
+/**
+ * The bare `websocket` endpoint (`GET /_point0/<scope>/websocket` + `Upgrade`) accepted an upgrade — emitted when the
+ * fetch pipeline's handler answers the upgrade-marker response, i.e. after every middleware passed it through. The
+ * socket itself lands as `socketServerConnect` once the handshake completes.
+ */
+export type EventerEventSocketServerUpgrade = EventerEvent<
+  'server',
+  'socketServerUpgrade',
+  {
+    scope: PointsScope
+  }
+>
+export type EventerEventSocketServerConnect = EventerEvent<
+  'server',
+  'socketServerConnect',
+  {
+    scope: PointsScope
+  }
+>
+export type EventerEventSocketServerDisconnect = EventerEvent<
+  'server',
+  'socketServerDisconnect',
+  {
+    scope: PointsScope
+  }
+>
+/**
+ * The one client WebSocket completed its handshake — fired on every successful open, the first and the re-opens alike
+ * (there is no separate reconnect event; `socketIndex` is the first-vs-repeat distinction, mirroring the lifecycle
+ * callbacks' `connectionIndex`/`membershipIndex`). No `resumed`/`gapless` here: those are per-connection entry verdicts
+ * — the transport itself always opens with a fresh handshake. The emit rides a channel point of the scope, so a socket
+ * held with ZERO connections (a bare `<Socket>` hold before any channel connects) opens silently — the event exists
+ * from the first connection on.
+ */
+export type EventerEventSocketClientConnect = EventerEvent<
+  'client',
+  'socketClientConnect',
+  {
+    scope: PointsScope
+    /** successful opens of the socket before this one — 0 = the first open, > 0 = a reopen */
+    socketIndex: number
+  }
+>
+export type EventerEventSocketClientDisconnect = EventerEvent<
+  'client',
+  'socketClientDisconnect',
+  {
+    scope: PointsScope
+  }
+>
+
 // pointQuery
 export type EventerEventPointQueryStart = EventerEvent<
   'client' | 'server',
@@ -519,6 +1100,46 @@ export type AnyEventerEvent<TError extends ErrorPoint0> =
   | EventerEventPointMutationSettled<TError>
   | EventerEventPointMutationSuccess
   | EventerEventPointMutationError<TError>
+  | EventerEventPointSubscriptionServerStart
+  | EventerEventPointSubscriptionServerData
+  | EventerEventPointSubscriptionServerSettled<TError>
+  | EventerEventPointSubscriptionServerError<TError>
+  | EventerEventPointSubscriptionClientStart
+  | EventerEventPointSubscriptionClientData
+  | EventerEventPointSubscriptionClientSettled<TError>
+  | EventerEventPointSubscriptionClientError<TError>
+  | EventerEventPointChannelConnectServerStart
+  | EventerEventPointChannelConnectServerSettled<TError>
+  | EventerEventPointChannelConnectServerSuccess
+  | EventerEventPointChannelConnectServerError<TError>
+  | EventerEventPointChannelConnectClientStart
+  | EventerEventPointChannelConnectClientSettled<TError>
+  | EventerEventPointChannelConnectClientSuccess
+  | EventerEventPointChannelConnectClientError<TError>
+  | EventerEventPointChannelOpenServer
+  | EventerEventPointChannelCloseServer
+  | EventerEventPointHandlerServerStart
+  | EventerEventPointHandlerServerSettled<TError>
+  | EventerEventPointHandlerServerSuccess
+  | EventerEventPointHandlerServerError<TError>
+  | EventerEventPointHandlerClientStart
+  | EventerEventPointHandlerClientSettled<TError>
+  | EventerEventPointHandlerClientSuccess
+  | EventerEventPointHandlerClientError<TError>
+  | EventerEventPointSpaceJoinServerStart
+  | EventerEventPointSpaceJoinServerSettled<TError>
+  | EventerEventPointSpaceJoinServerSuccess
+  | EventerEventPointSpaceJoinServerError<TError>
+  | EventerEventPointSpaceJoinClientStart
+  | EventerEventPointSpaceJoinClientSettled<TError>
+  | EventerEventPointSpaceJoinClientSuccess
+  | EventerEventPointSpaceJoinClientError<TError>
+  | EventerEventPointSpaceLeaveServer
+  | EventerEventSocketServerUpgrade
+  | EventerEventSocketServerConnect
+  | EventerEventSocketServerDisconnect
+  | EventerEventSocketClientConnect
+  | EventerEventSocketClientDisconnect
   | EventerEventPointPrefetchPageStart
   | EventerEventPointPrefetchPageSettled<TError>
   | EventerEventPointPrefetchPageSuccess
@@ -550,6 +1171,14 @@ export const uniqEventerErrorEventNames = [
   'pointMutationError',
   'pointQueryError',
   'pointInfiniteQueryError',
+  'pointChannelConnectServerError',
+  'pointChannelConnectClientError',
+  'pointHandlerServerError',
+  'pointHandlerClientError',
+  'pointSpaceJoinServerError',
+  'pointSpaceJoinClientError',
+  'pointSubscriptionServerError',
+  'pointSubscriptionClientError',
   'engineFetchError',
   'rscError',
 ] satisfies Array<AnyEventerEventName>

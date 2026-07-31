@@ -27,6 +27,13 @@ export class ErrorPoint0 extends Error {
   status?: number
   code?: string
   redirect?: RedirectTask
+  /**
+   * "Do not try this again" — the client's retry machinery honors it wherever it retries: react-query stops retrying
+   * the query, a rejected socket connect stops the reconnect loop, a denied join is not replayed. Throw it from a
+   * connector, a joiner, or any loader when the failure is terminal (a 401 after logout, a hard deny), and the client
+   * stops knocking. Travels in the public serialization — it is a behavioral contract, not a secret.
+   */
+  preventRetry?: boolean
   response?: Response
   headers?: Record<string, string | undefined>
   meta?: Record<string, unknown>
@@ -38,6 +45,7 @@ export class ErrorPoint0 extends Error {
       status?: number
       code?: string
       redirect?: RedirectTask
+      preventRetry?: boolean
       response?: Response
       headers?: Record<string, string | undefined>
       meta?: Record<string, unknown>
@@ -52,6 +60,9 @@ export class ErrorPoint0 extends Error {
     }
     if (options.redirect) {
       this.redirect = options.redirect
+    }
+    if (options.preventRetry) {
+      this.preventRetry = true
     }
     if (options.response) {
       this.response = options.response
@@ -103,6 +114,7 @@ export class ErrorPoint0 extends Error {
     const status = typeof record.status === 'number' ? record.status : undefined
     const code = typeof record.code === 'string' ? record.code : undefined
     const stack = typeof record.stack === 'string' ? record.stack : undefined
+    const preventRetry = record.preventRetry === true ? true : undefined
     const meta =
       record.meta && typeof record.meta === 'object' && !Array.isArray(record.meta)
         ? (record.meta as Record<string, unknown>)
@@ -112,6 +124,7 @@ export class ErrorPoint0 extends Error {
       status,
       code,
       redirect,
+      preventRetry,
       meta,
     })
     if (stack) {
@@ -129,6 +142,7 @@ export class ErrorPoint0 extends Error {
       message: error.message,
       ...(error.code ? { code: error.code } : {}),
       ...(error.redirect ? { redirect: error.redirect.serialize() } : {}),
+      ...(error.preventRetry ? { preventRetry: true } : {}),
     }
   }
 
@@ -154,6 +168,7 @@ export class ErrorPoint0 extends Error {
       ...(meta ? { meta } : {}),
       ...(error.stack ? { stack: error.stack } : {}),
       ...(error.redirect ? { redirect: error.redirect.serialize() } : {}),
+      ...(error.preventRetry ? { preventRetry: true } : {}),
       ...(cause ? { cause } : {}),
     }
   }
@@ -201,6 +216,7 @@ export type ClassLikeError0<T extends ErrorPoint0 = ErrorPoint0> = {
       status?: number
       code?: any
       redirect?: RedirectTask
+      preventRetry?: boolean
       response?: Response
       headers?: Record<string, string | undefined>
       meta?: Record<string, unknown>
@@ -267,6 +283,19 @@ export const POINT0_ERROR_CODES = [
   'POINT0_RSC_STREAM_INCOMPLETE',
   // deferred RSC holes (@point0/core) — a hole's subtree did not settle within the engine's `rsc.holeTimeoutMs`
   'POINT0_RSC_HOLE_TIMEOUT',
+  // socket channels & handlers (@point0/core client runtime, @point0/engine socket server)
+  'POINT0_SOCKET_CONNECTION_LOST', // a send had no live socket/connection and its window ran out
+  'POINT0_SOCKET_TICKET_INVALID', // a claim carried an unknown or expired connect ticket
+  'POINT0_SOCKET_CONNECTION_NOT_FOUND', // the claimed/addressed connection does not exist (record lapsed, wrong cid)
+  'POINT0_SOCKET_HANDLER_NOT_FOUND', // a send named a serverHandler this server does not have
+  'POINT0_SOCKET_MAX_CONNECTIONS', // the channel's maxConnections cap rejected a claim
+  'POINT0_SOCKET_MESSAGE_TOO_BIG', // an incoming socket message exceeded the channel's maxMessageSize
+  'POINT0_SOCKET_SPACE_NOT_FOUND', // a join named a space point this server does not have
+  'POINT0_SOCKET_JOIN_NOT_ALLOWED', // a client join hit a space with no `.joiner` — only the server enrolls into it
+  'POINT0_SOCKET_NOT_IN_ROOM', // a space-handler send named a room the connection's membership does not cover
+  'POINT0_SOCKET_MAX_ROOMS', // the space's maxRooms cap refused the write (rooms per connection per space)
+  // subscription streams (@point0/core)
+  'POINT0_SUBSCRIPTION_LOST', // the stream broke (no terminal line) and reconnect was off or gave up
 ] as const
 
 export type Point0ErrorCode = (typeof POINT0_ERROR_CODES)[number]

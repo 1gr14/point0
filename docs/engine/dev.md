@@ -179,8 +179,10 @@ The store lives there, keyed by `<scope>-<port>`, so two `--hot` processes on
 the same folder but different ports can't clobber each other. On a change, only
 the changed file **and its importer chain** get new hashes; everything else
 keeps its hash. The server child re-imports the current points aggregator per
-request, gated by a manifest hash: unchanged → cached module (singletons live);
-changed → fresh module identity. ([`point0 prune`](cli) deletes this cache.)
+request — incoming WebSocket messages included, so channel and handler code
+swaps even when the only traffic is the socket — gated by a manifest hash:
+unchanged → cached module (singletons live); changed → fresh module identity.
+([`point0 prune`](cli) deletes this cache.)
 
 ### Hot vs cold
 

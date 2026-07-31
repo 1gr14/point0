@@ -1,6 +1,6 @@
 import { Point0, defer } from '@point0/core'
 import { zodSchemaHelper } from '@point0/core/schema/zod'
-import { describe, expect, it } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import superjson from 'superjson'
 import { z } from 'zod'
 import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
@@ -843,6 +843,74 @@ describe('openapi', () => {
       in: 'path',
       required: true,
       schema: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+    })
+  })
+
+  describe('socket', () => {
+    // an earlier test in this file boots an engine WITHOUT the socket option, and an engine boot writes
+    // POINT0_FEATURE_SOCKET='false' into process.env for the whole test process — but these tests run against bare
+    // @point0/core, where an UNSET flag honestly means "the feature's code is here". Clear it for the describe and
+    // put back whatever was there
+    let featureSocketBefore: string | undefined
+    beforeAll(() => {
+      featureSocketBefore = process.env.POINT0_FEATURE_SOCKET
+      delete process.env.POINT0_FEATURE_SOCKET
+    })
+    afterAll(() => {
+      if (featureSocketBefore !== undefined) {
+        process.env.POINT0_FEATURE_SOCKET = featureSocketBefore
+      }
+    })
+    it('a channel connect is dual-method in the spec (GET notes the Upgrade handshake); handlers do not appear', () => {
+      const root = createRoot()
+      const chatChannel = root
+        .lets('channel', 'chatChannel')
+        .input(z.object({ chatId: z.string() }))
+        .connector(async ({ input }) => ({ chatId: input.chatId }))
+        .channel()
+      const messageSendHandler = chatChannel
+        .lets('serverHandler', 'messageSend')
+        .clientSend(z.object({ text: z.string() }))
+        .serverReply(({ input }) => ({ echo: input.text }))
+        .serverHandler()
+      const messageReceivedHandler = chatChannel.lets('clientHandler', 'messageReceived').clientHandler()
+      const spec = getOpenapiSchemaFromPoints([chatChannel, messageSendHandler, messageReceivedHandler] as never, {
+        info: { title: 'T', version: '1.0.0' },
+      })
+      const paths = Object.keys(spec.paths as Record<string, unknown>)
+      expect(paths).toContain('/_point0/root/channel/chat-channel')
+      const operation = (spec.paths as Record<string, Record<string, any>>)['/_point0/root/channel/chat-channel']
+      // a connect is dual-method like a query: GET with `?input=` (and the Upgrade handshake), POST with the body
+      expect(Object.keys(operation).sort()).toEqual(['get', 'post'])
+      expect(operation.get.description).toContain('Upgrade: websocket')
+      // both answer the `{ id, ticket }` the socket claims
+      const responseSchema = operation.post.responses['200'].content['application/json'].schema
+      expect(Object.keys(responseSchema.properties).sort()).toEqual(['id', 'ticket'])
+      // handlers live on the socket, not on HTTP — they never reach the spec; the bare `websocket` endpoint does
+      expect(paths.sort()).toEqual(['/_point0/root/channel/chat-channel', '/_point0/root/websocket'])
+    })
+
+    it('a channel in the list brings the bare websocket endpoint; filtering the channel out hides it', () => {
+      const root = createRoot()
+      const chatChannel = root.lets('channel', 'chatChannel').channel()
+      const listQuery = root
+        .lets('query', 'list')
+        .loader(() => ({ items: [] }))
+        .query()
+      const withChannel = getOpenapiSchemaFromPoints([chatChannel, listQuery] as never, {
+        info: { title: 'T', version: '1.0.0' },
+      })
+      const websocketOperation = (withChannel.paths as Record<string, Record<string, any>>)['/_point0/root/websocket']
+      expect(Object.keys(websocketOperation)).toEqual(['get'])
+      expect(websocketOperation.get.responses['101']).toBeDefined()
+      // the Upgrade header is the one thing HTTP tooling cannot infer — it is spelled out as a required parameter
+      expect(websocketOperation.get.parameters).toContainEqual(
+        expect.objectContaining({ in: 'header', name: 'Upgrade', required: true }),
+      )
+      const withoutChannel = getOpenapiSchemaFromPoints([listQuery] as never, {
+        info: { title: 'T', version: '1.0.0' },
+      })
+      expect(Object.keys(withoutChannel.paths as Record<string, unknown>)).not.toContain('/_point0/root/websocket')
     })
   })
 })

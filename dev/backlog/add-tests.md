@@ -32,7 +32,26 @@ stay assertive instead of hedging.
   that throws bubbles past `.error` (and fails the SSR render); a `.with` that
   _returns_ an `Error` renders `.error`.
 
+- **sockets — `onBeforeJoiner` / `onBeforeServerReply` refusals over the real
+  wire.** The guards are pinned at unit level through the real
+  `_executeJoiner`/`_executeServerReply` (`socket-builders.unit`), but no int
+  test asserts a guard throw arrives as the typed `joinErr`/`sendErr` frame the
+  client observes. Add one case per guard to `socket.int.test.ts` (the harness
+  and both frame shapes are already there).
+
 ## Medium value
+
+- **sockets — `ping: 0` disables the pings AND the liveness deadline.**
+  Documented twice (the channel options table; the internal "test-only
+  compromise" note), exercised nowhere: no test sets `ping: 0`. A regression
+  into "no pings but a live zero-interval deadline" would make such clients
+  self-close. One int case: `ping: 0`, hold a connection past `2 × ping` worth
+  of silence, assert it stays open and no ping frames were written.
+
+- **subscription — a finite `retries: N` runs to exhaustion.** The policy math
+  (`reconnect.unit`) and the `reconnect: false` terminal error
+  (`subscription-lifecycle.int`) are each pinned; their composition — N failed
+  redials, then `status: 'error'` with `POINT0_SUBSCRIPTION_LOST` — is not.
 
 - **middleware — `params['*']` wildcard shape.** `.middleware('/api/auth/*', …)`
   matching `/api/auth/sign-in/email` should expose the captured remainder as
@@ -116,10 +135,12 @@ stay assertive instead of hedging.
   paths pass `onDeny: 'throw'` (client/server
   `getCompilerOptions({ built: true })`), default is `'log'`. No test asserts a
   denied import fails the build even when `onDeny: 'log'` is configured.
-- **engine.serve — `bunServeConfig` vs `serve()` option precedence.** `serve()`
-  spreads `bunServeConfig` then the call's options, then forces
-  `port`/`fetch`/`websocket`. No test asserts the call wins over
-  `bunServeConfig` and that the three owned keys can't be overridden.
+- **engine.serve — the OWNED keys can't be overridden.** `serve()` spreads
+  `bunServeConfig` then the call's options, then forces `port`, `fetch` and the
+  websocket handlers. No test asserts those hold from either side. (The
+  websocket _settings_ are not owned: their merge order — engine defaults →
+  `bunServeConfig.websocket` → the `serve()` call — is pinned by
+  `websocket-endpoint.int`.)
 - **fetchServer/fetch — `transform: false` sends plain JSON.**
   `FetchOptions.transform` defaults `true` (round-trips through the point's
   transformer); no test asserts `transform: false` skips the transformer so raw

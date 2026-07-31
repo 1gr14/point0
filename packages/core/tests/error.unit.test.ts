@@ -76,6 +76,18 @@ describe('ErrorPoint0 serializePublic / serializePrivate', () => {
     expect(nested.cause).toBeUndefined()
   })
 
+  it('preventRetry travels both projections and survives from() round-trips', () => {
+    const error = new ErrorPoint0('no entry', { preventRetry: true })
+    expect(ErrorPoint0.serializePublic(error)).toEqual({ message: 'no entry', preventRetry: true })
+    expect(ErrorPoint0.serializePrivate(error)).toMatchObject({ preventRetry: true })
+    // the wire round-trip: a client rebuilds the error from the public record and keeps the flag
+    const rebuilt = ErrorPoint0.from(ErrorPoint0.serializePublic(error))
+    expect(rebuilt.preventRetry).toBe(true)
+    // absent by default — a plain error never carries it
+    expect('preventRetry' in ErrorPoint0.serializePublic(new ErrorPoint0('boom'))).toBe(false)
+    expect(ErrorPoint0.from({ message: 'x' }).preventRetry).toBeUndefined()
+  })
+
   it('JSON.stringify uses the public projection (toJSON safety net)', () => {
     const error = new ErrorPoint0('boom', { code: 'POINT0_TEST', meta: { secret: 1 } })
     const parsed = JSON.parse(JSON.stringify({ error })) as { error: Record<string, unknown> }

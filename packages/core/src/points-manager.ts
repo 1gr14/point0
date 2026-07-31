@@ -186,6 +186,36 @@ export class PointsManager<
     return this as PointsManager<true, TRequiredCtx, TError>
   }
 
+  /**
+   * Import every handler point of a channel present in the collection — the socket connect preload. Handler modules
+   * register their points when they EVALUATE, so awaiting the records' imports guarantees every module-level listener
+   * exists before the socket claim. Already-live records resolve instantly; a failed chunk logs and never blocks the
+   * connect (the handler simply stays unregistered, as if its module was never written).
+   */
+  async loadChannelHandlerPoints(channelName: PointName): Promise<void> {
+    const records = this.collection.filter(
+      (record) =>
+        // spaces preload alongside their channel's handlers — both carry the channel tag from the generator
+        (record.type === 'serverHandler' || record.type === 'clientHandler' || record.type === 'space') &&
+        (record as { channel?: string }).channel === channelName,
+    )
+    await Promise.all(
+      records.map(async (record) => {
+        try {
+          const pointPromise = typeof record.point === 'function' ? record.point() : record.point
+          await pointPromise
+        } catch (error) {
+          log({
+            level: 'warn',
+            category: ['points'],
+            message: `Failed to load handler point "${record.name}" of channel "${channelName}"`,
+            error,
+          })
+        }
+      }),
+    )
+  }
+
   static toNormalizedPointsCollection(
     points: MixedPointsCollection | PointsDefinition<any, any>,
   ): NormalizedPointsCollection {
@@ -204,6 +234,16 @@ export class PointsManager<
             polh: !!source.polh,
             point: point ?? source.point,
             layouts: record ? (record.layouts ?? []) : point ? point._layouts.map((l) => l.name) : [],
+            channel: record
+              ? (record as { channel?: string }).channel
+              : point
+                ? (point as { _channelPoint?: { name?: string } })._channelPoint?.name
+                : undefined,
+            space: record
+              ? (record as { space?: string }).space
+              : point
+                ? (point as { _spacePoint?: { name?: string } })._spacePoint?.name
+                : undefined,
             FC:
               source.type === 'layout'
                 ? typeof pointSource === 'function'
@@ -342,6 +382,10 @@ export type LazyPointsCollectionRecord = {
   polh?: boolean | number
   point: (() => Promise<{ point: ReadyPoint }>) | { point: ReadyPoint }
   layouts?: string[]
+  /** handler records only: the parent channel's name — the socket connect preloads a channel's handlers by it */
+  channel?: string
+  /** space-handler records only: the parent space's name — the record's topic/space membership is keyed by it */
+  space?: string
 }
 export type LazyPointsCollection = LazyPointsCollectionRecord[]
 export type NormalizedLazyPointsCollectionRecord = {
@@ -352,6 +396,10 @@ export type NormalizedLazyPointsCollectionRecord = {
   polh: boolean | number
   FC: React.LazyExoticComponent<React.ComponentType> | React.ComponentType | undefined
   layouts: string[]
+  /** handler records only: the parent channel's name — the socket connect preloads a channel's handlers by it */
+  channel?: string | undefined
+  /** space-handler records only: the parent space's name — the record's topic/space membership is keyed by it */
+  space?: string | undefined
 }
 export type NormalizedLazyPointsCollection = NormalizedLazyPointsCollectionRecord[]
 

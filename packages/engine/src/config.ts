@@ -20,6 +20,7 @@ import type {
   ErrorPoint0,
   LogFn,
   NormalizedNodeEnv,
+  Point0Feature,
   PointsDefinitionSource,
   PointsScope,
   RequiredCtx,
@@ -101,6 +102,13 @@ export type EngineOptionsCompilerGeneral = {
   cache?: boolean
   markdown?: CompilerMarkdownOptions
   babel?: CompilerBabelOptions
+  /**
+   * Which optional features the TRANSFORM assumes, overriding what the sides resolved. Partial, like the top-level
+   * `features`, and compile-time only — it decides what `env.feature.*` is inlined as (and therefore what the client
+   * bundle carries), not what a side is allowed to do at runtime. You rarely want it: state features in the top-level
+   * `features` / `server.socket` and both the build and the runtime follow. See {@link EngineGeneralOptions.features}.
+   */
+  features?: EngineOptionsFeatures
   assets?: EngineOptionsCompilerAssets
 }
 // export type EngineOptionsCompilerGeneralParsed = {
@@ -126,6 +134,11 @@ export type EngineOptionsCompilerSpecific = {
   cache?: boolean
   markdown?: CompilerMarkdownOptions
   babel?: CompilerBabelOptions
+  /**
+   * Which optional features THIS side's transform assumes, overriding both the general `compiler.features` and the
+   * side's own resolved `features`. Partial and compile-time only — see {@link EngineOptionsCompilerGeneral.features}.
+   */
+  features?: EngineOptionsFeatures
   assets?: EngineOptionsCompilerAssets
 }
 export type EngineOptionsCompilerSpecificParsed = {
@@ -141,6 +154,12 @@ export type EngineOptionsCompilerSpecificParsed = {
   cache: boolean
   markdown: CompilerMarkdownOptions | undefined
   babel: CompilerBabelOptionsNormalized | undefined
+  /**
+   * The resolved feature record this side's transform compiles against — ALWAYS full, one boolean per feature. Built
+   * from the side's own resolved `features` with the compiler blocks folded over it; handed straight to
+   * `CompilerOptions.features` by `getCompilerOptions()`, like every other field here.
+   */
+  features: EngineOptionsFeaturesParsed
   assets: CompilerAssetsOptions | false
 }
 
@@ -165,6 +184,75 @@ export type EngineOptionsServing = boolean | string | ((options: { request: Requ
 export type LoggerConfig = {
   log?: LogFn
 }
+
+/**
+ * The socket backplane — the shared layer server processes synchronize through: a string KV (per-connection `{ scope,
+ * channel, identity }` records — a resumable channel's also carry the resume passport, the key hash plus the per-space
+ * rooms — and one-time connect tickets, every record set with a TTL) plus pub/sub over named channels. The bus is
+ * sharded by topic: exact-address room/space/channel pushes ride per-topic channels only the holding processes
+ * subscribe, admin commands and matcher selections ride a shared channel, and answers (collected replies, count/list
+ * responses) ride a per-process inbox channel. The interface is Redis-shaped on purpose — a node-redis client maps onto
+ * it 1:1 (`GET`/`SET PX`/`DEL` + `PUBLISH`/`SUBSCRIBE`), and anything else (native Postgres via `LISTEN`/`NOTIFY`, for
+ * one) fits the same five required functions, plus the two optional ones (`getDelete`, the atomic read-and-delete, and
+ * `dispose`). Every channel name arrives as an argument — the names are point0's concern (`point0:socket:*`); an
+ * implementation just routes what it is given and knows nothing about `point0:*` (same as the KV side, where keys
+ * already arrive ready-made). Keys, channels and values are always strings — the point's transformer already did the
+ * serializing. Default is in-process memory (single process).
+ */
+export type Backplane = {
+  /** read a key — `null`/`undefined` both mean "missing" (whichever the client speaks); an expired record reads as
+missing */
+  get: (key: string) => string | null | undefined | Promise<string | null | undefined>
+  /** `ttlMs` given — the record must expire on its own (Redis `PX`); that is how dead processes leak nothing */
+  set: (key: string, value: string, ttlMs?: number) => void | Promise<void>
+  /** delete a key — the fast path records leave by (the TTL is the backstop); deleting a missing key is a no-op */
+  delete: (key: string) => void | Promise<void>
+  /**
+   * OPTIONAL — read a key and delete it in ONE atomic step (Redis `GETDEL`). One-time connect tickets claim through it:
+   * with a shared backplane the plain `get` + `delete` pair is two round trips, so two processes racing the same ticket
+   * can both read it before either deletes. Implement it and that race is closed at the store; leave it out and the
+   * engine falls back to `get` + `delete` (still one-time within a process — an in-flight guard refuses the second
+   * claim there).
+   */
+  getDelete?: (key: string) => string | null | undefined | Promise<string | null | undefined>
+  /**
+   * broadcast one message to every process subscribed to `channel` (self-delivery is fine — messages carry a process
+   * id)
+   */
+  publish: (channel: string, message: string) => void | Promise<void>
+  /**
+   * subscribe to a named channel; may return an unsubscribe. The engine can subscribe to any number of channels over
+   * the server's lifetime and can call the returned unsubscribe when it is done with a channel — do not build on "one
+   * subscription, made once at startup". Returning `void` instead of an unsubscribe is legal too: that implementation
+   * just keeps receiving traffic for channels the engine wanted to leave — its cost, not a bug. A settled subscribe is
+   * DURABLE until the engine unsubscribes: a transport that can drop and restore its connection (a reconnecting Redis
+   * client) must bring its own subscriptions back — the engine never sees the blip and will not re-issue subscribes
+   * after it. The built-in `redis://…` shortcut re-subscribes its whole set on reconnect.
+   */
+  subscribe: (
+    channel: string,
+    onMessage: (message: string) => void,
+  ) => void | (() => void) | Promise<void | (() => void)>
+  /**
+   * OPTIONAL — release the resources the backplane itself OWNS (a duplicated subscriber connection, a listen
+   * connection, timers). Called when the engine that resolved this backplane is disposed. An implementation built over
+   * a client the app passed in must NOT close that client here — the app owns its lifecycle; close only what the
+   * implementation created (the ready-made `@point0/engine/backplane/*` adapters follow exactly that rule, with an
+   * explicit `closeClient` opt-in for when the client was constructed just for the backplane). Lifecycle note: a dev
+   * server disposes and re-resolves the backplane across hot restarts — the factory form returns a fresh adapter per
+   * call, so per-generation dispose is clean; an adapter OBJECT passed directly is re-resolved as the SAME object, so
+   * give it a dispose it can survive (or none) rather than one that bricks it. The engine fires it DETACHED (errors
+   * logged, never awaited) — don't put a graceful drain the process exit must wait on here.
+   */
+  dispose?: () => void | Promise<void>
+}
+/**
+ * A `Backplane`, a lazy factory, or a Redis URL string (`redis://…` / `rediss://…` / `valkey://…`) — the shortcut
+ * builds the adapter on Bun's built-in Redis client: one connection for the KV + publishes, a duplicate in subscriber
+ * mode for the bus. Ready-made adapters for clients you already run live under `@point0/engine/backplane/*`
+ * (`bun-redis`, `ioredis`, `node-redis`, `postgres`).
+ */
+export type BackplaneOptionsInput = Backplane | string | (() => Backplane | Promise<Backplane>)
 
 /**
  * SSR configuration. Pass `true`/`false` for the simple on/off, or an object to tune the SSR re-render loop.
@@ -224,6 +312,97 @@ const pickSsrOptionsPartial = (ssr: boolean | SsrOptions | undefined): Partial<S
     partial.prefetchLoadersBeforePageRender = ssr.prefetchLoadersBeforePageRender
   return partial
 }
+/**
+ * The process-wide socket infrastructure knobs — the object form of the server `socket` option (which also turns the
+ * endpoint on). These are the floors and windows shared by every channel of the process; what belongs to ONE channel
+ * (message caps, connection TTL, resume tuning) lives on the channel point's own options instead. All optional; the
+ * defaults are the values that shipped as constants.
+ */
+export type EngineSocketServerOptions = {
+  /** ms a one-time connect ticket stays claimable; default `30_000` */
+  ticketTtl?: number
+  /** ms a stashed cold-start upgrade seed (and a bare-upgrade token) stays usable; default `30_000` */
+  pendingUpgradeTtl?: number
+  /** pending bare-upgrade tokens at most — they are minted by unauthenticated requests; default `4096` */
+  maxPendingUpgrades?: number
+  /** ms a `connections.server.list`/`forEach`/`count` gather window stays open by default (per-call `timeoutMs`
+overrides); default `1000` */
+  gatherTimeout?: number
+  /** ms between two KV TTL-slide writes per connection — a ping flood must not become a KV write flood; default `10_000` */
+  renewMinInterval?: number
+  /** ms of one unknown-mid reply-forward window per connection; default `10_000` */
+  replyForwardWindow?: number
+  /** unknown-mid reply forwards to the bus per window per connection; default `256` */
+  replyForwardMax?: number
+  /** per-cid reply bound of an UNCOUNTABLE collect window over a `$room`-matcher push; default `1024` */
+  uncountableReplyCap?: number
+  /** ms an unneeded dynamic bus-topic subscription lingers before the unsubscribe; default `2_000` */
+  busTopicLinger?: number
+  /** remembered envelope ids for the multi-topic bus dedup; default `2_048` */
+  busDedupSize?: number
+}
+
+/** The resolved {@link EngineSocketServerOptions} — every knob present, defaults applied. */
+export type EngineSocketServerOptionsResolved = Required<EngineSocketServerOptions>
+
+/** Resolve the server `socket` option's infra knobs — the boolean forms take every default. */
+export const resolveEngineSocketOptions = (
+  socket: boolean | EngineSocketServerOptions | null | undefined,
+): EngineSocketServerOptionsResolved => {
+  const provided = typeof socket === 'object' && socket !== null ? socket : {}
+  return {
+    ticketTtl: provided.ticketTtl ?? 30_000,
+    pendingUpgradeTtl: provided.pendingUpgradeTtl ?? 30_000,
+    maxPendingUpgrades: provided.maxPendingUpgrades ?? 4096,
+    gatherTimeout: provided.gatherTimeout ?? 1000,
+    renewMinInterval: provided.renewMinInterval ?? 10_000,
+    replyForwardWindow: provided.replyForwardWindow ?? 10_000,
+    replyForwardMax: provided.replyForwardMax ?? 256,
+    uncountableReplyCap: provided.uncountableReplyCap ?? 1024,
+    busTopicLinger: provided.busTopicLinger ?? 2_000,
+    busDedupSize: provided.busDedupSize ?? 2_048,
+  }
+}
+
+/**
+ * The `features` option as you write it — partial, so you name only the features you care about. Everything you leave
+ * out falls back to the level above it and finally to that feature's own default (`socket` → `server.socket`) at
+ * normalization time. See {@link EngineGeneralOptions.features}.
+ */
+export type EngineOptionsFeatures = Partial<Record<Point0Feature, boolean>>
+/**
+ * One side's resolved feature record — ALWAYS full, one boolean per feature. This is what the compiler bakes into the
+ * client build and what the side reads back as `env.feature`.
+ */
+export type EngineOptionsFeaturesParsed = Record<Point0Feature, boolean>
+/** Every feature name, in one place — the list normalization walks and the compiler's record is keyed by. */
+const point0Features = ['socket'] as const satisfies readonly Point0Feature[]
+/**
+ * Resolve a full feature record from three partial layers, PER FEATURE: the narrow `side` wins, then the wider
+ * `general`, then `defaults` for that feature, then `false`.
+ *
+ * `defaults` is a record, not one boolean for all features: every feature names its own natural default, and there is
+ * no single value that could ever be right for the whole list. Today `socket` takes `server.socket` — which is why
+ * `server: { socket: true }` alone is enough to keep the socket code, and an app that never asked for a socket strips
+ * it from the browser without touching its config at all. The next feature will name something else.
+ *
+ * Called twice per side with the same shape: once over the config levels (side block → engine level → per-feature
+ * defaults) for the side's own record, and once over the compiler blocks (side `compiler.features` → general
+ * `compiler.features` → that resolved record) for the record the compiler is handed.
+ */
+const parseFeatures = ({
+  side,
+  general,
+  defaults,
+}: {
+  side: EngineOptionsFeatures | undefined
+  general: EngineOptionsFeatures | undefined
+  defaults: EngineOptionsFeatures
+}): EngineOptionsFeaturesParsed =>
+  Object.fromEntries(
+    point0Features.map((feature) => [feature, side?.[feature] ?? general?.[feature] ?? defaults[feature] ?? false]),
+  ) as EngineOptionsFeaturesParsed
+
 /**
  * Either a logger config directly, or a (sync/async) function that returns one. The function form is resolved during
  * preload, after bun plugins are loaded — so a custom logger imported inside it goes through the compiler transforms
@@ -289,6 +468,23 @@ export type EngineGeneralOptions = {
    * loop. Default `false`.
    */
   ssr?: boolean | SsrOptions
+  /**
+   * Which OPTIONAL Point0 features this app uses — `{ socket: true }` and, in time, its siblings. A feature is a whole
+   * subsystem the CLIENT bundle only carries when it is on: with `socket` off, every channel/space/handler body in
+   * `@point0/core` folds to a throw at compile time and `@point0/core/socket` never reaches the browser at all.
+   *
+   * Partial on purpose — name only what you care about. Whatever you leave out defaults to `server.socket` (so `server:
+   * { socket: true }` is still the one line that turns the socket on, and an app without it strips for free), and
+   * normalization turns the result into the full record each side reads as `env.feature`.
+   *
+   * Set here it applies to BOTH sides; a `features` inside `server`/`client` overrides it for that side alone. The one
+   * combination that is refused is an incoherent server: `server.socket: true` with the server's own `socket` feature
+   * resolved off.
+   *
+   * The resolved record is also what the transform compiles against. A `features` inside a `compiler` block overrides
+   * it there — compile-time only, and rarely what you want; see {@link EngineOptionsCompilerGeneral.features}.
+   */
+  features?: EngineOptionsFeatures
   /** Default static-asset config for the whole engine. Folds into `compiler.assets`; a nested/per-side one wins. */
   assets?: EngineOptionsCompilerAssets
 }
@@ -344,6 +540,31 @@ export type EngineServerOptions<
   devWatchGlob?: string | string[]
   /** Raw `Bun.serve` overrides (idleTimeout, tls, …), merged over the engine's own serve config. Default `null`. */
   bunServeConfig?: Partial<Serve.Options<any, any>>
+  /**
+   * The socket backplane (`Backplane`: KV with TTL + channel pub/sub), a lazy `async () => backplane` factory, or a
+   * Redis URL string (`'redis://…'`) served by Bun's built-in Redis client. Default is server memory (single process).
+   * Ready-made adapters for a client you already run —
+   * `@point0/engine/backplane/{bun-redis,ioredis,node-redis,postgres}` — plug in through the factory form; see the
+   * socket docs for the ladder and the bare-contract recipe.
+   */
+  backplane?: BackplaneOptionsInput
+  /**
+   * Turn on the bare WebSocket endpoint (`GET /_point0/<scope>/websocket` + `Upgrade`) — the one socket per client that
+   * every socket channel of the scope multiplexes over. Default `false`: the endpoint does not exist unless enabled,
+   * and declaring channel points without it logs a startup warning. The upgrade rides the full fetch pipeline as its
+   * own request variant (`request.variant.type === 'websocket'`), so a `.middleware()` can veto it — e.g. an `Origin`
+   * allowlist (browsers do not apply CORS to WebSockets); see the channel docs for the recipe.
+   *
+   * An OBJECT turns the endpoint on AND tunes the process-wide socket infrastructure ({@link EngineSocketServerOptions})
+   * — the floors and windows shared by every channel of the process, as opposed to the per-channel options that live on
+   * the points.
+   */
+  socket?: boolean | EngineSocketServerOptions
+  /**
+   * Optional Point0 features for THIS side, overriding the engine-level `features`. Turning one off here strips it from
+   * this side alone — e.g. a second client that never opens a socket while the server serves one.
+   */
+  features?: EngineOptionsFeatures
   /** Per-side `Bun.build` overrides (merged with the general `bunBuildConfig`). Default `{}`. */
   bunBuildConfig?: EngineServerBuildConfigDefinition
   /** Bun plugins for this side, additive over the shared `bunPlugins`. Default `[]`. */
@@ -439,6 +660,11 @@ export type EngineClientOptions = {
   /** SSR for this client; an explicit value wins over the engine-level `ssr`, else falls back to `false`. */
   ssr?: boolean | SsrOptions
   /**
+   * Optional Point0 features for THIS client, overriding the engine-level `features`. Turning one off here strips it
+   * from this client's bundle alone — e.g. a second client that never opens a socket while the server serves one.
+   */
+  features?: EngineOptionsFeatures
+  /**
    * Static-asset config for this client. Folds into `compiler.assets`; `compiler.assets` wins. Keep it in sync with
    * other sides — `extensions`/`defaultMode`/`svgr` must agree across client and server for the same URL.
    */
@@ -491,6 +717,7 @@ export type EngineGeneralOptionsParsed = {
   bunPlugins: EngineSharedPluginsDefinition
   ssr: boolean | undefined
   ssrOptions: SsrOptionsResolved
+  features: EngineOptionsFeatures
   assets: EngineOptionsCompilerAssets | undefined
 }
 export type EngineClientOptionsParsed = {
@@ -523,6 +750,11 @@ export type EngineClientOptionsParsed = {
     cacheLimit: number | boolean
   } | null
   ssrDefaultOptions: SsrOptionsResolved
+  /**
+   * This side's resolved feature record — the RUNTIME truth, written out as the `POINT0_FEATURE_*` env consts the side
+   * reads back as `env.feature`. What the transform inlines is `compiler.features`, resolved from this one.
+   */
+  features: EngineOptionsFeaturesParsed
 }
 export type EngineServerOptionsParsed = {
   scope: PointsScope
@@ -546,10 +778,18 @@ export type EngineServerOptionsParsed = {
   bunBuildConfig: EngineServerBuildConfigDefinition
   bunServeConfig: Partial<Serve.Options<any, any>> | null
   bunPlugins: EngineServerPluginsDefinition
+  backplane: BackplaneOptionsInput | null
+  socket: boolean | EngineSocketServerOptions
   viteConfig: EngineOptionsViteConfig | null
   compiler: EngineOptionsCompilerSpecificParsed | false
   hmrPort: number | false
   ssrEnabled: boolean
+  /**
+   * This side's resolved feature record — the RUNTIME truth, written out as the `POINT0_FEATURE_*` env consts the side
+   * reads back as `env.feature`. The server never strips, so this is the only record its own code ever sees; what the
+   * transform is told is `compiler.features`, resolved from this one.
+   */
+  features: EngineOptionsFeaturesParsed
   devWatchGlob: string[]
 }
 export type EngineOptionsParsed = {
@@ -825,6 +1065,7 @@ const parseEngineGeneralOptions = ({
               ...(generalOptions.compiler.side !== undefined ? { side: generalOptions.compiler.side } : {}),
               ...(generalOptions.compiler.markdown !== undefined ? { markdown: generalOptions.compiler.markdown } : {}),
               ...(generalOptions.compiler.babel !== undefined ? { babel: generalOptions.compiler.babel } : {}),
+              ...(generalOptions.compiler.features !== undefined ? { features: generalOptions.compiler.features } : {}),
               ...(generalOptions.compiler.assets !== undefined ? { assets: generalOptions.compiler.assets } : {}),
               ...(generalOptions.compiler.ssr !== undefined
                 ? { ssr: generalOptions.compiler.ssr }
@@ -906,6 +1147,7 @@ const parseEngineGeneralOptions = ({
     ).map((g) => toAbsPath(cwd, g, true)),
     ssr,
     ssrOptions,
+    features: generalOptions.features ?? {},
     assets: generalOptions.assets,
   }
 }
@@ -1071,6 +1313,21 @@ export const parseEngineServerOptions = ({
       : generalOptionsParsed.ssr !== undefined
         ? generalOptionsParsed.ssr
         : false
+  const socket = serverOptions.socket ?? false
+  const features = parseFeatures({
+    side: serverOptions.features,
+    general: generalOptionsParsed.features,
+    // the object form of `socket` tunes the infra AND turns the endpoint on — the feature default is its truthiness
+    defaults: { socket: Boolean(socket) },
+  })
+  // The one incoherent pair: the endpoint is served, but the code that answers it was declared absent. Nothing would
+  // work and nothing would say why — so refuse the config instead of booting a socket server with the feature off.
+  // (A CLIENT may still opt out — that only strips its own bundle, which is a real setup.)
+  if (socket && !features.socket) {
+    throw new Error(
+      `Contradictory config for server scope "${serverOptions.scope}": \`server.socket\` is on but the \`socket\` feature is off. Drop \`features: { socket: false }\`, or turn the endpoint off with \`server: { socket: false }\`.`,
+    )
+  }
   const mergedCompilerRecord = {
     side: true,
     scope: true,
@@ -1096,6 +1353,17 @@ export const parseEngineServerOptions = ({
     ],
     markdown: mergeMarkdownOptions(generalOptionsParsedCompilerRecord.markdown, serverOptionsCompilerRecord.markdown),
     babel: mergeBabelOptions(generalOptionsParsedCompilerRecord.babel, serverOptionsCompilerRecord.babel),
+    // Same three-layer shape as every other compiler option — side block, then general block, then the side's own
+    // value — with the side's RESOLVED record as the base instead of a bare default: a compiler block is an explicit
+    // override for compilation, the side's features are what the app actually runs on. (Exactly the `ssr` split:
+    // `compiler.ssr` moves what the transform assumes, not whether the side renders.) Nobody normally writes it — with
+    // no compiler block in play this is `features` verbatim. The server compile ignores the record (it never strips),
+    // but it is passed all the same: what to inline is the COMPILER's decision by side, not a reason to withhold config.
+    features: parseFeatures({
+      side: serverOptionsCompilerRecord.features,
+      general: generalOptionsParsedCompilerRecord.features,
+      defaults: features,
+    }),
     assets: mergeAssetsOptions(
       generalOptionsParsedCompilerRecord.assets ?? generalOptionsParsed.assets,
       serverOptionsCompilerRecord.assets ?? serverOptions.assets,
@@ -1138,6 +1406,7 @@ export const parseEngineServerOptions = ({
             cache: mergedCompilerRecord.cache,
             markdown: mergedCompilerRecord.markdown,
             babel: mergedCompilerRecord.babel,
+            features: mergedCompilerRecord.features,
             assets: mergedCompilerRecord.assets,
           }
         : serverOptions.compiler !== undefined
@@ -1163,6 +1432,7 @@ export const parseEngineServerOptions = ({
   ).map((g) => toAbsPath(generalOptionsParsed.cwd, g, true))
   return {
     scope: serverOptions.scope,
+    features,
     pointsProvided: serverOptions.points ?? [Point0.lets('root', serverOptions.scope).root()],
     port,
     hmrPort,
@@ -1175,6 +1445,8 @@ export const parseEngineServerOptions = ({
     bunBuildConfig: serverOptions.bunBuildConfig ?? {},
     bunPlugins: serverOptions.bunPlugins ?? [],
     bunServeConfig: serverOptions.bunServeConfig ?? null,
+    backplane: serverOptions.backplane ?? null,
+    socket,
     compiler,
     envVars: parseEnv(serverOptions.env?.vars ?? {}),
     envConsts: parseEnv(serverOptions.env?.consts ?? {}),
@@ -1254,6 +1526,11 @@ const parseEngineClientOptions = ({
     ...generalOptionsParsed.ssrOptions,
     ...pickSsrOptionsPartial(clientOptions.ssr),
   }
+  const features = parseFeatures({
+    side: clientOptions.features,
+    general: generalOptionsParsed.features,
+    defaults: { socket: Boolean(serverOptionsParsed.socket) },
+  })
   const mergedCompilerRecord = {
     side: true,
     scope: true,
@@ -1279,6 +1556,17 @@ const parseEngineClientOptions = ({
     ],
     markdown: mergeMarkdownOptions(generalOptionsParsedCompilerRecord.markdown, clientOptionsCompilerRecord.markdown),
     babel: mergeBabelOptions(generalOptionsParsedCompilerRecord.babel, clientOptionsCompilerRecord.babel),
+    // Same three-layer shape as every other compiler option — side block, then general block, then the side's own
+    // value — with the side's RESOLVED record as the base instead of a bare default: a compiler block is an explicit
+    // override for compilation, the side's features are what the app actually runs on. (Exactly the `ssr` split:
+    // `compiler.ssr` moves what the transform assumes, not whether the side renders.) Nobody normally writes it — with
+    // no compiler block in play this is `features` verbatim. THIS is the record that decides what the browser bundle
+    // carries: the client compile inlines every `env.feature.*` from it.
+    features: parseFeatures({
+      side: clientOptionsCompilerRecord.features,
+      general: generalOptionsParsedCompilerRecord.features,
+      defaults: features,
+    }),
     assets: mergeAssetsOptions(
       generalOptionsParsedCompilerRecord.assets ?? generalOptionsParsed.assets,
       clientOptionsCompilerRecord.assets ?? clientOptions.assets,
@@ -1321,6 +1609,7 @@ const parseEngineClientOptions = ({
             cache: mergedCompilerRecord.cache,
             markdown: mergedCompilerRecord.markdown,
             babel: mergedCompilerRecord.babel,
+            features: mergedCompilerRecord.features,
             assets: mergedCompilerRecord.assets,
           }
         : clientOptions.compiler !== undefined
@@ -1401,6 +1690,7 @@ const parseEngineClientOptions = ({
     bunPlugins: clientOptions.bunPlugins ?? [],
     engineFile: generalOptionsParsed.engineFile,
     ssrDefaultOptions: { ...ssrOptions, enabled: ssr },
+    features,
   }
 }
 

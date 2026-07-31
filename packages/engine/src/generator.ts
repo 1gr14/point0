@@ -756,7 +756,13 @@ export class FilesGenerator {
       return false
     }
     return (
-      point.scopes.includes(scope) && ((point.type === 'root' && point.scope === scope) || point.endpoint !== undefined)
+      point.scopes.includes(scope) &&
+      ((point.type === 'root' && point.scope === scope) ||
+        point.endpoint !== undefined ||
+        // handlers and spaces have no HTTP endpoint but the socket dispatch resolves them from the server points manager
+        point.type === 'serverHandler' ||
+        point.type === 'clientHandler' ||
+        point.type === 'space')
     )
   }
 
@@ -768,8 +774,18 @@ export class FilesGenerator {
     return (
       point.scope === scope &&
       // components ride in the aggregator as lazy records too — RSC resolves a component-point reference from the
-      // collection, and the record's dynamic import gives each referenced component its own chunk
-      (point.type === 'page' || point.type === 'layout' || point.type === 'component' || point.type === 'root')
+      // collection, and the record's dynamic import gives each referenced component its own chunk.
+      // Channels and handlers ride along for socket: a clientHandler registers its dispatch entry when its module
+      // EVALUATES, and the manifest is the only road to a handler module nothing imports — the client runtime imports
+      // a channel's handlers from here right before connecting (see ensureChannelHandlersLoaded in core/socket.ts)
+      (point.type === 'page' ||
+        point.type === 'layout' ||
+        point.type === 'component' ||
+        point.type === 'root' ||
+        point.type === 'channel' ||
+        point.type === 'space' ||
+        point.type === 'serverHandler' ||
+        point.type === 'clientHandler')
     )
   }
 
@@ -798,6 +814,20 @@ export class FilesGenerator {
     if (point.type === 'page' && point.layouts.length) {
       const arr = point.layouts.map((r) => `'${r}'`).join(', ')
       lines.push(`    layouts: [${arr}],`)
+    }
+    if (point.type === 'serverHandler' || point.type === 'clientHandler' || point.type === 'space') {
+      // the parent channel names the preload group — connect imports every handler record (and every space) carrying
+      // its name; a space rides along so it preloads with the channel's handlers
+      const channelParent = point.parents.find((parent) => parent.type === 'channel')
+      if (channelParent) {
+        lines.push(`    channel: '${channelParent.name}',`)
+      }
+      // a handler grown from a space carries its space name too — the socket dispatch resolves the addressing space
+      // (its room shape) from this record
+      const spaceParent = point.parents.find((parent) => parent.type === 'space')
+      if (spaceParent) {
+        lines.push(`    space: '${spaceParent.name}',`)
+      }
     }
 
     lines.push(

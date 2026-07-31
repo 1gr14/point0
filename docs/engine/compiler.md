@@ -216,10 +216,11 @@ export const authServer = env.side.define.unsafe.server(
 
 The same shaking covers `env.mode.*` (production/development/test),
 `env.build.was`, `env.runtime.*`, `env.os.*`, `env.scope.*`,
-`env.ssr.active/phase/target` (client-side constants — SSR is never underway in
-the browser), and `env.vars.*`, plus `process.env.X` / `import.meta.env.X`
-against your configured constants. Each resolves to a literal at compile time;
-the now-dead branches and their unused imports are removed by a
+`env.ssr.active/phase/target` and `env.feature.*` (client-side constants — SSR
+is never underway in the browser, and an optional feature is either in the build
+or not), and `env.vars.*`, plus `process.env.X` / `import.meta.env.X` against
+your configured constants. Each resolves to a literal at compile time; the
+now-dead branches and their unused imports are removed by a
 dead-code-elimination pass. The full list lives on the [env](env) page.
 
 `env.runtime.is.<X>` covers `browser`, `reactNative`, `nodejs`, `bun`, `deno`,
@@ -498,8 +499,14 @@ forces it to `false` (a built app never compiles sources at runtime).
 | `cache`    | boolean                          | on-disk transform cache (default on)                          |
 | `markdown` | MDX options                      | remark/rehype/recma plugins, MDX config                       |
 | `babel`    | plugins / `{ plugins, presets }` | your babel plugins (see above)                                |
+| `features` | `{ socket?: boolean }`           | fold `env.feature.*` on the client — compile-time override    |
 | `assets`   | assets options / `false`         | static-asset pipeline ([assets](assets))                      |
 | `importer` | importer options                 | mock/deny/cold imports ([importer](importer))                 |
+
+`features` here is an override for the transform alone; you normally state
+features once in the engine's top-level `features` / `server.socket` and both
+the build and the runtime follow — see
+[optional features](engine-config#optional-features-features).
 
 `importer` is **per-side only**, not engine-level. The full engine config
 surface is on [Engine config](engine-config); the importer options on

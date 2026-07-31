@@ -1,4 +1,5 @@
 import { CookieStore } from '@point0/core/cookie-store'
+import { z } from 'zod'
 import { env, Point0, createQueryClient } from '@point0/core'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import assert from 'node:assert'
@@ -748,4 +749,157 @@ describe('FakeClient', () => {
   //     })
   //   })
   // })
+
+  it.concurrent('drives the socket runtime over the in-memory socket — no server listening', async () => {
+    const root = Point0.lets('root', 'root').root()
+    const chatChannel = root
+      .lets('channel', 'chatChannel')
+      .input(z.object({ userId: z.string() }))
+      .connector(async ({ input }) => ({ me: 'user-' + input.userId }))
+      .channel()
+    const chatSpace = chatChannel
+      .lets<{ chatId: string }>('space', 'chatSpace')
+      .input(z.object({ chatId: z.string() }))
+      .joiner(({ input }) => input)
+      .space()
+    const messageReceivedHandler = chatSpace
+      .lets('clientHandler', 'messageReceivedHandler')
+      .serverSend(z.object({ text: z.string() }))
+      .clientHandler()
+    // an ENROLLED personal space + a handler consumed ONLY through the module-level listener — both rely on the
+    // page's registration replay (no lazy listener attach ever happens for them)
+    const notes: string[] = []
+    const userSpace = chatChannel
+      .lets<{ me: string }>('space', 'userSpace')
+      .enroller(({ identity }) => ({ me: identity.me }))
+      .space()
+    const personalNoteHandler = userSpace
+      .lets('clientHandler', 'personalNoteHandler')
+      .serverSend(z.object({ note: z.string() }))
+      .clientHandler({ client: { onMessageFromServer: ({ message }) => void notes.push(message.note) } })
+    const tickFeedHandler = chatChannel
+      .lets('clientHandler', 'tickFeedHandler')
+      .serverSend(z.object({ i: z.number() }))
+      .clientHandler()
+    const messageSendHandler = chatSpace
+      .lets('serverHandler', 'messageSendHandler')
+      .clientSend(z.object({ text: z.string() }))
+      .serverReply(async ({ input, identity, room }) => {
+        // the room push — the whole server side of the pipe, exercised with no Bun.serve anywhere
+        await messageReceivedHandler.sendToClient({ text: input.text }, { room })
+        return { echo: input.text, me: identity.me }
+      })
+      .serverHandler()
+    const notifyHandler = chatChannel
+      .lets('serverHandler', 'notifyHandler')
+      .clientSend(z.object({ note: z.string() }))
+      .serverReply(async ({ input, identity }) => {
+        await personalNoteHandler.sendToClient({ note: input.note }, { room: { me: identity.me } })
+        return { sent: true }
+      })
+      .serverHandler()
+    const startTicksHandler = chatChannel
+      .lets('serverHandler', 'startTicksHandler')
+      .clientSend(z.object({ count: z.number() }))
+      .serverReply(async ({ input, connectionId }) => {
+        void (async () => {
+          for (let i = 1; i <= input.count; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 20))
+            await tickFeedHandler.sendToClient({ i }, { connectionId })
+          }
+        })()
+        return { started: true }
+      })
+      .serverHandler()
+    const points = [
+      root,
+      chatChannel,
+      chatSpace,
+      userSpace,
+      messageReceivedHandler,
+      personalNoteHandler,
+      tickFeedHandler,
+      messageSendHandler,
+      notifyHandler,
+      startTicksHandler,
+    ] as const
+    const engine = await Engine.create({
+      compiler: false,
+      file: import.meta.url,
+      server: { scope: 'root', points, socket: true },
+      clients: [{ scope: 'root', points }],
+    }).prepare()
+    const fakeClient = FakeClient.create({ engine, scope: 'root', globals: getFakeBrowserGlobals() })
+
+    // one PAGE across several runs — the run state is the loaded page, the socket lives with it
+    const state = fakeClient.createRunState()
+    let heldConnection: ReturnType<typeof chatChannel.connect> | undefined
+
+    await fakeClient.run(
+      async () => {
+        // connect + join ride the real client runtime; the socket is the injected in-memory pair
+        const connection = chatChannel.connect({ userId: 'u1' })
+        heldConnection = connection
+        await waitFor(() => expect(connection.status).toBe('open'), { timeout: 5000 })
+        const membership = chatSpace.join({ chatId: 'c1' })
+        await waitFor(() => expect(membership.status).toBe('joined'), { timeout: 5000 })
+      },
+      { state },
+    )
+
+    await fakeClient.run(
+      async () => {
+        // the SAME page continues: the connection and membership opened by the previous run are still live
+        const connection = chatChannel.getConnection({ userId: 'u1' })
+        expect(connection.status).toBe('open')
+        const membership = chatSpace.getMembership({ chatId: 'c1' })
+
+        // send → serverReply → room push back into this client's listener
+        const received: string[] = []
+        const listener = messageReceivedHandler(membership).onMessageFromServer(({ message }) => {
+          received.push(message.text)
+        })
+        const reply = await messageSendHandler(membership).sendToServer({ text: 'hello' })
+        expect(reply).toEqual({ echo: 'hello', me: 'user-u1' })
+        await waitFor(() => expect(received).toEqual(['hello']), { timeout: 5000 })
+        listener.remove()
+
+        // the message iterator over the same pipe — the LLM pattern without a server
+        const ticks: number[] = []
+        const iterator = tickFeedHandler(connection).iterateMessagesFromServer() as AsyncGenerator<{ i: number }>
+        const consumed = (async () => {
+          for await (const message of iterator) {
+            ticks.push(message.i)
+            if (ticks.length >= 2) {
+              break
+            }
+          }
+        })()
+        const started = await startTicksHandler(connection).sendToServer({ count: 3 })
+        expect(started).toEqual({ started: true })
+        await consumed
+        expect(ticks).toEqual([1, 2])
+
+        // the enrolled personal room + the module-level listener — no attach anywhere, pure registration replay
+        const sent = await notifyHandler(connection).sendToServer({ note: 'ping' })
+        expect(sent).toEqual({ sent: true })
+        await waitFor(() => expect(notes).toEqual(['ping']), { timeout: 5000 })
+      },
+      { state },
+    )
+
+    await fakeClient.run(async () => {
+      // a run WITHOUT the state is a fresh page load — the previous page's connection does not exist here
+      expect(chatChannel.getConnectionOrUndefined({ userId: 'u1' })).toBeUndefined()
+    })
+
+    await fakeClient.run(
+      async () => {
+        // the HOLD facade from the first run releases the connection — same page, same hold
+        heldConnection!.disconnect()
+        await waitFor(() => expect(heldConnection!.status).toBe('closed'), { timeout: 5000 })
+      },
+      { state },
+    )
+  })
 })

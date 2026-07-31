@@ -299,6 +299,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       _known,
       effects = Effects.create(),
       ErrorClass,
+      signal,
     } = ((): {
       point: ReadyPoint | undefined
       inputProvided: Record<string, unknown>
@@ -310,6 +311,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       }
       effects?: Effects
       ErrorClass: ClassLikeError0<ErrorPoint0>
+      signal?: AbortSignal
     } => {
       return {
         point: args[0].point,
@@ -317,6 +319,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         _known: args[0]._known,
         effects: args[0].effects,
         ErrorClass: args[0].ErrorClass,
+        signal: args[0].signal,
       }
     })()
     const { search, params, body, input } = (() => {
@@ -449,6 +452,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
           }
         }
 
+        // (a connectorless channel never lands here — its `.channel()` closer registers a default `{}` connector)
         if (!point._hasServerLoader) {
           const status = 500
           const error0 = new ErrorClass(`Point "${point.id}" has no server loader`, {
@@ -639,6 +643,25 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
               break
             }
             case 'loader': {
+              if (point._isHttpSubscription()) {
+                // the subscription loader is an async GENERATOR — calling it returns the stream itself, synchronously;
+                // there is nothing to await, normalize, or serialize here. The fetcher's subscription branch drains it
+                // into the NDJSON response, and `signal` is how the consumer's disappearance reaches the generator
+                const generator = serverExecuteAction.fn({
+                  ...layers[0].ctxExposed,
+                  ctx: { ...layers[0].ctx },
+                  request: this.request as never,
+                  set: effects.set,
+                  points: this.engine.server.points as NiceServerPoints,
+                  signal: signal ?? new AbortController().signal,
+                  ...getParsed(),
+                } as never)
+                layers.forEach((layer) => {
+                  layer.data = generator as never
+                  layer.output = generator as never
+                })
+                break
+              }
               const promise = serverExecuteAction.fn({
                 ...layers[0].ctxExposed,
                 ctx: { ...layers[0].ctx },
@@ -1465,6 +1488,8 @@ export type ExecuteOptions<TPoint extends ReadyPoint | undefined, TErrorClass ex
   effects?: Effects
   ErrorClass: TErrorClass
   _known?: ExecuteOptionsKnownInput
+  /** subscription points only: the unsubscribe signal handed to the generator loader as its `signal` argument */
+  signal?: AbortSignal
 }
 
 export type ExecuteOptionsKnownInput = {

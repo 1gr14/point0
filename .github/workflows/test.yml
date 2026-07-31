@@ -11,6 +11,8 @@ name: test
 #               the Playwright install entirely.
 #   test-solo → one runner per (OS × file): every .e2e file + the heavy solo .int files. One file per runner
 #               keeps failures attributable and stops leaked browser/dev processes from starving a runner.
+# One fast group is special: engine-backplane (the real-store suites) gets Redis + Postgres provisioned on its
+# Linux runner — see the step below; elsewhere those suites skip themselves.
 # Both lanes run through scripts/test.ts, which wraps every file in a wall-clock guard (a hung file fails
 # fast and NAMED, instead of riding the job timeout), retries a timed-out file once on a fresh process, and
 # treats "all tests green but the process would not exit" as a pass with a loud warning (the known
@@ -68,6 +70,22 @@ jobs:
         run: bun run setup
       # No Playwright here — the fast lane carries no .e2e files by construction (scripts/test.ts enforces
       # that anything importing the browser util is .e2e, and every .e2e file rides the solo lane).
+      # The engine-backplane group is the real-store lane (scripts/test.ts PINNED_GROUPS): its Linux runner gets a
+      # `redis-server` binary on PATH (two suites spawn their own instances), a running Redis for REDIS_URL, and the
+      # runner image's preinstalled PostgreSQL for POSTGRES_URL. On other OSes those suites skip themselves, exactly
+      # like on a dev machine without the binaries — the Linux runner is where they actually gate.
+      - name: Provision Redis + Postgres (engine-backplane)
+        if: matrix.group == 'engine-backplane' && runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq redis-server
+          (sudo systemctl start redis-server || sudo redis-server /etc/redis/redis.conf --daemonize yes || redis-server --daemonize yes)
+          redis-cli ping
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "CREATE ROLE runner LOGIN SUPERUSER PASSWORD 'runner'" || true
+          sudo -u postgres createdb -O runner point0_test || true
+          echo "REDIS_URL=redis://localhost:6379" >> "$GITHUB_ENV"
+          echo "POSTGRES_URL=postgres://runner:runner@localhost:5432/point0_test" >> "$GITHUB_ENV"
       - name: Run fast group ${{ matrix.group }}
         run: bun scripts/test.ts --group ${{ matrix.group }}
 

@@ -1,0 +1,21 @@
+generator client {
+  provider   = "prisma-client"
+  engineType = "binary"
+  output     = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// The only persisted socket data: chat messages. Everything else in this example
+// (presence, notifications, the live board) is ephemeral and lives only in memory.
+model Message {
+  id        Int      @id @default(autoincrement())
+  topic     String
+  nickname  String
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([topic, id])
+}

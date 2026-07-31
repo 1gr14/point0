@@ -65,22 +65,31 @@ narrowed to that event. The wildcard still respects the side filter —
 
 ## The full event set
 
-Six families, each with four lifecycle phases — `Start`, `Settled`, `Success`,
-`Error` — plus one `emitError` event: twenty-five events in all. The table below
-lists the families; the [Reference](#event-names) enumerates every name:
+Most families come in four lifecycle phases — `Start`, `Settled`, `Success`,
+`Error`. The subscription family streams, so its four are `Start`, `Data`,
+`Settled`, `Error` — a value per `Data`, the outcome on `Settled`. The table
+below lists the families; the [Reference](#event-names) enumerates every name:
 
-| Family                | What it tracks                                          | Side             |
-| --------------------- | ------------------------------------------------------- | ---------------- |
-| `pointQuery*`         | a query running (`useQuery` / `fetchQuery`)             | client \| server |
-| `pointInfiniteQuery*` | an infinite query running                               | client \| server |
-| `pointMutation*`      | a mutation running                                      | client \| server |
-| `pointFetchServer*`   | a point's server-fetch step (the SSR / fetch machinery) | client \| server |
-| `pointPrefetchPage*`  | a page being prefetched before navigation               | client \| server |
-| `engineFetch*`        | the engine's outgoing HTTP fetch (the actual request)   | **server only**  |
-| `emitError`           | a subscriber callback itself threw (see below)          | client \| server |
+| Family                                               | What it tracks                                             | Side             |
+| ---------------------------------------------------- | ---------------------------------------------------------- | ---------------- |
+| `pointQuery*`                                        | a query running (`useQuery` / `fetchQuery`)                | client \| server |
+| `pointInfiniteQuery*`                                | an infinite query running                                  | client \| server |
+| `pointMutation*`                                     | a mutation running                                         | client \| server |
+| `pointSubscriptionServer*` / `Client*`               | a subscription stream: the loader run / a fetch attempt    | per side         |
+| `pointChannelConnectServer*` / `Client*`             | a channel connect: the connector run / the connect request | per side         |
+| `pointChannelOpenServer` / `pointChannelCloseServer` | a connection went live / away (singles)                    | **server only**  |
+| `pointSpaceJoinServer*` / `Client*`                  | a space join: the `.joiner` run / the join frame           | per side         |
+| `pointSpaceLeaveServer`                              | a membership left its rooms (single)                       | **server only**  |
+| `pointHandlerServer*` / `Client*`                    | a message: `.serverReply` / a clientHandler dispatch       | per side         |
+| `pointFetchServer*`                                  | a point's server-fetch step (the SSR / fetch machinery)    | client \| server |
+| `pointPrefetchPage*`                                 | a page being prefetched before navigation                  | client \| server |
+| `engineFetch*`                                       | the engine's outgoing HTTP fetch (the actual request)      | **server only**  |
+| `emitError`                                          | a subscriber callback itself threw (see below)             | client \| server |
 
 Each family gives you `<Family>Start`, `<Family>Settled`, `<Family>Success`, and
-`<Family>Error`.
+`<Family>Error` — except the subscription families, whose set is `Start`,
+`Data`, `Settled` (with `outcome: 'completed' | 'failed' | 'broken'`), and
+`Error`.
 
 ### Lifecycle phases
 
@@ -128,13 +137,13 @@ SSR, but it's the same code). Only `engineFetch*` — the HTTP layer — reports
 
 ## The `'error'` shorthand
 
-`.on('error', cb)` is sugar — it expands to **five** subscriptions, one per
+`.on('error', cb)` is sugar — it expands to **thirteen** subscriptions, one per
 error event:
 
 ```tsx
 .on('error', (e) => { /* … */ })
 // equivalent to:
-.on(['pointMutationError', 'pointQueryError', 'pointInfiniteQueryError', 'engineFetchError', 'rscError'], (e) => { /* … */ })
+.on(['pointMutationError', 'pointQueryError', 'pointInfiniteQueryError', 'pointChannelConnectServerError', 'pointChannelConnectClientError', 'pointHandlerServerError', 'pointHandlerClientError', 'pointSpaceJoinServerError', 'pointSpaceJoinClientError', 'pointSubscriptionServerError', 'pointSubscriptionClientError', 'engineFetchError', 'rscError'], (e) => { /* … */ })
 ```
 
 Inside the callback, `error` is narrowed to a non-`undefined` error instance.
@@ -142,10 +151,10 @@ One user `throw` can produce more than one of them: a failing server query
 surfaces as `engineFetchError` (server) **and** `pointQueryError` (client), so
 an `.on('error')` logger may see the same failure from two angles.
 
-> **GOTCHA:** the shorthand covers query, infinite-query, mutation, engineFetch,
-> and [rscError](rsc) (a failed `defer()` subtree) — **not**
-> `pointFetchServerError` or `pointPrefetchPageError`. To catch those two, name
-> them explicitly:
+> **GOTCHA:** the shorthand covers query, infinite-query, mutation, the socket
+> trio (channel connect, space join, and handler), engineFetch, and
+> [rscError](rsc) (a failed `defer()` subtree) — **not** `pointFetchServerError`
+> or `pointPrefetchPageError`. To catch those two, name them explicitly:
 > `.on(['pointFetchServerError', 'pointPrefetchPageError'], cb)`.
 
 ## The event object
@@ -258,11 +267,36 @@ audit logs.
 pointQueryStart          pointQuerySettled          pointQuerySuccess          pointQueryError
 pointInfiniteQueryStart  pointInfiniteQuerySettled  pointInfiniteQuerySuccess  pointInfiniteQueryError
 pointMutationStart       pointMutationSettled       pointMutationSuccess       pointMutationError
+pointSubscriptionServerStart    pointSubscriptionServerData      pointSubscriptionServerSettled    pointSubscriptionServerError
+pointSubscriptionClientStart    pointSubscriptionClientData      pointSubscriptionClientSettled    pointSubscriptionClientError
+pointChannelConnectServerStart  pointChannelConnectServerSettled pointChannelConnectServerSuccess  pointChannelConnectServerError
+pointChannelConnectClientStart  pointChannelConnectClientSettled pointChannelConnectClientSuccess  pointChannelConnectClientError
+pointSpaceJoinServerStart       pointSpaceJoinServerSettled      pointSpaceJoinServerSuccess       pointSpaceJoinServerError
+pointSpaceJoinClientStart       pointSpaceJoinClientSettled      pointSpaceJoinClientSuccess       pointSpaceJoinClientError
+pointHandlerServerStart         pointHandlerServerSettled        pointHandlerServerSuccess         pointHandlerServerError
+pointHandlerClientStart         pointHandlerClientSettled        pointHandlerClientSuccess         pointHandlerClientError
 pointFetchServerStart    pointFetchServerSettled    pointFetchServerSuccess    pointFetchServerError
 pointPrefetchPageStart   pointPrefetchPageSettled   pointPrefetchPageSuccess   pointPrefetchPageError
 engineFetchStart         engineFetchSettled         engineFetchSuccess         engineFetchError
+pointChannelOpenServer   pointChannelCloseServer    pointSpaceLeaveServer
+socketServerUpgrade    socketServerConnect      socketServerDisconnect
+socketClientConnect    socketClientDisconnect
 rscError                 emitError
 ```
+
+The socket families (`pointChannelConnect*`, `pointSpaceJoin*`,
+`pointHandler*`), the server-only singles (`pointChannelOpenServer` /
+`pointChannelCloseServer` / `pointSpaceLeaveServer`), and the socket-level
+`socket*` singles are split by side — the two sides are genuinely different
+operations with different data, not one event observed twice. When each fires,
+the counters and entry markers the client families carry, and the open / close /
+leave reasons: [Socket → The events](socket#the-events).
+
+The subscription families fire per stream ATTEMPT on the client (`Start`'s
+`attempt` counts reconnects — there is no separate reconnect event) and per
+streamed response on the server: `Data` on every streamed value, `Settled` with
+the outcome (`completed` / `failed` / `broken`), nothing after a deliberate
+cancel. Details: [Subscription](subscription#the-usual-point-machinery).
 
 ### Subscription methods
 
@@ -288,16 +322,24 @@ All three are on every point type, accumulate, and are inherited down the chain.
 
 ### Per-event `data`
 
-| Family                | `data` carries                                                        |
-| --------------------- | --------------------------------------------------------------------- |
-| `pointQuery*`         | `{ queryKey, point, input, mode, data?, error?, redirect? }`          |
-| `pointInfiniteQuery*` | same as query, for the infinite case                                  |
-| `pointMutation*`      | `{ point, input }` + one of `output` / `error` / `redirect`           |
-| `pointFetchServer*`   | `{ input, point }` + the fetch-server output on settled/success/error |
-| `pointPrefetchPage*`  | `{ point, input, options, error? }`                                   |
-| `engineFetch*`        | `{ request, scope, result?, error? }`                                 |
-| `rscError`            | `{ error, label, holeId }` — a failed `defer()` subtree, server-side  |
-| `emitError`           | `{ error, event }` — the original event and the thrown error          |
+| Family                                   | `data` carries                                                                                                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pointQuery*`                            | `{ queryKey, point, input, mode, data?, error?, redirect? }`                                                                                                      |
+| `pointInfiniteQuery*`                    | same as query, for the infinite case                                                                                                                              |
+| `pointMutation*`                         | `{ point, input }` + one of `output` / `error` / `redirect`                                                                                                       |
+| `pointSubscriptionServer*` / `Client*`   | `{ point, input }` + `value` (Data) / `outcome`; `attempt` on ClientStart                                                                                         |
+| `pointChannelConnectServer*` / `Client*` | `{ point, input }` + `connectionId` / `error`; `identity` on Server; `connectionIndex` (every phase) + `resumed`/`gapless` (success) on Client                    |
+| `pointChannelOpenServer`                 | `{ point, connectionId, identity, resumed }` — server-only                                                                                                        |
+| `pointChannelCloseServer`                | `{ point, connectionId, identity, reason }` — server-only                                                                                                         |
+| `pointSpaceJoinServer*` / `Client*`      | `{ point, input, connectionId }` + `rooms` / `error`; `identity` + `resumed` on Server; `membershipIndex` (every phase) + `resumed`/`gapless` (success) on Client |
+| `pointSpaceLeaveServer`                  | `{ point, connectionId, identity, rooms, reason }` — server-only                                                                                                  |
+| `pointHandlerServer*` / `Client*`        | `{ point, input, connectionId }` + `output` / `error`; `identity` on Server                                                                                       |
+| `socketServer*` / `socketClient*`        | `{ scope }` — socket-level, no point; + `socketIndex` on `socketClientConnect`                                                                                    |
+| `pointFetchServer*`                      | `{ input, point }` + the fetch-server output on settled/success/error                                                                                             |
+| `pointPrefetchPage*`                     | `{ point, input, options, error? }`                                                                                                                               |
+| `engineFetch*`                           | `{ request, scope, result?, error? }`                                                                                                                             |
+| `rscError`                               | `{ error, label, holeId }` — a failed `defer()` subtree, server-side                                                                                              |
+| `emitError`                              | `{ error, event }` — the original event and the thrown error                                                                                                      |
 
 ### Public types
 

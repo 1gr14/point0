@@ -53,6 +53,9 @@
       "navigation": [
         "./dist/navigation.d.ts"
       ],
+      "socket": [
+        "./dist/socket.d.ts"
+      ],
       "unhead": [
         "./dist/unhead.d.ts"
       ],
@@ -119,6 +122,10 @@
     "./navigation": {
       "types": "./dist/navigation.d.ts",
       "import": "./dist/navigation.js"
+    },
+    "./socket": {
+      "types": "./dist/socket.d.ts",
+      "import": "./dist/socket.js"
     },
     "./unhead": {
       "types": "./dist/unhead.d.ts",

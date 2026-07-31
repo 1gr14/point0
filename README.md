@@ -53,7 +53,7 @@ export const root = Point0.lets
   // shown if loading failed
   .error(({ error }) => <ErrorScreen error={error} />)
   // loaders may return React elements (RSC: server components & islands)
-  .rscDepth(1)
+  .rsc({ depth: 1 })
   .root() // a point ends with the word it started with (.root) — same for all points
 ```
 
@@ -369,6 +369,87 @@ The full model — server components, interactive islands, and streaming with
 `defer` and `suspend` — is on the [RSC](https://1gr14.dev/point0/latest/rsc)
 page.
 
+## Sockets: channels and rooms
+
+Chat, presence, live dashboards — same builder, same types. A **channel** is one
+authenticated WebSocket: its `.connector` runs like a loader and establishes who
+you are as an identity. A **space** grows rooms from that channel — the client
+joins, the server's `.joiner` decides which rooms it enters. Handlers are the
+typed messages that ride the socket: the client sends, the server pushes to a
+room, and every subscribed component wakes.
+
+```tsx
+import { root } from '@/lib/root'
+import { authorizedOnlyPlugin } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { messageSchema } from '@/lib/schemas'
+import * as z from 'zod'
+
+// the channel: one authenticated socket. The connector establishes the identity.
+export const appChannel = root.lets
+  .channel()
+  .use(authorizedOnlyPlugin) // ctx.me — the current user
+  .connector(({ ctx }) => ({ userId: ctx.me.user.id }))
+  .channel()
+
+// a space of chat rooms — one room per chat; the joiner says who's let in
+export const chatSpace = appChannel.lets
+  .space<{ chatId: string }>()
+  .input(z.object({ chatId: z.string() }))
+  .joiner(async ({ input, identity }) =>
+    (await isMember(identity.userId, input.chatId))
+      ? { chatId: input.chatId }
+      : undefined,
+  )
+  .space()
+
+// client → server — save the message, then push it to the whole room
+export const messageSend = chatSpace.lets
+  .serverHandler()
+  .clientSend(z.object({ text: z.string().min(1) }))
+  .serverReply(async ({ input, identity, room }) => {
+    const message = await prisma.message.create({
+      data: {
+        text: input.text,
+        chatId: room.chatId,
+        authorId: identity.userId,
+      },
+    })
+    void messageAdded.sendToClient(message, { room }) // fan out to the room
+    return message
+  })
+  .serverHandler()
+
+// server → client — every listening component in the room wakes
+export const messageAdded = chatSpace.lets
+  .clientHandler()
+  .serverSend(messageSchema)
+  .clientHandler()
+```
+
+On the client, a component joins its room and the newest message just arrives —
+no polling, no refetch:
+
+```tsx
+export const ChatRoom = ({ chatId }: { chatId: string }) => {
+  const membership = chatSpace.useMembership({ chatId }) // join this chat's room
+  const { data } = messageAdded(membership).useOnMessageFromServer(() => {}, {
+    lastMessageFromServerAsData: true, // keep the latest push in `data`
+  })
+  const send = (text: string) => messageSend(membership).sendToServer({ text })
+  // an <appChannel.Connection> at the app root holds the one socket every room rides
+  return <Chat newest={data} onSend={send} />
+}
+```
+
+`sendToClient` to a room on the server, `useOnMessageFromServer` on the client —
+that's the loop. Channels, spaces, and handlers are points like the rest: same
+validation, transformer, events, and stripping, and multi-process fan-out rides
+a Redis-shaped socket backplane — a `redis://` URL, a ready-made adapter
+(Postgres over `LISTEN`/`NOTIFY`, ioredis, node-redis), or any KV + pub/sub you
+bring. Full model on the [Channel](https://1gr14.dev/point0/latest/socket) and
+[Subscription](https://1gr14.dev/point0/latest/subscription) pages.
+
 ## Client bundle size
 
 <!-- point0:size:start -->
@@ -376,19 +457,23 @@ page.
 Every package a Point0 app ships to the browser, measured as npm delivers it:
 bundled, minified, with `react` and `react-dom` left out because you pay for
 those either way. Each row imports the whole surface of its package, so nothing
-tree-shakes away — these are ceilings, not best cases. **Total** is one bundle
-holding every non-optional row at once: what the browser actually downloads.
+tree-shakes away — these are ceilings, not best cases. The socket is the one
+opt-in: core is measured the way an app that never sets
+`server: { socket: true }` compiles it, and the row under it is the same core
+with the feature on. **Total** is one bundle holding every non-optional row at
+once: what the browser actually downloads.
 
-| package                 | role                                         |          raw |        gzip |      brotli |
-| ----------------------- | -------------------------------------------- | -----------: | ----------: | ----------: |
-| `@point0/core`          | the framework itself                         |     169.5 KB |     44.1 KB |     38.2 KB |
-| `@point0/react-dom`     | React/DOM bindings — `mount` and the router  |      13.4 KB |      4.9 KB |      4.4 KB |
-| `@1gr14/route0`         | peer — typed routes and URL building         |      19.0 KB |      6.1 KB |      5.5 KB |
-| `@tanstack/react-query` | peer — the cache every loader rides on       |      46.9 KB |     13.9 KB |     12.5 KB |
-| `wouter`                | peer — history and route matching            |       5.6 KB |      2.7 KB |      2.5 KB |
-| `unhead`                | peer — the `<head>`                          |      15.6 KB |      6.2 KB |      5.6 KB |
-| `@1gr14/error0`         | optional peer — typed errors across the wire |      10.8 KB |      3.1 KB |      2.8 KB |
-| **total**               | everything above, minus the optional peer    | **277.3 KB** | **78.5 KB** | **67.5 KB** |
+| package                  | role                                                                  |          raw |        gzip |      brotli |
+| ------------------------ | --------------------------------------------------------------------- | -----------: | ----------: | ----------: |
+| `@point0/core`           | the framework itself, without the socket feature                      |     218.4 KB |     55.8 KB |     47.6 KB |
+| `@point0/core` + sockets | optional — the same core with sockets on (`server: { socket: true }`) |     290.0 KB |     71.8 KB |     60.5 KB |
+| `@point0/react-dom`      | React/DOM bindings — `mount` and the router                           |      13.5 KB |      5.0 KB |      4.4 KB |
+| `@1gr14/route0`          | peer — typed routes and URL building                                  |      19.0 KB |      6.1 KB |      5.5 KB |
+| `@tanstack/react-query`  | peer — the cache every loader rides on                                |      46.9 KB |     13.9 KB |     12.5 KB |
+| `wouter`                 | peer — history and route matching                                     |       5.6 KB |      2.7 KB |      2.5 KB |
+| `unhead`                 | peer — the `<head>`                                                   |      15.6 KB |      6.2 KB |      5.6 KB |
+| `@1gr14/error0`          | optional peer — typed errors across the wire                          |      10.8 KB |      3.1 KB |      2.8 KB |
+| **total**                | everything above, minus the optional rows                             | **326.8 KB** | **90.3 KB** | **77.2 KB** |
 
 <!-- point0:size:end -->
 
@@ -443,6 +528,8 @@ Full reference at [1gr14.dev/point0](https://1gr14.dev/point0).
 - [Infinite Query](https://1gr14.dev/point0/latest/infinite-query)
 - [Mutation](https://1gr14.dev/point0/latest/mutation)
 - [Action](https://1gr14.dev/point0/latest/action)
+- [Subscription](https://1gr14.dev/point0/latest/subscription)
+- [Channel, spaces & handlers](https://1gr14.dev/point0/latest/socket)
 - [Root](https://1gr14.dev/point0/latest/root)
 - [Base](https://1gr14.dev/point0/latest/base)
 - [Plugin](https://1gr14.dev/point0/latest/plugin)
@@ -504,6 +591,7 @@ Full reference at [1gr14.dev/point0](https://1gr14.dev/point0).
 **Examples**
 
 - [Basic](https://1gr14.dev/point0/latest/example-basic)
+- [Socket](https://1gr14.dev/point0/latest/example-socket)
 - [Vite](https://1gr14.dev/point0/latest/example-vite)
 - [Better Auth](https://1gr14.dev/point0/latest/example-better-auth)
 - [Capacitor](https://1gr14.dev/point0/latest/example-capacitor)

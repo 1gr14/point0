@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { Point0 } from '@point0/core'
-import type { FetcherFetchDetailedResult, MiddlewareFnOptions } from '@point0/core'
+import type { FetcherFetchDetailedResult, MiddlewareProps } from '@point0/core'
 import { createTestThings } from '../../engine/tests/utils/internal-testing.js'
 import { cacheControl, cacheControlValues } from '../src/index.js'
 
@@ -23,7 +23,7 @@ const run = async ({
     variant: { type: variantType },
   } as unknown as FetcherFetchDetailedResult<any>
   const middleware = cacheControl(options)
-  const middlewareOptions = { next: async () => result } as unknown as MiddlewareFnOptions<any>
+  const middlewareOptions = { next: async () => result } as unknown as MiddlewareProps<any>
   const output = await middleware(middlewareOptions)
   return output instanceof Response ? output : output.response
 }

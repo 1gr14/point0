@@ -2,7 +2,7 @@ import { Route0 } from '@1gr14/route0'
 import type { AnyLocation, ExactLocation } from '@1gr14/route0'
 import type { ErrorPoint0 } from './error.js'
 import { POINT0_FROM_SCOPE_HEADER } from './protocol.js'
-import type { IsAny, PagePoint, RequestableReadyPoint } from './types.js'
+import type { IsAny, PagePoint, PointsScope, RequestableReadyPoint } from './types.js'
 import { generateId } from './utils.js'
 
 /**
@@ -338,7 +338,7 @@ export interface RequestCache {
   [key: string]: unknown
 }
 
-export type RequestVariantType = 'publicdir' | 'asset' | 'endpoint' | 'page' | 'error' | 'unknown'
+export type RequestVariantType = 'publicdir' | 'asset' | 'endpoint' | 'page' | 'websocket' | 'error' | 'unknown'
 
 export type RequestVariantPublicdir<TPublicdir = unknown> = {
   type: 'publicdir'
@@ -364,7 +364,12 @@ export type RequestVariantEndpoint = {
   type: 'endpoint'
   location: ExactLocation
   point: RequestableReadyPoint
-  outputType: 'html' | 'data' | 'queryClientDehydratedState'
+  /**
+   * `'upgrade'` = a channel endpoint reached over `GET` with an `Upgrade: websocket` header — the pipeline runs to the
+   * end and its synthetic marker response is turned into a Bun WebSocket handshake at the server top (see the engine's
+   * `POINT0_WEBSOCKET_UPGRADE_HEADER`); the ticket path stays `'data'`.
+   */
+  outputType: 'html' | 'data' | 'queryClientDehydratedState' | 'upgrade'
 }
 
 export type RequestVariantPage<TClient = unknown> = {
@@ -373,6 +378,18 @@ export type RequestVariantPage<TClient = unknown> = {
   point: PagePoint | undefined
   client: TClient
   redirect: Response | undefined
+}
+
+/**
+ * The bare WebSocket upgrade — `GET /_point0/<scope>/websocket` with an `Upgrade: websocket` header, the one socket per
+ * client that the scope's socket channels multiplex over. Exists only when the engine's `websocket` server option is
+ * on. The request rides the FULL fetch pipeline: middlewares run before the handler answers the upgrade-marker
+ * response, so a middleware that matches `request.variant.type === 'websocket'` can veto the upgrade by answering an
+ * ordinary response — the built-in place for an `Origin` allowlist (browsers do not apply CORS to WebSockets).
+ */
+export type RequestVariantWebsocket = {
+  type: 'websocket'
+  scope: PointsScope
 }
 
 export type RequestVariantUnknown = {
@@ -389,6 +406,7 @@ export type AnyRequestVariant<TError, TClient = unknown, TPublicdir = unknown> =
   | RequestVariantAsset<TPublicdir>
   | RequestVariantEndpoint
   | RequestVariantPage<TClient>
+  | RequestVariantWebsocket
   | RequestVariantError<TError>
   | RequestVariantUnknown
 
@@ -403,8 +421,10 @@ export type RequestVariant<TType extends RequestVariantType, TError, TClient = u
           ? RequestVariantEndpoint
           : TType extends 'page'
             ? RequestVariantPage<TClient>
-            : TType extends 'unknown'
-              ? RequestVariantUnknown
-              : TType extends 'error'
-                ? RequestVariantError<TError>
-                : never
+            : TType extends 'websocket'
+              ? RequestVariantWebsocket
+              : TType extends 'unknown'
+                ? RequestVariantUnknown
+                : TType extends 'error'
+                  ? RequestVariantError<TError>
+                  : never

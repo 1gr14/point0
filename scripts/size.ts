@@ -17,6 +17,10 @@
  * that same bundle. The entry imports the package's whole namespace, so nothing tree-shakes away: the number is an
  * honest ceiling, not a best case for some app that happens to use two exports.
  *
+ * The one thing that is NOT a ceiling is the socket: it is an opt-in feature, and an app that never turns it on does
+ * not download `@point0/core/socket` at all. So core is measured with the feature resolved OFF — see
+ * {@link resolveSocketFeature} — and a second, `optional` row measures the same core with it ON.
+ *
  * `total` is ONE bundle containing every non-optional row at once — what an app actually downloads. Rows are disjoint
  * by construction (each externalizes the others), so it lands a few percent above the column sum: the combined bundle
  * also carries the CommonJS interop and module glue that the separate ones don't need.
@@ -43,14 +47,22 @@
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import * as zlib from 'node:zlib'
+// The compiler's own guarded-expression/dead-code pass — the second half of a real client build's feature strip; see
+// `resolveSocketFeature`. Imported from the built `dist` like everything else this script measures.
+import { CompilerFile, Walker } from '@point0/compiler'
 import prettier from 'prettier'
 
 const ROOT = nodePath.resolve(__dirname, '..')
 const toPosix = (p: string) => p.split(nodePath.sep).join('/')
 /** Inside node_modules so the synthetic entries resolve bare specifiers, and so nothing lands in the working tree. */
 const TMP_DIR = nodePath.join(ROOT, 'node_modules', '.cache', 'point0-size')
-/** The npm-shaped copy of the workspace that everything is measured against — see {@link materializeTree}. */
-const TREE_DIR = nodePath.join(TMP_DIR, 'tree')
+
+/**
+ * How the `socket` feature is resolved in a tree: `false`/`true` is a build that decided (the compiler folds the flag
+ * to that literal), `'unresolved'` is a build that never ran the compiler and reads the flag at runtime — every branch
+ * alive, which is the widest possible module graph and therefore what {@link auditClientGraph} wants.
+ */
+type SocketMode = boolean | 'unresolved'
 
 /**
  * Copy every built `@point0/*` into a plain `node_modules/@point0/<pkg>` tree and measure from THERE, not from
@@ -63,10 +75,17 @@ const TREE_DIR = nodePath.join(TMP_DIR, 'tree')
  * `package.json`, with no tsconfig anywhere. So that is what we measure.
  *
  * Third-party deps still resolve upward into the real root `node_modules`.
+ *
+ * One tree per {@link SocketMode}, built once and reused: the copy is the expensive part, and two rows measured against
+ * the same mode must see byte-identical input.
  */
-const materializeTree = (): void => {
-  nodeFs.rmSync(TREE_DIR, { recursive: true, force: true })
-  const scope = nodePath.join(TREE_DIR, 'node_modules', '@point0')
+const trees = new Map<SocketMode, string>()
+const materializeTree = (socket: SocketMode): string => {
+  const cached = trees.get(socket)
+  if (cached) return cached
+  const treeDir = nodePath.join(TMP_DIR, `tree-socket-${socket}`)
+  nodeFs.rmSync(treeDir, { recursive: true, force: true })
+  const scope = nodePath.join(treeDir, 'node_modules', '@point0')
   nodeFs.mkdirSync(scope, { recursive: true })
   for (const pkg of nodeFs.readdirSync(nodePath.join(ROOT, 'packages'))) {
     const from = nodePath.join(ROOT, 'packages', pkg)
@@ -75,6 +94,74 @@ const materializeTree = (): void => {
     nodeFs.mkdirSync(to, { recursive: true })
     nodeFs.cpSync(nodePath.join(from, 'dist'), nodePath.join(to, 'dist'), { recursive: true })
     nodeFs.copyFileSync(nodePath.join(from, 'package.json'), nodePath.join(to, 'package.json'))
+  }
+  if (socket !== 'unresolved') resolveSocketFeature(scope, socket)
+  trees.set(socket, treeDir)
+  return treeDir
+}
+
+/** Every `_point0_env.feature.socket` in the built `dist` — the access the CLIENT compile folds to a literal. */
+const FEATURE_SOCKET_ACCESS = /\b(?:_point0_env|env)\.feature\.socket\b/g
+
+/**
+ * Do to the materialized tree what a real CLIENT build does to `@point0/core`: fold `_point0_env.feature.socket` to a
+ * literal and then run the compiler's guarded-expression/dead-code pass over the result. With `false` the ~40 guards
+ * (`if (!_point0_env.feature.socket) { throw }`) turn into a bare throw, every body behind them dies, the last live
+ * references into `socket.js` die with them, and the bundler drops the module — ~50 KB an app without sockets never
+ * downloads. With `true` it is the dead THROWS that go, which is what a `socket: true` app actually ships.
+ *
+ * Both halves are load-bearing:
+ *
+ * - Bun's `define` cannot do the fold. Like esbuild's, it only rewrites FREE identifiers, and `_point0_env` is an
+ *   imported binding in every `@point0/*` module — `define: { '_point0_env.feature.socket': 'false' }` changes nothing
+ *   (measured: zero bytes). So the fold is textual, on the exact member expression the compiler's AST pass rewrites.
+ * - The fold alone is not enough either. Bun eliminates the statements after the now-unconditional throw, but the import
+ *   records were already counted, so `socket.js` stays in the bundle whole (-15 KB instead of -50 KB). The real build
+ *   gets there because the compiler runs {@link CompilerFile.optimizeGuardedExpressions} — minify's guarded-expressions
+ *   and dead-code-elimination plugins, then a prune of the imports that just went unused — BEFORE any bundler sees the
+ *   file. Same call here, on the same built `dist` an app would compile.
+ *
+ * Nothing is deleted by hand: the module dies of dead guards, exactly as it does in `examples/vite` and in
+ * `packages/engine/tests/socket-strip.int.test.ts`.
+ */
+const resolveSocketFeature = (scope: string, socket: boolean): void => {
+  const walker = new Walker({ routes: undefined, ssrEnabled: false })
+  let folded = 0
+  const visit = (dir: string): void => {
+    for (const entry of nodeFs.readdirSync(dir, { withFileTypes: true })) {
+      const path = nodePath.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        visit(path)
+        continue
+      }
+      if (!entry.name.endsWith('.js')) continue
+      const source = nodeFs.readFileSync(path, 'utf8')
+      const accesses = source.match(FEATURE_SOCKET_ACCESS)?.length ?? 0
+      if (accesses === 0) continue
+      const file = CompilerFile.create({
+        walker,
+        file: toPosix(path),
+        content: source.replace(FEATURE_SOCKET_ACCESS, String(socket)),
+      })
+      const optimized = file.optimizeGuardedExpressions()
+      if (!optimized.ok) {
+        throw new Error(
+          `size.ts: the compiler pass failed on ${nodePath.relative(scope, path)}\n` +
+            optimized.errors.map(String).join('\n'),
+        )
+      }
+      nodeFs.writeFileSync(path, file.toCode().code)
+      folded += accesses
+    }
+  }
+  visit(scope)
+  // A rename in core (or a guard written some other way) would silently turn the socket rows into duplicates of each
+  // other, and the docs would quietly start claiming a strip that no longer happens. Shout instead.
+  if (folded === 0) {
+    throw new Error(
+      "size.ts: no `_point0_env.feature.socket` access left in the built dist — the socket rows can't be measured.\n" +
+        '  Either the tree is not built, or the guards moved: re-check `resolveSocketFeature` against `env.ts`.',
+    )
   }
 }
 
@@ -85,7 +172,7 @@ const materializeTree = (): void => {
 const REACT_RUNTIME = ['react', 'react-dom', 'scheduler']
 
 export type SizeRow = {
-  /** Row label — a package name, as it reads in the docs. */
+  /** Row key — a package name, as it reads in the docs; also names this row's synthetic entry file. Unique. */
   id: string
   /** What it is there for, one short phrase. Rendered as the `role` column. */
   role: string
@@ -99,6 +186,13 @@ export type SizeRow = {
   packages: string[]
   /** Not in the default client graph — an app opts in. Excluded from `total` and from the audit's expectations. */
   optional?: boolean
+  /**
+   * Measure against a tree with the `socket` feature compiled IN. Default is out: the socket is opt-in, so what a
+   * Point0 app downloads by default is the stripped core — see {@link resolveSocketFeature}.
+   */
+  socket?: boolean
+  /** First column, when the row is a variant rather than a package. Defaults to `id` in backticks. */
+  label?: string
 }
 
 /**
@@ -108,12 +202,24 @@ export type SizeRow = {
 export const ROWS: readonly SizeRow[] = [
   {
     id: '@point0/core',
-    role: 'the framework itself',
+    role: 'the framework itself, without the socket feature',
     entries: ['@point0/core'],
     // `safe-stable-stringify` and `use-context-selector` are real dependencies of core, bundled into it — no row of
     // their own, because their bytes are already inside core's number. (`@standard-schema/spec` is types-only and
     // never reaches the browser at all, so it isn't listed: if it ever emitted runtime code, the audit should shout.)
     packages: ['@point0/core', 'safe-stable-stringify', 'use-context-selector'],
+  },
+  {
+    // The same entry, the same packages, one build fact different — so this row REPLACES the one above for an app that
+    // turns the socket on, it is not added to it. `optional` keeps the surcharge out of `total`, the way the opt-in
+    // peer below is kept out.
+    id: '@point0/core with sockets',
+    label: '`@point0/core` + sockets',
+    role: 'optional — the same core with sockets on (`server: { socket: true }`)',
+    entries: ['@point0/core'],
+    packages: ['@point0/core', 'safe-stable-stringify', 'use-context-selector'],
+    optional: true,
+    socket: true,
   },
   {
     id: '@point0/react-dom',
@@ -170,8 +276,8 @@ const CLIENT_APP_ENTRIES = [
 
 export type Measurement = { raw: number; gzip: number; brotli: number }
 
-const writeEntry = async (name: string, specifiers: readonly string[]): Promise<string> => {
-  const file = nodePath.join(TREE_DIR, `${name.replace(/[^a-zA-Z0-9]+/g, '-')}.ts`)
+const writeEntry = async (treeDir: string, name: string, specifiers: readonly string[]): Promise<string> => {
+  const file = nodePath.join(treeDir, `${name.replace(/[^a-zA-Z0-9]+/g, '-')}.ts`)
   // Import the namespace and pin it to a global: without a consumer, tree-shaking would erase the whole package and
   // every row would measure a few hundred bytes of nothing.
   const lines = specifiers.map((spec, index) => `import * as m${index} from '${spec}'`)
@@ -217,10 +323,10 @@ const externalsFor = (row: SizeRow): string[] => {
 }
 
 export const measureRows = async (): Promise<Array<SizeRow & Measurement>> => {
-  materializeTree()
   const measured: Array<SizeRow & Measurement> = []
   for (const row of ROWS) {
-    const entry = await writeEntry(row.id, row.entries)
+    const treeDir = materializeTree(row.socket ?? false)
+    const entry = await writeEntry(treeDir, row.id, row.entries)
     measured.push({ ...row, ...(await compress(await bundle(entry, externalsFor(row), false))) })
   }
   return measured
@@ -230,11 +336,13 @@ export const measureRows = async (): Promise<Array<SizeRow & Measurement>> => {
  * One bundle with every non-optional row in it — what the browser actually downloads. Expect a few percent ABOVE the
  * column sum, not below: the rows are disjoint (each externalizes the others), so nothing dedupes, while the combined
  * bundle still pays for CommonJS interop and module glue the separate ones skip.
+ *
+ * Socket off, like every non-optional row: the surcharge is only paid by an app that asks for it.
  */
 export const measureTotal = async (): Promise<Measurement> => {
-  materializeTree()
+  const treeDir = materializeTree(false)
   const entries = ROWS.filter((r) => !r.optional).flatMap((r) => r.entries)
-  const entry = await writeEntry('total', entries)
+  const entry = await writeEntry(treeDir, 'total', entries)
   return compress(await bundle(entry, REACT_RUNTIME, false))
 }
 
@@ -262,10 +370,13 @@ export type AuditResult = { packages: string[]; undeclared: string[]; unusedRows
 /**
  * Bundle what a real app imports and read every module in the graph off the sourcemap. Any npm package present but not
  * claimed by a row is `undeclared` — a dependency the docs don't tell users they are shipping.
+ *
+ * Measured with the socket feature UNRESOLVED, not off: an audit wants the widest graph a build can produce, so a dep
+ * that only the socket runtime pulls in still has to be declared somewhere.
  */
 export const auditClientGraph = async (): Promise<AuditResult> => {
-  materializeTree()
-  const entry = await writeEntry('client-app', CLIENT_APP_ENTRIES)
+  const treeDir = materializeTree('unresolved')
+  const entry = await writeEntry(treeDir, 'client-app', CLIENT_APP_ENTRIES)
   const built = await bundle(entry, REACT_RUNTIME, true)
   const map = built.outputs.find((o) => o.kind === 'sourcemap')
   if (!map) throw new Error('size.ts: bundler produced no sourcemap — cannot audit the client module graph.')
@@ -303,17 +414,19 @@ export const renderBlock = (rows: readonly (SizeRow & Measurement)[], total: Mea
   const md = [
     'Every package a Point0 app ships to the browser, measured as npm delivers it: bundled, minified, with `react` and',
     '`react-dom` left out because you pay for those either way. Each row imports the whole surface of its package, so',
-    'nothing tree-shakes away — these are ceilings, not best cases. **Total** is one bundle holding every non-optional',
-    'row at once: what the browser actually downloads.',
+    'nothing tree-shakes away — these are ceilings, not best cases. The socket is the one opt-in: core is measured the',
+    'way an app that never sets `server: { socket: true }` compiles it, and the row under it is the same core with the',
+    'feature on. **Total** is one bundle holding every non-optional row at once: what the browser actually downloads.',
     '',
     '| package | role | raw | gzip | brotli |',
     '| --- | --- | ---: | ---: | ---: |',
   ]
   for (const row of rows) {
-    md.push(`| \`${row.id}\` | ${row.role} | ${kb(row.raw)} | ${kb(row.gzip)} | ${kb(row.brotli)} |`)
+    const label = row.label ?? `\`${row.id}\``
+    md.push(`| ${label} | ${row.role} | ${kb(row.raw)} | ${kb(row.gzip)} | ${kb(row.brotli)} |`)
   }
   md.push(
-    `| **total** | everything above, minus the optional peer | **${kb(total.raw)}** | **${kb(total.gzip)}** | ` +
+    `| **total** | everything above, minus the optional rows | **${kb(total.raw)}** | **${kb(total.gzip)}** | ` +
       `**${kb(total.brotli)}** |`,
   )
   return md.join('\n')

@@ -33,6 +33,7 @@ import type {
   EngineOptionsAppComponent,
   EngineOptionsCompilerSpecificParsed,
   EngineOptionsEnvParsed,
+  EngineOptionsFeaturesParsed,
   EngineOptionsServing,
   EngineOptionsViteConfig,
   ExtractedViteConfig,
@@ -94,7 +95,9 @@ import {
   pipeStreamStripped,
   readableStreamToString,
   registerOnProcessExit,
+  websocketDevProxyHandlers,
   stripTerminalClearSequences,
+  upgradeWebsocketDevProxy,
 } from './utils.js'
 
 export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0> {
@@ -105,6 +108,12 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
   pointsProvided: PointsDefinitionSource<any, any> | null
   points: TPrepared extends true ? ClientPoints<TError> | null : undefined
   ssrDefaultOptions: SsrOptionsResolved
+  /**
+   * This client's resolved feature record — the RUNTIME one: it becomes the `POINT0_FEATURE_*` env consts an UNCOMPILED
+   * read falls back to (a `compiler: false` client gets them through the env-consts script / `define`, never through
+   * the transform). What the compile inlines is `compiler.features`, resolved from this record in config.ts.
+   */
+  features: EngineOptionsFeaturesParsed
   appProvided: EngineOptionsAppComponent | null
   App: TPrepared extends true ? AppComponent | null : undefined
   // appDistFile: string | null
@@ -176,6 +185,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     viteDevServer: ViteDevServer | true | null
     server: EngineServer<any, TError>
     ssrDefaultOptions: SsrOptionsResolved
+    features: EngineOptionsFeaturesParsed
   }) {
     this.scope = input.scope
     this.cwd = input.cwd
@@ -218,6 +228,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     this.prepared = input.prepared
     this.engineFile = input.engineFile
     this.ssrDefaultOptions = input.ssrDefaultOptions
+    this.features = input.features
     this.App = undefined as TPrepared extends true ? AppComponent | null : undefined
   }
 
@@ -252,6 +263,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     compiler: EngineOptionsCompilerSpecificParsed | false
     server: EngineServer<any, TError>
     ssrDefaultOptions: SsrOptionsResolved
+    features: EngineOptionsFeaturesParsed
   }): EngineClient<false, TError> {
     const viteDevServer = null
     const bunNativeDevServer = null
@@ -301,15 +313,22 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     POINT0_SCOPE: PointsScope
     POINT0_SIDE: 'client'
     POINT0_SSR_ENABLED_DEFAULT: 'true' | 'false'
+    POINT0_FEATURE_SOCKET: 'true' | 'false'
   } {
     const NODE_ENV = normalizeAndValidateNodeEnv(nodeEnvFallback)
     const POINT0_SCOPE = this.scope
     const POINT0_SIDE = 'client'
     const POINT0_SSR_ENABLED_DEFAULT = this.ssrDefaultOptions.enabled ? 'true' : 'false'
+    // Belt to the compiler's braces: the client compile inlines every `env.feature.*` access as a literal, so this
+    // const is what an UNCOMPILED read (a `compiler: false` client) falls back to — and it must say the same thing.
+    // It does: `this.features` is the record `compiler.features` was resolved from, so the two agree unless a
+    // `compiler: { features }` block deliberately moves the compile alone.
+    const POINT0_FEATURE_SOCKET = this.features.socket ? 'true' : 'false'
     this.envConsts.NODE_ENV = NODE_ENV
     this.envConsts.POINT0_SCOPE = POINT0_SCOPE
     this.envConsts.POINT0_SIDE = POINT0_SIDE
     this.envConsts.POINT0_SSR_ENABLED_DEFAULT = POINT0_SSR_ENABLED_DEFAULT
+    this.envConsts.POINT0_FEATURE_SOCKET = POINT0_FEATURE_SOCKET
     if (!this.envVarsApplied) {
       this.envVarsApplied = true
       process.env.POINT0_STATIC_COMPILER_OPTIONS = JSON.stringify(
@@ -320,7 +339,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
         process.env.POINT0_STATIC_COMPILER_REF = compilerRef
       }
     }
-    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR_ENABLED_DEFAULT }
+    return { NODE_ENV, POINT0_SCOPE, POINT0_SIDE, POINT0_SSR_ENABLED_DEFAULT, POINT0_FEATURE_SOCKET }
   }
 
   /**
@@ -478,6 +497,7 @@ export class EngineClient<TPrepared extends boolean, TError extends ErrorPoint0>
     return {
       scope: this.compiler.scope ? this.scope : false,
       side: this.compiler.side ? 'client' : false,
+      features: this.compiler.features,
       mode: this.compiler.mode ? normalizeAndValidateNodeEnv() : false,
       runtime: this.compiler.runtime,
       os: this.compiler.os,
@@ -547,7 +567,7 @@ plugins = [${combinedPluginsStrings.map((p) => `"${p}"`).join(', ')}]
     const scriptContent = `
 import indexHtml from '${indexHtmlPosix}';
 import { Engine } from '@point0/engine';
-import { fetchRetryingConnectionRefused, registerOnProcessExit } from '@point0/engine/utils';
+import { fetchRetryingConnectionRefused, registerOnProcessExit, websocketDevProxyHandlers, upgradeWebsocketDevProxy } from '@point0/engine/utils';
 import { env } from '@point0/core';
 const { engine } = await Engine.findAndImportSelf({ engineFile: '${engineFilePosix}' });
 try {
@@ -565,7 +585,13 @@ try {
     routes: {
       '/index.html': indexHtml,
     },
-    fetch: async (request) => {
+    websocket: websocketDevProxyHandlers,
+    fetch: async (request, currentBunServer) => {
+      // the socket socket can't ride the plain-fetch forward below — pipe it to the engine server instead
+      const websocketDevProxyResult = upgradeWebsocketDevProxy({ request, bunServer: currentBunServer, targetPort: ${this.server.port} })
+      if (websocketDevProxyResult) {
+        return websocketDevProxyResult.response
+      }
       if (request.headers.get('${POINT0_MIDDLEWARE_CHECK_FROM_SERVER_HEADER}') === 'true') {
         return new Response('__NO_RESPONSE__', {
           headers: {
@@ -802,7 +828,13 @@ try {
         console: false,
         hmr: false, // vite provides it own hmr
       },
-      fetch: async (request) => {
+      websocket: websocketDevProxyHandlers as never,
+      fetch: async (request, bunServer) => {
+        // the socket socket can't ride the plain-fetch forward below — pipe it to the engine server instead
+        const websocketDevProxyResult = upgradeWebsocketDevProxy({ request, bunServer, targetPort: this.server.port })
+        if (websocketDevProxyResult) {
+          return websocketDevProxyResult.response
+        }
         const location = Route0.getLocation(request.url)
         if (location.pathname === '/index.html') {
           const originalIndexHtml = await viteDevServer.transformIndexHtml(request.url, srcIndexHtmlContent)

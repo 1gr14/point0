@@ -27,6 +27,7 @@ export default defineConfig({
     'src/points-manager.ts',
     'src/protocol.ts',
     'src/query-client.ts',
+    'src/socket.ts',
     'src/redirect.ts',
     'src/request0.ts',
     'src/server-only.ts',

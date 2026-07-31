@@ -213,6 +213,9 @@ export const cacheControl = (options: CacheControlOptions = {}): MiddlewareFn<an
         case 'middleware':
         case 'options':
           return undefined
+        case 'websocket':
+          // the upgrade-marker response already carries its own `private, no-store` — the early return above took it
+          return undefined
       }
     })()
     if (typeof value === 'string') {

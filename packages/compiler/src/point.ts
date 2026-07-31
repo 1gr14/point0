@@ -5,6 +5,7 @@ import { Route0 } from '@1gr14/route0'
 import type { AnyRoute } from '@1gr14/route0'
 import {
   getPointEndpointRoutePath,
+  pointTypeUsesQueryTransport,
   toKebabCase,
   toPascalCase,
   type PointName,
@@ -14,6 +15,39 @@ import {
 import * as nodeFsPath from 'node:path'
 import type { CompilerFile } from './file.js'
 import type { Walker } from './walker.js'
+
+/**
+ * The methods whose options object is SIDED — the four socket families, closer and chain declarer each. Their argument
+ * is `{ server, client, ...bothSides }` and the compiler cuts it by dropping one whole group per bundle, so the
+ * argument itself must be an object literal without a top-level spread (`validateSidedOptionsArgs`).
+ */
+const sidedOptionsMethodNames = [
+  'channel',
+  'channelOptions',
+  'space',
+  'spaceOptions',
+  'serverHandler',
+  'serverHandlerOptions',
+  'clientHandler',
+  'clientHandlerOptions',
+]
+
+/** How a developer would name the offending options argument, for the compile error. */
+const optionsArgNodeDescriptions: Record<string, string> = {
+  CallExpression: 'a function call',
+  NewExpression: 'a function call',
+  MemberExpression: 'a property access',
+  ConditionalExpression: 'a ternary',
+  LogicalExpression: 'a logical expression',
+  SpreadElement: 'a spread',
+}
+
+const describeOptionsArgNode = (node: Node): string => {
+  if (node.type === 'Identifier') {
+    return `a variable (\`${node.name}\`)`
+  }
+  return optionsArgNodeDescriptions[node.type] ?? `a ${node.type}`
+}
 
 export class CompilerPoint<TValid extends boolean = boolean> {
   readonly walker: Walker
@@ -183,6 +217,9 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     const candidates = [`_${snakeType}`, `_${pointType}`, capitalizedType, pointType]
     if (pointType === 'infiniteQuery') {
       candidates.push('Query', '_query')
+    }
+    if (pointType === 'serverHandler' || pointType === 'clientHandler') {
+      candidates.push('Handler', '_handler')
     }
     const sortedCandidates = candidates.sort((a, b) => b.length - a.length)
     for (const candidate of sortedCandidates) {
@@ -609,11 +646,12 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     if (this.type !== 'action') {
       return [this.type]
     }
-    return ['action', 'query', 'mutation', 'infiniteQuery']
+    return ['action', 'query', 'mutation', 'infiniteQuery', 'subscription']
   }
 
   hasLoaders(): boolean {
-    return this.selfMethods.some((method) => method.name === 'loader')
+    // `connector` is the channel's loader — same executor slot, channel-specific name
+    return this.selfMethods.some((method) => method.name === 'loader' || method.name === 'connector')
   }
 
   // Whether a `.search(...)` schema applies to this point anywhere in its chain — either declared
@@ -827,8 +865,9 @@ export class CompilerPoint<TValid extends boolean = boolean> {
 
       // for action we set endpoint in previouse step, because we need to know method and route first
       if (this.type !== 'action') {
-        // pages always has endpoint, becouse they can be called to get queryClientDehydratedState
-        if ((this.type === 'page' && this.ssr) || this.hasLoaders()) {
+        // pages always has endpoint, becouse they can be called to get queryClientDehydratedState;
+        // a channel always has one — the connect endpoint exists even when the channel declares no connector
+        if ((this.type === 'page' && this.ssr) || this.type === 'channel' || this.hasLoaders()) {
           // Segment casing must mirror core's endpoint construction in point0.ts — the server mounts the KEBAB path,
           // so a meta that carries any other casing describes a URL that 404s. (`scope` is typed optional until the
           // point validates; a missing one was already collected as a compile error above, so that stringification
@@ -844,17 +883,14 @@ export class CompilerPoint<TValid extends boolean = boolean> {
               ? endpointRouteBase
               : endpointRouteBase.extend(this.route.definition)
           // Reads are GET so a CDN can cache them (pages/layouts, and the query family — query/infiniteQuery and the
-          // queries behind component/provider loaders); only mutations, which write, stay POST. Must mirror the core
-          // default in point0.ts.
+          // queries behind component/provider loaders); only mutations, which write, stay POST. A channel's nominal
+          // method is GET too — its real connect is GET-first (`?input=`, and the cold-start GET+Upgrade handshake),
+          // POSTing only on the binary/over-long fallback. Must mirror the core default in point0.ts.
           const endpointMethod = this.type === 'mutation' ? 'POST' : 'GET'
-          // A query endpoint answers to both GET (input in the URL) and POST (the fallback for a binary or over-long
-          // input); everything else answers to its single method. Mirrors core's `_endpoint.methods`.
-          const isQueryEndpoint =
-            this.type === 'query' ||
-            this.type === 'infiniteQuery' ||
-            this.type === 'component' ||
-            this.type === 'provider'
-          const endpointMethods = isQueryEndpoint ? ['GET', 'POST'] : [endpointMethod]
+          // A query-transport endpoint answers to both GET (input in the URL) and POST (the fallback for a binary or
+          // over-long input); everything else answers to its single method. The kind list is the shared
+          // `pointTypeUsesQueryTransport` from core's protocol — the same list core's `_endpoint.methods` reads.
+          const endpointMethods = pointTypeUsesQueryTransport(this.type) ? ['GET', 'POST'] : [endpointMethod]
           this.endpoint = { method: endpointMethod, route: endpointRoute, methods: endpointMethods }
         }
       }
@@ -871,6 +907,8 @@ export class CompilerPoint<TValid extends boolean = boolean> {
           ),
         )
       }
+
+      this.validateSidedOptionsArgs()
 
       const earliestPoint = this.getEarliestParentOrSelf()
       // we just check if the last parsed base point is Point0, so it is desired point, else it is not related to Point0, just looks like it, but not
@@ -1006,6 +1044,48 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     return this.chainMethods.filter((m) => m.point === this)
   }
 
+  /**
+   * The four socket families group their point options by side (`{ server, client }`) and the compiler splits them
+   * STRUCTURALLY — it deletes the whole `server` property from the client bundle and the whole `client` property from
+   * the server one. Deleting a property means FINDING it, so the outer argument must be an object literal without a
+   * top-level spread. Anything else (a variable, a call, a spread) would ship server code — the caps, the join guards,
+   * the reply customizers and their imports — straight into the browser, silently. So it is a compile error instead.
+   *
+   * Only the OUTER object is constrained: a group's VALUE may be any expression (`server: serverOptions`, a spread
+   * inside a group), since the whole property is what gets dropped.
+   */
+  private validateSidedOptionsArgs(): void {
+    for (const method of this.getSelfMethods()) {
+      if (!sidedOptionsMethodNames.includes(method.name)) {
+        continue
+      }
+      const node = method.nodePath.node
+      if (node.type !== 'CallExpression') {
+        continue
+      }
+      const argument = node.arguments.at(0)
+      if (argument === undefined) {
+        continue
+      }
+      const where = `${this.file.abs}:${node.loc?.start.line || 0}:${node.loc?.start.column || 0}`
+      if (argument.type !== 'ObjectExpression') {
+        this.errors.push(
+          new Error(
+            `.${method.name}() options must be written as an object literal, got ${describeOptionsArgNode(argument)}. The compiler splits these options by side — the client bundle loses the whole \`server\` group, the server bundle the whole \`client\` one — and it can only do that on a literal at the call itself. Inline the object; a group's VALUE may still be any expression (\`.${method.name}({ server: myServerOptions })\`). At ${where}`,
+          ),
+        )
+        continue
+      }
+      if (argument.properties.some((property) => property.type === 'SpreadElement')) {
+        this.errors.push(
+          new Error(
+            `.${method.name}() options must be an object literal WITHOUT a top-level spread. The compiler drops the whole \`server\` group from the client bundle (and \`client\` from the server one), and a spread hides which keys the object carries — server code would ship to the browser. Spread INSIDE a group instead (\`.${method.name}({ server: { ...caps } })\`). At ${where}`,
+          ),
+        )
+      }
+    }
+  }
+
   private removeMethodArgs({ nodePath }: { nodePath: NodePath<Node> }): void {
     if (nodePath.node.type !== 'CallExpression') {
       return
@@ -1074,6 +1154,76 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     }
   }
 
+  // `.clientReply(cb, schema?)` in the client bundle: the schema argument is server code (it validates replies on the
+  // server) — drop everything after the callback.
+  private removeMethodArgsAfterFirst({ nodePath }: { nodePath: NodePath<Node> }): void {
+    if (nodePath.node.type !== 'CallExpression') {
+      return
+    }
+    if (nodePath.node.callee.type !== 'MemberExpression') {
+      return
+    }
+    if (nodePath.node.callee.property.type !== 'Identifier') {
+      return
+    }
+    if (nodePath.node.arguments.length <= 1) {
+      return
+    }
+    nodePath.node.arguments = nodePath.node.arguments.slice(0, 1)
+    this.file.modified = true
+  }
+
+  // `.clientReply(cb, schema?)` in the server bundle: the callback is client code — replace it with `() => {}` so its
+  // body and imports never land server-side, while the schema (argument 2, server code) stays.
+  private replaceFirstArgWithEmptyArrowFn({ nodePath }: { nodePath: NodePath<Node> }): void {
+    if (nodePath.node.type !== 'CallExpression') {
+      return
+    }
+    if (nodePath.node.callee.type !== 'MemberExpression') {
+      return
+    }
+    if (nodePath.node.callee.property.type !== 'Identifier') {
+      return
+    }
+    if (nodePath.node.arguments.length === 0) {
+      return
+    }
+    // () => {}
+    nodePath.node.arguments[0] = t.arrowFunctionExpression([], t.blockStatement([]))
+    this.file.modified = true
+  }
+
+  // Drop named properties from an object-literal argument. The socket families use it STRUCTURALLY — one key, the
+  // whole `server` or `client` group — which is why their options argument must be a literal without spreads
+  // (`validateSidedOptionsArgs` turns anything else into a compile error). The subscription family still splits by
+  // key. Non-literal arguments and spread-carrying objects are skipped here: with the validation in place they are
+  // already errors, and skipping keeps a broken build from silently producing half-stripped code.
+  private removeObjectArgProperties({ nodePath, keys }: { nodePath: NodePath<Node>; keys: string[] }): void {
+    if (nodePath.node.type !== 'CallExpression') {
+      return
+    }
+    for (const argument of nodePath.node.arguments) {
+      if (argument.type !== 'ObjectExpression') {
+        continue
+      }
+      if (argument.properties.some((property) => property.type === 'SpreadElement')) {
+        continue
+      }
+      const kept = argument.properties.filter((property) => {
+        if (property.type !== 'ObjectProperty' && property.type !== 'ObjectMethod') {
+          return true
+        }
+        const key = property.key
+        const name = key.type === 'Identifier' ? key.name : key.type === 'StringLiteral' ? key.value : undefined
+        return name === undefined || !keys.includes(name)
+      })
+      if (kept.length !== argument.properties.length) {
+        argument.properties = kept
+        this.file.modified = true
+      }
+    }
+  }
+
   private replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath }: { nodePath: NodePath<Node> }): void {
     if (nodePath.node.type !== 'CallExpression') {
       return
@@ -1107,6 +1257,13 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       switch (method.name) {
         case 'input':
         case 'loader':
+        case 'connector':
+        // the join callback runs on the server only (it reads the connection's identity and returns the rooms) — its
+        // args are server code, stripped from the client bundle exactly like the channel's `.connector`
+        case 'joiner':
+        // the enrollment callback runs on the server at connection setup — same strip; the client learns the enrolled
+        // rooms from the connect confirmation
+        case 'enroller':
         case 'action':
         case 'headers':
         case 'cookies':
@@ -1118,8 +1275,35 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         case 'response':
         case 'description':
         case 'openapi':
-        case 'models': {
+        case 'models':
+        // handler methods parsed/run by the server only: the client-send schema (the client sends it, the server
+        // parses it) and the server's answer
+        case 'clientSend': {
           this.removeMethodArgs({ nodePath: method.nodePath })
+          break
+        }
+        case 'serverReply': {
+          this.removeMethodArgs({ nodePath: method.nodePath })
+          break
+        }
+        case 'clientReply': {
+          // the callback is client code (keep it); the trailing schema validates replies on the server (drop it)
+          this.removeMethodArgsAfterFirst({ nodePath: method.nodePath })
+          break
+        }
+        // the four socket families group their point options by side — the whole `server` group is server code
+        // (caps, join guards, reply customizers) and never ships to the client. One structural cut per family, so a
+        // NEW server option cannot leak by being forgotten in a per-key list; `preventTransformer` and any other
+        // both-sides key sits top-level and stays.
+        case 'channel':
+        case 'channelOptions':
+        case 'serverHandler':
+        case 'serverHandlerOptions':
+        case 'space':
+        case 'spaceOptions':
+        case 'clientHandler':
+        case 'clientHandlerOptions': {
+          this.removeObjectArgProperties({ nodePath: method.nodePath, keys: ['server'] })
           break
         }
         case 'ssr': {
@@ -1148,8 +1332,32 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       if (method.name === 'clientInput') {
         this.replaceAllArgsWithArrowFnReturnEmptyObject({ nodePath: method.nodePath })
       }
+      if (method.name === 'serverSend') {
+        // the server sends it, the client reads it — the schema types the send, the server never parses it
+        this.removeMethodArgs({ nodePath: method.nodePath })
+      }
       if (method.name === 'clientOn') {
         this.removeLastMethodArg({ nodePath: method.nodePath })
+      }
+      if (method.name === 'clientReply') {
+        // the callback (arg 1) is client code → `() => {}`; the schema (arg 2) validates replies here on the server
+        this.replaceFirstArgWithEmptyArrowFn({ nodePath: method.nodePath })
+      }
+      if (sidedOptionsMethodNames.includes(method.name)) {
+        // the mirror of the client cut: the whole `client` group is client code (the connection and membership
+        // lifecycle, the reply listeners, the send window) and must not pull its imports into the server bundle
+        this.removeObjectArgProperties({ nodePath: method.nodePath, keys: ['client'] })
+      }
+      if (method.name === 'subscription' || method.name === 'subscriptionOptions') {
+        // same split for the subscription closer and the `.subscriptionOptions()` scope default: the module-level
+        // listener and the lifecycle callbacks belong to the client consumer loop. The tracked-cursor pair STAYS on
+        // both sides (the `reconnect` precedent — plain data is never stripped): only the server holds the real
+        // input schema, so the `.subscription()` close guard needs the pair HERE to check the input path against it
+        // (the client's `.input()` is blanked and skips that half)
+        this.removeObjectArgProperties({
+          nodePath: method.nodePath,
+          keys: ['onMessageFromServer', 'onConnect', 'onDisconnect', 'onError'],
+        })
       }
       if (
         [
@@ -1205,6 +1413,9 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         // server like things
         case 'input':
         case 'loader':
+        case 'connector':
+        case 'joiner':
+        case 'enroller':
         case 'action':
         case 'headers':
         case 'cookies':
@@ -1218,10 +1429,24 @@ export class CompilerPoint<TValid extends boolean = boolean> {
         case 'models':
         case 'params':
         case 'search':
+        case 'clientSend':
+        case 'serverReply':
+        // sided socket options — another scope's bundle serves this point on NEITHER side, so both groups (and
+        // their imports) go; the closer call itself stays so types resolve, like every other blanked method here
+        case 'channel':
+        case 'channelOptions':
+        case 'space':
+        case 'spaceOptions':
+        case 'serverHandler':
+        case 'serverHandlerOptions':
+        case 'clientHandler':
+        case 'clientHandlerOptions':
         // client like things
         case 'clientLoader':
         case 'clientInput':
+        case 'serverSend':
         case 'clientOn':
+        case 'clientReply':
         case 'scrollPosition':
         case 'scrollRestore':
         case 'onPrefetchPage':
@@ -1515,6 +1740,11 @@ export const POINT_TYPE_TO_METHOD_MAP: Record<ReadyPointType, ReadyPointType> = 
   query: 'query',
   infiniteQuery: 'infiniteQuery',
   action: 'action',
+  subscription: 'subscription',
+  channel: 'channel',
+  space: 'space',
+  serverHandler: 'serverHandler',
+  clientHandler: 'clientHandler',
   base: 'base',
   root: 'root',
 }

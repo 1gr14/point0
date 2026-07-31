@@ -71,13 +71,25 @@ export const SOLO_INT = [
 ] as const
 
 /**
- * Long non-solo files pinned to their own named CI group, so they never share a runner with (and stretch) the auto
- * groups. Validated like {@link SOLO_INT}: entries must exist and must not also be solo.
+ * Non-solo files pinned to their own named CI group — either long (so they never share a runner with, and stretch, the
+ * auto groups) or needing something only their own runner provisions. Validated like {@link SOLO_INT}: entries must
+ * exist and must not also be solo.
  */
 export const PINNED_GROUPS: Record<string, readonly string[]> = {
   'core-rsc': ['packages/core/tests/rsc.unit.test.tsx'],
   'engine-rsc': ['packages/engine/tests/rsc.int.test.tsx'],
   'engine-suspend': ['packages/engine/tests/suspend.int.test.tsx'],
+  'engine-socket-strip': ['packages/engine/tests/socket-strip.int.test.ts'],
+  // the real-store suites: a `redis-server` binary on PATH (two of them spawn their own instances), REDIS_URL, and
+  // POSTGRES_URL. CI provisions all three on exactly this group's Linux runner (test.yml); anywhere they are absent —
+  // other OSes, a dev machine without the binaries — the suites skip themselves.
+  'engine-backplane': [
+    'packages/engine/tests/backplane-redis-clients.int.test.ts',
+    'packages/engine/tests/redis-subscriber-reconnect.int.test.ts',
+    'packages/engine/tests/socket-redis.int.test.ts',
+    'packages/engine/tests/backplane-postgres.int.test.ts',
+    'packages/engine/tests/socket-backplane.int.test.ts',
+  ],
 }
 
 /** How many files an auto `int-N` group carries at most — the int lane self-sizes from this. */

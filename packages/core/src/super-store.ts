@@ -140,6 +140,7 @@ export class SuperStore {
     | {
         variant: 'fakeClient'
         clientState: undefined
+        /** one state per RUN — a `run()` is one loaded page; continue a page by re-entering its run state */
         fakeClientState: SuperStoreState
         // serverStorageState: SuperStoreState
         serverStorageState: undefined
@@ -198,7 +199,6 @@ export class SuperStore {
         fakeClientState: (serverStorageState.__POINT0_FAKE_CLIENTS_STATE__ as SuperStoreState)[
           fakeClient.id
         ] as SuperStoreState,
-        // serverStorageState,
         serverStorageState: undefined,
         serverGlobalState: undefined,
       }
@@ -350,6 +350,13 @@ export class SuperStore {
         }
         case 'clientServerIsolated': {
           return states.clientState || states.fakeClientState || states.serverStorageState
+        }
+        case 'clientServerGlobal': {
+          // the superstore twin of a MODULE GLOBAL: the browser's global state, a fake client's own state — and on
+          // the server ALWAYS the process-global state, never the request storage (nothing per-request can leak in,
+          // and code outside any request — module load, crons, bare renderToString — reads the same state a request
+          // does, exactly like a plain module global would behave)
+          return states.clientState || states.fakeClientState || states.serverGlobalState
         }
         case 'serverOnlyStorage': {
           // if (states.variant === 'client') {
@@ -540,7 +547,6 @@ export class SuperStore {
     if (!serverStorageState.__POINT0_FAKE_CLIENTS_STATE__) {
       return
     }
-
     delete (serverStorageState.__POINT0_FAKE_CLIENTS_STATE__ as SuperStoreState)[fakeClient.id]
   }
 }
@@ -696,6 +702,7 @@ export const superstore = SuperStore.instance
 
 export type SuperStoreItemPolicy =
   | 'clientServerIsolated'
+  | 'clientServerGlobal'
   | 'clientServerTransferredSsr'
   | 'clientOnly'
   | 'serverOnlyStorage'

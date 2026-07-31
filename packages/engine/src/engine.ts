@@ -36,6 +36,8 @@ import {
   serverHotStoreRootDir,
 } from './server-hot-store.js'
 import { EngineServer } from './server.js'
+import type { EngineSocket, EngineSocketFacade } from './socket.js'
+import { createEngineSocketFacade } from './socket.js'
 import {
   getViteConfigForDev,
   isExtractingViteConfig,
@@ -45,6 +47,16 @@ import {
 import { installDevShutdown } from './dev-shutdown.js'
 import { POINT0_ENV_MODE_LOG } from './env-files.js'
 import { collectImportGraphPatterns, FilesWatcher } from './watcher.js'
+
+// the `engine.socket` surface travels with the engine — the shapes are nameable from `@point0/engine` (the EngineSocket
+// class behind them is not part of the public API)
+export type {
+  EngineSocketFacade,
+  EngineSocketLocalConnection,
+  EngineSocketLocalMembership,
+  EngineSocketLocalSnapshot,
+  EngineSocketStatus,
+} from './socket.js'
 
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
@@ -60,6 +72,13 @@ export class Engine<
     return first as TPrepared extends true ? EngineClient<true, TError> : EngineClient<false, TError>
   }
   server: TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
+  /**
+   * Server-side socket introspection — `engine.socket.local.get()` (a synchronous snapshot of THIS process) and
+   * `engine.socket.status()` (bus + backplane service state). The mirror of the client's `getSocket()`, and the only
+   * public window onto the socket machinery: the `EngineSocket` itself stays internal. Present from `Engine.create` on
+   * — before `prepare()`, and with the `socket` server option off, it answers empty instead of throwing.
+   */
+  readonly socket: EngineSocketFacade
   publicdirs: TPrepared extends true ? Array<Publicdir<true, TError>> : Array<Publicdir<false, TError>>
   log: LogFn
   logger: LoggerOptionsInput | undefined
@@ -93,6 +112,11 @@ export class Engine<
       ? Array<EngineClient<true, TError>>
       : EngineClient<false, TError>[]
     this.server = input.server as TPrepared extends true ? EngineServer<true, TError> : EngineServer<false, TError>
+    this.socket = createEngineSocketFacade({
+      // both lazy: the EngineSocket is born at `server.prepare()`, long after this constructor
+      socket: () => this.server.socket as EngineSocket<any> | null,
+      backplane: () => this.server.backplaneProvided,
+    })
     this.log = input.log
     this.logger = input.logger
     this.prepared = input.prepared
@@ -699,6 +723,9 @@ export class Engine<
       {
         __POINT0_SERVER_PORT__: this.server.port,
         __POINT0_FETCH_FN__: fetchFn as RichFetchFn,
+        // an ambient SERVER query client flows through (a nested withFetch shares the cache), else a fresh one.
+        // withFetch is never entered from a fake client's context — the in-memory socket's server end runs frames
+        // through its own bare-server wrap (fake-client.ts), the production parity path
         __POINT0_QUERY_CLIENT__: __POINT0_QUERY_CLIENT__.getOrUndefined() || __POINT0_QUERY_CLIENT__.config.init(),
       },
       'Value "%s" not exists in server storage context yet',

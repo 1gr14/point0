@@ -11,6 +11,8 @@ import type { ErrorPoint0 } from './error.js'
 import type { NavigationPageState, RedirectTask, SetSearchHelper } from './navigation.js'
 import type {
   AnyPoint,
+  AnyClientChannelConnection,
+  AnyClientSpaceMembership,
   CurrentRouteDefinition,
   Data,
   EmptyData,
@@ -87,6 +89,17 @@ export type QueryDefinition<TQueryResultType extends QueryResultType, TQueriedDa
   error: TError
 }
 export type QueriesDefinitions = Array<QueryDefinition<any, any, any>>
+/**
+ * The typed `connections` a mountable accumulated via `.with(channel, ...)` — mirrors the queries mechanics with less
+ * machinery: the tuple stores the READY connection type (`.with` computes it once; `resolve` decides how narrow), so no
+ * definition→result mapping types are needed.
+ */
+export type ConnectionsDefinitions = Array<AnyClientChannelConnection>
+/**
+ * The typed `memberships` a mountable accumulated via `.with(space, ...)` — the connections twin, one level below: the
+ * tuple stores the READY membership type (`.with` computes it once; `resolve` decides how narrow).
+ */
+export type MembershipsDefinitions = Array<AnyClientSpaceMembership>
 export type QueryByDefinition<TQueryDefinition extends QueryDefinition<any, any, any>> = TQueryDefinition extends {
   type: infer TQueryResultType
   data: infer TQueriedData
@@ -254,11 +267,15 @@ export type MountableStateError<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TError extends ErrorPoint0,
 > = {
   props: TInnerProps
   // queries: QueriesUnknownStatus<TQueries>
   queries: QueriesByDefinitions<TQueriesDefinitions>
+  connections: TConnectionsDefinitions
+  memberships: TMembershipsDefinitions
   data: undefined
   error: TError
   loading: false
@@ -273,11 +290,15 @@ export type MountableStateLoading<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   TError extends ErrorPoint0,
 > = {
   props: TInnerProps
   queries: QueriesByDefinitions<TQueriesDefinitions>
+  connections: TConnectionsDefinitions
+  memberships: TMembershipsDefinitions
   data: undefined
   error: undefined
   loading: true
@@ -292,10 +313,14 @@ export type MountableStateSuccess<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
   props: TInnerProps
   queries: SuccessQueriesDefinitions<TQueriesDefinitions>
+  connections: TConnectionsDefinitions
+  memberships: TMembershipsDefinitions
   data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
   error: undefined
   loading: false
@@ -310,6 +335,8 @@ export type MountableState<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0,
 > = IfAnyThenElse<
@@ -321,6 +348,8 @@ export type MountableState<
       TClientInputSchema,
       TInnerProps,
       TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TMapperOutput
     >
   | MountableStateLoading<
@@ -330,6 +359,8 @@ export type MountableState<
       TClientInputSchema,
       TInnerProps,
       TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TError
     >
   | MountableStateError<
@@ -339,6 +370,8 @@ export type MountableState<
       TClientInputSchema,
       TInnerProps,
       TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TError
     >,
   TStatus extends 'success'
@@ -349,6 +382,8 @@ export type MountableState<
         TClientInputSchema,
         TInnerProps,
         TQueriesDefinitions,
+        TConnectionsDefinitions,
+        TMembershipsDefinitions,
         TMapperOutput
       >
     : TStatus extends 'loading'
@@ -359,6 +394,8 @@ export type MountableState<
           TClientInputSchema,
           TInnerProps,
           TQueriesDefinitions,
+          TConnectionsDefinitions,
+          TMembershipsDefinitions,
           TError
         >
       : TStatus extends 'error'
@@ -369,6 +406,8 @@ export type MountableState<
             TClientInputSchema,
             TInnerProps,
             TQueriesDefinitions,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
             TError
           >
         : never
@@ -428,10 +467,14 @@ export type SuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
   props: TInnerProps
   queries: SuccessQueriesDefinitions<TQueriesDefinitions>
+  connections: TConnectionsDefinitions
+  memberships: TMembershipsDefinitions
   data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
 } & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema> &
   WithErrorAndLoadingComponents &
@@ -443,6 +486,8 @@ export type SuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   SuccessComponentProps<
@@ -452,21 +497,27 @@ export type SuccessComponentType<
     TClientInputSchema,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput
   >
 >
 
-export type MapperFnOptions<
+export type MapperProps<
   TLocation extends AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = {
   props: TInnerProps
   queries: SuccessQueriesDefinitions<TQueriesDefinitions>
+  connections: TConnectionsDefinitions
+  memberships: TMembershipsDefinitions
   data: MountableSuccessData<TQueriesDefinitions, TMapperOutput>
 } & WithParamsAndSearchAndInput<TParamsSchema, TSearchSchema, TClientInputSchema> &
   WithLocationIfExists<TLocation>
@@ -477,16 +528,20 @@ export type MapperFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TNewMapperOutput extends MapperOutput,
 > = (
-  options: MapperFnOptions<
+  props: MapperProps<
     TLocation,
     TParamsSchema,
     TSearchSchema,
     TClientInputSchema,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput
   >,
 ) => TNewMapperOutput
@@ -516,13 +571,15 @@ export type WrapperComponentType<
   options: WrapperComponentProps<TPointType, TRouteDefinition, TOuterProps>,
 ) => Exclude<React.ReactNode, Promise<any>>
 
-export type WithFnOptions<
+export type WithProps<
   TLocation extends AnyLocation | undefined = AnyLocation | undefined,
   TParamsSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TSearchSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TInnerProps extends Props = Props,
   TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions = ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions = MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0 = ErrorPoint0,
 > = MountableState<
@@ -533,6 +590,8 @@ export type WithFnOptions<
   TClientInputSchema,
   TInnerProps,
   TQueriesDefinitions,
+  TConnectionsDefinitions,
+  TMembershipsDefinitions,
   TMapperOutput,
   TError
 > & {
@@ -547,17 +606,21 @@ export type WithFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TInnerProps extends Props = Props,
   TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions = ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions = MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0 = ErrorPoint0,
   TNewInnerProps extends Props = Props,
 > = (
-  options: WithFnOptions<
+  props: WithProps<
     TLocation,
     TParamsSchema,
     TSearchSchema,
     TClientInputSchema,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput,
     TError
   >,
@@ -582,6 +645,8 @@ export type ClientOnlyFallbackComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0,
 > = MountableState<
@@ -592,6 +657,8 @@ export type ClientOnlyFallbackComponentProps<
   TClientInputSchema,
   TInnerProps,
   TQueriesDefinitions,
+  TConnectionsDefinitions,
+  TMembershipsDefinitions,
   TMapperOutput,
   TError
 > &
@@ -604,6 +671,8 @@ export type ClientOnlyFallbackComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0,
 > = (
@@ -614,6 +683,8 @@ export type ClientOnlyFallbackComponentType<
     TClientInputSchema,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput,
     TError
   >,
@@ -626,21 +697,41 @@ export type WithQueryFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TInnerProps extends Props = Props,
   TQueriesDefinitions extends QueriesDefinitions = QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions = ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions = MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0 = ErrorPoint0,
   TNewQueries extends UseQueryOrInfiniteQueryResult | QueriesResults = UseQueryOrInfiniteQueryResult | QueriesResults,
 > = (
-  options: WithFnOptions<
+  props: WithProps<
     TLocation,
     TParamsSchema,
     TSearchSchema,
     TClientInputSchema,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput,
     TError
   >,
 ) => TNewQueries
+
+/**
+ * The closure `.with(channel, …)` builds: holds the connection (the hook runs inside, like a `WithQueryFn`), gates by
+ * returning `'loading'`/the typed error when `resolve: true` (rendered by the HOST mountable's own components — an
+ * injected connection never brings the channel's), and otherwise returns the connection facade. The interpreter
+ * recognizes the facade by the socket registry, lands it in the `connections` layer, and provides the channel context
+ * around the subtree.
+ */
+export type WithConnectionFn = (
+  props: WithProps<any, any, any, any, any, any, any, any, any, any>,
+) => AnyClientChannelConnection | 'loading' | Error
+
+/** The space mirror of {@link WithConnectionFn} — `.with(space, …)`, landing in the `memberships` layer. */
+export type WithMembershipFn = (
+  props: WithProps<any, any, any, any, any, any, any, any, any, any>,
+) => AnyClientSpaceMembership | 'loading' | Error
 
 export type RelatedQueryOptions<TLocation extends AnyLocation = any, TOuterProps extends Props = any> = {
   location: TLocation
@@ -649,15 +740,15 @@ export type RelatedQueryInputGetter<TPoint extends { point: AnyPoint }, TLocatio
   options: RelatedQueryOptions<TLocation>,
 ) => TPoint['point']['Infer']['InputRawOrUndefined']
 
-export type OnPrefetchMountableFnOptions<
+export type OnPrefetchMountableProps<
   TLocation extends AnyLocation | undefined = any,
   TOuterProps extends Props = any,
 > = WithOuterPropsIfExists<TOuterProps> & WithLocationIfExists<TLocation>
 export type OnPrefetchMountableFn<TLocation extends AnyLocation | undefined = any, TOuterProps extends Props = any> = (
-  options: OnPrefetchMountableFnOptions<TLocation, TOuterProps>,
+  props: OnPrefetchMountableProps<TLocation, TOuterProps>,
 ) => Promise<void> | void
 
-export type HeadFnOptions<
+export type HeadProps<
   TStatus extends 'loading' | 'error' | 'success',
   TLocation extends AnyLocation,
   TParamsSchema extends InputSchema | UndefinedInputSchema,
@@ -665,6 +756,8 @@ export type HeadFnOptions<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TError extends ErrorPoint0,
 > = MountableState<
@@ -675,6 +768,8 @@ export type HeadFnOptions<
   TClientInputSchema,
   TInnerProps,
   TQueriesDefinitions,
+  TConnectionsDefinitions,
+  TMembershipsDefinitions,
   TMapperOutput,
   TError
 >
@@ -686,10 +781,12 @@ export type HeadFn<
   TClientInputSchema extends InputSchema | UndefinedInputSchema = any,
   TInnerProps extends Props = any,
   TQueriesDefinitions extends QueriesDefinitions = any,
+  TConnectionsDefinitions extends ConnectionsDefinitions = any,
+  TMembershipsDefinitions extends MembershipsDefinitions = any,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput = any,
   TError extends ErrorPoint0 = ErrorPoint0,
 > = (
-  options: HeadFnOptions<
+  props: HeadProps<
     TStatus,
     TLocation,
     TParamsSchema,
@@ -697,19 +794,21 @@ export type HeadFn<
     TClientInputSchema,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput,
     TError
   >,
 ) => HeadObject | string
 
-export type GlobalHeadFnOptions<
+export type GlobalHeadProps<
   TStatus extends 'loading' | 'error' | 'success' | 'initial',
   TLocation extends AnyLocation,
 > = NavigationPageState<TStatus> & { location: TLocation }
 export type GlobalHeadFn<
   TStatus extends 'loading' | 'error' | 'success' | 'initial' = any,
   TLocation extends AnyLocation = any,
-> = (options: GlobalHeadFnOptions<TStatus, TLocation>) => HeadObject | string
+> = (props: GlobalHeadProps<TStatus, TLocation>) => HeadObject | string
 
 // `setSearch` is handed to pages/layouts (which own a URL `search`) next to the
 // parsed `search` prop. Typed by the point's search schema's INPUT side (what you
@@ -731,6 +830,8 @@ export type PageSuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = SuccessComponentProps<
   PageLocation<TRouteDefinition>,
@@ -739,6 +840,8 @@ export type PageSuccessComponentProps<
   TClientInputSchema,
   TInnerProps,
   TQueriesDefinitions,
+  TConnectionsDefinitions,
+  TMembershipsDefinitions,
   TMapperOutput
 > &
   WithSetSearch<TSearchSchema>
@@ -749,6 +852,8 @@ export type PageSuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   PageSuccessComponentProps<
@@ -758,6 +863,8 @@ export type PageSuccessComponentType<
     TClientInputSchema,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput
   >
 >
@@ -776,6 +883,8 @@ export type LayoutSuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = SuccessComponentProps<
   LayoutLocation<TRouteDefinition>,
@@ -784,6 +893,8 @@ export type LayoutSuccessComponentProps<
   TClientInputSchema,
   TInnerProps,
   TQueriesDefinitions,
+  TConnectionsDefinitions,
+  TMembershipsDefinitions,
   TMapperOutput
 > &
   LayoutExtraInnerProps &
@@ -795,6 +906,8 @@ export type LayoutSuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   LayoutSuccessComponentProps<
@@ -804,6 +917,8 @@ export type LayoutSuccessComponentType<
     TClientInputSchema,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput
   >
 >
@@ -819,6 +934,8 @@ export type ProviderSuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = SuccessComponentProps<
   ProviderLocation,
@@ -827,6 +944,8 @@ export type ProviderSuccessComponentProps<
   TClientInputSchema,
   TInnerProps,
   TQueriesDefinitions,
+  TConnectionsDefinitions,
+  TMembershipsDefinitions,
   TMapperOutput
 > &
   ProviderExtraInnerProps
@@ -836,6 +955,8 @@ export type ProviderSuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   ProviderSuccessComponentProps<
@@ -844,6 +965,8 @@ export type ProviderSuccessComponentType<
     TClientInputSchema,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput
   >
 >
@@ -858,6 +981,8 @@ export type ComponentSuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = SuccessComponentProps<
   ComponentLocation,
@@ -866,6 +991,8 @@ export type ComponentSuccessComponentProps<
   TClientInputSchema,
   TInnerProps,
   TQueriesDefinitions,
+  TConnectionsDefinitions,
+  TMembershipsDefinitions,
   TMapperOutput
 > &
   ComponentExtraInnerProps
@@ -875,6 +1002,8 @@ export type ComponentSuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   ComponentSuccessComponentProps<
@@ -883,6 +1012,8 @@ export type ComponentSuccessComponentType<
     TClientInputSchema,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput
   >
 >
@@ -896,6 +1027,8 @@ export type MountableSuccessComponentType<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = TPointType extends 'page'
   ? PageSuccessComponentType<
@@ -905,6 +1038,8 @@ export type MountableSuccessComponentType<
       TClientInputSchema,
       TInnerProps,
       TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TMapperOutput
     >
   : TPointType extends 'layout'
@@ -915,6 +1050,8 @@ export type MountableSuccessComponentType<
         TClientInputSchema,
         TInnerProps,
         TQueriesDefinitions,
+        TConnectionsDefinitions,
+        TMembershipsDefinitions,
         TMapperOutput
       >
     : TPointType extends 'component'
@@ -924,6 +1061,8 @@ export type MountableSuccessComponentType<
           TClientInputSchema,
           TInnerProps,
           TQueriesDefinitions,
+          TConnectionsDefinitions,
+          TMembershipsDefinitions,
           TMapperOutput
         >
       : TPointType extends 'provider'
@@ -933,6 +1072,8 @@ export type MountableSuccessComponentType<
             TClientInputSchema,
             TInnerProps,
             TQueriesDefinitions,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
             TMapperOutput
           >
         : undefined
@@ -945,6 +1086,8 @@ export type MountableSuccessComponentProps<
   TClientInputSchema extends InputSchema | UndefinedInputSchema,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = TPointType extends 'page'
   ? PageSuccessComponentProps<
@@ -954,6 +1097,8 @@ export type MountableSuccessComponentProps<
       TClientInputSchema,
       TInnerProps,
       TQueriesDefinitions,
+      TConnectionsDefinitions,
+      TMembershipsDefinitions,
       TMapperOutput
     >
   : TPointType extends 'layout'
@@ -964,6 +1109,8 @@ export type MountableSuccessComponentProps<
         TClientInputSchema,
         TInnerProps,
         TQueriesDefinitions,
+        TConnectionsDefinitions,
+        TMembershipsDefinitions,
         TMapperOutput
       >
     : TPointType extends 'component'
@@ -973,6 +1120,8 @@ export type MountableSuccessComponentProps<
           TClientInputSchema,
           TInnerProps,
           TQueriesDefinitions,
+          TConnectionsDefinitions,
+          TMembershipsDefinitions,
           TMapperOutput
         >
       : TPointType extends 'provider'
@@ -982,6 +1131,8 @@ export type MountableSuccessComponentProps<
             TClientInputSchema,
             TInnerProps,
             TQueriesDefinitions,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
             TMapperOutput
           >
         : never
@@ -1010,6 +1161,8 @@ export type MountableSelfChildrenFn<
   TInnerProps extends Props,
   TExtraInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = (
   options: SuccessComponentProps<
@@ -1019,6 +1172,8 @@ export type MountableSelfChildrenFn<
     TClientInputSchema,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput
   > &
     TExtraInnerProps,
@@ -1036,6 +1191,8 @@ export type MountableSelfProps<
   TInnerProps extends Props,
   TExtraInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TWithChildren extends boolean | null,
 > = {
@@ -1060,6 +1217,8 @@ export type MountableSelfProps<
               TInnerProps,
               TExtraInnerProps,
               TQueriesDefinitions,
+              TConnectionsDefinitions,
+              TMembershipsDefinitions,
               TMapperOutput
             >
       }
@@ -1075,6 +1234,8 @@ export type MountableSelfProps<
                 TInnerProps,
                 TExtraInnerProps,
                 TQueriesDefinitions,
+                TConnectionsDefinitions,
+                TMembershipsDefinitions,
                 TMapperOutput
               >
         }
@@ -1091,6 +1252,8 @@ export type MountableSelfType<
   TInnerProps extends Props,
   TExtraInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
   TWithChildren extends boolean | null,
 > = React.ComponentType<
@@ -1106,6 +1269,8 @@ export type MountableSelfType<
     TInnerProps,
     TExtraInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput,
     TWithChildren
   >
@@ -1132,6 +1297,8 @@ export type LayoutSelfProps<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   LayoutLocation<TRouteDefinition>,
@@ -1145,6 +1312,8 @@ export type LayoutSelfProps<
   TInnerProps,
   LayoutExtraInnerProps,
   TQueriesDefinitions,
+  TConnectionsDefinitions,
+  TMembershipsDefinitions,
   TMapperOutput,
   true
 >
@@ -1159,6 +1328,8 @@ export type LayoutSelfType<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   LayoutSelfProps<
@@ -1172,6 +1343,8 @@ export type LayoutSelfType<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput
   >
 >
@@ -1187,6 +1360,8 @@ export type PageSelfProps<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   PageLocation<TRouteDefinition>,
@@ -1200,6 +1375,8 @@ export type PageSelfProps<
   TInnerProps,
   PageExtraInnerProps,
   TQueriesDefinitions,
+  TConnectionsDefinitions,
+  TMembershipsDefinitions,
   TMapperOutput,
   false
 >
@@ -1214,6 +1391,8 @@ export type PageSelfType<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   PageSelfProps<
@@ -1227,6 +1406,8 @@ export type PageSelfType<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput
   >
 >
@@ -1241,6 +1422,8 @@ export type ComponentSelfProps<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   ComponentLocation,
@@ -1254,6 +1437,8 @@ export type ComponentSelfProps<
   TInnerProps,
   ComponentExtraInnerProps,
   TQueriesDefinitions,
+  TConnectionsDefinitions,
+  TMembershipsDefinitions,
   TMapperOutput,
   false
 >
@@ -1267,6 +1452,8 @@ export type ComponentSelfType<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   ComponentSelfProps<
@@ -1279,6 +1466,8 @@ export type ComponentSelfType<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput
   >
 >
@@ -1293,6 +1482,8 @@ export type ProviderSelfProps<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = MountableSelfProps<
   ProviderLocation,
@@ -1306,6 +1497,8 @@ export type ProviderSelfProps<
   TInnerProps,
   ProviderExtraInnerProps,
   TQueriesDefinitions,
+  TConnectionsDefinitions,
+  TMembershipsDefinitions,
   TMapperOutput,
   null
 >
@@ -1319,6 +1512,8 @@ export type ProviderSelfType<
   TOuterProps extends Props,
   TInnerProps extends Props,
   TQueriesDefinitions extends QueriesDefinitions,
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TMembershipsDefinitions extends MembershipsDefinitions,
   TMapperOutput extends MapperOutput | UndefinedMapperOutput,
 > = React.ComponentType<
   ProviderSelfProps<
@@ -1331,6 +1526,8 @@ export type ProviderSelfType<
     TOuterProps,
     TInnerProps,
     TQueriesDefinitions,
+    TConnectionsDefinitions,
+    TMembershipsDefinitions,
     TMapperOutput
   >
 >
@@ -1343,6 +1540,8 @@ export type MountAction<
     | 'params'
     | 'search'
     | 'with'
+    | 'selfConnection'
+    | 'selfMembership'
     | 'mapper'
     | 'head'
     | 'globalHead'
@@ -1358,6 +1557,8 @@ export type MountAction<
     | 'params'
     | 'search'
     | 'with'
+    | 'selfConnection'
+    | 'selfMembership'
     | 'mapper'
     | 'head'
     | 'globalHead'
@@ -1380,7 +1581,7 @@ export type MountAction<
     : TType extends 'clientOnly'
       ? {
           type: 'clientOnly'
-          Fallback: ClientOnlyFallbackComponentType<any, any, any, any, any, any, any, any> | undefined
+          Fallback: ClientOnlyFallbackComponentType<any, any, any, any, any, any, any, any, any, any> | undefined
           unstableId: number
         }
       : TType extends 'input'
@@ -1390,38 +1591,45 @@ export type MountAction<
           : TType extends 'search'
             ? { type: 'search'; schema: InputSchema; unstableId: number }
             : TType extends 'with'
-              ? { type: 'with'; fn: WithFn | WithQueryFn; unstableId: number }
-              : TType extends 'mapper'
-                ? {
-                    type: 'mapper'
-                    fn: MapperFn<any, any, any, any, any, any, any, any>
-                    unstableId: number
-                  }
-                : TType extends 'selfProps'
-                  ? { type: 'selfProps'; unstableId: number }
-                  : TType extends 'head'
-                    ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
-                    : TType extends 'globalHead'
-                      ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number }
-                      : TType extends 'errorComponent'
-                        ? {
-                            type: 'errorComponent'
-                            Component: ErrorComponentType<any, ErrorPoint0>
-                            variant: DestinationComponentVariant | undefined
-                            unstableId: number
-                          }
-                        : TType extends 'loadingComponent'
-                          ? {
-                              type: 'loadingComponent'
-                              Component: LoadingComponentType<any>
-                              variant: DestinationComponentVariant | undefined
-                              unstableId: number
-                            }
-                          : TType extends 'pluginStart'
-                            ? { type: 'pluginStart'; name: string; unstableId: number }
-                            : TType extends 'pluginEnd'
-                              ? { type: 'pluginEnd'; name: string; unstableId: number }
-                              : never
+              ? { type: 'with'; fn: WithFn | WithQueryFn | WithConnectionFn | WithMembershipFn; unstableId: number }
+              : TType extends 'selfConnection'
+                ? // the channel's own terminal render step (`<channel.Connection>`): hold the connection, gate per its
+                  // `gate` prop, provide the channel context — the interpreter IS the channel point, no data rides here
+                  { type: 'selfConnection'; unstableId: number }
+                : TType extends 'selfMembership'
+                  ? // the space's mirror (`<space.Membership>`) — join, gate, provide the space context
+                    { type: 'selfMembership'; unstableId: number }
+                  : TType extends 'mapper'
+                    ? {
+                        type: 'mapper'
+                        fn: MapperFn<any, any, any, any, any, any, any, any, any, any>
+                        unstableId: number
+                      }
+                    : TType extends 'selfProps'
+                      ? { type: 'selfProps'; unstableId: number }
+                      : TType extends 'head'
+                        ? { type: 'head'; fn: HeadFn<any, any, any, any, any>; unstableId: number }
+                        : TType extends 'globalHead'
+                          ? { type: 'globalHead'; fn: GlobalHeadFn<any, any>; unstableId: number }
+                          : TType extends 'errorComponent'
+                            ? {
+                                type: 'errorComponent'
+                                Component: ErrorComponentType<any, ErrorPoint0>
+                                variant: DestinationComponentVariant | undefined
+                                unstableId: number
+                              }
+                            : TType extends 'loadingComponent'
+                              ? {
+                                  type: 'loadingComponent'
+                                  Component: LoadingComponentType<any>
+                                  variant: DestinationComponentVariant | undefined
+                                  unstableId: number
+                                }
+                              : TType extends 'pluginStart'
+                                ? { type: 'pluginStart'; name: string; unstableId: number }
+                                : TType extends 'pluginEnd'
+                                  ? { type: 'pluginEnd'; name: string; unstableId: number }
+                                  : never
 
 export type IsQueryShouldBeFinalized<
   TPointType extends PointType,
@@ -1458,6 +1666,26 @@ export type AppendQueries<
   TQueriesDefinitions extends QueriesDefinitions,
   TNewQueryDefinition extends QueryDefinition<any, any, any>,
 > = IfAnyThenElse<TQueriesDefinitions | TNewQueryDefinition, any, [...TQueriesDefinitions, TNewQueryDefinition]>
+
+/** `.use(plugin)` folds the plugin's accumulated connections into the consumer's — the queries' MergeQueries twin. */
+export type MergeConnections<
+  TConnectionsDefinitions extends ConnectionsDefinitions,
+  TNewConnectionsDefinitions extends ConnectionsDefinitions,
+> = IfAnyThenElse<
+  TConnectionsDefinitions | TNewConnectionsDefinitions,
+  any,
+  [...TConnectionsDefinitions, ...TNewConnectionsDefinitions]
+>
+
+/** `.use(plugin)` folds the plugin's accumulated memberships into the consumer's — the MergeConnections twin. */
+export type MergeMemberships<
+  TMembershipsDefinitions extends MembershipsDefinitions,
+  TNewMembershipsDefinitions extends MembershipsDefinitions,
+> = IfAnyThenElse<
+  TMembershipsDefinitions | TNewMembershipsDefinitions,
+  any,
+  [...TMembershipsDefinitions, ...TNewMembershipsDefinitions]
+>
 
 // export type AssertMountableQueryFinalization<
 //   TPointType extends PointType,

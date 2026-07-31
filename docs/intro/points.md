@@ -2,7 +2,7 @@
 index: 500
 title: Points
 description:
-  Everything you build in Point0 is a point — one class, one builder, eleven
+  Everything you build in Point0 is a point — one class, one builder, sixteen
   types.
 ---
 
@@ -30,7 +30,7 @@ The rest of this page lists every point type and explains the two ways to write
 
 ## The point types
 
-There are eleven. They split into three groups by what they do.
+There are sixteen. They split into four groups by what they do.
 
 **Mountables — they render UI.**
 
@@ -56,6 +56,16 @@ Page, layout, component, and provider share one method-injection model — see
   endpoint and a TanStack Mutation in one.
 - [action](action) — a server endpoint where you control the HTTP method and
   path, and may return a raw `Response`.
+- [subscription](subscription) — a server stream of values over HTTP: the loader
+  is an async generator, and each `yield` streams to the client as it happens.
+
+**Sockets — typed messages over one WebSocket.**
+
+- [channel](socket) — a live connection: the client connects over a regular
+  request, the server checks it and returns the connection's identity. A
+  **space** grows from it — a family of rooms the client joins — and the message
+  types grow from either: serverHandler (client sends, the server replies) and
+  clientHandler (server pushes, clients listen). One page holds them all.
 
 **Structure — they hold defaults and shape the tree.**
 
@@ -66,10 +76,11 @@ Page, layout, component, and provider share one method-injection model — see
 - [plugin](plugin) — a bundle of methods you define once and inject into any
   point's chain with `.use()`.
 
-A point is not always an HTTP endpoint. A query, mutation, or action always is
-(its own path, in the OpenAPI spec). A page or component is an endpoint only
-when it has a server loader (or SSR is on) — otherwise it's a pure mountable.
-Each point's own page says exactly when.
+A point is not always an HTTP endpoint. A query, mutation, subscription, or
+action always is (its own path, in the OpenAPI spec) — so is a channel's connect
+(a dual-method endpoint), while its spaces and handlers live on the socket only.
+A page or component is an endpoint only when it has a server loader (or SSR is
+on) — otherwise it's a pure mountable. Each point's own page says exactly when.
 
 ## The short `.lets` notation
 
@@ -178,8 +189,8 @@ ideaQuery.useQuery({ id: 1 }) //       ready-method on the finished query
 
 ## Everything lands in one collection
 
-Because all eleven types are the same class, the compiler collects them into one
-array — the points collection the engine loads:
+Because all sixteen types are the same class, the compiler collects them into
+one array — the points collection the engine loads:
 
 ```ts
 // generated points file (shape)
@@ -205,13 +216,20 @@ by hand. See [generator](generator) for how it's produced and
 | `infiniteQuery` | data/endpoint | root / base              | [infinite-query](infinite-query) |
 | `mutation`      | data/endpoint | root / base              | [mutation](mutation)             |
 | `action`        | data/endpoint | root / base              | [action](action)                 |
+| `subscription`  | data/endpoint | root / base              | [subscription](subscription)     |
+| `channel`       | socket        | root / base              | [channel](socket)                |
+| `space`         | socket        | channel                  | [channel](socket)                |
+| `serverHandler` | socket        | channel / space          | [channel](socket)                |
+| `clientHandler` | socket        | channel / space          | [channel](socket)                |
 | `root`          | structure     | `Point0` (static) / root | [root](root)                     |
 | `base`          | structure     | root / base              | [base](base)                     |
 | `plugin`        | structure     | `Point0` (static)        | [plugin](plugin)                 |
 
-`query`, `mutation`, and `action` are always HTTP endpoints; `page`, `layout`,
-`component`, and `provider` are endpoints only with a server loader or SSR;
-`root`, `base`, and `plugin` are never endpoints.
+`query`, `mutation`, `action`, and `subscription` are always HTTP endpoints — so
+is a channel's connect (a dual-method endpoint), while its spaces and handlers
+live on the socket only; `page`, `layout`, `component`, and `provider` are
+endpoints only with a server loader or SSR; `root`, `base`, and `plugin` are
+never endpoints.
 
 ### Notation at a glance
 
