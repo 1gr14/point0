@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.0 — 2026-07-31
+
 - Sockets: four new point types — live messaging over one WebSocket per
   client. A `channel` is the authenticated connection (its `.connector` returns
   the connection identity), a `space` is a family of rooms the server's
