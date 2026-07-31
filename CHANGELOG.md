@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.3 — 2026-07-31
+
 - **0.3.2 never reached npm either** — three more Windows/format landmines: a
   prettier-plugin-jsdoc wrap that isn't idempotent (the release script now runs
   the same fresh repo-wide `format:check` CI runs, before tagging), Bun on
