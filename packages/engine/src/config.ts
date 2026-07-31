@@ -200,8 +200,10 @@ export type LoggerConfig = {
  * serializing. Default is in-process memory (single process).
  */
 export type Backplane = {
-  /** read a key — `null`/`undefined` both mean "missing" (whichever the client speaks); an expired record reads as
-missing */
+  /**
+   * read a key — `null`/`undefined` both mean "missing" (whichever the client speaks); an expired record reads as
+   * missing
+   */
   get: (key: string) => string | null | undefined | Promise<string | null | undefined>
   /** `ttlMs` given — the record must expire on its own (Redis `PX`); that is how dead processes leak nothing */
   set: (key: string, value: string, ttlMs?: number) => void | Promise<void>
@@ -325,8 +327,10 @@ export type EngineSocketServerOptions = {
   pendingUpgradeTtl?: number
   /** pending bare-upgrade tokens at most — they are minted by unauthenticated requests; default `4096` */
   maxPendingUpgrades?: number
-  /** ms a `connections.server.list`/`forEach`/`count` gather window stays open by default (per-call `timeoutMs`
-overrides); default `1000` */
+  /**
+   * ms a `connections.server.list`/`forEach`/`count` gather window stays open by default (per-call `timeoutMs`
+   * overrides); default `1000`
+   */
   gatherTimeout?: number
   /** ms between two KV TTL-slide writes per connection — a ping flood must not become a KV write flood; default `10_000` */
   renewMinInterval?: number

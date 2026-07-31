@@ -97,8 +97,10 @@ type TopicStream = {
   evictedMaxTseq: number
 }
 
-/** The resolved buffer ceilings of one stream — the channel's `server.resume` group, space keys overriding for its
-streams. */
+/**
+ * The resolved buffer ceilings of one stream — the channel's `server.resume` group, space keys overriding for its
+ * streams.
+ */
 type StreamCaps = {
   streamMaxFrames: number
   streamMaxBytes: number
@@ -611,8 +613,10 @@ export class EngineSocket<TError extends ErrorPoint0> {
     this.server = server
   }
 
-  /** Register the publish adapter for every scope this server serves — core's server-side `sendToClient()`/admin surface
-resolves it. */
+  /**
+   * Register the publish adapter for every scope this server serves — core's server-side `sendToClient()`/admin surface
+   * resolves it.
+   */
   registerAdapters(): void {
     this.unregisterAdapters()
     this.registeredScopes = [this.server.scope, ...this.server.clients.map((client) => client.scope)]
@@ -1206,8 +1210,10 @@ resolves it. */
     return spacePoint._getSpacePointOptions().resumable !== false
   }
 
-  /** The stream-buffer ceiling a clientHandler opted into — `true` = the default, a number names its own; `undefined` =
-no. */
+  /**
+   * The stream-buffer ceiling a clientHandler opted into — `true` = the default, a number names its own; `undefined` =
+   * no.
+   */
   private handlerBufferLimit(handlerPoint: AnyPoint): number | undefined {
     const resumable = handlerPoint._getClientHandlerPointOptions().resumable
     if (resumable === undefined) {

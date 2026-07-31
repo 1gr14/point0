@@ -385,8 +385,10 @@ export type EventerEventPointChannelConnectClientSettled<TError extends ErrorPoi
         connectionId: string
         /** the entry rode the resume path — no connect request, no connector run */
         resumed: boolean
-        /** the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's
-verdict there; on the full path the client computes it as `index === 0`) */
+        /**
+         * the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's
+         * verdict there; on the full path the client computes it as `index === 0`)
+         */
         gapless: boolean
         error: undefined
       }
@@ -407,8 +409,10 @@ export type EventerEventPointChannelConnectClientSuccess = EventerEvent<
     connectionIndex: number
     /** the entry rode the resume path — no connect request, no connector run */
     resumed: boolean
-    /** the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's verdict
-there; on the full path the client computes it as `index === 0`) */
+    /**
+     * the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's verdict
+     * there; on the full path the client computes it as `index === 0`)
+     */
     gapless: boolean
     error: undefined
   }
@@ -659,8 +663,10 @@ export type EventerEventPointSpaceJoinClientSettled<TError extends ErrorPoint0> 
         rooms: unknown[]
         /** the entry rode the resume path — no join frame, no `.joiner` run */
         resumed: boolean
-        /** the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's
-verdict there; on the full path the client computes it as `index === 0`) */
+        /**
+         * the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's
+         * verdict there; on the full path the client computes it as `index === 0`)
+         */
         gapless: boolean
         error: undefined
       }
@@ -682,8 +688,10 @@ export type EventerEventPointSpaceJoinClientSuccess = EventerEvent<
     rooms: unknown[]
     /** the entry rode the resume path — no join frame, no `.joiner` run */
     resumed: boolean
-    /** the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's verdict
-there; on the full path the client computes it as `index === 0`) */
+    /**
+     * the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's verdict
+     * there; on the full path the client computes it as `index === 0`)
+     */
     gapless: boolean
     error: undefined
   }
@@ -714,8 +722,10 @@ export type EventerEventPointSpaceLeaveServer = EventerEvent<
     identity: unknown
     /** the rooms that LEFT in this change (parsed) — not the rooms the connection still holds */
     rooms: unknown[]
-    /** what took them out: the client's `leave` frame, the socket dying, a `space.kick`/`channel.kick`, or the
-connection itself closing */
+    /**
+     * what took them out: the client's `leave` frame, the socket dying, a `space.kick`/`channel.kick`, or the
+     * connection itself closing
+     */
     reason: 'leave' | 'socket' | 'kick' | 'close'
   }
 >
