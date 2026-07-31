@@ -5,6 +5,13 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **0.3.0 never reached npm.** Its tag was pushed, but the release run failed
+  before publishing: the release script bumped every workspace version without
+  refreshing `bun.lock`, and CI's `bun install --frozen-lockfile` (Bun ≥ 1.3)
+  rejects a lock whose workspace versions lag the bump. `bun run release` now
+  refreshes the lockfile as part of the bump. 0.3.1 is the first published
+  build of everything listed under 0.3.0.
+
 ## 0.3.0 — 2026-07-31
 
 - Sockets: four new point types — live messaging over one WebSocket per

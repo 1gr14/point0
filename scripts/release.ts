@@ -100,6 +100,11 @@ const sync = Bun.spawnSync(['bun', join(rootDir, 'scripts/sync-versions.ts'), '-
 })
 if (sync.exitCode !== 0) process.exit(sync.exitCode)
 
+// Refresh bun.lock: the workspace packages' "version" fields live in the lockfile too, and CI's
+// `bun install --frozen-lockfile` (Bun >= 1.3.x) rejects a lock whose versions lag the bump.
+const lock = Bun.spawnSync(['bun', 'install'], { cwd: rootDir, stdout: 'inherit', stderr: 'inherit' })
+if (lock.exitCode !== 0) process.exit(lock.exitCode)
+
 // Promote the CHANGELOG "Unreleased" section — only for a stable cut. Prereleases are interim,
 // so they leave Unreleased to keep accumulating until the real release.
 const isPre = next.includes('-')
