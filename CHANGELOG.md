@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.2 — 2026-07-31
+
 - **0.3.1 never reached npm either.** Its tag was pushed and the lockfile fix
   held, but the run tripped over four test-infra failures: a stale prettier
   cache had let three unformatted files through the pre-commit, the redis-race
