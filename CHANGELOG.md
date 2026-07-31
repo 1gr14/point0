@@ -5,6 +5,16 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **0.3.1 never reached npm either.** Its tag was pushed and the lockfile fix
+  held, but the run tripped over four test-infra failures: a stale prettier
+  cache had let three unformatted files through the pre-commit, the redis-race
+  mocks lacked the `socketOptions` the engine now reads, the backpressure
+  fan-out flood sat entirely in Windows' auto-tuned kernel buffers, and the
+  socket-browser vite variant wedges on GitHub's ubuntu runners (now sat out
+  there — `dev/backlog/socket-vite-linux-ci.md`). All fixed; CI job caps are
+  also tightened so a wedged job dies in minutes, not 48. 0.3.2 is the first
+  published build of everything listed under 0.3.0.
+
 ## 0.3.1 — 2026-07-31
 
 - **0.3.0 never reached npm.** Its tag was pushed, but the release run failed
