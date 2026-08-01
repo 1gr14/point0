@@ -127,8 +127,7 @@ export type FilesGeneratorTaskCustomControlledWithoutScope = Omit<FilesGenerator
 
 export type FilesGeneratorTaskCustom = FilesGeneratorTaskCustomFile | FilesGeneratorTaskCustomControlled
 export type FilesGeneratorTaskCustomWithoutScope =
-  | FilesGeneratorTaskCustomFileWithoutScope
-  | FilesGeneratorTaskCustomControlledWithoutScope
+  FilesGeneratorTaskCustomFileWithoutScope | FilesGeneratorTaskCustomControlledWithoutScope
 
 export type FilesGeneratorSimpleServerConfig = {
   points?: string | { outfile: string; banner?: string | null }

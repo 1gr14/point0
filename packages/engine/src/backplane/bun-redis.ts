@@ -166,8 +166,7 @@ export const bunRedisBackplane = (client: RedisClient, options?: BunRedisBackpla
   /** the duplicate the adapter itself created — the one connection `dispose` always owns */
   let createdSubscriber: RedisClient | undefined
   let subscriberPromise:
-    | Promise<{ subscribe: (channel: string, onMessage: (message: string) => void) => Promise<() => void> }>
-    | undefined
+    Promise<{ subscribe: (channel: string, onMessage: (message: string) => void) => Promise<() => void> }> | undefined
   const getSubscriber = (): NonNullable<typeof subscriberPromise> => {
     subscriberPromise ??= (async () => {
       const raw =

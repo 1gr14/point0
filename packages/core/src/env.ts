@@ -356,8 +356,7 @@ const envMode = Object.defineProperties(
 
 export type EnvRuntimeName = 'browser' | 'reactNative' | 'nodejs' | 'bun' | 'deno' | 'worker'
 type RuntimeWithUnknown<T extends string, TAllowUnknown extends boolean> =
-  | T
-  | (TAllowUnknown extends true ? 'unknown' : never)
+  T | (TAllowUnknown extends true ? 'unknown' : never)
 type RuntimeDefineUnsafe<
   TRuntime extends EnvRuntimeName = EnvRuntimeName,
   TAllowUnknown extends boolean = true,
@@ -516,8 +515,7 @@ const envRuntime = Object.defineProperties(
 
 export type EnvOsName = 'ios' | 'android' | 'linux' | 'mac' | 'windows'
 type OsWithUnknown<T extends string, TAllowUnknown extends boolean> =
-  | T
-  | (TAllowUnknown extends true ? 'unknown' : never)
+  T | (TAllowUnknown extends true ? 'unknown' : never)
 type OsDefineUnsafe<TOs extends EnvOsName = EnvOsName, TAllowUnknown extends boolean = true> = Record<
   OsWithUnknown<TOs, TAllowUnknown>,
   <T>(value: T) => T
