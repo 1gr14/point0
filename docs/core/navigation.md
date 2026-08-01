@@ -208,6 +208,7 @@ navigate('docs', undefined, { newTab: true })               // open in a new tab
 | `after`              |       ✓       |      ✓      | Callback run after the navigation commits                     |
 | `newTab`             |       ✓       |      ✓      | Open the target in a new tab (via `openExternal`)             |
 | `scrollToHash`       |       ✓       |      ✓      | Override the global scroll-to-hash policy                     |
+| `keepScroll`         |       ✓       |      ✓      | Keep the scroll where it is for this one navigation           |
 
 On a `<Link>`, `prefetchOnHover ?? prefetch` controls hover and
 `prefetchOnNavigate ?? prefetch` controls the click. `before` / `after` are
@@ -521,6 +522,19 @@ export const ideaPage = root.lets
 
 Both are **client-only** — cut from the server bundle, body and imports removed
 (there's no scroll position to restore on the server).
+
+### `keepScroll` — a navigation that doesn't move the scroll
+
+`keepScroll: true` on `navigate` / `<Link>` / `redirect` freezes the scroll for
+that one navigation — no scroll-to-top, no restore, no `#hash` jump. For URL
+changes that don't mean "a new page": mid-page tabs that rewrite the pathname, a
+filter in the URL. Positions are still remembered, so Back/Forward later
+restores each page's own offset.
+
+```tsx
+<Link route="ideaListActive" keepScroll>Active</Link>
+<Link route="ideaListArchived" keepScroll>Archived</Link>
+```
 
 ## The point's route: `point.route`
 

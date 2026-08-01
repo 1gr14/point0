@@ -1,5 +1,6 @@
 import { _point0_env } from './env.js'
 import { RedirectTask } from './redirect.js'
+import type { DataTransformerExtended } from './types.js'
 
 // Walk an error and its `cause` chain, invoking the global stacktrace-fixer hook on each link.
 // The hook (installed by @point0/engine when running under vite dev) follows the single-error
@@ -296,6 +297,8 @@ export const POINT0_ERROR_CODES = [
   'POINT0_SOCKET_MAX_ROOMS', // the space's maxRooms cap refused the write (rooms per connection per space)
   // subscription streams (@point0/core)
   'POINT0_SUBSCRIPTION_LOST', // the stream broke (no terminal line) and reconnect was off or gave up
+  // data transformer (@point0/core, @point0/engine)
+  'POINT0_SERIALIZE_FAILED', // the app transformer answered `undefined` for a value that MUST serialize
 ] as const
 
 export type Point0ErrorCode = (typeof POINT0_ERROR_CODES)[number]
@@ -309,3 +312,28 @@ export type Point0ErrorCode = (typeof POINT0_ERROR_CODES)[number]
 export const POINT0_ERROR_CODES_MAP = Object.fromEntries(
   POINT0_ERROR_CODES.map((code) => [code.replace(/^POINT0_/, ''), code]),
 ) as { [C in Point0ErrorCode as C extends `POINT0_${infer TShort}` ? TShort : C]: C }
+
+/**
+ * `transformer.stringify` for a value that MUST serialize — query/mutation keys, socket keys, identities, rooms, frame
+ * payloads, stream envelopes, dehydrated payloads. `stringify` answers `undefined` when the transformer's `serialize`
+ * refused the value (a custom transformer bug); coercing that would merge distinct keys, put the literal string
+ * `"undefined"` on the wire, or ship an empty body — so it fails loud with
+ * {@link POINT0_ERROR_CODES_MAP.SERIALIZE_FAILED} instead.
+ *
+ * `subject` names what was being serialized — a point id in the common case, otherwise the caller's own words (`cookie
+ * "theme"`, `pushed query …`).
+ *
+ * Lives here, next to the codes, rather than in `utils.ts`: throwing an `ErrorPoint0` needs the class as a VALUE, and
+ * `utils.ts` sits UNDER `error.ts` in the import graph (`error → env → super-store → utils`), so importing it there
+ * would close a runtime cycle and hit `super-store`'s top-level `singletonize` in its TDZ.
+ */
+export const stringifyOrThrow = (transformer: DataTransformerExtended, value: unknown, subject: string): string => {
+  const serialized = transformer.stringify(value)
+  if (serialized === undefined) {
+    throw new ErrorPoint0(`Transformer returned undefined serializing a value on ${subject}`, {
+      code: POINT0_ERROR_CODES_MAP.SERIALIZE_FAILED,
+      meta: { subject },
+    })
+  }
+  return serialized
+}

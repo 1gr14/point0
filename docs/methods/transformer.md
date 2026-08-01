@@ -226,10 +226,19 @@ declared `preventTransformer: true` ([above](#root-only)).
 
 ### Edge cases
 
-- **`serialize` returning `undefined` is an error.** If a custom transformer
-  returns `undefined` for an input, Point0 throws
-  `Transformer returned undefined for input … on point …` rather than sending an
-  empty body.
+- **`serialize` returning `undefined` is an error.** Every value that must cross
+  a boundary — a query or mutation key, a request body, a socket frame, a room
+  or identity, the dehydrated state, a streamed query/RSC push — is serialized
+  through a wrapper that refuses `undefined`. If a custom transformer answers
+  `undefined` for one of them, Point0 throws `POINT0_SERIALIZE_FAILED`
+  (`Transformer returned undefined serializing a value on point …`, with the
+  point id in `meta`) rather than merging distinct cache entries under one key,
+  writing the literal `"undefined"` into a frame, or sending an empty body.
+  Match it with `POINT0_ERROR_CODES_MAP.SERIALIZE_FAILED`.
+- **An absent input is the `{}` input.** Point inputs are always objects, so
+  everything that serializes one coerces `undefined` to `{}` first — the same
+  bytes a mutation run with no input and one run with `{}` produce, on both
+  sides of every cache comparison.
 - **Calling `.transformer` twice is last-wins.** Each call overwrites the root's
   transformer with the new one — they don't compose — so the last `.transformer`
   in the chain is the one that runs.

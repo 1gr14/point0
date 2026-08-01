@@ -83,7 +83,7 @@ program
   )
   .option(
     '--entry <name|path>',
-    'Server entry points, names or paths (--entry <entry1>,<entry2>,...) or (--entry <entry1> --entry <entry2> ...)',
+    `Server entry points to start, names or paths (--entry <entry1>,<entry2>,...) or (--entry <entry1> --entry <entry2> ...); --entry '*' starts every declared entry. Default: the devEntries option, else the "main" entry (or the first declared one)`,
     parseCommaSeparatedOption,
     [],
   )
@@ -127,7 +127,9 @@ program
           ? undefined
           : options.watch.map((w) => nodePath.resolve(cwd, w))
         : options.watch
-      const entries = options.entry
+      // `--entry '*'` (quote it — an unquoted `*` globs in the shell) is "every declared entry": `*` cannot be a
+      // real entry name, so the sentinel is unambiguous.
+      const entries = options.entry?.includes('*') ? ('*' as const) : options.entry?.length ? options.entry : undefined
       const side = options.side as string | undefined
       const scope = options.scope as string | boolean | undefined
       if (side && side !== 'server' && side !== 'client') {

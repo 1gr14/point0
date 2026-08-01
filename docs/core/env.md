@@ -263,7 +263,7 @@ drives SPA-style navigation after that first render.) So the client gets
 
 ```ts
 // examples/basic/src/engine.ts
-import { clientEnvKeys } from '@/lib/env/client-shape'
+import { clientEnvKeys } from '@/lib/env/shared'
 
 export const engine = Engine.create({
   client: {
@@ -335,22 +335,100 @@ the browser. You don't declare them.
 
 Point0 ships **no** `createEnv` / `serverEnv` API — env validation is app code,
 and the pattern below is the convention `examples/basic` and Start0 use. The
-idea: parse `process.env` against a schema once, export a typed object, and read
-**that** everywhere instead of `process.env`.
+idea: declare a schema per audience, expose a typed handle, and read **that**
+everywhere instead of `process.env`.
+
+The handles are **lazy**. Reading `serverEnv.DATABASE_URL` validates that one
+variable and caches it; `serverEnv.validate()` validates the whole shape at
+once. Declaring a variable therefore costs nothing until something reads it,
+which is what lets the shape and the handle live in the same file — and the app
+entries still fail fast, because they call `validate()` at startup.
 
 Split the schema by audience so a secret never leaks into the client shape. The
-basic example uses five small files — two `*-shape.ts` shape files plus the
-`shared.ts` / `server.ts` / `client.ts` validation files:
+basic example uses four files in `src/lib/env/`: the `createEnv` helper plus one
+file per audience.
 
-**1. The shared shape** — keys safe on both sides. Shape only, no top-level
-_validation_, because the engine config imports it and validation that threw at
-import time would crash the config before the app starts. (The basic example's
-`shared-shape.ts` does keep one module-scope side effect — rewriting
-`SERVER_URL` to `CLIENT_URL` on the client to proxy through the client origin in
-dev — but nothing that validates or throws at import.)
+**1. `utils.ts` — the helper.** Point0 doesn't ship it, so it's yours: copy this
+into your app and edit it as you like. The scaffolder writes it for you, and the
+same file (with its full JSDoc) is `examples/basic/src/lib/env/utils.ts`.
 
 ```ts
-// lib/env/shared-shape.ts
+// lib/env/utils.ts
+import { z } from 'zod'
+
+type EnvShape = Record<string, z.ZodType>
+type EnvValues<TShape extends EnvShape> = {
+  [K in keyof TShape]: z.infer<TShape[K]>
+}
+type Env<TShape extends EnvShape> = EnvValues<TShape> & {
+  validate: () => void
+  keys: Array<keyof TShape & string>
+  value: EnvValues<TShape>
+  shape: TShape
+  schema: z.ZodObject<TShape>
+}
+
+export const createEnv = <TShape extends EnvShape>(
+  name: string,
+  shape: TShape,
+): Env<TShape> => {
+  const schema = z.object(shape)
+  const keys = Object.keys(shape) as Array<keyof TShape & string>
+  const parsed: Partial<EnvValues<TShape>> = {}
+  let validated = false
+
+  const validateOne = (key: keyof TShape & string) => {
+    if (key in parsed) return
+    const result = shape[key].safeParse(process.env[key])
+    if (!result.success) {
+      throw new Error(`Invalid "${name}.${key}" environment variable`, {
+        cause: result.error,
+      })
+    }
+    parsed[key] = result.data
+  }
+
+  const validate = () => {
+    if (validated) return
+    const result = schema.safeParse(process.env)
+    if (!result.success) {
+      throw new Error(`Invalid "${name}" environment variables`, {
+        cause: result.error,
+      })
+    }
+    Object.assign(parsed, result.data)
+    validated = true
+  }
+
+  const env = {} as Env<TShape>
+  Object.defineProperties(env, {
+    validate: { value: validate },
+    keys: { value: keys },
+    shape: { value: shape },
+    schema: { value: schema },
+    value: { get: () => (validate(), parsed as EnvValues<TShape>) },
+  })
+  for (const key of keys) {
+    Object.defineProperty(env, key, {
+      enumerable: true,
+      get: () => (validateOne(key), parsed[key]),
+    })
+  }
+  return env
+}
+```
+
+`validate`, `keys`, `value`, `shape`, and `schema` are reserved metadata — don't
+use them as variable names (env names are `UPPER_SNAKE_CASE`, so it never
+collides in practice). They're non-enumerable, so `Object.keys(env)` returns
+exactly your variable names.
+
+**2. `shared.ts` — the shared shape, its handle, and the browser allowlist.**
+Keys safe on both sides, plus the client shape the engine reads:
+
+```ts
+// lib/env/shared.ts
+import { createEnv } from '@/lib/env/utils'
 import { z } from 'zod'
 
 // Never put secrets here — every shared key is exposed to the client.
@@ -358,37 +436,8 @@ export const sharedEnvShape = {
   SERVER_URL: z.string().min(1),
   CLIENT_URL: z.string().min(1),
 }
-```
 
-**2. The server env** — shared keys plus secrets, guarded so it can never reach
-the client (see [import guards](#server-only-and-client-only-guards)):
-
-```ts
-// lib/env/server.ts
-import { sharedEnvShape } from '@/lib/env/shared-shape'
-import '@point0/core/server-only' // build fails if this file reaches the client
-import { z } from 'zod'
-
-const result = z
-  .object({ ...sharedEnvShape, DATABASE_URL: z.string().min(1) /* … */ })
-  .safeParse(process.env)
-
-if (!result.success) {
-  throw new Error('Invalid server environment variables', {
-    cause: result.error,
-  })
-}
-
-// Read server config via `serverEnv` — never process.env directly in features.
-export const serverEnv = { ...result.data }
-```
-
-**3. The client shape** — shared keys plus client-only ones, and the key list
-the engine consumes:
-
-```ts
-// lib/env/client-shape.ts
-import { sharedEnvShape } from '@/lib/env/shared-shape'
+export const sharedEnv = createEnv('shared', sharedEnvShape)
 
 // Never add secrets — every key here reaches the browser (a `vars` key is
 // injected into the page HTML per request; a `consts` key is inlined into the JS).
@@ -401,15 +450,84 @@ export const clientEnvShape = {
 export const clientEnvKeys = Object.keys(clientEnvShape)
 ```
 
+**3. `server.ts` — shared keys plus secrets**, guarded so it can never reach the
+client (see [import guards](#server-only-and-client-only-guards)):
+
+```ts
+// lib/env/server.ts
+import { sharedEnvShape } from '@/lib/env/shared'
+import { createEnv } from '@/lib/env/utils'
+import '@point0/core/server-only' // build fails if this file reaches the client
+import { z } from 'zod'
+
+// Read server config via `serverEnv` — never process.env directly in features.
+export const serverEnv = createEnv('server', {
+  ...sharedEnvShape,
+  DATABASE_URL: z.string().min(1),
+  // …
+})
+```
+
+`app.server.ts` then validates the whole set before serving:
+
+```ts
+// src/app.server.ts
+import { serverEnv } from '@/lib/env/server'
+import { engine } from '@/engine.js'
+
+serverEnv.validate() // throws on the first invalid variable
+await engine.serve()
+```
+
+**4. `client.ts` — the browser handle.** Its shape lives in `shared.ts`; this
+file is the handle plus whatever browser-only setup the app needs:
+
+```ts
+// lib/env/client.ts
+import { clientEnvShape } from '@/lib/env/shared'
+import { createEnv } from '@/lib/env/utils'
+import '@point0/core/client-only' // build fails if this file reaches the server
+
+// Dev only: route client→server requests through the client origin so SSR
+// fetches skip CORS. In prod the URLs already match, and `NODE_ENV` is an
+// always-injected const, so the whole block is dead-stripped from the bundle.
+if (process.env.NODE_ENV !== 'production') {
+  process.env.SERVER_URL = process.env.CLIENT_URL
+}
+
+export const clientEnv = createEnv('client', clientEnvShape)
+```
+
+`index.client.tsx` imports it **first**, before every other import, and
+validates before mounting:
+
+```tsx
+// src/index.client.tsx
+import { clientEnv } from '@/lib/env/client'
+import App from '@/app.client'
+// …
+
+clientEnv.validate()
+mount(<App />, points)
+```
+
+The order matters because the getters cache: the rewrite above only reaches
+`sharedEnv.SERVER_URL` if it runs before `src/lib/root.tsx` — which reads it at
+module scope — is loaded.
+
 `clientEnvKeys` is the bridge: it feeds `client.env.vars` (above), so the schema
 is the single source of truth for what's whitelisted — one list in one place, no
 scattered `PUBLIC_` prefix convention.
 
-> **Why split shape from validation:** `engine.ts` imports `clientEnvKeys` ←
-> `client-shape.ts` ← `shared-shape.ts` — that whole chain loads while building
-> the engine config. Keep the shape files free of top-level _validation_
-> (nothing that throws at import); validate in the `server.ts` / `client.ts` /
-> `shared.ts` files that aren't on the config path.
+> **Why the shape and the handle share a file:** `engine.ts` imports
+> `clientEnvKeys` ← `shared.ts`, and that chain loads while building the engine
+> config, in a process where only the CLI has fixed the env. Eager validation
+> there would throw before the app starts. Lazy getters have no such problem —
+> `createEnv` only defines properties, reads nothing — so `shared.ts` stays safe
+> on the config path and there is no separate shape file to import when you want
+> the schema without the values (`sharedEnv.shape` is right there). `client.ts`
+> is the exception that proves it: it carries a browser-only side effect, so the
+> shape it validates has to live in `shared.ts` where `engine.ts` can reach it.
 
 Use Zod, Valibot, hand-written checks, or nothing — the only contract is that
 `client.env.vars` gets the list of keys to expose.

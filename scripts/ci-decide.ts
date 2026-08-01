@@ -8,24 +8,27 @@
  * The policy decides WHAT runs (OS matrix, publish); HOW the test files are distributed across runners is the test
  * plan's job (scripts/test.ts, `--plan`) — this script just forwards the plan to the workflows.
  *
- * Branch model is classic OSS: one `main` trunk, releases driven by `v*` tags.
+ * Branch model is classic OSS: one `main` trunk, and a release is a push to `main` whose pipeline goes green — the
+ * release job publishes what npm doesn't have yet and only THEN tags `v<version>`. Tags trigger nothing.
  *
- *     pull_request → main      full matrix, no publish        (the merge gate)
+ *     pull_request → main      full matrix, no publish         (the merge gate)
  *       …docs-only diff        empty matrix, no publish        (every changed file is *.md)
- *     push tag v*              full matrix (MANDATORY), publish→latest/next by version
+ *     push        main         full matrix (MANDATORY), publish→latest/next by version   (release.yml)
  *     push        feature      tests only if --run-tests[=os], never publish
- *     any         --skip-ci    nothing (ignored on a tag)
+ *     push        tag          full matrix, never publishes    (defensive — no workflow listens on tags)
+ *     any         --skip-ci    nothing (ignored on main and on a PR)
  *
- * Note: ci.yml does NOT gate pushes to `main` (the PR is the gate; main only changes via an already-tested PR or a
- * release commit, and the release commit is gated by its tag). So a push to `main` isn't normally fed here; the
- * defensive `main → full` below only covers a manual dispatch.
+ * Note: ci.yml gates PRs and feature branches; pushes to `main` go to release.yml instead (same linear pipeline, plus
+ * the release job at the end), so `main` is never fed to two workflows at once.
  *
  * Invariants (pinned by tests):
  *
- * 1. A tag always tests — no flag can skip it. (--skip-tests died in the CI rework: prereleases test like stables; when a
- *    broken prerelease must ship anyway, fix it locally instead of publishing untested bytes.)
- * 2. `publish` is true only for tags — structurally unreachable from PRs, forks, branch pushes.
- * 3. The gate stays green-or-skipped before publish (enforced by the workflow `if:`, not here).
+ * 1. `main` always tests — no flag can skip it, because a push to `main` is the release path. (--skip-tests died in the CI
+ *    rework: prereleases test like stables; when a broken prerelease must ship anyway, fix it locally instead of
+ *    publishing untested bytes.)
+ * 2. `publish` is true only for a push to `main` — structurally unreachable from PRs, forks, feature branches and tags.
+ *    Whether it then publishes ANYTHING is npm's answer to "is this version already there?" (release.yml).
+ * 3. The gate stays green before publish (enforced by the workflow `if:`, not here).
  *
  * Commit-message flags (dash style): --run-tests, optionally `=os,os` (linux/ubuntu, windows/win, macos/mac; bare = all
  * OSes), and --skip-ci.
@@ -104,8 +107,11 @@ export type DecideResult = { oses: string[]; publish: boolean }
 export function decide({ event, refType, ref, message, changedFiles }: DecideInput): DecideResult {
   const full = [...FULL_OSES]
 
-  // RELEASE — a tag is the only thing that publishes (invariant 2), and it ALWAYS tests (invariant 1).
-  if (refType === 'tag') return { oses: full, publish: true }
+  // RELEASE — a push to `main` is the only thing that can publish (invariant 2), and it ALWAYS tests (invariant 1):
+  // checked before --skip-ci, so no commit message can ship an untested release. A tag ref never publishes (nothing
+  // listens on tags; CI creates them at the end of a green run) — the branch below is purely defensive.
+  if (refType === 'tag') return { oses: full, publish: false }
+  if (event === 'push' && ref === MAIN_BRANCH) return { oses: full, publish: true }
 
   // GATE — never publishes (invariant 2). Checked BEFORE --skip-ci: commit-message flags are ignored on a
   // PR, so no one can merge an untested change by writing --skip-ci into the tip commit — the only thing
@@ -117,9 +123,9 @@ export function decide({ event, refType, ref, message, changedFiles }: DecideInp
     return { oses: full, publish: false }
   }
 
-  // --skip-ci short-circuits any other non-tag run (the maintainer's own branch pushes).
+  // --skip-ci short-circuits any other run (the maintainer's own branch pushes, a dispatch).
   if (hasSkipCi(message)) return { oses: [], publish: false }
-  if (ref === MAIN_BRANCH) return { oses: full, publish: false } // push to trunk
+  if (ref === MAIN_BRANCH) return { oses: full, publish: false } // workflow_dispatch on trunk: test, never publish
 
   // Any other branch: tests are opt-in via --run-tests (all, or a specific OS).
   const runTests = parseFlag(message, 'run-tests')

@@ -183,7 +183,9 @@ export class BasicAuth {
   async validateRequest(request: Request0): Promise<BasicAuthValidationResult> {
     this.removeOld()
 
-    const ip = request.from.ip || undefined
+    // The visitor's address when the app sits behind a proxy/CDN (where `from.ip` is the same internal hop for
+    // every visitor and the per-IP limit would collapse into one global bucket); the raw peer otherwise.
+    const ip = request.from.clientIp ?? request.from.ip ?? undefined
     const parsedAuth = this.parseAuthorizationHeader(request.original.headers.get('authorization') ?? undefined)
     if (!parsedAuth) {
       return await this.unauthorized({ request, ip, username: undefined })

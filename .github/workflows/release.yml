@@ -1,29 +1,38 @@
 name: release
 
-# The ONLY publish path. Reachable exclusively via a `v*` release tag — never from a PR, a fork, or a
-# branch push (a fork cannot push a tag to this repo), which makes "no untrusted code ever publishes" a
-# structural guarantee, not a convention. Versions are bumped + tagged together by `bun run release`.
+# The ONLY publish path, and the gate for `main`. Reachable exclusively from a push to `main` in THIS repo —
+# never from a PR, a fork or a tag (a fork cannot push to `main`), which keeps "no untrusted code ever
+# publishes" a structural guarantee, not a convention.
 #
-# Same linear pipeline as the gate, with publish at the end: decide → build → check → test → publish.
-# EVERY tag — stable or prerelease — runs the full matrix; there is no skip flag (--skip-tests died in the
-# CI rework: when a prerelease must ship despite a broken suite, fix it locally, don't publish untested
-# bytes). The dist-tag (`latest`/`next`) is derived from the version (scripts/publish.ts), and the
-# tag↔version match is asserted before anything is published (scripts/check-channel.ts).
+# A release is a push whose pipeline goes green: decide → build → check → test → release. `bun run release`
+# bumps + commits locally (it does NOT tag); you push `main`; this one run tests everything and, if
+# package.json's version isn't on npm yet, publishes it and only THEN creates the annotated `v<version>` tag
+# at the commit that was actually built and tested. The tag is the RESULT of a release, never its trigger —
+# nothing runs on a tag push anymore, so a tag can't point at a commit CI never proved, and a broken release
+# commit costs a fix commit instead of a burned version.
+#
+# EVERY push to `main` runs the full matrix — there is no skip flag (scripts/ci-decide.ts invariant 1: the
+# release path always tests). The dist-tag (`latest`/`next`) is derived from the version
+# (scripts/publish.ts), and the tag ↔ version match holds by construction: the tag below is built from the
+# same package.json the publish read.
 on:
   push:
-    tags: ['v*']
-  workflow_dispatch: # re-publish is idempotent — dispatch on a tag ref to retry a failed publish
+    branches: [main]
+  workflow_dispatch: # re-run the pipeline on demand; publishing stays push-to-main only
 
 permissions:
   contents: read
   id-token: write # OIDC: npm provenance / trusted publishing
 
 concurrency:
+  # Never cancel a run that may already be publishing — release runs queue instead. Two release commits
+  # pushed back to back must publish in order, or an older run could re-point `latest` at the older version.
   group: release-${{ github.ref }}
-  cancel-in-progress: false # never cancel a publish mid-flight
+  cancel-in-progress: false
 
 jobs:
-  # Same brain as the gate: the OS matrix + the test plan. On a tag it always returns the full matrix.
+  # Same brain as the gate: the OS matrix + the test plan. On a push to `main` it always returns the full
+  # matrix and `publish=true` (whether anything actually ships is npm's answer in the release job).
   decide:
     name: decide
     runs-on: ubuntu-latest
@@ -32,6 +41,7 @@ jobs:
       oses: ${{ steps.d.outputs.oses }}
       groups: ${{ steps.d.outputs.groups }}
       solo: ${{ steps.d.outputs.solo }}
+      publish: ${{ steps.d.outputs.publish }}
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
@@ -45,13 +55,13 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: bun scripts/ci-decide.ts >> "$GITHUB_OUTPUT"
 
-  # Build ONCE (ubuntu-only) → `dist` artifact, consumed by check, test AND publish — what ships is
+  # Build ONCE (ubuntu-only) → `dist` artifact, consumed by check, test AND release — what ships is
   # byte-identical to what was checked and tested.
   build:
     needs: decide
     uses: ./.github/workflows/build.yml
 
-  # Prettier + ESLint on the artifact — a tag can't publish unformatted/unlinted code.
+  # Prettier + ESLint on the artifact — nothing unformatted/unlinted reaches npm.
   check:
     needs: build
     uses: ./.github/workflows/check.yml
@@ -64,17 +74,31 @@ jobs:
       groups: ${{ needs.decide.outputs.groups }}
       solo: ${{ needs.decide.outputs.solo }}
 
-  publish:
-    # Publish only when the WHOLE pipeline is green — decide, build, check and test all succeeded. Tags
-    # always test (ci-decide invariant 1), so there is no legitimately-skipped stage here, and any
-    # failure/cancellation upstream blocks the publish.
+  release:
+    # Publish only when the WHOLE pipeline is green — decide, build, check and test all succeeded. A push to
+    # `main` always tests (ci-decide invariant 1), so there is no legitimately-skipped stage here, and any
+    # failure/cancellation upstream blocks the release.
+    #
+    # Two independent guards, ANDed on purpose (drift can only ever mean "no publish"): the auditable,
+    # unit-tested policy (`decide.publish`, true only for a push to `main`) and the structural ref/event
+    # check right here in the workflow.
     needs: [decide, build, check, test]
     if:
-      ${{ needs.decide.result == 'success' && needs.build.result == 'success' && needs.check.result == 'success' &&
+      ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.decide.outputs.publish == 'true' &&
+      needs.decide.result == 'success' && needs.build.result == 'success' && needs.check.result == 'success' &&
       needs.test.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write # push the release tag
+      id-token: write # OIDC: npm provenance / trusted publishing
+    # Serialized across ALL refs and runs (the workflow-level group is per-ref): two releases must never
+    # interleave their `latest` moves. Never cancelled mid-publish.
+    concurrency:
+      group: release
+      cancel-in-progress: false
     steps:
+      # Default `persist-credentials: true` — the tag push at the end uses that GITHUB_TOKEN.
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
@@ -99,12 +123,41 @@ jobs:
       # dist is already in place, so this install just relinks the `point0` bin — it does not rebuild.
       - name: Install dependencies
         uses: ./.github/actions/install
-      # Tag guard: the tag MUST equal v${version in package.json}, so the bump and the tag can't drift.
-      - name: Channel guard (tag ↔ version)
-        run: bun run check:channel
-      # Idempotent: publishes only packages whose version isn't on npm yet; dist-tag derived from the
-      # version; provenance is added automatically for packages whose publishConfig.access is public.
-      # Auth is OIDC trusted publishing (id-token: write above) — no NPM_TOKEN; the publish job exchanges
-      # the workflow's OIDC identity for a short-lived npm credential against the package's trusted publisher.
+      # Is this version already released? One anchor package answers for the lockstep set (every @point0/*
+      # shares the version). `npm view` exits non-zero on E404 — for an unknown version AND for a package that
+      # was never published at all (a brand-new package's first release), and both mean "go".
+      - id: state
+        name: Is this version already published?
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if npm view "@point0/core@$version" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "@point0/core@$version is already on npm — nothing to publish."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "@point0/core@$version is not on npm — publishing."
+          fi
+      # Idempotent per package (it re-asks npm for each one, so a half-published version heals); the gate
+      # above just keeps an ordinary push quiet. dist-tag derived from the version; provenance is added
+      # automatically for packages whose publishConfig.access is public. Auth is OIDC trusted publishing
+      # (id-token: write) — no NPM_TOKEN; the run exchanges the workflow's OIDC identity for a short-lived
+      # npm credential against each package's trusted publisher (this repo + THIS workflow file).
       - name: Publish packages
+        if: ${{ steps.state.outputs.published == 'false' }}
         run: bun run publish:packages
+      # The tag lands last: after a green pipeline and a successful publish, at the exact commit that was
+      # built, tested and shipped. Not gated on `published`, so a run that published but died before tagging
+      # heals on re-run; an existing remote tag is left alone — tags are immutable here, never moved.
+      - name: Tag the release
+        run: |
+          tag="v${{ steps.state.outputs.version }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "tag $tag already exists on origin — leaving it alone."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "$tag" "$GITHUB_SHA"
+          git push origin "refs/tags/$tag"
+          echo "tagged $tag at $GITHUB_SHA"

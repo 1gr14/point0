@@ -160,7 +160,9 @@ export class CompilerFile<THasContent extends boolean> {
     return cloned
   }
 
-  private pruneMemory() {
+  // Drops every content-derived memo. Called when the file's OWN content changed (re-read in readSync), and from the
+  // compiler when a disk-cache entry was invalidated by a DEPENDENCY — same bytes, but chain-derived state is suspect.
+  pruneMemory() {
     const clonedAndStale = this.cloneAndMadeStale()
     for (const point of this.points.values()) {
       // point.pruneMemory()
@@ -172,6 +174,17 @@ export class CompilerFile<THasContent extends boolean> {
     this._hasTypescriptSyntax = undefined
     this._isIdentifierExists = {}
     this._shakeForEnv = undefined
+    // Every memo below derives from the CONTENT (through the AST) just like the ones above — leaving any of them
+    // behind serves results computed from the PREVIOUS content after a re-read. `_applyImporter`/`_collectImports*`
+    // were the concrete bug: with a persistent walker (`built`/`pruneWalker: false`) an edited file kept reporting its
+    // OLD import list (and skipped the importer rewrite on the fresh AST), which fed watch graphs and the disk cache.
+    this._shakeForBuiltEngine = undefined
+    this._collectImports = undefined
+    this._collectImportsWithoutExportNames = undefined
+    this._applyImporter = undefined
+    this._applyUserBabelPlugins = undefined
+    this._preUserBabelMap = undefined
+    this.imports = []
     this.allPointsWasCollected = false
     this.modified = false
   }
@@ -235,10 +248,14 @@ export class CompilerFile<THasContent extends boolean> {
 
   readSync(fresh: boolean, stats?: nodeFsSync.Stats): CompilerFile<true> {
     if (this.content !== undefined && !fresh) {
+      // Provided-content path (no disk identity to record — the bytes did not come from disk).
       return this as CompilerFile<true>
     }
     stats ??= nodeFsSync.statSync(this.abs)
     if (stats.mtimeMs === this.mtime && this.content !== undefined) {
+      // Memoized instance serving the SAME on-disk content — the consumer still depends on these bytes, so the read
+      // is recorded exactly like a physical one (the identity is what matters, not whether the OS was asked again).
+      this.walker.recordRead(this.abs, stats.mtimeMs)
       return this as CompilerFile<true>
     }
     this.pruneMemory()
@@ -247,6 +264,7 @@ export class CompilerFile<THasContent extends boolean> {
     result.content = nodeFsSync.readFileSync(this.abs, 'utf8')
     result.mtime = stats.mtimeMs
     result.rtime = Date.now()
+    this.walker.recordRead(this.abs, stats.mtimeMs)
     return result
   }
 
@@ -255,8 +273,7 @@ export class CompilerFile<THasContent extends boolean> {
     | { ast: undefined; errors: unknown[]; ok: false }
     | undefined = undefined
   parse():
-    | { ast: babel.ParseResult<File>; errors: unknown[]; ok: true }
-    | { ast: undefined; errors: unknown[]; ok: false } {
+    { ast: babel.ParseResult<File>; errors: unknown[]; ok: true } | { ast: undefined; errors: unknown[]; ok: false } {
     if (this.content === undefined) {
       throw new Error(`File ${this.abs} is not read yet`)
     }
@@ -2399,8 +2416,97 @@ export class CompilerFile<THasContent extends boolean> {
     return nodePath.resolve(compiler.getCacheDir({ map, hmrFix }), this.pathHash + '.' + mtime)
   }
 
+  /**
+   * Re-resolves every first-party import a cache entry recorded and reports whether they all still land on the same
+   * files.
+   *
+   * The entry is keyed by the importer's own path, mtime and the compiler settings — and none of those move when a
+   * DEPENDENCY is renamed (`b.ts` → `b.tsx`) or moved (`x.ts` → `x/index.ts`). The payload, meanwhile, carries the
+   * resolved paths AND the emit that was decided from them: deny/mock rules match on the resolved path, so a stale
+   * entry keeps rewriting an import that no longer matches any rule — or keeps letting through one that now does. The
+   * entry is therefore valid only while every resolution it recorded still holds, which is exactly what this checks,
+   * with the same call the collect pass makes.
+   *
+   * Deliberately kept ALONGSIDE the read-log check ({@link cachedReadsAreStillFresh}) — neither subsumes the other.
+   * Plain imports are only ever RESOLVED, never read, so a renamed plain dependency changes nothing the read log
+   * recorded — only re-resolution notices. And a newly CREATED file can win resolution over the recorded one (`x.ts`
+   * appearing next to the imported `x/index.ts`) while everything recorded still stats clean. The read log owns the
+   * complementary axis: content changes of the files the emit was derived from.
+   *
+   * Skipped: bare npm specifiers (they resolve to nothing, so there is nothing to compare) and anything already living
+   * in `node_modules` — moving those means a reinstall, which rewrites far more than one cache entry.
+   *
+   * A payload that is not shaped like a list of import items — an older format, a truncated write — reads as invalid,
+   * so the compile falls through to a full pass instead of crashing.
+   */
+  private cachedImportsStillResolveTheSame(imports: unknown): boolean {
+    if (!Array.isArray(imports)) {
+      return false
+    }
+    for (const importItem of imports as unknown[]) {
+      if (!importItem || typeof importItem !== 'object') {
+        return false
+      }
+      const { pathOriginal, pathResolved } = importItem as { pathOriginal?: unknown; pathResolved?: unknown }
+      if (typeof pathOriginal !== 'string') {
+        return false
+      }
+      if (typeof pathResolved !== 'string') {
+        continue
+      }
+      if (pathResolved.includes('/node_modules/')) {
+        continue
+      }
+      const pathResolvedNow = FileResolver.resolveFilePath({
+        path: pathOriginal,
+        importer: this.abs,
+        existing: false,
+      })
+      if (pathResolvedNow !== pathResolved) {
+        return false
+      }
+    }
+    return true
+  }
+
+  /**
+   * Stats every file whose CONTENT the cached compile consumed (the payload's read log — see `Walker.readLogs`) and
+   * reports whether each still exists with the same mtime. This is what invalidates an entry when a DEPENDENCY'S
+   * CONTENT changes: base-point resolution bakes what it read in imported files (chain scope, basePath,
+   * sugar-relatedness) into this file's emit, while the entry is keyed only by this file's own path+mtime+settings. A
+   * renamed dependency also lands here for the chain files (the recorded path stats as missing).
+   *
+   * A payload whose `reads` is not a list of `[abs, mtimeMs]` pairs — an older cache format, a truncated write — reads
+   * as invalid, so the compile falls through to a full pass (which rewrites the entry in the current format).
+   */
+  private cachedReadsAreStillFresh(reads: unknown): boolean {
+    if (!Array.isArray(reads)) {
+      return false
+    }
+    for (const read of reads as unknown[]) {
+      if (!Array.isArray(read) || typeof read[0] !== 'string' || typeof read[1] !== 'number') {
+        return false
+      }
+      const [abs, mtimeMs] = read as [string, number]
+      try {
+        if (nodeFsSync.statSync(abs).mtimeMs !== mtimeMs) {
+          return false
+        }
+      } catch {
+        return false
+      }
+    }
+    return true
+  }
+
   getCache({ map, hmrFix, compiler }: { map: boolean; hmrFix: boolean; compiler: Compiler }): {
     stats: nodeFsSync.Stats | undefined
+    /**
+     * True when an entry for this exact path+mtime+settings EXISTED but failed validation (stale reads, moved
+     * resolutions, unreadable payload) and was dropped. The caller uses it to distinguish "never cached" from "the
+     * world this file's memoized state was derived from has changed" — the latter must also refresh walker memory.
+     */
+    invalidated: boolean
     result:
       | undefined
       | {
@@ -2420,6 +2526,7 @@ export class CompilerFile<THasContent extends boolean> {
     if (!stats?.mtimeMs) {
       return {
         stats,
+        invalidated: false,
         result: undefined,
       }
     }
@@ -2434,6 +2541,7 @@ export class CompilerFile<THasContent extends boolean> {
     if (!cacheFileContent) {
       return {
         stats,
+        invalidated: false,
         result: undefined,
       }
     }
@@ -2444,22 +2552,30 @@ export class CompilerFile<THasContent extends boolean> {
           map: GeneratorResult['map']
           modified: boolean
           imports: ImportsTraceResult['items']
+          reads: Array<[string, number]>
         }
       } catch {
         return undefined
       }
     })()
-    if (!result) {
+    // Reads first (one stat per recorded file), resolutions second (extension probing per import — pricier per item).
+    if (
+      !result ||
+      !this.cachedReadsAreStillFresh(result.reads) ||
+      !this.cachedImportsStillResolveTheSame(result.imports)
+    ) {
       try {
         nodeFsSync.unlinkSync(cacheFilePath)
       } catch {}
       return {
         stats,
+        invalidated: true,
         result: undefined,
       }
     }
     return {
       stats,
+      invalidated: false,
       result: {
         code: result.code,
         map: result.map,
@@ -2475,6 +2591,7 @@ export class CompilerFile<THasContent extends boolean> {
     compiler,
     mtime,
     result,
+    reads,
   }: {
     map: boolean
     hmrFix: boolean
@@ -2486,8 +2603,16 @@ export class CompilerFile<THasContent extends boolean> {
       modified: boolean
       imports: ImportsTraceResult['items']
     }
+    /** The compile's read log (abs → mtimeMs). The file's own read is filtered out — its identity IS the entry key. */
+    reads: ReadonlyMap<string, number>
   }): void {
     const cacheFilePath = this.getCacheFilePath({ mtime, compiler, map, hmrFix })
+    const readsList: Array<[string, number]> = []
+    for (const [abs, readMtimeMs] of reads) {
+      if (abs !== this.abs) {
+        readsList.push([abs, readMtimeMs])
+      }
+    }
     nodeFsSync.writeFileSync(
       cacheFilePath,
       JSON.stringify({
@@ -2495,6 +2620,7 @@ export class CompilerFile<THasContent extends boolean> {
         map: result.map,
         modified: result.modified,
         imports: result.imports,
+        reads: readsList,
       }),
       'utf8',
     )

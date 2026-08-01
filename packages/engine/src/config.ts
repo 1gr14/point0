@@ -60,9 +60,7 @@ export type EngineOptionsPublicdir =
 export type EngineOptionsPublicdirParsed = Array<[string, string | (() => string | Promise<string>)]>
 
 export type EngineOptionsEnvWide =
-  | string
-  | Record<string, string | undefined>
-  | Array<string | Record<string, string | undefined>>
+  string | Record<string, string | undefined> | Array<string | Record<string, string | undefined>>
 export type EngineOptionsEnvStrict = Record<string, string | undefined> | Array<Record<string, string | undefined>>
 export type EngineOptionsEnvParsed = Record<string, string | undefined>
 
@@ -85,8 +83,7 @@ export type EngineOptionsViteConfig =
 
 export type EngineOptionsAppComponent = (() => Promise<AppComponent | AppComponentModule>) | AppComponent
 export type EngineOptionsRoutes = () =>
-  | Promise<RoutesPretty | { routes: RoutesPretty } | { default: RoutesPretty }>
-  | RoutesPretty
+  Promise<RoutesPretty | { routes: RoutesPretty } | { default: RoutesPretty }> | RoutesPretty
 
 export type AnyBunServeConfig = Serve.Options<any, any>
 
@@ -538,8 +535,25 @@ export type EngineServerOptions<
   port?: number | string
   /** Build output dir. Auto-set to `'dist'`; drives the after-build cwd. */
   outdir?: string
-  /** Server entry file(s). A string becomes `{ main: <string> }`. Default `null`. */
+  /**
+   * Server entry file(s). A string becomes `{ main: <string> }`. Default `null`.
+   *
+   * Every declared entry is BUILT by `point0 build`. `point0 dev` starts only ONE of them by default (`main`, or the
+   * first declared key) — see {@link EngineServerOptions.devEntries} to change that, or `--entry` on the CLI.
+   */
   entry?: string | Record<string, string>
+  /**
+   * Which server entries `point0 dev` starts. Names (keys of {@link EngineServerOptions.entry}) or paths; `'*'` starts
+   * every declared entry. Default: `main` when declared, otherwise the FIRST declared key — a second entry (a worker, a
+   * one-shot sync script) is opt-in, so plain `point0 dev` never boots your whole fleet.
+   *
+   * `--entry <name|path>` on the CLI overrides this; `--entry '*'` is the CLI form of `'*'` (quote it — an unquoted `*`
+   * globs in the shell).
+   *
+   * An entry that exits with code 0 is a program that FINISHED, not a crash: dev logs `Entry "<name>" finished` and
+   * keeps running; the entry re-runs on the next change in its own import graph.
+   */
+  devEntries?: string | string[] | '*'
   /** Default watch glob for `point0 dev` when `--watch` is passed with no value. Default `[]`. */
   devWatchGlob?: string | string[]
   /** Raw `Bun.serve` overrides (idleTimeout, tls, …), merged over the engine's own serve config. Default `null`. */
@@ -795,6 +809,8 @@ export type EngineServerOptionsParsed = {
    */
   features: EngineOptionsFeaturesParsed
   devWatchGlob: string[]
+  /** Resolved `devEntries`: names/absolute paths, `'*'`, or `null` when the app did not ask for anything. */
+  devEntries: string[] | '*' | null
 }
 export type EngineOptionsParsed = {
   general: EngineGeneralOptionsParsed
@@ -1434,6 +1450,17 @@ export const parseEngineServerOptions = ({
         ? serverOptions.devWatchGlob
         : [serverOptions.devWatchGlob]
   ).map((g) => toAbsPath(generalOptionsParsed.cwd, g, true))
+  // `devEntries` names or paths. Paths go through the same resolver as `entry`, so `'./sync.server.ts'` here resolves to
+  // the exact string the entry record holds (and matches it by identity); a bare name is left alone for `toEntryPath`.
+  const devEntries =
+    serverOptions.devEntries === undefined
+      ? null
+      : serverOptions.devEntries === '*'
+        ? ('*' as const)
+        : (Array.isArray(serverOptions.devEntries) ? serverOptions.devEntries : [serverOptions.devEntries]).map(
+            (entry) =>
+              toFinalPath({ ...generalOptionsParsed, cwdIfWasBuilt: outdir, path: entry, omitDirAfterBuild: true }),
+          )
   return {
     scope: serverOptions.scope,
     features,
@@ -1468,6 +1495,7 @@ export const parseEngineServerOptions = ({
         : (serverOptions.viteConfig ?? generalOptionsParsed.viteConfig ?? null),
     ssrEnabled: ssr,
     devWatchGlob,
+    devEntries,
   }
 }
 const parseEngineClientOptions = ({

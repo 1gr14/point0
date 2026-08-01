@@ -58,6 +58,48 @@ export type {
   EngineSocketStatus,
 } from './socket.js'
 
+/**
+ * Which server entries `point0 dev` starts, as names or paths for {@link Engine.toEntryPath}.
+ *
+ * `point0 build` always builds EVERY declared entry; dev is the selective one, and its default is a SINGLE entry —
+ * plain `point0 dev` boots your app, not the worker and the one-shot sync script beside it. The ladder:
+ *
+ * 1. an explicit request — CLI `--entry <name|path>` (repeatable, comma-separated; `--entry '*'` = every declared entry),
+ *    reaching here as `engine.dev({ entries })`;
+ * 2. the server's `devEntries` config option;
+ * 3. `main` when it is declared, otherwise the FIRST declared key.
+ *
+ * `'*'` on either of the first two levels expands to every declared entry, in declaration order (`*` can never be a
+ * real entry name, so the sentinel is unambiguous). With no entries declared at all the result is empty (the caller
+ * then runs no server side).
+ */
+export const resolveDevEntries = ({
+  requested,
+  configured,
+  declaredNames,
+}: {
+  requested?: string[] | '*' | undefined
+  configured?: string[] | '*' | null
+  declaredNames: string[]
+}): string[] => {
+  const explicit = requested === '*' || (requested !== undefined && requested.length > 0) ? requested : undefined
+  const selected =
+    explicit ??
+    (configured === '*' || (configured !== null && configured !== undefined && configured.length > 0)
+      ? configured
+      : undefined)
+  if (selected === '*') {
+    return declaredNames
+  }
+  if (selected !== undefined) {
+    return selected
+  }
+  if (declaredNames.length === 0) {
+    return []
+  }
+  return [declaredNames.includes('main') ? 'main' : (declaredNames[0] as string)]
+}
+
 export class Engine<
   TRequiredCtx extends RequiredCtx = RequiredCtx,
   TError extends ErrorPoint0 = ErrorPoint0,
@@ -87,6 +129,8 @@ export class Engine<
   pointsGlob: string[]
   buildWatchGlob: string[]
   serverDevWatchGlob: string[]
+  /** The server's `devEntries` option — which entries `point0 dev` starts when nothing is requested explicitly. */
+  serverDevEntries: string[] | '*' | null
   cwd: string
   wasBuilt: boolean
   file: string
@@ -104,6 +148,7 @@ export class Engine<
     pointsGlob: string[]
     buildWatchGlob: string[]
     serverDevWatchGlob: string[]
+    serverDevEntries: string[] | '*' | null
     cwd: string
     wasBuilt: boolean
     file: string
@@ -127,6 +172,7 @@ export class Engine<
     this.pointsGlob = input.pointsGlob
     this.buildWatchGlob = input.buildWatchGlob
     this.serverDevWatchGlob = input.serverDevWatchGlob
+    this.serverDevEntries = input.serverDevEntries
     this.cwd = input.cwd
     this.wasBuilt = input.wasBuilt
     this.file = input.file
@@ -200,6 +246,7 @@ export class Engine<
       pointsGlob: parsedOptions.general.pointsGlob,
       buildWatchGlob: parsedOptions.general.buildWatchGlob,
       serverDevWatchGlob: parsedOptions.server.devWatchGlob,
+      serverDevEntries: parsedOptions.server.devEntries,
       cwd: parsedOptions.general.cwd,
       wasBuilt: parsedOptions.general.itWasBuilt,
       file: parsedOptions.general.engineFile,
@@ -441,8 +488,13 @@ export class Engine<
     )
   }
 
+  /**
+   * Resolve a server entry given as a NAME (a key of the server `entry` record) or as a PATH (relative to `cwd`, or
+   * absolute) to its absolute file path. `nodePath.isAbsolute` covers the Windows `C:\…` form, which no entry name can
+   * collide with — the config resolves `devEntries` paths ahead of time, and they arrive here already absolute.
+   */
   toEntryPath({ entry, cwd = process.cwd() }: { entry: string; cwd?: string }): string {
-    if (entry.startsWith('.') || entry.startsWith('/')) {
+    if (entry.startsWith('.') || entry.startsWith('/') || nodePath.isAbsolute(entry)) {
       return nodePath.resolve(cwd, entry)
     } else {
       const entryPath = this.server.entry?.[entry]
@@ -457,7 +509,12 @@ export class Engine<
     generateFiles?: boolean
     side?: 'server' | 'client' | undefined
     scope?: PointsScope | undefined
-    entries?: string[] // paths or names
+    /**
+     * Which server entries to start: names (keys of the server `entry` record) or paths, or `'*'` for every declared
+     * entry. Omitted, the server's `devEntries` option decides; with that unset too, dev starts a SINGLE entry —
+     * `main`, or the first declared key. See {@link resolveDevEntries}.
+     */
+    entries?: string[] | '*'
     bunRunArgs?: string[]
     watch?: string | string[] | boolean
     cwd?: string
@@ -514,10 +571,13 @@ export class Engine<
     }
     const generatorWatchProcess = generateFiles && watch ? this.generateWatch() : null
     const withServer = isSideServer && isScopeServer && !!this.server.entry
-    const entriesFiles =
-      entries && entries.length > 0
-        ? entries.map((entry) => this.toEntryPath({ entry, cwd }))
-        : Object.values(this.server.entry || {})
+    // Dev starts a SELECTION of the declared entries (build always builds them all): the explicit request, else the
+    // `devEntries` option, else the single main entry. Names and paths both go through toEntryPath.
+    const entriesFiles = resolveDevEntries({
+      requested: entries,
+      configured: this.serverDevEntries,
+      declaredNames: Object.keys(this.server.entry || {}),
+    }).map((entry) => this.toEntryPath({ entry, cwd }))
     // client dev servers always run as a single instance in this (the engine.dev) process.
     // server entries (subprocesses for bun-native, in-process for vite) just proxy to them.
     const clientsDevServers = isSideClient

@@ -20,7 +20,7 @@
  * browser. See `EnvFeature` in `env.ts` and the `features` option in the engine config.
  */
 import * as React from 'react'
-import { POINT0_ERROR_CODES_MAP } from './error.js'
+import { POINT0_ERROR_CODES_MAP, stringifyOrThrow } from './error.js'
 import type { ErrorPoint0 } from './error.js'
 import { getLogFnForPoint } from './logger.js'
 import { _point0_env } from './env.js'
@@ -44,7 +44,6 @@ import type {
 import {
   generateId,
   mergeChannelOptions,
-  stringifyOrThrow,
   mergeSpaceOptions,
   mergeClientHandlerOptions,
   mergeServerHandlerOptions,
@@ -694,8 +693,7 @@ const ensureChannelHandlersLoaded = (channel: AnyPoint): Promise<void> => {
   }
   const clientPoints = _ss.__POINT0_CLIENT_POINTS__.getOrUndefined()
   const manager = clientPoints?.manager as
-    | { loadChannelHandlerPoints?: (channelName: string) => Promise<void> }
-    | undefined
+    { loadChannelHandlerPoints?: (channelName: string) => Promise<void> } | undefined
   const promise = manager?.loadChannelHandlerPoints
     ? manager.loadChannelHandlerPoints(channel.name).catch((error: unknown) => {
         // a transient chunk-load failure must not be cached forever — the next connect retries the preload
@@ -938,6 +936,26 @@ const maybeCloseSocket = (manager: SocketManager): void => {
   }, 250)
 }
 
+/**
+ * `socketClientError` — the TRANSPORT itself failed: the socket never came up (`open`), or the reconnect policy ran out
+ * of attempts (`exhausted`) and nothing will re-open it until a `reconnectAll()` or a remount. The browser's `error`
+ * event carries no detail by design, so the payload's error is the framework's own typed one. Like the other client
+ * socket singles the emit rides a channel point of the scope — a socket held with zero connections (a bare `<Socket>`)
+ * fails silently, there is nothing to emit through.
+ */
+const emitSocketClientError = (manager: SocketManager, reason: 'open' | 'exhausted'): void => {
+  const channel = heldInternals(manager).at(0)?.channel
+  if (!channel) {
+    return
+  }
+  const error = new channel._Error(
+    reason === 'open' ? 'Socket connection could not be opened' : 'Socket reconnect attempts are exhausted',
+    { code: POINT0_ERROR_CODES_MAP.SOCKET_CONNECTION_LOST },
+  )
+  const data = { scope: manager.scope, socketIndex: manager.socketIndex, reason, error }
+  channel._emit('socketClientError', data, { scope: manager.scope, socketIndex: manager.socketIndex, reason })
+}
+
 const ensureSocket = (manager: SocketManager, upgradeUrl?: string): void => {
   if (_point0_env.side.is.server) {
     return
@@ -978,6 +996,19 @@ const ensureSocket = (manager: SocketManager, upgradeUrl?: string): void => {
     for (const internal of internals) {
       // a resume left unanswered by a dying socket is simply re-offered on the next one — the key stays valid
       internal.resumePending = false
+      // a connect attempt that HELD ITS TICKET and never got its claim answered dies with the socket: the ticket is
+      // consumed-or-dead server-side and the reconnect re-POSTs (a fresh `Start`), so this attempt is over — settle
+      // its family with the transport error instead of leaving the `Start` dangling. An attempt still waiting for its
+      // POST is untouched: its claim goes out on the NEXT socket and settles there
+      if (
+        internal.ticket !== undefined &&
+        !internal.claimed &&
+        internal.status === 'connecting' &&
+        !internal.disposed
+      ) {
+        internal.ticket = undefined
+        settleConnectClient(internal, internal.connectIndex, { error: connectionLostError(internal.channel) })
+      }
       if (internal.status === 'open') {
         internal.status = 'connecting'
         internal.claimed = false
@@ -1147,7 +1178,13 @@ const ensureSocket = (manager: SocketManager, upgradeUrl?: string): void => {
     handleSocketClosed()
   }
   ws.onerror = () => {
-    // the close handler does the bookkeeping
+    // the close handler does the bookkeeping — what a close cannot tell an app is that the socket never came UP at
+    // all: a handshake that failed (the server is down, the origin refused the upgrade) fires this first and closes
+    // with nothing to report. A socket that WAS open is an ordinary drop, and `socketClientDisconnect` says so.
+    if (manager.ws !== ws || manager.wsStatus === 'open') {
+      return
+    }
+    emitSocketClientError(manager, 'open')
   }
 }
 
@@ -1175,6 +1212,9 @@ const scheduleReconnect = (manager: SocketManager): void => {
       .map((internal) => resolveReconnectPolicy(getResolvedChannelOptions(internal).reconnect))
       .find((candidate) => candidate.enabled) ?? resolveReconnectPolicy(undefined)
   if (!reconnectAttemptAllowed(policy, manager.reconnectAttempt)) {
+    // the backoff gave up: the connections go `closed` and nothing re-opens the socket until a `reconnectAll()` or a
+    // remount. Statuses alone are a poll; the event is what lets an app ALERT on "the socket never came back"
+    emitSocketClientError(manager, 'exhausted')
     for (const internal of internals) {
       if (internal.status !== 'error') {
         internal.status = 'closed'
@@ -1271,6 +1311,65 @@ const claimInternal = (internal: InternalConnection): void => {
   sendFrame(manager, { t: 'claim', ticket: internal.ticket })
 }
 
+/**
+ * One phase of the CLIENT connect family. The payload is the same on every phase but the outcome: `Start` carries no
+ * outcome at all, a landed entry carries the connection it opened plus the entry markers, a failure carries the typed
+ * error and NO markers (a failed connect has no entry to describe) — including a claim refusal, whose cid named a
+ * connection that never went live, so it reports none, like every other error phase.
+ */
+const emitConnectClientEvent = (
+  internal: InternalConnection,
+  name:
+    | 'pointChannelConnectClientStart'
+    | 'pointChannelConnectClientSettled'
+    | 'pointChannelConnectClientSuccess'
+    | 'pointChannelConnectClientError',
+  connectionIndex: number,
+  outcome: { connectionId: string; resumed: boolean; gapless: boolean } | { error: ErrorPoint0 } | undefined,
+): void => {
+  internal.channel._emit(
+    name,
+    {
+      input: internal.input,
+      point: internal.channel,
+      connectionIndex,
+      ...(outcome === undefined
+        ? {}
+        : 'error' in outcome
+          ? { connectionId: undefined, error: outcome.error }
+          : {
+              connectionId: outcome.connectionId,
+              resumed: outcome.resumed,
+              gapless: outcome.gapless,
+              error: undefined,
+            }),
+    },
+    { point: internal.channel.id },
+  )
+}
+
+/**
+ * Close the CLIENT connect family — `Settled` then `Success`/`Error`, the standard pair. The family settles at the
+ * CLAIM, not at the ticket: a connect POST only earns a ticket, and what the claim answers (a landed entry, or a
+ * refusal from the enroller / the `maxConnections` cap / a lapsed record) is the connect's REAL outcome. Every `Start`
+ * gets exactly one of these — from the claim, from the connect request that never got a ticket, or from the socket that
+ * died with the claim unanswered — with one deliberate exception: a connection DISPOSED mid-attempt (unmount,
+ * `disconnect()`, a logout) abandons its family, the way a cancelled operation does; nobody is left to report to.
+ */
+const settleConnectClient = (
+  internal: InternalConnection,
+  connectionIndex: number,
+  outcome: { connectionId: string; resumed: boolean; gapless: boolean } | { error: ErrorPoint0 },
+): void => {
+  emitConnectClientEvent(internal, 'pointChannelConnectClientSettled', connectionIndex, outcome)
+  emitConnectClientEvent(
+    internal,
+    'error' in outcome ? 'pointChannelConnectClientError' : 'pointChannelConnectClientSuccess',
+    connectionIndex,
+    outcome,
+  )
+}
+
 const connectInternal = (internal: InternalConnection, options: { isReconnect: boolean }): Promise<void> => {
   // two rapid refresh frames, reconnectAll under StrictMode, a socket reconnect racing a refresh — all coalesce into
   // the one POST already in flight instead of creating ghost server-side connections
@@ -1342,14 +1441,9 @@ const connectInternalRun = async (
   // every module-level listener must exist before the claim — no push may find its handler missing (a dispose during
   // the preload falls through to the post-fetch discard path below, like any dispose-in-flight)
   await ensureChannelHandlersLoaded(internal.channel)
-  const eventMeta = { point: internal.channel.id }
   // `connectionIndex` mirrors the lifecycle callbacks: successful claims BEFORE this operation (0 = the first
-  // connect, > 0 = a re-connect) — the ++ lands only when the claim does
-  channel._emit(
-    'pointChannelConnectClientStart',
-    { input: internal.input, point: internal.channel, connectionIndex: internal.connectIndex },
-    eventMeta,
-  )
+  // connect, > 0 = a re-connect) — the ++ lands only when the claim does, and the settle reads the same value
+  emitConnectClientEvent(internal, 'pointChannelConnectClientStart', internal.connectIndex, undefined)
   // the upgrade fast path is OPT-IN (`upgradable`, default off): the ticket path is a plain fetch — custom headers
   // apply, the connector's typed error is readable — and taking it always keeps the connect one shape for the server
   if (!isReconnect && getResolvedChannelOptions(internal).upgradable) {
@@ -1357,7 +1451,8 @@ const connectInternalRun = async (
     if (upgrade) {
       const outcome = await upgrade
       if (outcome === 'claimed' || internal.disposed) {
-        // the `claimed` handler did the whole bookkeeping (and emitted Settled/Success — the claim IS the answer here)
+        // the `claimed` handler did the whole bookkeeping — including the settle, through the SAME shared claim path a
+        // ticket claim lands on (a dispose mid-attempt abandons the family instead: nobody is left to report to)
         return
       }
       // 'failed' — fall through to the ticket path: the fetch below re-runs the pipeline and surfaces the typed error
@@ -1394,28 +1489,9 @@ const connectInternalRun = async (
         }
       }
     }
-    channel._emit(
-      'pointChannelConnectClientSettled',
-      {
-        input: internal.input,
-        point: internal.channel,
-        connectionId: undefined,
-        connectionIndex: internal.connectIndex,
-        error: connectError,
-      },
-      eventMeta,
-    )
-    channel._emit(
-      'pointChannelConnectClientError',
-      {
-        input: internal.input,
-        point: internal.channel,
-        connectionId: undefined,
-        connectionIndex: internal.connectIndex,
-        error: connectError,
-      },
-      eventMeta,
-    )
+    // the request never earned a ticket — this attempt is over, so the family settles HERE (the claim it would have
+    // settled at never happens)
+    settleConnectClient(internal, internal.connectIndex, { error: connectError })
     fireConnectionLifecycle(internal, 'onError')
     return
   }
@@ -1431,34 +1507,8 @@ const connectInternalRun = async (
   internal.resumeKey = undefined
   internal.personalCursor = 0
   internal.resumePending = false
-  // the full-path truth table, same as the lifecycle defaults: not a resume, gapless only on the very first entry
-  channel._emit(
-    'pointChannelConnectClientSettled',
-    {
-      input: internal.input,
-      point: internal.channel,
-      connectionId: data.id,
-      connectionIndex: internal.connectIndex,
-      resumed: false,
-      gapless: internal.connectIndex === 0,
-      error: undefined,
-    },
-    eventMeta,
-  )
-  channel._emit(
-    'pointChannelConnectClientSuccess',
-    {
-      input: internal.input,
-      point: internal.channel,
-      connectionId: data.id,
-      connectionIndex: internal.connectIndex,
-      resumed: false,
-      gapless: internal.connectIndex === 0,
-      error: undefined,
-    },
-    eventMeta,
-  )
-
+  // no events here: a ticket is not a connection. The family settles at the CLAIM — where the outcome is real
+  // (`claimed` = a landed entry with its markers, `claimErr` = the typed refusal) instead of guessed
   manager.connectionsByCid.set(data.id, internal)
   ensureSocket(manager)
   if (manager.wsStatus === 'open') {
@@ -1907,7 +1957,7 @@ export const connectToChannel = (
   }
   const manager = getManager(channel.scope, channel)
   const transformer = channel._getSocketTransformer()
-  const inputKey = transformer.stringify(normalizedInput)
+  const inputKey = stringifyOrThrow(transformer, normalizedInput, channel.id)
   const channelKey = getChannelKey(channel)
   const key = `${channelKey}|${inputKey}`
   const existing = manager.connections.get(key)
@@ -2753,7 +2803,7 @@ const resolveBoundTargetInternal = (
     return internal ? resolveInternal(internal) : undefined
   }
   const transformer = channel._getSocketTransformer()
-  const key = `${getChannelKey(channel)}|${transformer.stringify(target ?? {})}`
+  const key = `${getChannelKey(channel)}|${stringifyOrThrow(transformer, target ?? {}, channel.id)}`
   const existing = manager.connections.get(key)
   const live = existing ? resolveInternal(existing) : undefined
   return live && !live.disposed ? live : undefined
@@ -2840,7 +2890,7 @@ export const useBoundConnection = (
       isConnectionFacade(target)
         ? target.id
         : channel
-          ? channel._getSocketTransformer().stringify(target ?? {})
+          ? stringifyOrThrow(channel._getSocketTransformer(), target ?? {}, channel.id)
           : undefined,
       ambient,
     ],
@@ -3069,6 +3119,14 @@ const resolveSendTarget = (
  * Client-side `serverHandler.send(target?, input?, options?)` — resolves with the `.serverReply` return. `boundRoom` is
  * what `handler(room)` bound (a space handler only): the frame's room. There is NO per-call room — binding is the one
  * way to address a room.
+ *
+ * The TRANSPORT events (`pointHandlerSendClient*`) wrap the whole call: `Start` at the call itself (before the target
+ * is resolved — a send with nowhere to go is still a send that failed), `Settled`/`Success` when the server's reply
+ * resolves it, `Settled`/`Error` on every failure the promise can take. That is the one choke point: every failure mode
+ * — an unresolvable target, a serialize throw, the timeout, a fail-fast, a `claimErr`, the server's `sendErr` — comes
+ * out of this `await`, which is what makes a fire-and-forget `void handler.sendToServer(...)` observable through
+ * `.on('error')` instead of vanishing into an unhandled rejection. The `onSendError` option fires from that same choke
+ * point — the point-of-call twin of `onReplyFromServer`, for the UI that must answer a failed send where it happened.
  */
 export const sendToServerHandler = async (
   handler: AnyPoint,
@@ -3080,59 +3138,148 @@ export const sendToServerHandler = async (
   if (_point0_env.side.is.server) {
     throw new Error(`serverHandler.send is for the client only (point ${handler.id})`)
   }
-  const { internal, membership, boundRoom: resolvedBoundRoom } = resolveSendTarget(handler, connection, boundRoom)
-  const manager = internal.manager
-  const transformer = handler._getSocketTransformer()
+  const sendEventBase = { input: input as InputRawUnknown, point: handler }
+  // the connection is not known yet — the target is resolved below, and a send that fails before it has none at all
+  let sendConnectionId: string | undefined
+  let sendInternal: InternalConnection | undefined = undefined
+  // resolved BEFORE the first failure can happen: the target resolution below is already a failure `onSendError` must
+  // see, and the callback lives in these options
   const resolvedOptions = mergeServerHandlerOptions(
     handler._defaultServerHandlerOptions,
     handler._serverHandlerOptions,
     options,
   )
+  handler._emit(
+    'pointHandlerSendClientStart',
+    { ...sendEventBase, connectionId: undefined },
+    { point: handler.id, connection: undefined },
+  )
+  const failSend = (error: unknown): never => {
+    const error0 = handler._Error.from(error)
+    const eventMeta = { point: handler.id, connection: sendConnectionId }
+    handler._emit(
+      'pointHandlerSendClientSettled',
+      { ...sendEventBase, connectionId: sendConnectionId, output: undefined, error: error0 },
+      eventMeta,
+    )
+    handler._emit(
+      'pointHandlerSendClientError',
+      { ...sendEventBase, connectionId: sendConnectionId, output: undefined, error: error0 },
+      eventMeta,
+    )
+    // the point-of-call twin of `onReplyFromServer`, on the same fire-and-forget contract: it fires for EVERY failure
+    // the send can take (this is the one choke point), and a throw of its own only logs
+    const onSendError = resolvedOptions.onSendError
+    if (onSendError) {
+      void (async () => {
+        try {
+          await onSendError({
+            input,
+            error: error0,
+            connection: sendInternal ? resolveInternal(sendInternal).facade : undefined,
+            point: handler,
+          })
+        } catch (callbackError) {
+          getLogFnForPoint(handler)({
+            level: 'error',
+            category: ['point0', 'socket'],
+            message: `A serverHandler onSendError callback threw (point ${handler.id})`,
+            error: callbackError,
+          })
+        }
+      })()
+    }
+    // the ORIGINAL throw travels on — the events observe the failure, they do not reshape what the caller catches
+    throw error
+  }
+  const resolved = (() => {
+    try {
+      return resolveSendTarget(handler, connection, boundRoom)
+    } catch (error) {
+      return failSend(error)
+    }
+  })()
+  const { internal, membership, boundRoom: resolvedBoundRoom } = resolved
+  sendInternal = internal
+  sendConnectionId = resolveInternal(internal).cid
+  const manager = internal.manager
+  const transformer = handler._getSocketTransformer()
   const timeoutMs = resolvedOptions.timeout ?? DEFAULT_SEND_TIMEOUT_MS
   const queue = resolvedOptions.queue !== false
   const id = generateId()
-  const frame: SocketClientFrame & { t: 'send' } = {
-    t: 'send',
-    id,
-    cid: internal.cid ?? '',
-    handler: handler.name,
-    ...(input === undefined ? {} : { input: transformer.stringify(input) }),
-  }
-  const dataSerialized = await new Promise<string | undefined>((resolve, reject) => {
-    const pending: PendingSend = {
-      id,
-      frame,
-      resolve,
-      reject,
-      queue,
-      sent: false,
-      handler,
-      internal,
-      membership,
-      boundRoom: resolvedBoundRoom,
-      timeoutTimer: setTimeout(() => {
-        failPendingSend(manager, pending, connectionLostError(handler))
-      }, timeoutMs),
-    }
-    manager.pendingSends.set(id, pending)
-    const live = resolveInternal(internal)
-    const membershipReady = !membership || resolveMembership(membership).status === 'joined'
-    if (manager.wsStatus === 'open' && live.claimed && live.cid && membershipReady) {
-      if (applySpaceRoomToFrame(manager, pending)) {
-        frame.cid = live.cid
-        if (sendFrame(manager, frame)) {
-          pending.sent = true
-        } else if (!queue) {
-          // the manager thinks the socket is open but the write failed (readyState raced a close) — a
-          // `queue: false` send fails fast here too, not on its timeout
-          failPendingSend(manager, pending, connectionLostError(handler))
-        }
+  const frame: SocketClientFrame & { t: 'send' } = (() => {
+    try {
+      return {
+        t: 'send',
+        id,
+        cid: internal.cid ?? '',
+        handler: handler.name,
+        ...(input === undefined ? {} : { input: stringifyOrThrow(transformer, input, handler.id) }),
       }
-    } else if (!queue) {
-      failPendingSend(manager, pending, connectionLostError(handler))
+    } catch (error) {
+      return failSend(error)
     }
-  })
-  const data = dataSerialized === undefined ? undefined : transformer.parse(dataSerialized)
+  })()
+  let dataSerialized: string | undefined
+  try {
+    dataSerialized = await new Promise<string | undefined>((resolve, reject) => {
+      const pending: PendingSend = {
+        id,
+        frame,
+        resolve,
+        reject,
+        queue,
+        sent: false,
+        handler,
+        internal,
+        membership,
+        boundRoom: resolvedBoundRoom,
+        timeoutTimer: setTimeout(() => {
+          failPendingSend(manager, pending, connectionLostError(handler))
+        }, timeoutMs),
+      }
+      manager.pendingSends.set(id, pending)
+      const live = resolveInternal(internal)
+      const membershipReady = !membership || resolveMembership(membership).status === 'joined'
+      if (manager.wsStatus === 'open' && live.claimed && live.cid && membershipReady) {
+        if (applySpaceRoomToFrame(manager, pending)) {
+          frame.cid = live.cid
+          if (sendFrame(manager, frame)) {
+            pending.sent = true
+          } else if (!queue) {
+            // the manager thinks the socket is open but the write failed (readyState raced a close) — a
+            // `queue: false` send fails fast here too, not on its timeout
+            failPendingSend(manager, pending, connectionLostError(handler))
+          }
+        }
+      } else if (!queue) {
+        failPendingSend(manager, pending, connectionLostError(handler))
+      }
+    })
+  } catch (error) {
+    // the cid may have been claimed while the send waited — report the connection it actually rode
+    sendConnectionId = resolveInternal(internal).cid ?? sendConnectionId
+    return failSend(error)
+  }
+  sendConnectionId = resolveInternal(internal).cid ?? sendConnectionId
+  const data = (() => {
+    try {
+      return dataSerialized === undefined ? undefined : transformer.parse(dataSerialized)
+    } catch (error) {
+      return failSend(error)
+    }
+  })()
+  const sendEventMeta = { point: handler.id, connection: sendConnectionId }
+  handler._emit(
+    'pointHandlerSendClientSettled',
+    { ...sendEventBase, connectionId: sendConnectionId, output: data, error: undefined },
+    sendEventMeta,
+  )
+  handler._emit(
+    'pointHandlerSendClientSuccess',
+    { ...sendEventBase, connectionId: sendConnectionId, output: data, error: undefined },
+    sendEventMeta,
+  )
   const onReplyFromServer = resolvedOptions.onReplyFromServer
   if (onReplyFromServer) {
     void (async () => {
@@ -3174,7 +3321,7 @@ const filterListenerByRoom = (
   const boundRoomSerialized = stringifyOrThrow(spaceTransformer, boundRoom, space.id)
   return (props) => {
     const room = (props as { room?: RoomUnknown }).room
-    if (room === undefined || spaceTransformer.stringify(room) !== boundRoomSerialized) {
+    if (room === undefined || stringifyOrThrow(spaceTransformer, room, space.id) !== boundRoomSerialized) {
       return
     }
     return listener(props)
@@ -3410,8 +3557,9 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
       return
     }
     case 'claimed': {
-      // an upgrade-connect learns its cid HERE — there was no HTTP response to carry it, the first `claimed` frame
-      // on the socket the handshake opened is the connect answer (Settled/Success fire now for the same reason)
+      // an upgrade-connect learns its cid HERE — there was no HTTP response to carry it, the first `claimed` frame on
+      // the socket the handshake opened is the connect answer. It settles below with every other claim: the upgrade is
+      // a different way to REACH the claim, not a different outcome
       const pendingUpgrade = manager.pendingUpgradeConnect
       if (pendingUpgrade && !manager.connectionsByCid.has(frame.cid)) {
         manager.pendingUpgradeConnect = undefined
@@ -3424,22 +3572,6 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
         upgraded.cid = frame.cid
         upgraded.ticket = undefined
         manager.connectionsByCid.set(frame.cid, upgraded)
-        const eventMeta = { point: upgraded.channel.id }
-        for (const name of ['pointChannelConnectClientSettled', 'pointChannelConnectClientSuccess'] as const) {
-          upgraded.channel._emit(
-            name,
-            {
-              input: upgraded.input,
-              point: upgraded.channel,
-              connectionId: frame.cid,
-              connectionIndex: upgraded.connectIndex,
-              resumed: false,
-              gapless: upgraded.connectIndex === 0,
-              error: undefined,
-            },
-            eventMeta,
-          )
-        }
         pendingUpgrade.resolve('claimed')
         // fall through into the shared claimed bookkeeping below
       }
@@ -3474,10 +3606,19 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
       applyStreamHeads(manager, internal, frame.heads)
       notifyConnection(internal)
       // every landed claim is a successful connect — `onConnect` fires each time, the props' connectionIndex tells
-      // the first (0) from a repeat (> 0)
+      // the first (0) from a repeat (> 0); the events carry the SAME value, so capture it before the increment
+      const connectionIndex = internal.connectIndex
       fireConnectionLifecycle(internal, 'onConnect')
       // count the successful claim AFTER the callbacks read it — the first connect fires with connectionIndex 0
       internal.connectIndex++
+      // the claim IS the connect's answer — the family settles HERE, for every way of reaching it (the ticket path
+      // and the cold-start upgrade alike), with the outcome the lifecycle callback just read: a claim is always a
+      // fresh entry (a resume never comes through this frame), gapless only on the very first one
+      settleConnectClient(internal, connectionIndex, {
+        connectionId: frame.cid,
+        resumed: false,
+        gapless: connectionIndex === 0,
+      })
       flushQueuedSends(manager)
       return
     }
@@ -3498,13 +3639,14 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
         }
         return
       }
+      const claimError = internal.channel._Error.from(safeJsonParse(frame.error))
       internal.status = 'error'
-      internal.error = internal.channel._Error.from(safeJsonParse(frame.error))
+      internal.error = claimError
       // a claimErr is an ANSWERED deny — terminal, nothing retries it: fail this connection's unsent queued sends
       // now with the typed error instead of letting them dangle into a generic timeout
       for (const pending of [...manager.pendingSends.values()]) {
         if (!pending.sent && resolveInternal(pending.internal) === internal) {
-          failPendingSend(manager, pending, internal.error)
+          failPendingSend(manager, pending, claimError)
         }
       }
       // a failed refresh-claim must not leave the PREVIOUS server-side connection alive — close it like a landed
@@ -3518,7 +3660,13 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
         }
       }
       internal.refreshOldCids.clear()
+      // the ticket is burned — the server consumed it to refuse it, so nothing may re-claim with it
+      internal.ticket = undefined
       notifyConnection(internal)
+      // the refusal is this connect's real answer: the family settles with the typed error the server sent (a
+      // throwing `.enroller`, the `maxConnections` cap, a lapsed record, a ticket that no longer resolves) —
+      // `connectionId` stays undefined like every error phase, because no connection ever went live
+      settleConnectClient(internal, internal.connectIndex, { error: claimError })
       fireConnectionLifecycle(internal, 'onError')
       return
     }
@@ -3906,22 +4054,7 @@ const handleResumedFrame = (manager: SocketManager, frame: SocketServerFrame & {
   // the resume IS this connection's landed (re-)entry — the connect family closes Settled → Success with the same
   // markers the callback read; no Start: the resume is one shared frame at the socket's open, not a per-connection
   // connect operation (a refused resume falls back into the full connect, whose family runs the complete cycle)
-  const eventMeta = { point: internal.channel.id }
-  for (const name of ['pointChannelConnectClientSettled', 'pointChannelConnectClientSuccess'] as const) {
-    internal.channel._emit(
-      name,
-      {
-        input: internal.input,
-        point: internal.channel,
-        connectionId: frame.cid,
-        connectionIndex,
-        resumed: true,
-        gapless: channelGapless,
-        error: undefined,
-      },
-      eventMeta,
-    )
-  }
+  settleConnectClient(internal, connectionIndex, { connectionId: frame.cid, resumed: true, gapless: channelGapless })
   flushQueuedSends(manager)
 }
 
@@ -4059,7 +4192,9 @@ const dispatchIncomingMessageToConnection = async (
   const handlerId = `${manager.scope}:clientHandler:${frame.handler}`
   const handler = clientHandlerPointsSsItem.get().get(handlerId)
   if (!handler) {
-    // the handler's module is not loaded on this client — nothing to wake
+    // the handler's module is not loaded on this client — nothing to wake, and the push is gone: the server addressed
+    // this connection, the frame arrived, and no code here can react to it. Say so instead of dropping it in silence
+    logMissingClientHandler(internal, handlerId)
     return
   }
   await runIncomingMessageDispatch({
@@ -4069,6 +4204,20 @@ const dispatchIncomingMessageToConnection = async (
     handler,
     roomPart: {},
     instanceListeners: internal.handlerListeners.get(handler.id),
+  })
+}
+
+/**
+ * A push arrived for a clientHandler whose MODULE this client never loaded — the point object does not exist here, so
+ * nothing can dispatch, reply, or listen. Usually a stale tab against a redeployed server, or a handler that only lives
+ * in a route chunk this session never visited; it is not an error (the server cannot know what a client loaded), but a
+ * silently vanishing push is the hardest kind of missing message to explain, so it is named in a warn.
+ */
+const logMissingClientHandler = (internal: InternalConnection, handlerId: string): void => {
+  getLogFnForPoint(internal.channel)({
+    level: 'warn',
+    category: ['point0', 'socket'],
+    message: `A push arrived for ${handlerId}, whose module is not loaded on this client — nothing dispatched it`,
   })
 }
 
@@ -4146,7 +4295,7 @@ const runIncomingMessageDispatch = async ({
           t: 'reply',
           id: frame.mid,
           cid: internal.cid,
-          ...(data === undefined ? {} : { data: transformer.stringify(data) }),
+          ...(data === undefined ? {} : { data: stringifyOrThrow(transformer, data, handler.id) }),
         }
         replySent = true
         sendFrame(manager, replyFrame)
@@ -4202,7 +4351,11 @@ const dispatchIncomingMessageToMemberships = async (
 ): Promise<void> => {
   const handlerId = `${manager.scope}:clientHandler:${frame.handler}`
   const handler = clientHandlerPointsSsItem.get().get(handlerId)
-  if (!handler || memberships.length === 0) {
+  if (!handler) {
+    logMissingClientHandler(internal, handlerId)
+    return
+  }
+  if (memberships.length === 0) {
     return
   }
   const spaceTransformer = memberships[0].space._getSocketTransformer()
@@ -4236,7 +4389,7 @@ export const useSocketConnection = (
   const isServer = _point0_env.side.is.server
   const enabled = options?.enabled !== false && !isServer
   const transformer = channel._getSocketTransformer()
-  const inputKey = transformer.stringify(input ?? {})
+  const inputKey = stringifyOrThrow(transformer, input ?? {}, channel.id)
   const optionsRef = React.useRef(options)
   optionsRef.current = options
   const [facade, setFacade] = React.useState<AnyClientChannelConnection | undefined>(undefined)
@@ -4300,7 +4453,8 @@ export const useSocketOnMessage = (
   const connectionStatus = connection?.status
   // the serialized bound room — a fresh room literal per render must not re-attach the listener
   const space = handler._spacePoint
-  const boundRoomKey = space && boundRoom !== undefined ? space._getSocketTransformer().stringify(boundRoom) : undefined
+  const boundRoomKey =
+    space && boundRoom !== undefined ? stringifyOrThrow(space._getSocketTransformer(), boundRoom, space.id) : undefined
   React.useEffect(() => {
     if (isServer || !enabled) {
       return
@@ -4543,7 +4697,8 @@ export const readBoundSpaceRoom = (
   const joined = membership?.status === 'joined'
   if (boundRoom !== undefined) {
     const boundRoomSerialized = stringifyOrThrow(spaceTransformer, boundRoom, space.id)
-    const holds = joined && rooms.some((room) => spaceTransformer.stringify(room) === boundRoomSerialized)
+    const holds =
+      joined && rooms.some((room) => stringifyOrThrow(spaceTransformer, room, space.id) === boundRoomSerialized)
     return { room: boundRoom, live: holds }
   }
   if (!joined || rooms.length === 0) {
@@ -4624,9 +4779,13 @@ export const useBoundMembership = (
     [
       manager,
       handler.id,
-      isMembershipFacade(target) ? '' : space ? space._getSocketTransformer().stringify(target ?? {}) : undefined,
+      isMembershipFacade(target)
+        ? ''
+        : space
+          ? stringifyOrThrow(space._getSocketTransformer(), target ?? {}, space.id)
+          : undefined,
       space?._channelPoint && channelInput !== undefined
-        ? space._channelPoint._getSocketTransformer().stringify(channelInput)
+        ? stringifyOrThrow(space._channelPoint._getSocketTransformer(), channelInput, space._channelPoint.id)
         : undefined,
       ambient,
     ],
@@ -4650,11 +4809,11 @@ export const useSpaceMembership = (
   const isServer = _point0_env.side.is.server
   const enabled = options?.enabled !== false && !isServer
   const spaceTransformer = space._getSocketTransformer()
-  const inputKey = spaceTransformer.stringify(input ?? {})
+  const inputKey = stringifyOrThrow(spaceTransformer, input ?? {}, space.id)
   // the channel input identity rides the CHANNEL transformer — the same canonical form the connection keys use
   const channelInputKey =
     space._channelPoint && channelInput !== undefined
-      ? space._channelPoint._getSocketTransformer().stringify(channelInput)
+      ? stringifyOrThrow(space._channelPoint._getSocketTransformer(), channelInput, space._channelPoint.id)
       : undefined
   // a space always has a channel; the `?? space` keeps the hook call unconditional (rules of hooks) if it ever weren't
   const ambientConnection = useAmbientChannelConnection(space._channelPoint ?? space)

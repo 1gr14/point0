@@ -3,7 +3,7 @@ import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Compiler } from '../src/compiler.js'
 import { parseVirtualModulePath } from '../src/importer.js'
-import { toPosixPath } from '../src/utils.js'
+import { getHash, toPosixPath } from '../src/utils.js'
 import { toText } from './utils.js'
 
 // The whole file runs ~1s alone, but under the parallel runner (test-parallel.ts saturates every core) a single
@@ -1111,6 +1111,365 @@ export const b = a + 1`)
 
         expect(originals).toContain('react-native')
         expect(result.some((item) => item.pathResolved === fileA.path)).toBe(true)
+      }),
+    )
+  })
+
+  describe('disk cache', () => {
+    // Every compiler here is built from the same options on purpose: the cache dir is keyed by a hash of the compiler
+    // settings, so only identical options share entries — which is what these tests need to observe.
+    const createCompiler = (deny?: string[]) =>
+      Compiler.create({
+        side: 'client',
+        scope: 'root',
+        importer: { cwd: tempDir, ...(deny ? { deny } : {}) },
+      })
+
+    // A cache hit returns no points (the early return has nothing to hand back), a real compile always does — the one
+    // signal that says which path a compile took.
+    const wasCacheHit = (result: { points: unknown[] | undefined }) => result.points === undefined
+
+    const cacheEntriesOf = (compiler: Compiler, file: string): string[] => {
+      const dir = compiler.getCacheDir({ map: false, hmrFix: true })
+      const prefix = getHash(file) + '.'
+      return nodeFs.readdirSync(dir).filter((name) => name.startsWith(prefix))
+    }
+
+    it.concurrent(
+      'reresolves imports on a cache hit: a dependency renamed .ts → .tsx invalidates the entry',
+      helper(async ({ files: [importerFile] }) => {
+        const depBasename = `dep-${crypto.randomUUID()}`
+        const depTs = toPosixPath(nodePath.join(tempDir, `${depBasename}.ts`))
+        const depTsx = toPosixPath(nodePath.join(tempDir, `${depBasename}.tsx`))
+        try {
+          nodeFs.writeFileSync(depTs, 'export const dep = 1\n')
+          await importerFile.write(`import { dep } from './${depBasename}.js'
+export const value = dep + 1`)
+
+          const first = createCompiler().compile({ file: importerFile.path })
+          expect(wasCacheHit(first)).toBe(false)
+          expect(first.imports.map((item) => item.pathResolved)).toEqual([depTs])
+
+          // Control: nothing moved, so a fresh compiler (empty walker) answers from the warm disk cache.
+          const cached = createCompiler().compile({ file: importerFile.path })
+          expect(wasCacheHit(cached)).toBe(true)
+          expect(cached.imports.map((item) => item.pathResolved)).toEqual([depTs])
+
+          // The importer itself is untouched by the rename — its path, mtime and the settings all still match the
+          // entry, so only the import check can catch this.
+          nodeFs.renameSync(depTs, depTsx)
+
+          const after = createCompiler().compile({ file: importerFile.path })
+          expect(wasCacheHit(after)).toBe(false)
+          expect(after.imports.map((item) => item.pathResolved)).toEqual([depTsx])
+        } finally {
+          nodeFs.rmSync(depTs, { force: true })
+          nodeFs.rmSync(depTsx, { force: true })
+        }
+      }),
+    )
+
+    it.concurrent(
+      'reresolves imports on a cache hit: a dependency moved to x/index.ts invalidates the entry',
+      helper(async ({ files: [importerFile] }) => {
+        const depBasename = `dep-${crypto.randomUUID()}`
+        const depFlat = toPosixPath(nodePath.join(tempDir, `${depBasename}.ts`))
+        const depDir = toPosixPath(nodePath.join(tempDir, depBasename))
+        const depIndex = toPosixPath(nodePath.join(depDir, 'index.ts'))
+        try {
+          nodeFs.writeFileSync(depFlat, 'export const dep = 1\n')
+          await importerFile.write(`import { dep } from './${depBasename}'
+export const value = dep + 1`)
+
+          const first = createCompiler().compile({ file: importerFile.path })
+          expect(wasCacheHit(first)).toBe(false)
+          expect(first.imports.map((item) => item.pathResolved)).toEqual([depFlat])
+
+          const cached = createCompiler().compile({ file: importerFile.path })
+          expect(wasCacheHit(cached)).toBe(true)
+
+          nodeFs.mkdirSync(depDir, { recursive: true })
+          nodeFs.renameSync(depFlat, depIndex)
+
+          const after = createCompiler().compile({ file: importerFile.path })
+          expect(wasCacheHit(after)).toBe(false)
+          expect(after.imports.map((item) => item.pathResolved)).toEqual([depIndex])
+        } finally {
+          nodeFs.rmSync(depFlat, { force: true })
+          nodeFs.rmSync(depDir, { recursive: true, force: true })
+        }
+      }),
+    )
+
+    it.concurrent(
+      'drops the poisoned emit when a dependency moves out of a deny rule',
+      helper(async ({ files: [importerFile] }) => {
+        const depBasename = `dep-${crypto.randomUUID()}`
+        const depTs = toPosixPath(nodePath.join(tempDir, `${depBasename}.ts`))
+        const depTsx = toPosixPath(nodePath.join(tempDir, `${depBasename}.tsx`))
+        // Matches the dependency at its `.ts` path and nowhere else — renaming it to `.tsx` takes it out of the rule.
+        const deny = [`**/${depBasename}.ts`]
+        try {
+          nodeFs.writeFileSync(depTs, 'export const dep = 1\n')
+          await importerFile.write(`import { dep } from './${depBasename}.js'
+export const value = dep + 1`)
+
+          const first = createCompiler(deny).compile({ file: importerFile.path })
+          expect(wasCacheHit(first)).toBe(false)
+          expect(first.code).toContain('@point0/virtual?')
+          expect(first.modified).toBe(true)
+
+          const cached = createCompiler(deny).compile({ file: importerFile.path })
+          expect(wasCacheHit(cached)).toBe(true)
+          expect(cached.code).toContain('@point0/virtual?')
+
+          nodeFs.renameSync(depTs, depTsx)
+
+          // The deny decision lives in the CACHED CODE, not just in the recorded paths — serving that code again would
+          // keep an import blocked that no rule matches anymore.
+          const after = createCompiler(deny).compile({ file: importerFile.path })
+          expect(wasCacheHit(after)).toBe(false)
+          expect(after.code).not.toContain('@point0/virtual?')
+          expect(after.code).toContain(`./${depBasename}.js`)
+        } finally {
+          nodeFs.rmSync(depTs, { force: true })
+          nodeFs.rmSync(depTsx, { force: true })
+        }
+      }),
+    )
+
+    it.concurrent(
+      'invalidates on a dependency CONTENT change that the emit baked in (read log)',
+      helper(async ({ files: [importerFile] }) => {
+        const depBasename = `dep-${crypto.randomUUID()}`
+        const depTs = toPosixPath(nodePath.join(tempDir, `${depBasename}.ts`))
+        try {
+          // v1: the imported base IS a Point0 chain, so the importer's `.lets.page()` sugar gets desugared — a
+          // decision derived from the DEPENDENCY'S CONTENT, baked into the importer's emit.
+          nodeFs.writeFileSync(
+            depTs,
+            `import {Point0} from '@point0/core'\nexport const depRoot = Point0.lets('root', 'root').root()\n`,
+          )
+          await importerFile.write(`import {depRoot} from './${depBasename}.js'
+export const pg = depRoot.lets.page('/pg').page(() => null)`)
+
+          const first = createCompiler().compile({ file: importerFile.path })
+          expect(wasCacheHit(first)).toBe(false)
+          expect(first.code).toContain(`lets("page"`)
+
+          // Control: nothing changed → warm hit with the same emit.
+          const cached = createCompiler().compile({ file: importerFile.path })
+          expect(wasCacheHit(cached)).toBe(true)
+          expect(cached.code).toContain(`lets("page"`)
+
+          // Change ONLY the dependency's content: the importer's path, mtime and every import RESOLUTION stay
+          // identical — only the read log knows the emit consumed these bytes.
+          await Bun.sleep(5)
+          nodeFs.writeFileSync(
+            depTs,
+            `export const depRoot = { lets: { page: (r: string) => ({ page: () => null }) } }\n`,
+          )
+
+          const after = createCompiler().compile({ file: importerFile.path })
+          expect(wasCacheHit(after)).toBe(false)
+          expect(after.code).not.toContain(`lets("page"`)
+        } finally {
+          nodeFs.rmSync(depTs, { force: true })
+        }
+      }),
+    )
+
+    it.concurrent(
+      'records chain reads even when a compile serves points from walker memory (cross-partition write)',
+      helper(async ({ files: [rootFile, layoutFile] }) => {
+        // The dev orchestrator's pattern: ONE compiler serves `map: true` compiles (hot-store) and `map: false`
+        // compiles (watch-graph collect) — separate cache partitions. The second compile of the same unchanged file
+        // finds no entry in ITS partition and collects from walker memory (`allPointsWasCollected`, zero re-parses,
+        // the root file never re-read) — only the points' recorded chain reads can put the root into that entry.
+        const builtCompilerOptions = {
+          side: 'client',
+          scope: 'root',
+          built: true,
+          importer: { cwd: tempDir },
+        } satisfies Parameters<typeof Compiler.create>[0]
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const mainRoot = Point0.lets('root', 'root').root()`)
+        await layoutFile.write(`import {mainRoot} from '${rootFile.importpath}'
+export const lay = mainRoot.lets('layout', 'lay', '/lay').layout()`)
+
+        const compiler = Compiler.create(builtCompilerOptions)
+        const first = compiler.compile({ file: layoutFile.path, map: true }) // fresh collect, map-true partition
+        expect(wasCacheHit(first)).toBe(false)
+        expect(first.errors).toHaveLength(0)
+        const second = compiler.compile({ file: layoutFile.path, map: false }) // memory-served, map-false partition
+        expect(wasCacheHit(second)).toBe(false)
+
+        // Control: the map-false entry answers a fresh compiler.
+        expect(wasCacheHit(Compiler.create(builtCompilerOptions).compile({ file: layoutFile.path, map: false }))).toBe(
+          true,
+        )
+
+        // Change the ROOT file (the layout's own mtime and every import resolution stay identical). Serving the
+        // memory-written entry would keep decisions derived from the old root.
+        await Bun.sleep(5)
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const mainRoot = Point0.lets('root', 'root').basePath('/moved').root()`)
+
+        const after = Compiler.create(builtCompilerOptions).compile({ file: layoutFile.path, map: false })
+        expect(wasCacheHit(after)).toBe(false)
+      }),
+    )
+
+    it.concurrent(
+      'refreshes stale walker memory when a persistent compiler sees its entry invalidated',
+      helper(async ({ files: [importerFile] }) => {
+        const depBasename = `dep-${crypto.randomUUID()}`
+        const depTs = toPosixPath(nodePath.join(tempDir, `${depBasename}.ts`))
+        try {
+          nodeFs.writeFileSync(
+            depTs,
+            `import {Point0} from '@point0/core'\nexport const depRoot = Point0.lets('root', 'root').root()\n`,
+          )
+          await importerFile.write(`import {depRoot} from './${depBasename}.js'
+export const pg = depRoot.lets.page('/pg').page(() => null)`)
+
+          // ONE compiler with a persistent walker: the first compile memoizes the importer's desugared points.
+          const compiler = Compiler.create({
+            side: 'client',
+            scope: 'root',
+            built: true,
+            importer: { cwd: tempDir },
+          })
+          const first = compiler.compile({ file: importerFile.path })
+          expect(wasCacheHit(first)).toBe(false)
+          expect(first.code).toContain(`lets("page"`)
+
+          await Bun.sleep(5)
+          nodeFs.writeFileSync(
+            depTs,
+            `export const depRoot = { lets: { page: (r: string) => ({ page: () => null }) } }\n`,
+          )
+
+          // The SAME compiler must not answer from its (equally stale) walker memory after the disk entry drops: the
+          // invalidation refreshes the file's memos, so the fresh pass re-derives the sugar decision from the new dep.
+          const after = compiler.compile({ file: importerFile.path })
+          expect(wasCacheHit(after)).toBe(false)
+          expect(after.code).not.toContain(`lets("page"`)
+        } finally {
+          nodeFs.rmSync(depTs, { force: true })
+        }
+      }),
+    )
+
+    it.concurrent(
+      'reads an entry from an older cache format (no read log) as a miss, without crashing',
+      helper(async ({ files: [file] }) => {
+        await file.write(`export const value = 1`)
+
+        const compiler = createCompiler()
+        compiler.compile({ file: file.path })
+        const dir = compiler.getCacheDir({ map: false, hmrFix: true })
+        const entries = cacheEntriesOf(compiler, file.path)
+        expect(entries).toHaveLength(1)
+
+        // Rewrite the entry the way the previous format stored it: same payload, no `reads` list.
+        const entryPath = nodePath.join(dir, entries[0] as string)
+        const payload = JSON.parse(nodeFs.readFileSync(entryPath, 'utf8')) as Record<string, unknown>
+        delete payload.reads
+        nodeFs.writeFileSync(entryPath, JSON.stringify(payload), 'utf8')
+
+        const result = createCompiler().compile({ file: file.path })
+        expect(wasCacheHit(result)).toBe(false)
+
+        // And the fall-through pass rewrote the entry in the current format.
+        const rewritten = JSON.parse(
+          nodeFs.readFileSync(nodePath.join(dir, cacheEntriesOf(compiler, file.path)[0] as string), 'utf8'),
+        ) as Record<string, unknown>
+        expect(Array.isArray(rewritten.reads)).toBe(true)
+      }),
+    )
+
+    it.concurrent(
+      'keeps compiles with explicit content out of the disk cache',
+      helper(async ({ files: [file] }) => {
+        await file.write(`export const value = 'from-disk'`)
+
+        const compiler = createCompiler()
+
+        // Content compiles write nothing: their result belongs to the content they were handed, and the entry key
+        // (path + mtime) knows nothing about it.
+        const contentFirst = compiler.compile({ file: file.path, content: `export const value = 'from-content-1'` })
+        expect(contentFirst.code).toContain('from-content-1')
+        expect(cacheEntriesOf(compiler, file.path)).toHaveLength(0)
+
+        // Control: the same file compiled from disk does write one — so the lookup above is looking in the right place.
+        compiler.compile({ file: file.path })
+        expect(cacheEntriesOf(compiler, file.path)).toHaveLength(1)
+
+        // And with the cache now warm for this file, a content compile still answers from the content it was given —
+        // and leaves the disk-backed entry alone (the stale-entry sweep must not run for it either).
+        const contentSecond = createCompiler().compile({
+          file: file.path,
+          content: `export const value = 'from-content-2'`,
+        })
+        expect(contentSecond.code).toContain('from-content-2')
+        expect(contentSecond.code).not.toContain('from-disk')
+        expect(cacheEntriesOf(compiler, file.path)).toHaveLength(1)
+      }),
+    )
+
+    it.concurrent(
+      'an import that never resolves stays a cache HIT — no perpetual invalidation for a genuinely missing file',
+      helper(async ({ files: [file] }) => {
+        const missing = `missing-${crypto.randomUUID()}`
+        await file.write(`import { nope } from './${missing}.js'
+export const value = 1`)
+
+        const first = createCompiler().compile({ file: file.path })
+        expect(wasCacheHit(first)).toBe(false)
+        expect(first.imports.map((item) => item.pathResolved)).toEqual([undefined])
+
+        // An unresolved import records no path and no read — there is nothing to re-check, so the entry keeps
+        // answering. The alternative would recompile the file on every request forever.
+        const second = createCompiler().compile({ file: file.path })
+        expect(wasCacheHit(second)).toBe(true)
+        const third = createCompiler().compile({ file: file.path })
+        expect(wasCacheHit(third)).toBe(true)
+      }),
+    )
+  })
+
+  describe('persistent walker (pruneWalker: false)', () => {
+    it.concurrent(
+      'recompiles an edited file from its new content, not from leftover memos',
+      helper(async ({ files: [file] }) => {
+        const depXBasename = `dep-${crypto.randomUUID()}`
+        const depYBasename = `dep-${crypto.randomUUID()}`
+        const depX = toPosixPath(nodePath.join(tempDir, `${depXBasename}.ts`))
+        const depY = toPosixPath(nodePath.join(tempDir, `${depYBasename}.ts`))
+        try {
+          nodeFs.writeFileSync(depX, 'export const x = 1\n')
+          nodeFs.writeFileSync(depY, 'export const y = 2\n')
+          await file.write(`import { x } from './${depXBasename}.js'
+export const v = x`)
+
+          // `built: true` keeps the walker between compiles; `cache: false` isolates the in-memory path — every memo
+          // derived from the file's content (import list, importer result, babel result) must fall with its mtime.
+          const compiler = Compiler.create({ side: 'client', scope: 'root', built: true, importer: { cwd: tempDir } })
+          const first = compiler.compile({ file: file.path, cache: false })
+          expect(first.imports.map((item) => item.pathResolved)).toEqual([depX])
+
+          await Bun.sleep(5)
+          await file.write(`import { y } from './${depYBasename}.js'
+export const v = y`)
+
+          const second = compiler.compile({ file: file.path, cache: false })
+          expect(second.imports.map((item) => item.pathResolved)).toEqual([depY])
+          expect(second.code).toContain(depYBasename)
+        } finally {
+          nodeFs.rmSync(depX, { force: true })
+          nodeFs.rmSync(depY, { force: true })
+        }
       }),
     )
   })

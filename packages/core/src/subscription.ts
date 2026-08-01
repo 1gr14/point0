@@ -6,7 +6,7 @@
  * per-reader by nature, and two hooks with the same input are two independent streams.
  */
 import * as React from 'react'
-import { POINT0_ERROR_CODES_MAP } from './error.js'
+import { POINT0_ERROR_CODES_MAP, stringifyOrThrow } from './error.js'
 import type { ErrorPoint0 } from './error.js'
 import { _point0_env } from './env.js'
 import { getFetch } from './helpers.js'
@@ -186,8 +186,7 @@ const runSubscriptionAttempt = async ({
  */
 const getCursorParams = (point: AnyPoint): { fromInput: string; fromData: string } | undefined => {
   const options = point._subscriptionOptions as
-    | { cursorParamFromInput?: string; cursorParamFromData?: string }
-    | undefined
+    { cursorParamFromInput?: string; cursorParamFromData?: string } | undefined
   if (typeof options?.cursorParamFromInput === 'string' && typeof options.cursorParamFromData === 'string') {
     return { fromInput: options.cursorParamFromInput, fromData: options.cursorParamFromData }
   }
@@ -423,7 +422,7 @@ export const useSubscriptionValue = (
   options: ExtraUseSubscriptionOptions<any> | undefined,
 ): UseSubscriptionResult<any, any> => {
   const enabled = options?.enabled !== false
-  const inputKey = point._getTransformer().stringify(input ?? {})
+  const inputKey = stringifyOrThrow(point._getTransformer(), input ?? {}, point.id)
   const optionsRef = React.useRef(options)
   optionsRef.current = options
   const [state, setState] = React.useState<{

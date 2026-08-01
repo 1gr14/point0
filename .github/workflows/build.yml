@@ -1,7 +1,7 @@
 name: build
 
 # Build the framework ONCE — on ubuntu — and publish the result as the single `dist` artifact that every
-# downstream job consumes: the cross-OS test runners AND the publish job. The published package is therefore
+# downstream job consumes: the cross-OS test runners AND the release job. The published package is therefore
 # byte-identical to the artifact the pipeline ran against, and the same code is never built twice.
 #
 # Which jobs actually exercise those bytes: the `.e2e` files and the heavy `.int` ones (they spawn the real

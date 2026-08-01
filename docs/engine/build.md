@@ -77,13 +77,13 @@ one in series. The whole run is timed and logged as `Build completed in {ms}ms`.
 
 The two sides differ in target and intent:
 
-|                  | Server bundle                        | Client bundle                                |
-| ---------------- | ------------------------------------ | -------------------------------------------- |
-| Target           | `bun` (or `ssr: true` under Vite)    | `browser`                                    |
-| Format           | ESM                                  | ESM, code-split (`splitting: true`)          |
-| Minified         | always                               | only when `NODE_ENV=production`              |
-| Served to users? | no — you run it                      | yes — the server serves `dist/client` at `/` |
-| Entry            | your `entry` files + the engine file | the `indexHtml`                              |
+|                  | Server bundle                                | Client bundle                                |
+| ---------------- | -------------------------------------------- | -------------------------------------------- |
+| Target           | `bun` (or `ssr: true` under Vite)            | `browser`                                    |
+| Format           | ESM                                          | ESM, code-split (`splitting: true`)          |
+| Minified         | always                                       | only when `NODE_ENV=production`              |
+| Served to users? | no — you run it                              | yes — the server serves `dist/client` at `/` |
+| Entry            | **all** your `entry` files + the engine file | the `indexHtml`                              |
 
 The server is never sent over the wire, so it's always minified. The client
 bundle is public — treat it as code anyone can read: server-only code is
@@ -191,6 +191,11 @@ server, no `NODE_ENV` fallback) but still applies your server `env.vars` to
 
 The server entry name comes from your engine's `server.entry` — `main` becomes
 `dist/server/index.server.js`, and that's exactly the file you run:
+
+`build` always builds **every** entry in the record, whatever
+[dev](dev#multiple-server-entries) was told to start: the selection is a
+dev-time convenience, never a build filter. Declare a worker or a sync script
+beside the app and it ships with it.
 
 ```ts
 export const engine = Engine.create({

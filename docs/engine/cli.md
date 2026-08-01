@@ -50,6 +50,19 @@ point0 dev --side server          # serve only the server
 point0 dev --side client --scope web  # one client scope
 ```
 
+With several server entries declared, `dev` starts only the main one (`main`, or
+the first declared key). Pick others by name or path, or take them all:
+
+```sh
+point0 dev --entry worker         # one named entry
+point0 dev --entry main,worker    # comma-separated, or repeat --entry
+point0 dev --entry '*'            # every declared entry (quote the *)
+```
+
+The server's `devEntries` option sets the default selection; `--entry` overrides
+it. See [multiple server entries](dev#multiple-server-entries) — an entry that
+exits 0 counts as finished, and dev keeps running.
+
 Anything after `--` is forwarded to the spawned bun server process (bun-native
 server only):
 
@@ -343,7 +356,7 @@ above).
 | `-W, --no-watch`                    | do not restart / regenerate on change                    |
 | `-w, --watch [glob]`                | watch glob(s); no value = server config's `devWatchGlob` |
 | `--side <side>` / `--scope <scope>` | serve one side / one scope                               |
-| `--entry <name\|path>`              | server entry points (comma-separated or repeated)        |
+| `--entry <name\|path>`              | server entries to start; `'*'` = every declared entry    |
 | `--hot`                             | server hot reload (bun-native, experimental)             |
 | `--env` / `--mode` / `--engine`     | see [shared flags](#shared-flags)                        |
 | `-- <args>`                         | forwarded to the spawned bun server process              |

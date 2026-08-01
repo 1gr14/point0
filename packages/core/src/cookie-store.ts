@@ -5,6 +5,7 @@ import { getEffects, getRequest } from './helpers.js'
 import { log } from './logger.js'
 import { Point0 } from './point0.js'
 import type { DataTransformer, DataTransformerExtended } from './types.js'
+import { stringifyOrThrow } from './error.js'
 import { blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
 import { _ss } from './internals.js'
 
@@ -427,8 +428,11 @@ class CookieStoreItem<TValue, TFallback, THttpOnly extends boolean> {
         return String(value)
       }
       if (this.transformerPolicy === true) {
-        return this.transformer.stringify(value) as string
+        // `transformer: true` means the cookie's bytes ARE the transformer's output — there is no fallback to write
+        return stringifyOrThrow(this.transformer, value, `cookie "${this.cookieDefineOptions.name}"`)
       }
+      // the default policy is best-effort by design: a string rides as-is, anything else tries the transformer and
+      // falls back to `String(value)` — so `undefined` here is a legitimate "the transformer passed on it", not a failure
       return typeof value === 'string' ? value : (this.transformer.stringify(value) ?? String(value))
     })()
     CookieStore.set({ ...this.cookieDefineOptions, value: stringified })

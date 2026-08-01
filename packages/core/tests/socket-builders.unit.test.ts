@@ -1,7 +1,13 @@
-import { describe, expect, expectTypeOf, it, mock } from 'bun:test'
+import { describe, expect, expectTypeOf, it, mock, spyOn } from 'bun:test'
 import { z } from 'zod'
 import { Point0 } from '../src/point0.js'
-import { registerSocketServerAdapter, unregisterSocketServerAdapter, type SocketServerAdapter } from '../src/socket.js'
+import {
+  registerSocketServerAdapter,
+  unregisterSocketServerAdapter,
+  useSocketConnection,
+  useSpaceMembership,
+  type SocketServerAdapter,
+} from '../src/socket.js'
 import type {
   AnyClientChannelConnection,
   ChannelConnectionListed,
@@ -17,6 +23,7 @@ import type {
   SpaceMembershipStatus,
 } from '../src/types.js'
 import type { ErrorPoint0 } from '../src/error.js'
+import { POINT0_ERROR_CODES_MAP } from '../src/error.js'
 
 const root = Point0.lets('root', 'root').root()
 
@@ -435,9 +442,17 @@ describe('socket builders', () => {
   it('emits pointHandler* events to chain subscriptions', async () => {
     const events: string[] = []
     const eventedRoot = Point0.lets('root', 'evented')
-      .serverOn(['pointHandlerServerStart', 'pointHandlerServerSuccess', 'pointHandlerServerError'], (event) => {
-        events.push(event.name)
-      })
+      .serverOn(
+        [
+          'pointHandlerServerStart',
+          'pointHandlerServerSettled',
+          'pointHandlerServerSuccess',
+          'pointHandlerServerError',
+        ],
+        (event) => {
+          events.push(event.name)
+        },
+      )
       .root()
     const channel = eventedRoot.lets('channel', 'chat').channel()
     const handler = channel
@@ -453,7 +468,7 @@ describe('socket builders', () => {
       points: undefined as never,
     })
     await new Promise((resolve) => setTimeout(resolve, 10))
-    expect(events).toEqual(['pointHandlerServerStart', 'pointHandlerServerSuccess'])
+    expect(events).toEqual(['pointHandlerServerStart', 'pointHandlerServerSettled', 'pointHandlerServerSuccess'])
 
     const strictHandler = channel
       .lets('serverHandler', 'strictPoke')
@@ -472,9 +487,65 @@ describe('socket builders', () => {
       }),
     ).rejects.toThrow()
     await new Promise((resolve) => setTimeout(resolve, 10))
-    // the schema rejected the input before the reply ran — only the error pair would fire, and this subscription
-    // does not carry pointHandlerServerError (Start needs a passing parse), so nothing lands
-    expect(events).toEqual([])
+    // the schema rejected the input — the commonest refusal there is, and the family reports it like any other: Start
+    // fires ABOVE the parse, so the failure closes it with Settled/Error instead of vanishing before it opened
+    expect(events).toEqual(['pointHandlerServerStart', 'pointHandlerServerSettled', 'pointHandlerServerError'])
+  })
+
+  it('a refused .clientSend input settles the handler family — Start above the parse, no Success, raw input', async () => {
+    const events: Array<{ name: string; input: unknown; error: unknown }> = []
+    const eventedRoot = Point0.lets('root', 'eventedParseFail')
+      .serverOn('*', (event) => {
+        if (event.name.startsWith('pointHandlerServer')) {
+          events.push({
+            name: event.name,
+            input: (event.data as { input?: unknown }).input,
+            error: event.error,
+          })
+        }
+      })
+      .root()
+    const channel = eventedRoot.lets('channel', 'parseFailChannel').channel()
+    const handler = channel
+      .lets('serverHandler', 'parseFailPoke')
+      // a schema that TRANSFORMS: the happy path proves the family carries the raw input, not the parsed one
+      .clientSend(z.object({ n: z.number(), extra: z.string().default('filled') }))
+      .serverReply(({ input }) => ({ n: input.n, extra: input.extra }))
+      .serverHandler()
+    const transformer = handler.point._getTransformer()
+    const executeArgs = (input: unknown) => ({
+      inputSerialized: transformer.stringify(input),
+      room: undefined,
+      identity: {},
+      connectionId: 'c1',
+      messageId: 'm1',
+      points: undefined as never,
+    })
+
+    const ok = await handler.point._executeServerReply(executeArgs({ n: 2 }))
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    // the reply saw the PARSED input (the default filled in); the events carry the RAW one, every phase alike
+    expect(ok.data).toEqual({ n: 2, extra: 'filled' })
+    expect(events.map((event) => event.name)).toEqual([
+      'pointHandlerServerStart',
+      'pointHandlerServerSettled',
+      'pointHandlerServerSuccess',
+    ])
+    expect(events.map((event) => event.input)).toEqual([{ n: 2 }, { n: 2 }, { n: 2 }])
+
+    events.length = 0
+    await expect(handler.point._executeServerReply(executeArgs({ n: 'nope' }))).rejects.toThrow()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    // one Start, one Settled — the family invariant holds on the refusal path too, and no Success ever fires
+    expect(events.map((event) => event.name)).toEqual([
+      'pointHandlerServerStart',
+      'pointHandlerServerSettled',
+      'pointHandlerServerError',
+    ])
+    expect(events.every((event) => (event.input as { n: unknown }).n === 'nope')).toBe(true)
+    // the Settled/Error pair carries the schema error itself (400-coded), the Start none
+    expect(events[0]!.error).toBeUndefined()
+    expect((events[2]!.error as { status?: number }).status).toBe(400)
   })
 
   it('handler stages are strict: message schemas and replies close the setup stage like a loader', () => {
@@ -539,8 +610,23 @@ describe('socket builders', () => {
     expect(errResult.replied).toBe(true)
   })
 
-  it('without reply() the return answers as always; a throw after reply() only logs', async () => {
-    const channel = root.lets('channel', 'chatImperative2').channel()
+  it('without reply() the return answers as always; a throw after reply() emits pointHandlerServerLateError', async () => {
+    const events: Array<{ name: string; error: unknown }> = []
+    const eventedRoot = Point0.lets('root', 'eventedLate')
+      .serverOn(
+        [
+          'pointHandlerServerStart',
+          'pointHandlerServerSettled',
+          'pointHandlerServerSuccess',
+          'pointHandlerServerError',
+          'pointHandlerServerLateError',
+        ],
+        (event) => {
+          events.push({ name: event.name, error: (event.data as { error?: unknown }).error })
+        },
+      )
+      .root()
+    const channel = eventedRoot.lets('channel', 'chatImperative2').channel()
     const handler = channel
       .lets('serverHandler', 'lateBoom')
       .clientSend(z.object({ boom: z.boolean() }))
@@ -563,7 +649,16 @@ describe('socket builders', () => {
     })
     expect(plain.data).toEqual({ ok: true })
     expect(plain.dataSerialized).toBe(transformer.stringify({ ok: true }))
-    // the client already has its answer — the late throw is the server's business only (logged, not rethrown)
+    expect(events.map((event) => event.name)).toEqual([
+      'pointHandlerServerStart',
+      'pointHandlerServerSettled',
+      'pointHandlerServerSuccess',
+    ])
+
+    // the client already has its answer — the late throw is the server's business only (never rethrown, never
+    // re-settled), but it is NOT swallowed: it is logged AND emitted as the dedicated late event, which is what puts
+    // it in front of an app's `.on('error')`
+    events.length = 0
     const lateBoom = await handler.point._executeServerReply({
       inputSerialized: transformer.stringify({ boom: true }),
       room: undefined,
@@ -574,6 +669,18 @@ describe('socket builders', () => {
       sendReply: () => {},
     })
     expect(lateBoom.replied).toBe(true)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    // the reply() settled the message as a SUCCESS (the only settle) and the late failure rode its own event, once
+    expect(events.map((event) => event.name)).toEqual([
+      'pointHandlerServerStart',
+      'pointHandlerServerSettled',
+      'pointHandlerServerSuccess',
+      'pointHandlerServerLateError',
+    ])
+    const late = events.at(-1)!.error as ErrorPoint0
+    expect(late.message).toBe('after the fact')
+    // wrapped into the point's own Error class, like every other typed error the family carries
+    expect(late).toBeInstanceOf(handler.point._Error)
   })
 
   it('onBeforeServerReply guards the message (throw = refusal) and stacks chain -> closer; onAfter sees the outcome', async () => {
@@ -817,6 +924,39 @@ describe('socket builders', () => {
       }),
     ).rejects.toThrow()
     expect(joinerRan).toBe(false)
+  })
+
+  it('_executeJoiner: a refused .input settles the join family — Start above the parse, no dangling Start', async () => {
+    const events: Array<{ name: string; input: unknown }> = []
+    const eventedRoot = Point0.lets('root', 'eventedJoinParseFail')
+      .serverOn('*', (event) => {
+        if (event.name.startsWith('pointSpaceJoinServer')) {
+          events.push({ name: event.name, input: (event.data as { input?: unknown }).input })
+        }
+      })
+      .root()
+    const channel = eventedRoot.lets('channel', 'joinParseFailChannel').channel()
+    const space = channel
+      .lets<{ chatId: string }>('space', 'joinParseFailRoom')
+      .input(z.object({ chatId: z.string() }))
+      .joiner(({ input }) => ({ chatId: input.chatId }))
+      .space()
+    await expect(
+      space.point._executeJoiner({
+        inputSerialized: space.point._getTransformer().stringify({ chatId: 123 }),
+        identity: {},
+        connectionId: 'c1',
+        points: undefined as never,
+      }),
+    ).rejects.toThrow()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(events.map((event) => event.name)).toEqual([
+      'pointSpaceJoinServerStart',
+      'pointSpaceJoinServerSettled',
+      'pointSpaceJoinServerError',
+    ])
+    // the raw join input rides every phase — the parse never produced another one
+    expect(events.every((event) => (event.input as { chatId: unknown }).chatId === 123)).toBe(true)
   })
 
   it('_executeJoiner: a throwing joiner propagates the typed error (a failed join)', async () => {
@@ -1483,6 +1623,66 @@ describe('socket builders', () => {
       expect(collects).toHaveLength(3)
     } finally {
       unregisterSocketServerAdapter('root')
+    }
+  })
+
+  it('sendToClient emits the SERVER transport family: Start → Settled → Success on the accept, Error when it never leaves', async () => {
+    // the push side of the transport altitude: `pointHandlerSendServer*` reports the act of TRANSMITTING, while
+    // `pointHandlerClient*` (on the receiving client) reports the dispatch. Success means the engine ACCEPTED the
+    // frame — a push is fire-and-forget, nothing here waits for a client to receive it
+    const events: Array<{ name: string; input: unknown; error: unknown; point: unknown }> = []
+    const eventedRoot = Point0.lets('root', 'eventedPush')
+      .serverOn(
+        [
+          'pointHandlerSendServerStart',
+          'pointHandlerSendServerSettled',
+          'pointHandlerSendServerSuccess',
+          'pointHandlerSendServerError',
+        ],
+        (event) => {
+          events.push({
+            name: event.name,
+            input: (event.data as { input?: unknown }).input,
+            error: (event.data as { error?: unknown }).error,
+            point: event.meta.point,
+          })
+        },
+      )
+      .root()
+    const channel = eventedRoot.lets('channel', 'pushEventsChan').channel()
+    const handler = channel
+      .lets('clientHandler', 'pushEventsMsg')
+      .serverSend(z.object({ text: z.string() }))
+      .clientHandler()
+    registerSocketServerAdapter('eventedPush', makeAdapter())
+    try {
+      handler.sendToClient({ text: 'hi' })
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      expect(events.map((event) => event.name)).toEqual([
+        'pointHandlerSendServerStart',
+        'pointHandlerSendServerSettled',
+        'pointHandlerSendServerSuccess',
+      ])
+      // the family keeps the wire vocabulary: the pushed message rides as `input`
+      expect(events[2].input).toEqual({ text: 'hi' })
+      expect(events[2].error).toBeUndefined()
+      expect(events[2].point).toBe('eventedPush:clientHandler:pushEventsMsg')
+
+      // a push that cannot even be built (room targeting on a channel handler) closes the family with the error —
+      // and still throws to the caller, unchanged
+      events.length = 0
+      expect(() => (handler as any).sendToClient({ text: 'x' }, { room: { chatId: '5' } })).toThrow(
+        /has no space — room targeting lives on space handlers/,
+      )
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      expect(events.map((event) => event.name)).toEqual([
+        'pointHandlerSendServerStart',
+        'pointHandlerSendServerSettled',
+        'pointHandlerSendServerError',
+      ])
+      expect((events[2].error as ErrorPoint0).message).toMatch(/room targeting lives on space handlers/)
+    } finally {
+      unregisterSocketServerAdapter('eventedPush')
     }
   })
 
@@ -2973,5 +3173,152 @@ describe('socket builders', () => {
       void optedChannel.connect({}, { upgradable: true })
     }
     void typesOnly
+  })
+})
+
+/**
+ * A connection/membership is keyed by its serialized input — a transformer that refuses the input would merge every
+ * connection of the channel under one `undefined` key, and a fresh object literal per render would stop being
+ * comparable at all. The key is built BEFORE the first React hook, so calling these outside a component is safe here
+ * (the same plain-JS bypass `point0-no-loader-guard` uses).
+ */
+describe('socket keys refuse an unserializable input', () => {
+  const refusingRoot = Point0.lets('root', 'sockSerFail')
+    .transformer({ serialize: () => undefined, deserialize: (data: unknown) => data })
+    .root()
+  // called through a non-`use` binding so the rules-of-hooks lint stays out of a deliberate bypass
+  const callConnection = useSocketConnection as (...args: never[]) => unknown
+  const callMembership = useSpaceMembership as (...args: never[]) => unknown
+
+  const codeOf = (call: () => unknown): unknown => {
+    try {
+      call()
+    } catch (error) {
+      return (error as ErrorPoint0).code
+    }
+    return undefined
+  }
+
+  it('a channel connection key throws POINT0_SERIALIZE_FAILED instead of keying on undefined', () => {
+    const chan = refusingRoot.lets('channel', 'badChan').channel()
+    expect(codeOf(() => callConnection(chan.point as never, { a: 1 } as never, undefined as never))).toBe(
+      POINT0_ERROR_CODES_MAP.SERIALIZE_FAILED,
+    )
+  })
+
+  it('a space membership key throws too — including the absent input coerced to {}', () => {
+    const chan = refusingRoot.lets('channel', 'badChan2').channel()
+    const space = chan.lets('space', 'badSpace').space()
+    expect(codeOf(() => callMembership(space.point as never, undefined as never, undefined as never))).toBe(
+      POINT0_ERROR_CODES_MAP.SERIALIZE_FAILED,
+    )
+  })
+})
+
+/**
+ * `onSendError` — the point-of-call twin of `onReplyFromServer`: one of the two fires for every `sendToServer`, from
+ * the send's single failure choke point (`failSend`, which also emits `pointHandlerSendClient*`). Driven with the side
+ * flipped to `client` and NO connection to ride, which is the cheapest failure a send can take.
+ */
+describe('serverHandler onSendError', () => {
+  const withClientSide = async (run: () => Promise<void>): Promise<void> => {
+    const originalSide = process.env.POINT0_SIDE
+    process.env.POINT0_SIDE = 'client'
+    try {
+      await run()
+    } finally {
+      if (originalSide === undefined) {
+        delete process.env.POINT0_SIDE
+      } else {
+        process.env.POINT0_SIDE = originalSide
+      }
+    }
+  }
+
+  it('fires on a failed send with the raw input and the typed error — the reply callback stays silent', async () => {
+    const failures: Array<{ input: unknown; error: ErrorPoint0; connection: unknown; point: unknown }> = []
+    const replies: unknown[] = []
+    const errorEvents: string[] = []
+    const sendRoot = Point0.lets('root', 'onSendErrRoot')
+      .clientOn('pointHandlerSendClientError', (event) => {
+        errorEvents.push(event.name)
+      })
+      .root()
+    const channel = sendRoot
+      .lets('channel', 'onSendErrChannel')
+      .connector(() => ({ me: 'u1' }))
+      .channel()
+    const handler = channel
+      .lets('serverHandler', 'onSendErrPoke')
+      .clientSend(z.object({ text: z.string() }))
+      .serverReply(({ input }) => ({ echo: input.text }))
+      .serverHandler({
+        client: {
+          onReplyFromServer: () => {
+            replies.push('replied')
+          },
+          onSendError: (props) => {
+            failures.push(props as never)
+          },
+        },
+      })
+    await withClientSide(async () => {
+      // nothing is connected — the target resolution is the first thing that can fail, and it goes through failSend
+      await expect(handler.sendToServer({ text: 'hi' })).rejects.toThrow(/No live connection/)
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    })
+    expect(failures).toHaveLength(1)
+    expect(failures[0]!.input).toEqual({ text: 'hi' })
+    // the same instance the transport error event carries, and the connection is undefined — there was none to ride
+    expect(failures[0]!.error.message).toMatch(/No live connection/)
+    expect(failures[0]!.connection).toBeUndefined()
+    expect(failures[0]!.point).toBe(handler.point as never)
+    expect(errorEvents).toEqual(['pointHandlerSendClientError'])
+    // the two callbacks are exclusive: a send that never got an answer is not a reply
+    expect(replies).toEqual([])
+  })
+
+  it('the callbacks stack chain → closer → call site, and a throw inside one only logs', async () => {
+    const order: string[] = []
+    const sendRoot = Point0.lets('root', 'onSendErrThrowRoot').root()
+    const channel = sendRoot
+      .lets('channel', 'onSendErrThrowChannel')
+      .serverHandlerOptions({
+        client: {
+          onSendError: () => {
+            order.push('chain')
+          },
+        },
+      })
+      .channel()
+    const handler = channel
+      .lets('serverHandler', 'onSendErrThrowPoke')
+      .serverReply(() => ({ ok: true }))
+      .serverHandler({
+        client: {
+          onSendError: () => {
+            order.push('closer')
+          },
+        },
+      })
+    const consoleError = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await withClientSide(async () => {
+        await expect(
+          handler.sendToServer(undefined, {
+            onSendError: () => {
+              order.push('call-site')
+              throw new Error('callback boom')
+            },
+          }),
+        ).rejects.toThrow(/No live connection/)
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      })
+      // every level runs, in order; the throw reaches nothing but the log — the send still rejects with its own error
+      expect(order).toEqual(['chain', 'closer', 'call-site'])
+      expect(consoleError.mock.calls.some((call) => String(call[0]).includes('onSendError callback threw'))).toBe(true)
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 })

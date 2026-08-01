@@ -190,6 +190,15 @@ re-run for a typo):
   — in a real app the watch tree is just `src` (node_modules excluded), so
   that's instant.
 
+A third exit path is not a failure at all: **exit code 0 = the entry finished**.
+Not every entry is a server — a one-shot sync script or a migration runs to
+completion — so the orchestrator drops its child, logs `Entry "<name>" finished`
+and leaves the rest of the tree serving. A finished entry counts as "up" for the
+watch-set decision, so its patterns narrow to its own import graph and it
+**re-runs only on a change to its own code** (`Entry "<name>" re-running…`),
+never on every save in `src`. Only a **non-zero** exit of a booted child is the
+crash that tears the tree down.
+
 ## User babel plugins & importer rules × the hot store
 
 These compose cleanly with the content-addressed store, because **the store only

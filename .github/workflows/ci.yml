@@ -1,7 +1,7 @@
 name: CI
 
 # The test GATE. Runs the cross-OS suite on pull requests and on opt-in branch pushes. It NEVER
-# publishes — publishing lives in release.yml and is reachable only via a `v*` tag.
+# publishes — publishing lives in release.yml, reachable only from a push to `main`.
 #
 # The pipeline is one linear path, decide → build → check → test → gate:
 #   decide   what should run (scripts/ci-decide.ts) + the test plan (scripts/test.ts)
@@ -16,9 +16,10 @@ name: CI
 #                         and only build + check run under the gate.
 #   push (not main)       a maintainer branch can opt in to a test run via a commit-message flag
 #                         (--run-tests[=os]); without it, only build + check run.
-# `main` is deliberately NOT gated on push: it only changes via an already-tested PR or a release
-# commit (which is gated by its tag). The branch-filtered `push` also means tag pushes fall through
-# to release.yml only, never here.
+# `main` is deliberately EXCLUDED here — not because it isn't gated, but because release.yml owns it:
+# a push to `main` runs the same linear pipeline there and ends in the release job (publish, then tag).
+# One pipeline per push, never two. The branch-filtered `push` also means a tag push triggers nothing
+# at all — tags are created BY the release job, they trigger no workflow.
 on:
   pull_request:
     branches: [main]

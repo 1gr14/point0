@@ -1,5 +1,5 @@
 import { Engine } from '@point0/engine'
-import { clientEnvKeys } from '@/lib/env/client-shape'
+import { clientEnvKeys } from '@/lib/env/shared'
 
 export const engine = Engine.create({
   file: import.meta.url,

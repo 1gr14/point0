@@ -22,6 +22,7 @@ import {
   POINT0_STREAM_HEADER,
   RscHoleRegistry,
   serializeErrorsInDehydratedState,
+  stringifyOrThrow,
   wrapTransformerWithRsc,
 } from '@point0/core'
 import type {
@@ -499,10 +500,7 @@ export class Fetcher<TError extends ErrorPoint0> {
 
       if (endpoint) {
         const outputTypeRaw = (request.original.headers.get(POINT0_OUTPUT_TYPE_HEADER) ?? undefined) as
-          | 'html'
-          | 'data'
-          | 'queryClientDehydratedState'
-          | undefined
+          'html' | 'data' | 'queryClientDehydratedState' | undefined
         const outputType: RequestVariantEndpoint['outputType'] = isChannelUpgrade
           ? 'upgrade'
           : outputTypeRaw === 'queryClientDehydratedState'
@@ -785,6 +783,7 @@ export class Fetcher<TError extends ErrorPoint0> {
       if (outputType === 'html') {
         if (point.type !== 'page') {
           throw new ErrorClass(`Point type "${point.type}" is not supported for html output type`, {
+            status: 400,
             code: POINT0_ERROR_CODES_MAP.HTML_OUTPUT_UNSUPPORTED_POINT_TYPE,
             meta: { point: point.id, pointType: point.type },
           })
@@ -820,6 +819,22 @@ export class Fetcher<TError extends ErrorPoint0> {
         }
       }
 
+      // A page with no server loader deliberately keeps its endpoint so `queryClientDehydratedState` stays prefetchable
+      // (see the `.page()` closer in core) — but it serves no `data` output at all. A bare request on that URL carries
+      // no output-type header and falls back to `data`, which makes it a CALLER mistake, not a server failure: answer
+      // 400 and name the outputs the point does serve. The generated OpenAPI already says the same — there the header
+      // is `required` and its enum excludes `data`. Executor keeps the same guard as a last resort for other entries.
+      if (point.type === 'page' && !point._hasServerLoader && outputType === 'data') {
+        throw new ErrorClass(
+          `Point "${point.id}" has no server loader, so it has no data output — request it with the "${POINT0_OUTPUT_TYPE_HEADER}" header set to "queryClientDehydratedState" or "html"`,
+          {
+            status: 400,
+            code: POINT0_ERROR_CODES_MAP.POINT_NO_SERVER_LOADER,
+            meta: { point: point.id },
+          },
+        )
+      }
+
       const executor = await Executor.create<RequiredCtx, TError>({
         engine: this.engine,
         request,
@@ -833,6 +848,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           throw new ErrorClass(
             `Point type "${point.type}" is not supported for queryClientDehydratedState output type`,
             {
+              status: 400,
               code: POINT0_ERROR_CODES_MAP.DEHYDRATED_STATE_UNSUPPORTED_POINT_TYPE,
               meta: { point: point.id, pointType: point.type },
             },
@@ -868,7 +884,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         })
         const dehydratedState = serializeErrorsInDehydratedState(originalDehydratedState, ErrorClass)
         effects.set.status(200)
-        const firstLine = transformer.stringify({ dehydratedState })
+        const firstLine = stringifyOrThrow(transformer, { dehydratedState }, point.id)
         // A prefetched loader deferred a subtree (see `defer`): the dehydrated query state carries `{ t: 2 }` holes, so
         // stream them in as NDJSON exactly like the plain data path — client navigation gets the shell-first, slow-parts-
         // stream-in experience too, and an island inside such a hole renders fresh (interactive). `prefetchAppPagePointDeep`
@@ -970,7 +986,7 @@ export class Fetcher<TError extends ErrorPoint0> {
         // if request was sent from point0 cleint we send in with usual response 200 and special header (in this block), but will recoginze as error in query itself
         // if it was requested via foreign client, then it is unexpected and we return response as error (in next block: if (executeResult.error) ...)
 
-        const response = new Response(transformer.stringify(executeResult.redirect.serialize()), {
+        const response = new Response(stringifyOrThrow(transformer, executeResult.redirect.serialize(), point.id), {
           headers: { 'Content-Type': 'application/json', [POINT0_REDIRECT_HEADER]: 'true' },
           status: executeResult.effects.status ?? 200,
         })
@@ -1054,7 +1070,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           }
         }
         const connectOutput = { id: connection.cid, ticket: connection.ticket }
-        const response = new Response(transformer.stringify(connectOutput), {
+        const response = new Response(stringifyOrThrow(transformer, connectOutput, point.id), {
           // a connect response is per-connection state — no cache may store it
           headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' },
           status: executeResult.effects.status ?? 200,
@@ -1143,7 +1159,9 @@ export class Fetcher<TError extends ErrorPoint0> {
       }
 
       // else we try to get endpoint json
-      const firstLine = transformer.stringify(executeResult.output)
+      // `!executeResult.output` already threw NO_OUTPUT above, so `undefined` here can only be a serialization
+      // failure — never a legitimately empty output
+      const firstLine = stringifyOrThrow(transformer, executeResult.output, point.id)
       const holeRegistry = executor.serverStorageState.__POINT0_RSC_HOLES__
       // The output deferred a subtree (see `defer`): stream the response as NDJSON — line 1 is this payload (holes as
       // `{ t: 2 }`), each following line fills one as it resolves. Gated on the request header so only a stream-capable

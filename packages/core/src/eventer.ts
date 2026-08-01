@@ -304,13 +304,26 @@ export type EventerEventPointSubscriptionClientError<TError extends ErrorPoint0>
 
 // pointChannelConnect — a channel connect, split by side: the SERVER family fires around the connector execution (its
 // data carries the identity the connector produced), the CLIENT family around the connect request. Two different
-// operations — two event families, not one name on two sides. The CLIENT family carries the same counters/markers as
-// the lifecycle callbacks: `connectionIndex` on every phase (successful claims BEFORE this operation — 0 = the first
-// connect, > 0 = a re-connect), `resumed`/`gapless` on the successful outcome only (they are the ENTRY's verdict — a
-// failed connect has no entry to describe, and a refused resume falls back into the full connect silently). A landed
-// RESUME closes the family with `Settled`/`Success` (`resumed: true`, `gapless` = the server's proof) WITHOUT a
-// `Start`: the resume is one shared frame at the socket's open, not a per-connection client operation, and its
-// fallback path runs the full family cycle — a resume `Start` would dangle there.
+// operations — two event families, not one name on two sides.
+//
+// The CLIENT family settles at the CLAIM, not at the connect request's answer: a connect POST only earns a ticket, and
+// what the claim answers is the connect's real outcome — `Success` therefore means a LIVE connection (its markers are
+// the ones `onConnect` just read, not a guess made a round trip earlier), and `Error` covers the claim refusals too (a
+// throwing `.enroller`, the `maxConnections` cap, a lapsed connection record, a ticket that no longer resolves) next
+// to the connect request's own failures. That is why the claim needs no client event of its own — the family already
+// reports it; the server's `pointChannelClaimServerError` exists because the SERVER family cannot (it fires at
+// connector time, before the claim). Every `Start` gets exactly one settle: from the claim (the cold-start upgrade
+// reaches the same one), from a connect request that never earned a ticket, or from a socket that died with the claim
+// unanswered. The single exception is a connection DISPOSED mid-attempt (unmount, `disconnect()`, a logout), which
+// abandons its family the way a cancelled operation does.
+//
+// The family carries the same counters/markers as the lifecycle callbacks: `connectionIndex` on every phase
+// (successful claims BEFORE this operation — 0 = the first connect, > 0 = a re-connect), `resumed`/`gapless` on the
+// successful outcome only (they are the ENTRY's verdict — a failed connect has no entry to describe, and a refused
+// resume falls back into the full connect silently). A landed RESUME closes the family with `Settled`/`Success`
+// (`resumed: true`, `gapless` = the server's proof) WITHOUT a `Start`: the resume is one shared frame at the socket's
+// open, not a per-connection client operation, and its fallback path runs the full family cycle — a resume `Start`
+// would dangle there.
 export type EventerEventPointChannelConnectServerStart = EventerEvent<
   'server',
   'pointChannelConnectServerStart',
@@ -387,12 +400,13 @@ export type EventerEventPointChannelConnectClientSettled<TError extends ErrorPoi
         resumed: boolean
         /**
          * the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's
-         * verdict there; on the full path the client computes it as `index === 0`)
+         * verdict there; on the full path the claim reads it as `index === 0`)
          */
         gapless: boolean
         error: undefined
       }
     | {
+        /** no connection went live — a refused connect request and a refused CLAIM alike name none */
         connectionId: undefined
         error: TError
       }
@@ -411,7 +425,7 @@ export type EventerEventPointChannelConnectClientSuccess = EventerEvent<
     resumed: boolean
     /**
      * the proof that nothing was missed — `true` on the first entry and on a fully-covered resume (the server's verdict
-     * there; on the full path the client computes it as `index === 0`)
+     * there; on the full path the claim reads it as `index === 0`)
      */
     gapless: boolean
     error: undefined
@@ -455,11 +469,45 @@ export type EventerEventPointChannelCloseServer = EventerEvent<
     reason: 'close' | 'socket' | 'kick'
   }
 >
+/**
+ * A connection failed to CLAIM its place on the socket — every refusal the client meets as a `claimErr` frame: an
+ * unknown, expired, already-claiming or foreign-scope ticket, a connection record that lapsed (the cold-start upgrade's
+ * seed included), a channel point the record names and this server does not have, the channel's `maxConnections` cap,
+ * and an `.enroller` that threw during the connection setup. Server-only, single event: nothing started, so there is
+ * nothing to settle. It fills the gap `pointChannelConnectServer*` cannot cover — that family fires at connector time,
+ * BEFORE the claim, so a connect that succeeded is not yet a live connection and a claim that never landed would
+ * otherwise be invisible to the server. The client side needs no single of its own: its family SETTLES at the claim, so
+ * the same refusal closes `pointChannelConnectClient*` with `Settled`/`Error` right where the connect it belongs to
+ * ends. How much the payload knows depends on how early the refusal came — a refused ticket names neither channel nor
+ * connection.
+ */
+export type EventerEventPointChannelClaimServerError<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointChannelClaimServerError',
+  {
+    scope: PointsScope
+    /** the channel the claim was for — `undefined` when the refusal came before the record resolved to a point */
+    point: AnyNiceReadyPoint | undefined
+    /** the connection the claim was for — `undefined` when the refusal came before a cid was known */
+    connectionId: string | undefined
+    /**
+     * what refused it: the `ticket` (unknown, expired, racing, or minted for another scope — one answer, no oracle),
+     * the `connection` record (lapsed, or a cold-start upgrade seed that timed out), the `channel` point (gone from
+     * this build), `maxConnections` (the channel's per-socket cap), or an `enroller` throw
+     */
+    reason: 'ticket' | 'connection' | 'channel' | 'maxConnections' | 'enroller'
+    error: TError
+  }
+>
 
 // pointHandler — a socket message, split by side: the SERVER family fires around `.serverReply` (its data carries
 // the sender's identity), the CLIENT family around a clientHandler dispatch. Different operations — different events.
 // The payload field is `input` on BOTH sides on purpose — the one family shared with the server side keeps the wire
 // vocabulary (the payload-naming law's deliberate lower-layer exception; the user-facing push surfaces say `message`).
+// The SERVER family covers a message that reached its point: `Start` fires above the `.clientSend` parse, so a refused
+// input closes the family with Settled/Error like any other failure. A message the ENGINE refused before that — an
+// unknown connection, an oversized frame, a handler that does not exist, a room the sender is not in — never reaches a
+// point and rides `socketServerSendRefused` instead.
 export type EventerEventPointHandlerServerStart = EventerEvent<
   'server',
   'pointHandlerServerStart',
@@ -517,6 +565,27 @@ export type EventerEventPointHandlerServerError<TError extends ErrorPoint0> = Ev
     error: TError
   }
 >
+/**
+ * A `.serverReply` threw AFTER its imperative `reply()` had already answered the client. This is the ONE serverHandler
+ * failure that escapes `pointHandlerServerError`: the message settled the moment `reply()` fired (`Settled`/`Success`
+ * with the replied output already emitted, the envelope already framed), so the throw that follows cannot change the
+ * answer, cannot reach the sender, and must not re-settle the operation. It fires here instead — the late half of a
+ * message whose visible half succeeded, and the one way an app's `.on('error')` (and through it Sentry) learns that the
+ * work after the reply — the writes, the pushes, the fan-out an early `reply()` exists to keep going — actually failed.
+ * Server-only, single event: no phases, nothing to settle, `onAfterServerReply` already ran with the replied output.
+ */
+export type EventerEventPointHandlerServerLateError<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointHandlerServerLateError',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string
+    /** the sending connection's identity (server knowledge, never on the client family) */
+    identity: unknown
+    error: TError
+  }
+>
 export type EventerEventPointHandlerClientStart = EventerEvent<
   'client',
   'pointHandlerClientStart',
@@ -563,6 +632,125 @@ export type EventerEventPointHandlerClientError<TError extends ErrorPoint0> = Ev
     point: AnyNiceReadyPoint
     connectionId: string
     output: undefined
+    error: TError
+  }
+>
+
+// pointHandlerSend — the TRANSPORT altitude of a socket message: the act of TRANSMITTING one, named for the side that
+// transmits. `pointHandlerSendClient*` wraps a client's `serverHandler.sendToServer()`; `pointHandlerSendServer*` wraps
+// a server's `clientHandler.sendToClient()`. The altitude split is the socket's answer to `engineFetch*` vs
+// `pointQuery*` on the HTTP side: the execution families above (`pointHandlerServer*` / `pointHandlerClient*`) report
+// the RECEIVING side RUNNING the message — a `.serverReply` that ran, a clientHandler dispatch that dispatched — and
+// they can only fire once a frame arrived somewhere. A send that never left (no connection, a dead socket, a timeout, a
+// refused claim) produces no execution event anywhere, and until these families existed it produced nothing at all: the
+// one thing every family described was work, and nothing described the wire. Now the transmitting side always closes
+// its own operation, whatever the transport did.
+//
+// Both keep the family's `input` vocabulary (the wire's word for the payload; the user-facing push surfaces say
+// `message`) and the four phases, `Settled` on either outcome. What "success" means is per side and deliberately
+// modest: the CLIENT family succeeds when the server's `reply` frame resolves the send (the round trip is the client's
+// contract — `sendToServer` resolves with the `.serverReply` return), the SERVER family succeeds when the engine
+// ACCEPTED the frame for delivery. A push is fire-and-forget by design: nothing on the server waits for a client to
+// receive it, so `pointHandlerSendServerSuccess` says "handed to the transport", never "delivered" (the collect window
+// of `sendToClient(..., replies)` is the surface for answers, and it is not this family's business).
+export type EventerEventPointHandlerSendClientStart = EventerEvent<
+  'client',
+  'pointHandlerSendClientStart',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    /** the connection the send rides — `undefined` while it is still unresolved (the target is picked after `Start`) */
+    connectionId: string | undefined
+  }
+>
+export type EventerEventPointHandlerSendClientSettled<TError extends ErrorPoint0> = EventerEvent<
+  'client',
+  'pointHandlerSendClientSettled',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    /** the connection the send rode — `undefined` when it failed before one could be resolved */
+    connectionId: string | undefined
+  } & (
+    | {
+        /** the `.serverReply` return, as the sender received it */
+        output: unknown
+        error: undefined
+      }
+    | {
+        output: undefined
+        error: TError
+      }
+  )
+>
+export type EventerEventPointHandlerSendClientSuccess = EventerEvent<
+  'client',
+  'pointHandlerSendClientSuccess',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string | undefined
+    /** the `.serverReply` return, as the sender received it */
+    output: unknown
+    error: undefined
+  }
+>
+/**
+ * A `serverHandler.sendToServer()` that never resolved — every failure mode of the transmit converges here: no live
+ * connection to ride, the socket dying before or after the frame left, a `queue: false` send meeting a closed socket, a
+ * refused claim, the send timeout, and the server's own `sendErr` (the `.serverReply` refusal, arriving as the typed
+ * error the sender would have thrown). This is what gives the documented fire-and-forget call — `void
+ * handler.sendToServer(...)`, where nobody awaits the promise — a place to be seen: the name sits in
+ * `uniqEventerErrorEventNames`, so one `.on('error')` on the root reports it like any other failure.
+ */
+export type EventerEventPointHandlerSendClientError<TError extends ErrorPoint0> = EventerEvent<
+  'client',
+  'pointHandlerSendClientError',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    connectionId: string | undefined
+    output: undefined
+    error: TError
+  }
+>
+export type EventerEventPointHandlerSendServerStart = EventerEvent<
+  'server',
+  'pointHandlerSendServerStart',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+  }
+>
+export type EventerEventPointHandlerSendServerSettled<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointHandlerSendServerSettled',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+  } & ({ error: undefined } | { error: TError })
+>
+export type EventerEventPointHandlerSendServerSuccess = EventerEvent<
+  'server',
+  'pointHandlerSendServerSuccess',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
+    error: undefined
+  }
+>
+/**
+ * A `clientHandler.sendToClient()` that never reached the transport: an untargetable push (a room on a handler with no
+ * space, a `$where` in a matcher), a message the transformer could not serialize, or the engine's dispatch throwing —
+ * no socket adapter on this process, say. It does NOT fire for a push that reached nobody: an addressed room with no
+ * members is an ordinary successful send, exactly like a broadcast into an empty channel.
+ */
+export type EventerEventPointHandlerSendServerError<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'pointHandlerSendServerError',
+  {
+    input: InputRaw
+    point: AnyNiceReadyPoint
     error: TError
   }
 >
@@ -759,6 +947,33 @@ export type EventerEventSocketServerDisconnect = EventerEvent<
   }
 >
 /**
+ * The engine refused an incoming `sendToServer` BEFORE any point ran: the frame named a connection this socket does not
+ * hold, it went past the channel's `maxMessageSize`, its serverHandler does not exist — or belongs to another channel,
+ * which is the same refusal (no oracle) — or the connection is not in the room the send addressed. Server-only, single
+ * event: nothing executed, so there is nothing to settle. Distinct from `pointHandlerServerError`, which is a
+ * `.serverReply` that RAN and threw; this one never reached the point. The sender sees the same `sendErr` either way
+ * and reports it as `pointHandlerSendClientError` on its side — this is what puts the refusal in front of the SERVER's
+ * `.on('error')`, where abuse and misconfiguration are the readings that matter.
+ */
+export type EventerEventSocketServerSendRefused<TError extends ErrorPoint0> = EventerEvent<
+  'server',
+  'socketServerSendRefused',
+  {
+    scope: PointsScope
+    /**
+     * what refused it: the cid named a connection this socket does not hold (`unknownConnection`), the frame was over
+     * the channel's `maxMessageSize` (`tooLarge`), no serverHandler of this channel answers that name
+     * (`handlerNotFound`), or the space membership does not cover the addressed room (`notInRoom`)
+     */
+    reason: 'unknownConnection' | 'tooLarge' | 'handlerNotFound' | 'notInRoom'
+    /** the serverHandler the frame named, as it came off the wire — on `handlerNotFound` it resolves to nothing */
+    handlerName: string | undefined
+    /** the connection the frame claimed to ride — on `unknownConnection` this socket holds no such cid */
+    connectionId: string | undefined
+    error: TError
+  }
+>
+/**
  * The one client WebSocket completed its handshake — fired on every successful open, the first and the re-opens alike
  * (there is no separate reconnect event; `socketIndex` is the first-vs-repeat distinction, mirroring the lifecycle
  * callbacks' `connectionIndex`/`membershipIndex`). No `resumed`/`gapless` here: those are per-connection entry verdicts
@@ -780,6 +995,27 @@ export type EventerEventSocketClientDisconnect = EventerEvent<
   'socketClientDisconnect',
   {
     scope: PointsScope
+  }
+>
+/**
+ * The one client WebSocket failed as a TRANSPORT: it never came up (`reason: 'open'` — the browser's `error` event,
+ * which carries no detail by design, so the payload's error is the framework's own typed one), or its reconnect backoff
+ * ran out of attempts (`reason: 'exhausted'` — every held connection flips to `closed` and nothing re-opens the socket
+ * until a `reconnectAll()` or a remount). Client-only, single event. Distinct from `socketClientDisconnect`, which is a
+ * socket that WAS up and closed — an ordinary drop the reconnect answers, not a failure. Like the other client socket
+ * singles the emit rides a channel point of the scope, so a socket held with ZERO connections (a bare `<Socket>` hold)
+ * fails silently — there is no point to emit through.
+ */
+export type EventerEventSocketClientError<TError extends ErrorPoint0> = EventerEvent<
+  'client',
+  'socketClientError',
+  {
+    scope: PointsScope
+    /** successful opens of the socket before this failure — 0 = it never opened at all */
+    socketIndex: number
+    /** the socket never opened (`open`), or the reconnect policy gave up on re-opening it (`exhausted`) */
+    reason: 'open' | 'exhausted'
+    error: TError
   }
 >
 
@@ -1128,14 +1364,24 @@ export type AnyEventerEvent<TError extends ErrorPoint0> =
   | EventerEventPointChannelConnectClientError<TError>
   | EventerEventPointChannelOpenServer
   | EventerEventPointChannelCloseServer
+  | EventerEventPointChannelClaimServerError<TError>
   | EventerEventPointHandlerServerStart
   | EventerEventPointHandlerServerSettled<TError>
   | EventerEventPointHandlerServerSuccess
   | EventerEventPointHandlerServerError<TError>
+  | EventerEventPointHandlerServerLateError<TError>
   | EventerEventPointHandlerClientStart
   | EventerEventPointHandlerClientSettled<TError>
   | EventerEventPointHandlerClientSuccess
   | EventerEventPointHandlerClientError<TError>
+  | EventerEventPointHandlerSendClientStart
+  | EventerEventPointHandlerSendClientSettled<TError>
+  | EventerEventPointHandlerSendClientSuccess
+  | EventerEventPointHandlerSendClientError<TError>
+  | EventerEventPointHandlerSendServerStart
+  | EventerEventPointHandlerSendServerSettled<TError>
+  | EventerEventPointHandlerSendServerSuccess
+  | EventerEventPointHandlerSendServerError<TError>
   | EventerEventPointSpaceJoinServerStart
   | EventerEventPointSpaceJoinServerSettled<TError>
   | EventerEventPointSpaceJoinServerSuccess
@@ -1148,8 +1394,10 @@ export type AnyEventerEvent<TError extends ErrorPoint0> =
   | EventerEventSocketServerUpgrade
   | EventerEventSocketServerConnect
   | EventerEventSocketServerDisconnect
+  | EventerEventSocketServerSendRefused<TError>
   | EventerEventSocketClientConnect
   | EventerEventSocketClientDisconnect
+  | EventerEventSocketClientError<TError>
   | EventerEventPointPrefetchPageStart
   | EventerEventPointPrefetchPageSettled<TError>
   | EventerEventPointPrefetchPageSuccess
@@ -1183,12 +1431,18 @@ export const uniqEventerErrorEventNames = [
   'pointInfiniteQueryError',
   'pointChannelConnectServerError',
   'pointChannelConnectClientError',
+  'pointChannelClaimServerError',
   'pointHandlerServerError',
+  'pointHandlerServerLateError',
   'pointHandlerClientError',
+  'pointHandlerSendClientError',
+  'pointHandlerSendServerError',
   'pointSpaceJoinServerError',
   'pointSpaceJoinClientError',
   'pointSubscriptionServerError',
   'pointSubscriptionClientError',
+  'socketServerSendRefused',
+  'socketClientError',
   'engineFetchError',
   'rscError',
 ] satisfies Array<AnyEventerEventName>

@@ -185,7 +185,8 @@ Each member is parsed lazily on first read and cached:
 
 ```tsx
 request.from.ip // => '203.0.113.7' | null   (unspoofable Bun requestIP, safe for security)
-request.from.ips // => ['203.0.113.7', '70.41.3.18']   (all candidates, incl. spoofable)
+request.from.clientIp // => '203.0.113.7' | null   (best guess at the visitor behind proxies)
+request.from.ips // => ['203.0.113.7', '70.41.3.18']   (all candidates, client-first, peer last)
 request.from.userAgent // => 'Mozilla/5.0 ...' | null
 request.from.location // => the referrer as a parsed location | null
 request.from.scope // => an internal point0 scope header | null
@@ -208,30 +209,35 @@ console.log({
 
 ### IP resolution
 
-`from.ip` is **always** Bun's `requestIP` — the real socket peer address, which
-can't be spoofed — or `null` when no Bun server is wired in. It never falls back
-to headers, so it's safe for security decisions.
+Three views of "the request's IP", each for a different job:
 
-`from.ips` is the full list of every candidate, de-duplicated, in this order:
-
-1. Bun's `requestIP(...)` — the unspoofable peer address (when a Bun server is
-   wired in); it leads the list.
-2. `x-forwarded-for` — split on `,`, each entry trimmed, in order.
-3. `x-real-ip`.
-4. `cf-connecting-ip` (Cloudflare).
-
-Everything after Bun's `requestIP` comes from headers the client **can spoof** —
-treat `from.ips` as hints, not proof.
+- `from.ip` — Bun's `requestIP`, the socket peer. Can't be spoofed, never falls
+  back to headers — the one for **security decisions**. Behind a proxy/CDN it is
+  the last hop's address, not the visitor's; `null` without a Bun server.
+- `from.clientIp` — the **visitor's address**, for geo, per-visitor rate limits,
+  logs. The forwarded chain (`x-forwarded-for`, or RFC 7239 `Forwarded` when
+  there's no XFF — never both merged, a client-sent `Forwarded` must not poison
+  the scan) plus the peer, scanned **right-to-left** for the first public
+  address: correct whether the edge replaced the header or appended to it,
+  stepping over private/CGNAT proxy hops (`100.64/10` — Railway's) and spoofed
+  prefixes. Falls back to the client-claim headers (`cf-connecting-ip`,
+  `x-real-ip`, …, public values only), else `null`. Not for security: with no
+  proxy in front, one header spoofs it.
+- `from.ips` — every candidate, normalized and de-duped, client-first with the
+  peer **last**. Diagnostics only — never index into it.
 
 ```tsx
-// behind a Bun server, with x-forwarded-for: '1.1.1.1'
-request.from.ip // => the real peer address — the forwarded header can't override it
-request.from.ips // => [<peer address>, '1.1.1.1']
-
-// no Bun server wired in (e.g. a synthetic request)
-request.from.ip // => null — header values never become `ip`
-request.from.ips // => ['1.1.1.1']   (header candidates are still listed)
+// behind a PaaS edge: x-forwarded-for: '203.0.113.7, 100.64.0.3'
+request.from.ip // => '100.64.0.9' — the edge hop's peer address (unspoofable)
+request.from.clientIp // => '203.0.113.7' — the visitor (rightmost public in the chain)
+request.from.ips // => ['203.0.113.7', '100.64.0.3', '100.64.0.9']
 ```
+
+One topology `clientIp` cannot see through: a CDN reaching the origin from its
+own **public** egress addresses (Cloudflare without a tunnel) ends the scan at
+the CDN's address — read the CDN's own header (`cf-connecting-ip`) yourself
+there. The building blocks are exported from `@point0/core/request0` (its own
+subpath, out of the client bundle): `isPublicIp(raw)` and `normalizeIp(raw)`.
 
 During SSR the loaders Point0 prefetches run on internal server-to-server
 requests, but `request.from` still reports the **original visitor** — Point0
@@ -372,7 +378,8 @@ fresh `state` but the **same** `cache`.
 | Member      | Type                  | Notes                                             |
 | ----------- | --------------------- | ------------------------------------------------- |
 | `ip`        | `string \| null`      | Bun `requestIP` or `null` — never a header value  |
-| `ips`       | `string[]`            | all IP candidates, de-duped, trusted-first        |
+| `clientIp`  | `string \| null`      | the visitor behind proxies — rightmost public hop |
+| `ips`       | `string[]`            | all candidates, de-duped, client-first, peer last |
 | `userAgent` | `string \| null`      | the `user-agent` header                           |
 | `location`  | `AnyLocation \| null` | referrer parsed into a location                   |
 | `scope`     | `string \| null`      | scope of the client that sent it (usually `root`) |

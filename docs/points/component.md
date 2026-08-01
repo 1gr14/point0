@@ -371,14 +371,7 @@ not re-validated on the client, so it does not appear in the render props. With
 ### Outer props (the mount site)
 
 ```tsx
-<MyComponent
-  input={
-    {
-      /* final input */
-    }
-  }
-  {...declaredProps}
-/>
+<MyComponent input={{/* final input */}} {...declaredProps} />
 ```
 
 A component accepts `input` when it has any input schema (`.input`,

@@ -675,12 +675,36 @@ There is no `room` send option — binding is the one way to name a room, across
 `sendToServer`, the listeners, the iterator and the whole socket-query family.
 
 A reply throw rejects the promise with the typed error — see
-[error handling](error-handling). `onReplyFromServer` in the closing options'
-`client` group fires on the client for every reply of the handler, including
-fire-and-forget sends; its payload is `data`, the server's reply, next to the
-`input` the send carried. Up the chain via
-`.serverHandlerOptions({ client: { onReplyFromServer } })` it fires for every
-handler beneath, there `data` is unknown and `point` tells which replied.
+[error handling](error-handling). A **fire-and-forget send still reports its
+failures**: every way a send can fail — no live connection, the socket dying,
+the send timeout, the server's refusal — closes the transport family with
+[`pointHandlerSendClientError`](events#two-altitudes-the-work-and-the-wire),
+which the [`.on('error')`](events#the-error-shorthand) shorthand covers. So a
+root error subscriber sees what a `void handler.sendToServer(...)` chose not to
+await, and the happy path is observable the same way
+(`pointHandlerSendClientStart` at the call, `…Success` when the reply lands).
+`onReplyFromServer` in the closing options' `client` group fires on the client
+for every reply of the handler, including fire-and-forget sends; its payload is
+`data`, the server's reply, next to the `input` the send carried. Up the chain
+via `.serverHandlerOptions({ client: { onReplyFromServer } })` it fires for
+every handler beneath, there `data` is unknown and `point` tells which replied.
+
+`onSendError` is its twin, for the other outcome: it fires on the client for
+every send that FAILED, with the typed `error` next to the same raw `input` (and
+the `connection` it rode — `undefined` when the send died before one could be
+resolved). One of the two fires for every send, never both. It is a
+point-of-call tool — a toast, a retry button, a rollback next to the code that
+sent — while app-wide reporting stays the one `.on('error')` subscriber; a throw
+inside it only logs, like every socket lifecycle callback. Per send it is a call
+option too: `sendToServer(input, { onSendError })`, stacking with the levels
+above it.
+
+```tsx
+void messageSendHandler.sendToServer(
+  { text },
+  { onSendError: ({ error }) => toast.error(error.message) },
+)
+```
 
 ### The handler as a mutation, query, or infinite query
 
@@ -816,8 +840,14 @@ after it is ignored. `reply(new Error(...))` is the imperative refusal (the
 client's send rejects with the typed error, exactly as a throw would);
 `.serverReply<undefined>()` makes `reply(undefined)` the early **ack** (the
 client types the resolve as the empty data, like any ack). `return` works the
-same with or without the generic; a throw after `reply()` was sent only logs —
-the client already has its answer.
+same with or without the generic; a throw after `reply()` was sent cannot reach
+the client — it already has its answer — so it is logged and emitted as
+[`pointHandlerServerLateError`](events), the one event that reports a
+serverHandler failing after it answered. The message itself stays settled as the
+success the client was told about (`pointHandlerServerSettled` /
+`pointHandlerServerSuccess` already fired at `reply()`), and an
+[`.on('error')`](events#the-error-shorthand) subscriber sees the late failure —
+so the post-reply work above (the transcode, its push) failing is never silent.
 
 A result that outlives the request (the transcode above) is **data, not a
 pending promise**: write it, then push it into a room the user holds (an
@@ -1487,8 +1517,8 @@ server: {
 | Adapter                               | For                                                                                                       | Install    |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------- |
 | `@point0/engine/backplane/postgres`   | Postgres via [postgres.js](https://github.com/porsager/postgres) — real push, no Redis                    | `postgres` |
-| `@point0/engine/backplane/ioredis`    | an ioredis client you already hold (BullMQ, Sentinel, custom TLS)                                         | `ioredis`  |
-| `@point0/engine/backplane/node-redis` | a node-redis (`redis` package, v4/v5) client you already hold                                             | `redis`    |
+| `@point0/engine/backplane/ioredis`    | an ioredis client you already hold (BullMQ, Sentinel, custom TLS) — v5 or v6                              | `ioredis`  |
+| `@point0/engine/backplane/node-redis` | a node-redis (`redis` package, v4/v5/v6) client you already hold                                          | `redis`    |
 | `@point0/engine/backplane/bun-redis`  | Bun's built-in client when it needs options a URL cannot carry — what the URL shortcut itself is built on | —          |
 
 **`postgresBackplane(sql)`** turns the database you already have into the
@@ -1522,13 +1552,21 @@ the backplane at the direct URL; on hosts that connect you directly (Railway,
 plain VMs) there is nothing to do.
 
 **The Redis adapters** map the client 1:1 (`GET` / `SET PX` / `DEL` / `GETDEL` /
-`PUBLISH` / `SUBSCRIBE`) and need Redis >= 6.2 (`GETDEL`). A Redis connection in
-subscriber mode cannot run regular commands, so each adapter lazily
+`PUBLISH` / `SUBSCRIBE`) and need Redis >= 6.2 (`GETDEL`). Each adapter lazily
 `duplicate()`s the client for the bus on first subscribe (or takes yours via the
-`subscriber` option). Reconnect durability is covered per client: ioredis
-re-subscribes on its own (`autoResubscribe`, on by default — keep it on),
-node-redis and Bun's client are wrapped in a registry that replays every
-subscription after a reconnect.
+`subscriber` option) — under RESP2 a connection in subscriber mode cannot run
+regular commands at all, and even under RESP3, where it can, a dedicated
+subscriber keeps the bus off the command path. Reconnect durability is covered
+per client: ioredis re-subscribes on its own (`autoResubscribe`, on by default —
+keep it on), node-redis and Bun's client are wrapped in a registry that replays
+every subscription after a reconnect.
+
+The client majors are interchangeable here. **ioredis 6** and **node-redis 6**
+default to **RESP3** (ioredis 6 additionally ships `replyMapping: 'legacy'`, so
+replies keep their v5 shapes); every command the adapters touch keeps its
+signature and its reply type across the two majors, and the `'message'` /
+subscribe listeners still hand you plain strings. Nothing in the adapters or in
+your `backplane` factory changes when you upgrade the client.
 
 ```ts
 import { ioredisBackplane } from '@point0/engine/backplane/ioredis'
@@ -2174,14 +2212,20 @@ there — and a failed connect's `Settled` / `Error` carry it `undefined`).
 | Event                                                | When it fires                                                                                        |
 | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `pointChannelConnectServer*`                         | four phases around the connector run — before the claim                                              |
-| `pointChannelConnectClient*`                         | four phases around the connect request                                                               |
+| `pointChannelConnectClient*`                         | four phases around the connect — settled by the claim, where the connection goes live                |
 | `pointChannelOpenServer` / `pointChannelCloseServer` | server-only singles — a connection became live / went away                                           |
+| `pointChannelClaimServerError`                       | server-only single — a connection failed to claim its place on the socket                            |
 | `pointSpaceJoinServer*`                              | four phases around each `.joiner` / `.enroller` run                                                  |
 | `pointSpaceJoinClient*`                              | four phases around the join frame                                                                    |
 | `pointSpaceLeaveServer`                              | server-only single — a membership left its rooms                                                     |
 | `pointHandlerServer*`                                | four phases around a `.serverReply` run                                                              |
 | `pointHandlerClient*`                                | four phases around a clientHandler dispatch                                                          |
+| `pointHandlerServerLateError`                        | server-only single — a `.serverReply` threw after its early `reply()`                                |
+| `pointHandlerSendClient*`                            | four phases around a `sendToServer()` — the client TRANSMITTING                                      |
+| `pointHandlerSendServer*`                            | four phases around a `sendToClient()` — the server TRANSMITTING                                      |
+| `socketServerSendRefused`                            | server-only single — a send the engine refused before any point ran                                  |
 | `socketServer*` / `socketClient*`                    | socket-level singles — the upgrade, a socket arriving / leaving, the one WebSocket opening / closing |
+| `socketClientError`                                  | client-only single — the transport never came up, or the reconnect gave up                           |
 
 Four phases means `Start`, `Settled`, `Success`, `Error` — the standard
 [lifecycle phases](events#lifecycle-phases); what each event's `data` carries is
@@ -2199,6 +2243,31 @@ through a [resume revival](#resumable-connections) (an unpark or a KV restore �
 no connector ran for that open), `false` on a real claim.
 `pointChannelCloseServer` carries a `reason`: `'close'` (the client left),
 `'socket'` (the socket died), or `'kick'` (a server-side `channel.kick`).
+
+A claim that never landed is the third single, `pointChannelClaimServerError` —
+also server-only. It fires wherever the server refuses a claim: an unknown,
+expired or foreign-scope ticket (`reason: 'ticket'`), a connection record that
+lapsed (`'connection'`), a channel point the record names and this build no
+longer has (`'channel'`), the channel's `maxConnections` cap
+(`'maxConnections'`), and an `.enroller` that threw during the connection setup
+(`'enroller'`). Without it a connect that succeeded and a connection that never
+went live look the same from the server: the connect family fires before the
+claim. The payload carries what the refusal knew — a refused ticket names
+neither `point` nor `connectionId`.
+
+**On the client the claim is not a blind spot — it is where the family
+settles.** `pointChannelConnectClient*` does not close on the connect request's
+answer (a ticket is not a connection): its `Settled` / `Success` fire when the
+claim lands, carrying the outcome `onConnect` just read, and a refused claim
+closes the same family with `Settled` / `Error` and the server's typed error —
+so `.on('error')` hears a throwing `.enroller` or a `maxConnections` refusal
+exactly like a denied connector. That is why the client needs no claim single of
+its own. Every `Start` gets exactly one settle: from the claim (the cold-start
+upgrade reaches the same one — its handshake is a different route to the claim,
+not a second connect), from a request that never earned a ticket, or from a
+socket that died with the claim unanswered. The one attempt that settles nothing
+is a connection you disposed mid-connect (an unmount, `disconnect()`, a logout):
+it is abandoned, like a cancelled operation.
 
 ### The join family straddles the registration
 
@@ -2244,7 +2313,53 @@ resume). A landed resume closes each family with `Settled` → `Success` and
 **no** `Start` — the resume is one shared frame at the socket's open, not a
 per-connection client operation, and a refused resume falls back into the full
 connect / join whose family runs the complete cycle. The error phases carry the
-index but no markers — a failed operation has no entry to describe.
+index but no markers — a failed operation has no entry to describe — and a
+connect refused at the [claim](#connect-vs-open--the-claim-is-the-watershed)
+carries no `connectionId` either: the cid its ticket named never became a
+connection.
+
+### Sending is its own altitude
+
+`pointHandlerServer*` / `pointHandlerClient*` report the side that RUNS a
+message — the `.serverReply` that ran, the clientHandler dispatch that
+dispatched. `pointHandlerSendClient*` / `pointHandlerSendServer*` report the
+side that TRANSMITS one: a `sendToServer()` from the client, a `sendToClient()`
+push from the server. The pair is not a duplicate, and the transport family is
+the only one that can report a message that never arrived anywhere — a send with
+no live connection, a socket that died, a timeout: nothing ran, so no execution
+event exists for it. It is the socket's version of the
+[HTTP split](events#two-altitudes-the-work-and-the-wire) between `pointQuery*`
+and `engineFetch*`.
+
+Success means different things per side, deliberately. The CLIENT family
+succeeds when the server's reply resolves the send — the round trip is what
+`sendToServer()` awaits, so `Success` carries the `.serverReply` return as
+`output`. Its `Start` fires at the call, before the target is resolved, so
+`connectionId` is `undefined` there and known on the outcomes. The SERVER family
+succeeds when the engine ACCEPTED the push for delivery: a push is
+fire-and-forget by design, so success means _handed to the transport_, never
+_delivered_ — a push into a room nobody is in is an ordinary success, and only a
+push that could not be built (an untargetable room, a message that would not
+serialize) closes it with `Error`.
+
+`pointHandlerServerLateError` is the server-only single for the one failure that
+escapes `pointHandlerServerError`: a `.serverReply` that threw AFTER its
+imperative [`reply()`](#answering-early--the-imperative-reply) already answered.
+The message settled as a success the moment `reply()` fired, so the throw cannot
+re-settle it — it rides its own event instead of vanishing into the log.
+
+A message the engine refuses **before** any point runs has no execution family
+at all, and rides `socketServerSendRefused` — a server-only single with the
+`reason`: the frame named a connection this socket does not hold
+(`'unknownConnection'`), it was over the channel's `maxMessageSize`
+(`'tooLarge'`), no serverHandler of the channel answers that name
+(`'handlerNotFound'`), or the sender is not in the room it addressed
+(`'notInRoom'`). The sender sees the same refusal either way — its own
+`pointHandlerSendClientError` — but only this puts it in front of the SERVER's
+`.on('error')`, which is where abuse and misconfiguration are worth watching. A
+refused **schema** is not one of these: `.clientSend` runs inside the point, and
+`pointHandlerServerStart` fires above the parse, so a bad input settles the
+handler family with `Settled` / `Error` like any other failure.
 
 ### The socket singles
 
@@ -2259,6 +2374,16 @@ re-opens alike, there is no separate reconnect event (the emit rides a channel
 point of the scope, so a socket held with zero connections opens silently) — and
 its data carries `socketIndex` (`0` = the first open, `> 0` = a reopen), the
 same first-vs-repeat convention as the lifecycle callbacks' indexes.
+
+`socketClientError` is the failure twin: the transport never came up
+(`reason: 'open'` — a handshake that failed, which the browser reports without
+any detail, so the payload's error is the framework's own), or the
+[reconnect](#reconnect) policy ran out of attempts (`reason: 'exhausted'` —
+every held connection goes `closed` and nothing re-opens the socket until a
+`reconnectAll()` or a remount). It is distinct from `socketClientDisconnect`,
+which is a socket that WAS up and dropped — the ordinary blip the reconnect
+answers. It rides the `'error'` shorthand, so «the socket never came back»
+reaches the same reporter as everything else.
 
 ## Recipes
 
@@ -2556,6 +2681,7 @@ them, catching up is the refetch), AsyncAPI, binary payloads, rate limiting.
 | `onReply` (in `.sendToClient`'s `replies` argument)       | `{ data, connectionId }`                                                                                               | —                                                                                                                 |
 | `onBeforeServerReply` / `onAfterServerReply` (options)    | `{ input, identity, connectionId, messageId, point, points }` + `room` (space handler); after adds `{ output, error }` | — (a before-guard throw rejects the send)                                                                         |
 | `onReplyFromServer` (a serverHandler option)              | `{ input, data, connection, point }` — client side, fires on every reply                                               | —                                                                                                                 |
+| `onSendError` (a serverHandler option)                    | `{ input, error, connection, point }` — client side, fires on every failed send (`connection` may be `undefined`)      | —                                                                                                                 |
 
 Server-side callbacks carry the bare `connectionId` string; read the
 connection's current rooms with the synchronous
@@ -2624,6 +2750,7 @@ call option — a space handler's send addresses the room it was BOUND to
 | `client` | `timeout`             | `5000`  | how long this send waits for its reply — awaiting the connect/join and queueing through a reconnect included; a channel-wide default is `.serverHandlerOptions({ client: { timeout } })` on the channel chain |
 | `client` | `queue`               | `true`  | queue through a reconnect; `false` = fail fast                                                                                                                                                                |
 | `client` | `onReplyFromServer`   | —       | callback on every reply — here and up the chain (there `data` is unknown, narrow by `point`)                                                                                                                  |
+| `client` | `onSendError`         | —       | its twin: callback on every FAILED send (no connection, a serialize throw, the timeout, the server's refusal) — for the point of call; app-wide reporting is `.on('error')` on `pointHandlerSendClientError`  |
 | `server` | `onBeforeServerReply` | —       | guard per incoming message — throw to refuse it. Typed at the closer                                                                                                                                          |
 | `server` | `onAfterServerReply`  | —       | observer after the reply settles — audit/metrics                                                                                                                                                              |
 

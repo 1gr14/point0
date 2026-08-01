@@ -41,7 +41,7 @@ import type { Context } from 'use-context-selector'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { _point0_env } from './env.js'
 import type { ClassLikeError0 } from './error.js'
-import { ErrorPoint0, POINT0_ERROR_CODES_MAP } from './error.js'
+import { ErrorPoint0, POINT0_ERROR_CODES_MAP, stringifyOrThrow } from './error.js'
 import type {
   AnyEventerEvent,
   AnyEventerEventName,
@@ -409,7 +409,6 @@ import {
   isErrorCode,
   flattenSidedOptions,
   mergeChannelOptions,
-  stringifyOrThrow,
   mergeClientHandlerOptions,
   mergeEndpointOpenapiSchemas,
   mergeHeaders,
@@ -735,14 +734,11 @@ export class Point0<
       >
     : UndefinedRoute
   private readonly _page:
-    | PageSuccessComponentType<any, any, any, any, any, any, any, any, any>
-    | UndefinedSuccessPageComponent
+    PageSuccessComponentType<any, any, any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
   private readonly _component:
-    | ComponentSuccessComponentType<any, any, any, any, any, any, any, any>
-    | UndefinedComponentSuccessComponent
+    ComponentSuccessComponentType<any, any, any, any, any, any, any, any> | UndefinedComponentSuccessComponent
   private readonly _layout:
-    | LayoutSuccessComponentType<any, any, any, any, any, any, any, any, any>
-    | UndefinedLayoutSuccessComponent
+    LayoutSuccessComponentType<any, any, any, any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
   readonly _layouts: LayoutPoint[]
   /**
    * The point's name — inferred from the variable in the short `.lets` form, or given explicitly as the second arg
@@ -1000,8 +996,7 @@ export class Point0<
       : UndefinedRoute
     _page?: PageSuccessComponentType<any, any, any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
     _component?:
-      | ComponentSuccessComponentType<any, any, any, any, any, any, any, any>
-      | UndefinedComponentSuccessComponent
+      ComponentSuccessComponentType<any, any, any, any, any, any, any, any> | UndefinedComponentSuccessComponent
     _layout?: LayoutSuccessComponentType<any, any, any, any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
     _layouts?: LayoutPoint[]
     name: PointName
@@ -1241,8 +1236,7 @@ export class Point0<
     >
     _page?: PageSuccessComponentType<any, any, any, any, any, any, any, any, any> | UndefinedSuccessPageComponent
     _component?:
-      | ComponentSuccessComponentType<any, any, any, any, any, any, any, any>
-      | UndefinedComponentSuccessComponent
+      ComponentSuccessComponentType<any, any, any, any, any, any, any, any> | UndefinedComponentSuccessComponent
     _layout?: LayoutSuccessComponentType<any, any, any, any, any, any, any, any, any> | UndefinedLayoutSuccessComponent
     _layouts?: LayoutPoint[]
     name?: PointName
@@ -4305,7 +4299,8 @@ export class Point0<
     // arg0 is exactly one of three things. The union is also the constraint, so passing anything
     // else (e.g. `() => 'a string'`) fails here with a normal "not assignable" error.
     TArg extends // 0. a channel point to hold a connection for — matched by its `Infer.PointType` brand. It lands in
-      //    `connections` next to `queries`; the subtree gets the channel context; `gate` (default errors-only) gates the
+
+        //    `connections` next to `queries`; the subtree gets the channel context; `gate` (default errors-only) gates the
         //    mountable on the connect with its own loading/error.
 
         | {
@@ -4598,8 +4593,7 @@ export class Point0<
                     ) => TInputRawOrUndefined),
                 queryOptions?: TUseQueryOptions | undefined,
                 resolve?:
-                  | TResolveBool
-                  | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
+                  TResolveBool | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
               ]
             : [
                 input:
@@ -4627,8 +4621,7 @@ export class Point0<
                     ) => TInputRawOrUndefined),
                 queryOptions?: TUseQueryOptions | undefined,
                 resolve?:
-                  | TResolveBool
-                  | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
+                  TResolveBool | ResolveQueryCallback<TQueryResultType, TQueriedData, TQueryError, TResolveMapped>,
               ]
           : []
   ): NiceStagePoint<
@@ -5613,7 +5606,9 @@ export class Point0<
    * Set how Point0 serializes data crossing the wire — query inputs/outputs, request bodies, the SSR dehydrated state,
    * and the query key. Default is plain JSON (no `Date`/`Map`/`Set`/`BigInt`); pass `superjson` and those round-trip.
    * Root only. Takes any `{ serialize, deserialize }` pair. A CHANNEL opts its wire out of the transformer with the
-   * `preventTransformer` channel option, not here.
+   * `preventTransformer` channel option, not here. A transformer that answers `undefined` for a value that MUST
+   * serialize (a key, a body, a frame, the dehydrated state) fails loud with `POINT0_SERIALIZE_FAILED` — nothing
+   * downstream may key or frame on `undefined`.
    *
    * Server-and-client — kept on both bundles (both sides serialize/deserialize the wire).
    *
@@ -5934,7 +5929,7 @@ export class Point0<
     // optional) — a stream on the action's own method/path closes with `.subscription()`; everything else takes the
     // standard loader. One overload on purpose: contextual typing binds a callback to the FIRST overload candidate
     // and keeps it (a `never`-gated earlier overload still poisons it), so the stage dispatch must live in the type
-    TLoaderResponseFn extends TLetsReadyPointType extends 'subscription'
+    TLoaderResponseFn extends (TLetsReadyPointType extends 'subscription'
       ? SubscriptionLoaderFn<
           TCtx,
           TCtxExposedKeys,
@@ -5972,7 +5967,7 @@ export class Point0<
             TCookiesSchema,
             'endpoint',
             TError
-          >,
+          >),
   >(
     loaderFn: TLetsReadyPointType extends 'mutation' | 'action' | 'subscription'
       ? TLoaderResponseFn & AssertNoForbiddenMethodsIfNotSuitableStage<TPointType, 'loader'>
@@ -6346,29 +6341,28 @@ export class Point0<
     status: TStatus,
     head: TStatus extends 'global'
       ? GlobalHeadFn<any, LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>> | HeadObject
-      :
-          | HeadFn<
-              TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
-              LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
-              TParamsSchema,
-              TSearchSchema,
-              TClientInputSchema,
-              TInnerProps,
-              WithSelfQueryIfShouldBeFinalized<
-                TPointType,
-                TLetsReadyPointType,
-                TServerLoaderOutput,
-                TClientLoaderOutput,
-                TQueriesDefinitions,
-                TError
-              >,
-              TConnectionsDefinitions,
-              TMembershipsDefinitions,
-              TMapperOutput,
+      : | HeadFn<
+            TStatus extends 'loading' | 'error' | 'success' ? TStatus : any,
+            LocationOrAnyLocation<MountableLocation<TLetsReadyPointType, TRouteDefinition>>,
+            TParamsSchema,
+            TSearchSchema,
+            TClientInputSchema,
+            TInnerProps,
+            WithSelfQueryIfShouldBeFinalized<
+              TPointType,
+              TLetsReadyPointType,
+              TServerLoaderOutput,
+              TClientLoaderOutput,
+              TQueriesDefinitions,
               TError
-            >
-          | HeadObject
-          | string,
+            >,
+            TConnectionsDefinitions,
+            TMembershipsDefinitions,
+            TMapperOutput,
+            TError
+          >
+        | HeadObject
+        | string,
   ): NiceStagePoint<
     IsQueryShouldBeFinalized<TPointType, TLetsReadyPointType> extends true
       ? 'finalStage'
@@ -10198,9 +10192,9 @@ export class Point0<
 
   /**
    * Default server-handler options for every serverHandler in scope, GROUPED by side: `client` (`timeout`, `queue`,
-   * `onReplyFromServer`), `server` (`onBeforeServerReply`, `onAfterServerReply`). On root, base, plugin — and on a
-   * channel, since handlers grow from it. In the chain-level `onReplyFromServer` the `data` is unknown — the callback's
-   * `point` tells which handler replied.
+   * `onReplyFromServer`, `onSendError`), `server` (`onBeforeServerReply`, `onAfterServerReply`). On root, base, plugin
+   * — and on a channel, since handlers grow from it. In the chain-level `onReplyFromServer` the `data` is unknown — the
+   * callback's `point` tells which handler replied.
    *
    * Server-and-client — the method is kept on both bundles; the compiler drops the wrong group per bundle, so the
    * argument must be an object literal without spreads.
@@ -10678,7 +10672,9 @@ export class Point0<
    * imperative `reply` into the args (a call argument cannot drive inference the way a `return` does, so the type must
    * be named). Call `reply(data)` and the envelope leaves immediately while the code keeps running; a later `return` is
    * ignored. `reply(new Error(...))` rejects the client's send; `.serverReply<undefined>()` makes `reply(undefined)`
-   * the early ack. `return` works the same with or without the generic.
+   * the early ack. `return` works the same with or without the generic. A throw AFTER the reply cannot reach the sender
+   * — it is logged and emitted as `pointHandlerServerLateError` (an `.on('error')` subscription sees it), while the
+   * message stays settled as the success the client was already told about.
    *
    * Server-only — the callback body (and the imports it pulls in) is cut from the client bundle.
    *
@@ -11386,7 +11382,7 @@ export class Point0<
   /**
    * Close a serverHandler point: a client → server message type inside a channel. `.serverReply` is required before
    * closing. The optional argument is the handler options, grouped by side: `client` (`timeout`, `queue`,
-   * `onReplyFromServer`), `server` (`onBeforeServerReply`, `onAfterServerReply`).
+   * `onReplyFromServer`, `onSendError`), `server` (`onBeforeServerReply`, `onAfterServerReply`).
    *
    * Server-and-client — the closer is kept on both bundles; the compiler drops the wrong group per bundle, so the
    * argument must be an object literal without spreads.
@@ -12070,12 +12066,12 @@ export class Point0<
    * Full reference: https://1gr14.dev/point0/latest/socket
    */
   sendToServer<
-    TArgs extends TPointType extends 'serverHandler'
+    TArgs extends (TPointType extends 'serverHandler'
       ? ServerHandlerSendArgs<
           InputRaw<TServerInputSchema>,
           ServerHandlerCallOptions<TServerLoaderOutput, InputRaw<TServerInputSchema>>
         >
-      : never[],
+      : never[]),
   >(...args: TArgs): TPointType extends 'serverHandler' ? Promise<TServerLoaderOutput> : never
   sendToServer(...args: any[]): any {
     if (!_point0_env.feature.socket) {
@@ -12214,6 +12210,12 @@ export class Point0<
     }
   }
 
+  /**
+   * The push itself — with the TRANSPORT events (`pointHandlerSendServer*`) around it: `Start` before anything is
+   * built, `Settled`/`Success` the moment the engine ACCEPTED the frame for delivery, `Settled`/`Error` if the target,
+   * the serialization or the dispatch threw. A push is fire-and-forget by design, so "success" means handed to the
+   * transport, never delivered — and a push nobody was there to receive is a successful send, not an error.
+   */
   private _sendClientHandler(
     message: unknown,
     target: ClientHandlerSendTarget<any, any> | undefined,
@@ -12224,6 +12226,30 @@ export class Point0<
         `clientHandler.sendToClient() is server-side — the client listens with onMessageFromServer (point ${this.id})`,
       )
     }
+    const sendEventData = { input: message as InputRawUnknown, point: this }
+    const sendEventMeta = { point: this.id }
+    this._emit('pointHandlerSendServerStart', sendEventData as never, sendEventMeta)
+    const emitSendAccepted = (): void => {
+      this._emit('pointHandlerSendServerSettled', { ...sendEventData, error: undefined } as never, sendEventMeta)
+      this._emit('pointHandlerSendServerSuccess', { ...sendEventData, error: undefined } as never, sendEventMeta)
+    }
+    try {
+      return this._sendClientHandlerPush(message, target, replies, emitSendAccepted)
+    } catch (error) {
+      const error0 = this._Error.from(error)
+      this._emit('pointHandlerSendServerSettled', { ...sendEventData, error: error0 } as never, sendEventMeta)
+      this._emit('pointHandlerSendServerError', { ...sendEventData, error: error0 } as never, sendEventMeta)
+      throw error
+    }
+  }
+
+  /** The push proper — see {@link _sendClientHandler}, which owns the transport events around it. */
+  private _sendClientHandlerPush(
+    message: unknown,
+    target: ClientHandlerSendTarget<any, any> | undefined,
+    replies: ClientHandlerSendReplies<any> | undefined,
+    onAccepted: () => void,
+  ): any {
     const channel = this._channelPointOrThrow()
     const adapter = getSocketServerAdapterOrThrow(this.scope, this.id)
     const transformer = this._getSocketTransformer()
@@ -12232,6 +12258,7 @@ export class Point0<
     const messageSerialized = message === undefined ? undefined : stringifyOrThrow(transformer, message, this.id)
     if (replies === undefined) {
       adapter.push({ channel, handler: this as never, target: pushTarget, input: messageSerialized })
+      onAccepted()
       return undefined
     }
     const repliesOptions = replies === true ? {} : replies
@@ -12279,6 +12306,8 @@ export class Point0<
       input: messageSerialized,
       collect: { timeoutMs, onReply: onReplyRaw, onDone },
     })
+    // the frame is with the transport — the collect window that follows answers replies, not the send
+    onAccepted()
     // the object form settles when the window closes: with `waitForAll` — with the full array, else with nothing
     if (replies !== true) {
       return new Promise((resolve) => {
@@ -15493,8 +15522,7 @@ export class Point0<
           }
           const { adapter, adminTarget, transformer, roomTransformer } = resolve(target)
           const callback = (kind === 'connections' ? options?.onConnection : options?.onMembership) as
-            | ((item: unknown) => void | Promise<void>)
-            | undefined
+            ((item: unknown) => void | Promise<void>) | undefined
           if (callback) {
             // the streaming-callback form: fire per item as it arrives, resolve with the processed count once the
             // window closed AND every callback settled (an async callback that throws is logged, still counted)
@@ -15721,6 +15749,16 @@ export class Point0<
    * Execute this serverHandler's `.serverReply` for one incoming socket message — the engine's dispatch entry. Parses
    * the input with `.clientSend`, runs the reply, emits the `pointHandler*` events, returns the serialized reply.
    * Throws the typed error on failure (the engine serializes it into the `sendErr` frame).
+   *
+   * `pointHandlerServerStart` fires ABOVE the `.clientSend` parse, so a refused input — the commonest refusal of all —
+   * closes the family with `Settled`/`Error` like any other failure instead of throwing before anything was announced.
+   * That is what makes the family's `input` the RAW send input, as in every other family (the fetch/query/mutation
+   * events carry what the caller passed, unvalidated); the `.serverReply` callback and the `onBefore/AfterServerReply`
+   * customizers still see the PARSED one.
+   *
+   * An imperative `reply()` SETTLES the message where it is called (`Settled`/`Success`, the envelope framed), so a
+   * throw after it changes nothing the sender sees: it is logged and emitted as `pointHandlerServerLateError` — the
+   * post-reply work failing is still a server-side failure an app's `.on('error')` must see.
    */
   async _executeServerReply({
     inputSerialized,
@@ -15751,6 +15789,18 @@ export class Point0<
     }
     const transformer = this._getSocketTransformer()
     const inputRaw = inputSerialized === undefined ? {} : transformer.parse(inputSerialized)
+    // the family's `input` is the RAW send input, like every other family's (the fetch/query/mutation events carry
+    // what the caller passed, before any validation) — which is what lets the `Start` sit ABOVE the `.clientSend`
+    // parse: a refused schema is the commonest refusal there is, and it settles the family (`Settled`/`Error`) instead
+    // of dying silently before anything was ever announced
+    const eventData = {
+      input: inputRaw as InputRawUnknown,
+      point: this,
+      connectionId,
+      identity,
+    }
+    const meta = { point: this.id, connection: connectionId }
+    this._emit('pointHandlerServerStart', eventData as never, meta)
     const input = (() => {
       if (!this._clientSendSchema) {
         return inputRaw
@@ -15758,18 +15808,13 @@ export class Point0<
       const parsed = this.parseInputSafeSync(this._clientSendSchema, inputRaw as never)
       if (!parsed.success) {
         parsed.error.status ??= 400
-        throw parsed.error
+        const parseError = this._Error.from(parsed.error)
+        this._emit('pointHandlerServerSettled', { ...eventData, output: undefined, error: parseError } as never, meta)
+        this._emit('pointHandlerServerError', { ...eventData, output: undefined, error: parseError } as never, meta)
+        throw parseError
       }
       return parsed.data
     })()
-    const eventData = {
-      input: input as InputRawUnknown,
-      point: this,
-      connectionId,
-      identity,
-    }
-    const meta = { point: this.id, connection: connectionId }
-    this._emit('pointHandlerServerStart', eventData as never, meta)
     // the server-side customizers (chain → closer, callbacks stacked in order): the BEFORE guard may refuse the
     // message (throw → sendErr, the reply never runs); AFTER observes the settled reply and never affects it
     const serverHandlerOptions = mergeServerHandlerOptions(
@@ -15859,13 +15904,17 @@ export class Point0<
       }
     } catch (error) {
       if (repliedRef.current) {
-        // the client already has its answer — the late failure is the server's business only
+        // the client already has its answer — the late failure is the server's business only: it is logged and emitted
+        // as `pointHandlerServerLateError` (never re-settled — the operation succeeded from the sender's side, and
+        // `onAfterServerReply` already ran with the replied output)
+        const error0 = this._Error.from(error)
         getLogFnForPoint(this)({
           level: 'error',
           category: ['point0', 'socket'],
           message: `.serverReply threw after reply() was already sent (point ${this.id})`,
           error,
         })
+        this._emit('pointHandlerServerLateError', { ...eventData, error: error0 } as never, meta)
         return { dataSerialized: undefined, data: undefined, replied: true }
       }
       const error0 = this._Error.from(error)
@@ -15884,9 +15933,11 @@ export class Point0<
    * nothing) into a deduped, serialized room list, and returns the rooms (parsed + serialized) plus the validated
    * `input`. Throws the typed error on failure (the engine frames it into a `joinErr`).
    *
-   * Events: `pointSpaceJoinServerStart` fires here, before the run, and a throw emits `Settled`/`Error` here too. The
+   * Events: `pointSpaceJoinServerStart` fires here, before the run — and above the `.input` parse, so a refused input
+   * closes the family with `Settled`/`Error` instead of dying silently; a throw emits `Settled`/`Error` here too. The
    * SUCCESS pair does NOT fire here — the engine emits it (`_emitSpaceJoinSettled`, the returned `input` is what it
-   * needs) once the rooms are registered, so the event means "the join is done".
+   * needs) once the rooms are registered, so the event means "the join is done". The family's `input` is therefore the
+   * RAW join input, like every other family's; the `.joiner` and its guards see the parsed one.
    */
   async _executeJoiner({
     inputSerialized,
@@ -15918,6 +15969,18 @@ export class Point0<
     }
     const transformer = this._getSocketTransformer()
     const inputRaw = inputSerialized === undefined ? {} : transformer.parse(inputSerialized)
+    // the family's `input` is the RAW join input, like every other family's — so the `Start` can sit ABOVE the `.input`
+    // parse and a refused schema (the commonest refusal) closes the family instead of vanishing before it opened
+    const eventData = {
+      input: inputRaw as InputRawUnknown,
+      point: this,
+      connectionId,
+      // the server side of the universal family carries the identity — presence recipes key off it
+      identity,
+    }
+    const meta = { point: this.id, connection: connectionId }
+    // a real joiner run, never a resume re-announce (those are emitted by the engine's unpark/restore paths)
+    this._emit('pointSpaceJoinServerStart', { ...eventData, resumed: false } as never, meta)
     // the space keeps its `.input` schema(s) in the server execute actions (the joiner-side validation) — parse each,
     // same 400-coded pattern as `_executeServerReply`'s clientSend parse
     let input = inputRaw
@@ -15928,20 +15991,13 @@ export class Point0<
       const parsed = this.parseInputSafeSync(action.schema, input as never)
       if (!parsed.success) {
         parsed.error.status ??= 400
-        throw parsed.error
+        const parseError = this._Error.from(parsed.error)
+        this._emit('pointSpaceJoinServerSettled', { ...eventData, rooms: undefined, error: parseError } as never, meta)
+        this._emit('pointSpaceJoinServerError', { ...eventData, rooms: undefined, error: parseError } as never, meta)
+        throw parseError
       }
       input = parsed.data
     }
-    const eventData = {
-      input: input as InputRawUnknown,
-      point: this,
-      connectionId,
-      // the server side of the universal family carries the identity — presence recipes key off it
-      identity,
-    }
-    const meta = { point: this.id, connection: connectionId }
-    // a real joiner run, never a resume re-announce (those are emitted by the engine's unpark/restore paths)
-    this._emit('pointSpaceJoinServerStart', { ...eventData, resumed: false } as never, meta)
     // the join guards (chain `.spaceOptions()` → the closing `.space({...})`, callbacks stacked in order): the BEFORE
     // guard may refuse the join (throw → joinErr, the joiner never runs); AFTER observes the settled join
     const spaceOptions = mergeSpaceOptions(this._defaultSpaceOptions, this._spaceOptions)
@@ -17106,8 +17162,7 @@ export class Point0<
       isBinary: boolean = isContainsBinary(src),
     ): BodyInit | undefined => {
       const bodyTransformed = (transform ? this._getTransformer().serialize(src) : src) as
-        | Record<string, unknown>
-        | undefined
+        Record<string, unknown> | undefined
       if (bodyTransformed === undefined) {
         throw new Error(
           `Transformer returned undefined for input ${JSON.stringify(input)} on point ${this.toStringWithLocation()}`,
@@ -17170,8 +17225,7 @@ export class Point0<
         const isBinary = isContainsBinary(input)
         if (_point0_env.side.is.client && !isBinary) {
           const transformed = (transform ? this._getTransformer().serialize(input) : input) as
-            | Record<string, unknown>
-            | undefined
+            Record<string, unknown> | undefined
           if (transformed === undefined) {
             throw new Error(
               `Transformer returned undefined for input ${JSON.stringify(input)} on point ${this.toStringWithLocation()}`,
@@ -17568,9 +17622,11 @@ export class Point0<
         finiteness: isInfiniteQuery ? 'infinite' : 'finite',
         tags: this.tags,
         output: outputType,
-        input: this._getTransformer().stringify(
+        input: stringifyOrThrow(
+          this._getTransformer(),
           this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
-        ) as string,
+          this.id,
+        ),
       },
     ]
   }
@@ -17592,9 +17648,11 @@ export class Point0<
         finiteness: isInfiniteQuery ? 'infinite' : 'finite',
         tags: this.tags,
         output: 'data',
-        input: this._getTransformer().stringify(
+        input: stringifyOrThrow(
+          this._getTransformer(),
           this._rawInputToRoutedRawInputForQueryKey({ inputRaw: input as never }),
-        ) as string,
+          this.id,
+        ),
       },
     ]
   }
@@ -18725,7 +18783,7 @@ export class Point0<
     | undefined => {
     const queryClient = options?.queryClient ?? _ss.__POINT0_QUERY_CLIENT__.get()
     const cache = queryClient.getMutationCache()
-    const inputStringifiedProvided = this._getTransformer().stringify(input || {})
+    const inputStringifiedProvided = stringifyOrThrow(this._getTransformer(), input || {}, this.id)
     return cache.find({
       predicate: (mutation) => {
         const mutationKey = mutation.options.mutationKey as MutationKey
@@ -18742,7 +18800,9 @@ export class Point0<
         if (obj.name !== this.name) {
           return false
         }
-        const inputStringified = this._getTransformer().stringify(mutation.state.variables as InputRaw)
+        // `|| {}` on BOTH sides: a mutation fired with no input carries `undefined` variables, and by the point0
+        // standard that IS the `{}` input — without the coercion the two sides could never compare equal
+        const inputStringified = stringifyOrThrow(this._getTransformer(), mutation.state.variables || {}, this.id)
         if (inputStringified !== inputStringifiedProvided) {
           return false
         }
@@ -18811,7 +18871,7 @@ export class Point0<
         }
       }
       return {
-        inputStringifiedProvided: this._getTransformer().stringify(input),
+        inputStringifiedProvided: stringifyOrThrow(this._getTransformer(), input, this.id),
         inputFunctionProvided: undefined,
         inputAnyProvided: undefined,
       }
@@ -18835,7 +18895,8 @@ export class Point0<
         if (inputAnyProvided) {
           // continue
         } else if (inputStringifiedProvided) {
-          const inputStringified = this._getTransformer().stringify(mutation.state.variables as InputRaw)
+          // `|| {}` — see `getMutationCache`: no input means the `{}` input, on both sides of the compare
+          const inputStringified = stringifyOrThrow(this._getTransformer(), mutation.state.variables || {}, this.id)
           if (inputStringified !== inputStringifiedProvided) {
             return false
           }
@@ -18955,7 +19016,7 @@ export class Point0<
         }
       }
       return {
-        inputStringifiedProvided: this._getTransformer().stringify(inputProvided),
+        inputStringifiedProvided: stringifyOrThrow(this._getTransformer(), inputProvided, this.id),
         inputFunctionProvided: undefined,
         inputAnyProvided: undefined,
       }
@@ -21874,7 +21935,7 @@ export class Point0<
     if (!input) {
       return start
     }
-    return `${start}_${this._getTransformer().stringify(input)}`
+    return `${start}_${stringifyOrThrow(this._getTransformer(), input, this.id)}`
   }
 
   /**

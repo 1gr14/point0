@@ -200,6 +200,11 @@ with these defaults rather than replacing them — the callbacks chain, so both 
 `onSuccess` on `.mutation({...})` and an `onSuccess` on `mutateAsync(...)` run,
 in order.
 
+**`gcTime`** decides how long a settled call's entry stays in the mutation cache
+— the cache's only memory cost. For a high-frequency mutation whose call history
+nobody reads, `gcTime: 0` drops each entry as it settles;
+`.mutationOptions({ gcTime: 0 })` on the root covers a whole subtree.
+
 ## Defaults from up the chain
 
 Set mutation defaults once on the [root](root), a [base](base), or a
@@ -332,7 +337,12 @@ ideaCreateMutation.getMutationsCache((v) => v.id === 7) // predicate over variab
 `getMutationCache` returns the single matching `Mutation` or `undefined`;
 `getMutationsCache` always returns an array. Input matching is exact on the
 stringified variables (using the point's [transformer](transformer)), and
-ignores tags.
+ignores tags. An absent input is the `{}` input on both sides of that compare,
+so a mutation run with no input is found by `getMutationCache()` and by
+`getMutationCache({})` alike.
+
+Entries live in the cache for their `gcTime` after settling — a mutation running
+with `gcTime: 0` leaves nothing behind for these accessors to find.
 
 ## Edge cases
 

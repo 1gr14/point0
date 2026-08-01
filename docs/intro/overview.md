@@ -464,15 +464,15 @@ once: what the browser actually downloads.
 
 | package                  | role                                                                  |          raw |        gzip |      brotli |
 | ------------------------ | --------------------------------------------------------------------- | -----------: | ----------: | ----------: |
-| `@point0/core`           | the framework itself, without the socket feature                      |     218.4 KB |     55.8 KB |     47.6 KB |
-| `@point0/core` + sockets | optional — the same core with sockets on (`server: { socket: true }`) |     290.0 KB |     71.8 KB |     60.5 KB |
-| `@point0/react-dom`      | React/DOM bindings — `mount` and the router                           |      13.5 KB |      5.0 KB |      4.4 KB |
-| `@1gr14/route0`          | peer — typed routes and URL building                                  |      19.0 KB |      6.1 KB |      5.5 KB |
-| `@tanstack/react-query`  | peer — the cache every loader rides on                                |      46.9 KB |     13.9 KB |     12.5 KB |
+| `@point0/core`           | the framework itself, without the socket feature                      |     223.4 KB |     57.7 KB |     49.1 KB |
+| `@point0/core` + sockets | optional — the same core with sockets on (`server: { socket: true }`) |     299.1 KB |     75.0 KB |     63.0 KB |
+| `@point0/react-dom`      | React/DOM bindings — `mount` and the router                           |      13.8 KB |      5.1 KB |      4.5 KB |
+| `@1gr14/route0`          | peer — typed routes and URL building                                  |      22.1 KB |      7.0 KB |      6.3 KB |
+| `@tanstack/react-query`  | peer — the cache every loader rides on                                |      47.1 KB |     13.9 KB |     12.5 KB |
 | `wouter`                 | peer — history and route matching                                     |       5.6 KB |      2.7 KB |      2.5 KB |
-| `unhead`                 | peer — the `<head>`                                                   |      15.6 KB |      6.2 KB |      5.6 KB |
+| `unhead`                 | peer — the `<head>`                                                   |      20.2 KB |      7.8 KB |      7.1 KB |
 | `@1gr14/error0`          | optional peer — typed errors across the wire                          |      10.8 KB |      3.1 KB |      2.8 KB |
-| **total**                | everything above, minus the optional rows                             | **326.8 KB** | **90.3 KB** | **77.2 KB** |
+| **total**                | everything above, minus the optional rows                             | **340.2 KB** | **94.9 KB** | **80.9 KB** |
 
 <!-- point0:size:end -->
 

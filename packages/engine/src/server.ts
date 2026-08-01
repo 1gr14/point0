@@ -902,6 +902,17 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     this.uninstallViteSsrStacktraceFixer()
   }
 
+  /**
+   * Run the selected server entries under the bun-native dev orchestrator: one `bun run` child per entry, one file
+   * watcher per entry, every restart owned here.
+   *
+   * `entriesFiles` is the SELECTION dev was asked for (see `resolveDevEntries`), not necessarily every declared entry —
+   * declared ones keep their declaration order, and an explicitly requested path the config does not declare runs too.
+   *
+   * An entry may be a server or a one-shot program. A child that exits with code 0 FINISHED: it is logged as such and
+   * the rest of the dev tree keeps running, and it re-runs on the next change inside its own import graph. Any other
+   * exit of a booted child is a crash, and the tree lives and dies as one unit — dev tears down.
+   */
   async startBunDevProcess({
     entriesFiles,
     bunRunArgs = [],
@@ -909,6 +920,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     cwd,
     devStore,
   }: {
+    /** The entries to run — resolved absolute paths. */
     entriesFiles: string[]
     bunRunArgs?: string[]
     watch: string[] | boolean
@@ -932,8 +944,26 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     //   (the child re-imports the fresh aggregator on its next request, with no React tear).
     // A code error the developer can just fix makes the child exit on its own; the unexpected-exit handler drops the
     // corpse and the next save respawns it.
+    //
+    // Not every entry is a server. An entry that exits with code 0 is a program that FINISHED — the one-shot sync
+    // script you keep beside the app — so it is logged as finished and the rest of the tree keeps running; it re-runs
+    // on the next change in its own import graph. Only a NON-ZERO exit of a booted child is a crash that tears the tree
+    // down.
 
-    const activeEntries = Object.values(this.entry || []).filter((entryFile) => entriesFiles.includes(entryFile))
+    // Declared entries first (in declaration order), then any explicitly requested path that the config does not
+    // declare — `--entry ./scripts/sync.ts` runs under bun exactly as it does under vite.
+    const declaredEntries = Object.values(this.entry || {})
+    const activeEntries = [
+      ...declaredEntries.filter((entryFile) => entriesFiles.includes(entryFile)),
+      ...entriesFiles.filter((entryFile) => !declaredEntries.includes(entryFile)),
+    ]
+    // Entry NAME for the logs (`main`, `sync`), falling back to the relative path for an entry requested by path only.
+    const entryNameByFile = new Map(Object.entries(this.entry || {}).map(([name, file]) => [file, name]))
+    const entryLabel = (entryFile: string): string =>
+      entryNameByFile.get(entryFile) ?? nodePath.relative(cwd, entryFile)
+    // Entries that exited 0 (finished). They hold no child and are not restarted on a change ANYWHERE — only on a
+    // change inside their own import graph, which is what their watch set narrows to (see watchPatterns).
+    const finishedEntries = new Set<string>()
 
     // Children we kill on purpose (a respawn on import-graph change) so their exit does not look "unexpected" and
     // trip the teardown below.
@@ -1023,6 +1053,7 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
 
     const spawnEntry = (entryFile: string): Bun.Subprocess<'ignore', 'pipe', 'pipe'> => {
       bootedByEntry.set(entryFile, false)
+      finishedEntries.delete(entryFile)
       const child = Bun.spawn({
         // The child runs as a plain `bun run` (NEVER `bun --watch`): point0's own orchestrator (below) is the sole
         // watcher and owns every restart — hot-swap, respawn on a cold/boot change, and failed-boot recovery. A child
@@ -1059,6 +1090,21 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
             level: 'debug',
             category: ['server'],
             message: `Superseded server dev process exited (entry "${nodePath.relative(cwd, entryFile)}", code ${String(code)}) — ignoring.`,
+          })
+          return
+        }
+        // Exit code 0: the entry FINISHED. Not every entry is a long-lived server — a one-shot program (a sync script,
+        // a migration, a seeder you keep as its own entry) runs to completion and exits cleanly, and that is a success,
+        // not a dead tree. Drop its child, remember it as finished, and leave the rest of dev running; the watcher
+        // re-runs it on the next change in its own import graph. (A server that exits 0 because you stopped it lands
+        // here too — dev does not restart it until you edit its code, which is the same contract.)
+        if (code === 0) {
+          childByEntry.delete(entryFile)
+          finishedEntries.add(entryFile)
+          this.log({
+            level: 'info',
+            category: ['server'],
+            message: `Entry "${entryLabel(entryFile)}" finished`,
           })
           return
         }
@@ -1135,9 +1181,12 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     // (`bootedByEntry` false) — in either state the precise import-graph walk can't be trusted to include the file that
     // will FIX it (a not-yet-resolvable import, or a node whose unparsed subtree the walk silently skipped), and missing
     // that file means the fix is never seen and the server never recovers. Narrow to precise only once it's serving.
+    // An entry that FINISHED (exited 0) counts as up: it ran to completion, so its import graph is fully resolvable and
+    // trustworthy — and the narrow set is the point, since a finished entry must re-run on a change to ITS OWN code,
+    // not on every save anywhere in the app.
     const watchPatterns = (entryFile: string): string[] => {
       const precise = collectEntryPatterns(entryFile)
-      const serverUp = storeReady && bootedByEntry.get(entryFile) === true
+      const serverUp = storeReady && (bootedByEntry.get(entryFile) === true || finishedEntries.has(entryFile))
       if (!serverUp && devStore) return [...precise, nodePath.join(devStore.appSrcDir, '**', '*')]
       return precise
     }
@@ -1267,11 +1316,13 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
             this.log({
               level: 'info',
               category: ['server'],
-              message: !childAlive
-                ? `Server recovering a failed boot — restarting... (changed: ${nodePath.relative(this.cwd, changed)})`
-                : gcRestart
-                  ? `Server hot reload: periodic restart to release the module cache (every ${HOT_RESTART_EVERY} reloads)`
-                  : `Server hot reloading... (changed: ${nodePath.relative(this.cwd, changed)})`,
+              message: finishedEntries.has(entryFile)
+                ? `Entry "${entryLabel(entryFile)}" re-running... (changed: ${nodePath.relative(this.cwd, changed)})`
+                : !childAlive
+                  ? `Server recovering a failed boot — restarting... (changed: ${nodePath.relative(this.cwd, changed)})`
+                  : gcRestart
+                    ? `Server hot reload: periodic restart to release the module cache (every ${HOT_RESTART_EVERY} reloads)`
+                    : `Server hot reloading... (changed: ${nodePath.relative(this.cwd, changed)})`,
             })
             try {
               hotStore.rebuild()
@@ -1293,11 +1344,15 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
             return
           }
           // Full restart: cold-marker subtree, the boot entry, or any file not in the hot store. Coalesced + serialized
-          // by the scheduler: a burst of saves lands as ONE respawn, and respawns never overlap.
+          // by the scheduler: a burst of saves lands as ONE respawn, and respawns never overlap. For an entry that
+          // already finished this is not a restart but a re-run of a one-shot program — its watch set is its own import
+          // graph, so only its own code brings it back.
           this.log({
             level: 'info',
             category: ['server'],
-            message: `Server restarting... (changed: ${nodePath.relative(this.cwd, changed)})`,
+            message: finishedEntries.has(entryFile)
+              ? `Entry "${entryLabel(entryFile)}" re-running... (changed: ${nodePath.relative(this.cwd, changed)})`
+              : `Server restarting... (changed: ${nodePath.relative(this.cwd, changed)})`,
           })
           scheduleRestart(entryFile)
           if (hotStore) {

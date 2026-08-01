@@ -296,9 +296,12 @@ const restoreScrollPosition = (config: ScrollConfig, position: { x: number; y: n
 //   effect. When the entering page is shorter, its very first render clamps the scroll and fires
 //   a scroll event; without the pause that event would overwrite the leaving page's remembered
 //   position with the clamped one.
+// - `keepScroll`: the navigation asked to freeze the scroll — the location effect skips its whole
+//   apply for that one change (no top, no restore, no #hash); positions are still captured.
 export const scrollRestorationSignal = singletonize('Point0ScrollRestorationSignal', {
   programmaticPush: false,
   captureSuspended: false,
+  keepScroll: false,
 })
 
 // The History API may be missing or partial outside the browser (React Native / Expo, some
@@ -524,6 +527,8 @@ export const useScrollRestoration = (): void => {
     // Push (programmatic cross-page navigate) vs pop (back / forward / reload). See scrollRestorationSignal.
     const type: ScrollPositionRestoreType = scrollRestorationSignal.programmaticPush ? 'push' : 'pop'
     scrollRestorationSignal.programmaticPush = false
+    const keepScroll = scrollRestorationSignal.keepScroll
+    scrollRestorationSignal.keepScroll = false
     // The location change this suspension guarded has been processed (its clamp scroll event, if
     // any, fired before this post-paint effect) — resume the continuous capture.
     scrollRestorationSignal.captureSuspended = false
@@ -598,6 +603,11 @@ export const useScrollRestoration = (): void => {
     // saveScrollPositionForLocation.)
     const scrollToHashOverride = scrollToHashSignal.override
     scrollToHashSignal.override = undefined
+    // `keepScroll`: leave the scroll where it is. AFTER the override above so a per-call scrollToHash
+    // can't leak into the next navigation.
+    if (keepScroll) {
+      return
+    }
     // Cross-page (push) to a #hash → jump to that element per the policy. On
     // back/forward (pop) we restore instead (below), so we don't override the
     // remembered scroll position.

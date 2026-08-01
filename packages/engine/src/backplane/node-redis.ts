@@ -1,9 +1,9 @@
 /**
- * The ready-made socket backplane over a node-redis client (the `redis` npm package, v4/v5) — for apps that already run
- * one. The adapter carries ZERO dependencies: it is typed structurally against the handful of methods it calls, and the
- * docs tell you to install `redis` yourself. Requires Redis >= 6.2 (`GETDEL` — the atomic cross-process ticket claim).
- * Pass a CONNECTED client — the adapter never calls `connect()` on what you hand it (the one exception: the subscriber
- * it duplicates itself, which it also connects itself).
+ * The ready-made socket backplane over a node-redis client (the `redis` npm package, v4/v5/v6) — for apps that already
+ * run one. The adapter carries ZERO dependencies: it is typed structurally against the handful of methods it calls, and
+ * the docs tell you to install `redis` yourself. Requires Redis >= 6.2 (`GETDEL` — the atomic cross-process ticket
+ * claim). Pass a CONNECTED client — the adapter never calls `connect()` on what you hand it (the one exception: the
+ * subscriber it duplicates itself, which it also connects itself).
  *
  * ```ts
  * import { nodeRedisBackplane } from '@point0/engine/backplane/node-redis'
@@ -15,12 +15,13 @@
  * ```
  *
  * KV + publishes ride the given client; the bus subscriptions ride a lazy `duplicate()` (pub/sub takes over a RESP2
- * connection), or the `subscriber` option if you hold one already. The subscriber is additionally wrapped in the
- * reconnect-resilient registry ({@link createResilientRedisSubscriber}), replayed on every `'ready'`: node-redis
- * restores pub/sub state after a reconnect on its own, but unlike ioredis it does not DOCUMENT that promise — the
- * wrapper makes the `Backplane` durability contract hold either way, at the cost of an unsubscribe/subscribe pair per
- * channel per reconnect (correct in both worlds: the defensive unsubscribe clears every listener of the channel, the
- * subscribe puts exactly one back).
+ * connection outright, and even on v6's default RESP3 a dedicated subscriber keeps the bus off the command path), or
+ * the `subscriber` option if you hold one already. The subscriber is additionally wrapped in the reconnect-resilient
+ * registry ({@link createResilientRedisSubscriber}), replayed on every `'ready'`: node-redis restores pub/sub state
+ * after a reconnect on its own, but unlike ioredis it does not DOCUMENT that promise — the wrapper makes the
+ * `Backplane` durability contract hold either way, at the cost of an unsubscribe/subscribe pair per channel per
+ * reconnect (correct in both worlds: the defensive unsubscribe clears every listener of the channel, the subscribe puts
+ * exactly one back).
  */
 import type { Backplane } from '../config.js'
 import { createResilientRedisSubscriber } from './bun-redis.js'
@@ -76,18 +77,18 @@ const closeGracefully = async (connection: { close?: () => unknown; quit?: () =>
 }
 
 /**
- * Build a socket {@link Backplane} over a connected node-redis client (v4/v5). KV + publishes ride `client`; the bus
+ * Build a socket {@link Backplane} over a connected node-redis client (v4/v5/v6). KV + publishes ride `client`; the bus
  * subscriptions ride a lazy connected `duplicate()` (or `options.subscriber`), wrapped in the reconnect-resilient
- * registry. `getDelete` is the native `GETDEL` — Redis >= 6.2. `set` uses the `{ PX }` option — the shape both v4 and
- * v5 accept. Background failures (reconnect resubscribes, the detached dispose) ride the ambient Point0 server logger.
+ * registry. `getDelete` is the native `GETDEL` — Redis >= 6.2. `set` uses the `{ PX }` option — the shape v4, v5 and v6
+ * all accept. Background failures (reconnect resubscribes, the detached dispose) ride the ambient Point0 server
+ * logger.
  */
 export const nodeRedisBackplane = (client: NodeRedisLike, options?: NodeRedisBackplaneOptions): Backplane => {
   const onError = backplaneLogError('node-redis')
   /** the duplicate the adapter itself created — the one connection `dispose` always owns */
   let createdSubscriber: NodeRedisSubscriberLike | undefined
   let subscriberPromise:
-    | Promise<{ subscribe: (channel: string, onMessage: (message: string) => void) => Promise<() => void> }>
-    | undefined
+    Promise<{ subscribe: (channel: string, onMessage: (message: string) => void) => Promise<() => void> }> | undefined
   const getSubscriber = (): NonNullable<typeof subscriberPromise> => {
     subscriberPromise ??= (async () => {
       const raw = options?.subscriber ?? ((createdSubscriber = client.duplicate()), createdSubscriber)

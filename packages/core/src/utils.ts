@@ -239,20 +239,6 @@ export const toExtendedTransformer = (transformer: DataTransformer): DataTransfo
 
 export const blankDataTransformerExtended: DataTransformerExtended = toExtendedTransformer(blankDataTransformer)
 
-/**
- * `transformer.stringify` for a value that MUST serialize — socket keys, identities, rooms, frame payloads, stream
- * envelopes. `stringify` answers `undefined` when the transformer's `serialize` refused the value (a custom transformer
- * bug); coercing that would merge distinct keys or put the literal string "undefined" on the wire, so it fails loud
- * instead — the same contract the fetch path enforces for request bodies.
- */
-export const stringifyOrThrow = (transformer: DataTransformerExtended, value: unknown, pointId: string): string => {
-  const serialized = transformer.stringify(value)
-  if (serialized === undefined) {
-    throw new Error(`Transformer returned undefined serializing a value on point ${pointId}`)
-  }
-  return serialized
-}
-
 const WORD_SEP = /[_\-.:/\\\s]+/g
 
 const splitWords = (str: string): string[] => {
@@ -576,7 +562,7 @@ export const mergeServerHandlerOptions = (
   ...options: Array<ServerHandlerOptionsResolved<any> | undefined>
 ): ServerHandlerOptionsResolved<any> => {
   return mergeOptionsWithCallbacks(
-    ['onReplyFromServer', 'onBeforeServerReply', 'onAfterServerReply'],
+    ['onReplyFromServer', 'onSendError', 'onBeforeServerReply', 'onAfterServerReply'],
     ...options,
   ) as never
 }

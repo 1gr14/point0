@@ -905,8 +905,7 @@ describe('socket bus (two instances, one backplane)', () => {
         }),
       )
       const sendErr = member.socket.frames.find((frame) => frame.t === 'sendErr') as
-        | { t: string; id: string; error: string }
-        | undefined
+        { t: string; id: string; error: string } | undefined
       expect(sendErr?.id).toBe('client-msg-2')
       expect(JSON.parse(sendErr?.error ?? '{}')).toMatchObject({ message: 'refused early', code: 'EARLY_NOPE' })
     } finally {
@@ -1137,6 +1136,52 @@ describe('socket bus (two instances, one backplane)', () => {
     }
   })
 
+  it('a SATURATED delivery clock stops vouching: every verdict is gapless false and nothing replays', async () => {
+    // the arithmetic floor under the whole gap proof. `tseq` and the process delivery clock advance ONLY together, so
+    // once the clock sticks at `Number.MAX_SAFE_INTEGER` (JS `++` saturates there — it does not wrap) frames stop being
+    // numbered apart and the formula would keep answering `gapless: true` over messages the client never saw. The
+    // process flips the flag instead and answers every resume like a KV restore does: honest verdicts, no replay, the
+    // clients refetch. Driven by setting the private — reaching 2^53 pushes for real is ~285 years of traffic.
+    const backplane = createSharedBackplane()
+    const { feedChannel, feedSpace, feedHandler } = buildResumableChannel()
+    const a = createInstance({ backplane, channel: feedChannel, points: [feedSpace, feedHandler] })
+    await a.socket.start()
+    try {
+      const roomSerialized = JSON.stringify({ feedId: 'saturated' })
+      const member = await openConnection(a, feedChannel.point, { identity: { me: 'user-s' } })
+      const resumeKey = member.socket.frames.find((frame) => frame.t === 'claimed')?.resumeKey as string
+      await join(a, member.socket, member.cid, 'feedSpace', { feedId: 'saturated' })
+      a.socket.adapter.push({
+        channel: feedChannel.point as never,
+        handler: feedHandler.point as never,
+        target: { space: 'feedSpace', rooms: [roomSerialized] },
+        input: JSON.stringify({ n: 1 }),
+      })
+      await waitFor(() => member.socket.frames.some((frame) => frame.t === 'msg'), 'the push to arrive')
+      a.socket.handleClose(member.socket as never)
+      // the buffered frame is right there in the room stream — a healthy resume would answer `gapless: true` and
+      // replay it (that is the neighbor test above); the saturated clock is the only difference here
+      ;(a.socket as unknown as { deliveryClockSaturated: boolean }).deliveryClockSaturated = true
+
+      const fresh = a.createSocket()
+      await a.socket.handleMessage(
+        fresh as never,
+        JSON.stringify({ t: 'resume', entries: [{ cid: member.cid, key: resumeKey, cursors: {} }] }),
+      )
+      await waitFor(() => fresh.frames.some((frame) => frame.t === 'resumed'), 'the resume answer')
+      const resumedFrame = fresh.frames.find((frame) => frame.t === 'resumed') as unknown as {
+        streams: Record<string, { gapless: boolean; head: number }>
+      }
+      const roomStreamKey = `r:feedSpace:${roomSerialized}`
+      // the heads stay truthful (the client re-seeds its cursors from them) — only the PROOF is withdrawn
+      expect(resumedFrame.streams[roomStreamKey]).toEqual({ gapless: false, head: 1 })
+      expect(Object.values(resumedFrame.streams).every((verdict) => !verdict.gapless)).toBe(true)
+      expect(fresh.frames.filter((frame) => frame.t === 'msg')).toEqual([])
+    } finally {
+      a.socket.dispose()
+    }
+  })
+
   it('a $identity push from ANOTHER process finds the park: ringed by the opted-in handler, a hole from the non-opted one', async () => {
     // the direct pin of the cross-process filter-push delivery — the identity selection is a shared-channel envelope
     // (no room address), so the frame is published on B, matched on A, and A's personal-path delivery must treat its
@@ -1316,6 +1361,104 @@ describe('socket bus (two instances, one backplane)', () => {
       } else {
         process.env.POINT0_SOCKET_BUS_FORCE_SHARED = previous
       }
+    }
+  })
+})
+
+/**
+ * The two refusal singles the engine emits for messages that never reach a point: `pointChannelClaimServerError` (a
+ * claim answered with `claimErr` — the connect family fires BEFORE the claim, so without this a connection that never
+ * went live is invisible server-side) and `socketServerSendRefused` (a `send` the engine refused before any
+ * `.serverReply` ran). One instance, no bus hop — the frames are driven straight through `handleMessage`.
+ */
+describe('socket refusal events (claim + send)', () => {
+  /** The bus harness's channel, with the server-side event names collected off the root. */
+  const buildWatchedChannel = () => {
+    const events: Array<{ name: string; data: Record<string, unknown> }> = []
+    const root = Point0.lets('root', 'root')
+      .serverOn(['pointChannelClaimServerError', 'socketServerSendRefused'], (event) => {
+        events.push({ name: event.name, data: event.data as Record<string, unknown> })
+      })
+      .root()
+    const chatChannel = root.lets('channel', 'chatChannel').channel()
+    const chatSpace = chatChannel
+      .lets<{ chatId: string }>('space', 'chatSpace')
+      .input(z.object({ chatId: z.string() }))
+      .joiner(({ input }) => ({ chatId: input.chatId }))
+      .space()
+    const echoHandler = chatChannel
+      .lets('serverHandler', 'echoHandler')
+      .serverReply(() => ({ ok: true }))
+      .serverHandler()
+    return { root, chatChannel, chatSpace, echoHandler, events }
+  }
+
+  it('a claim with an unknown ticket emits pointChannelClaimServerError — reason `ticket`, no point to name yet', async () => {
+    const backplane = createSharedBackplane()
+    const { chatChannel, events } = buildWatchedChannel()
+    const a = createInstance({ backplane, channel: chatChannel })
+    try {
+      const socket = a.createSocket()
+      await a.socket.handleMessage(socket as never, JSON.stringify({ t: 'claim', ticket: 'never-minted' }))
+      await waitFor(() => events.length > 0, 'the claim refusal event')
+      expect(socket.frames.map((frame) => frame.t)).toEqual(['claimErr'])
+      expect(events).toHaveLength(1)
+      expect(events[0]!.name).toBe('pointChannelClaimServerError')
+      expect(events[0]!.data.reason).toBe('ticket')
+      expect(events[0]!.data.scope).toBe('root')
+      // the refusal came before the ticket resolved to anything — no channel, no connection to report
+      expect(events[0]!.data.point).toBeUndefined()
+      expect(events[0]!.data.connectionId).toBeUndefined()
+      expect((events[0]!.data.error as ErrorPoint0).code).toBe('POINT0_SOCKET_TICKET_INVALID')
+    } finally {
+      a.socket.dispose()
+    }
+  })
+
+  it('a send naming an unknown handler emits socketServerSendRefused — reason `handlerNotFound`, on a live connection', async () => {
+    const backplane = createSharedBackplane()
+    const { chatChannel, chatSpace, echoHandler, events } = buildWatchedChannel()
+    const a = createInstance({ backplane, channel: chatChannel, points: [chatSpace, echoHandler] })
+    try {
+      await a.socket.start()
+      const member = await openConnection(a, chatChannel.point, { identity: { me: 'user-a' } })
+      events.length = 0
+      await a.socket.handleMessage(
+        member.socket as never,
+        JSON.stringify({ t: 'send', id: 's1', cid: member.cid, handler: 'ghostHandler' }),
+      )
+      await waitFor(() => events.length > 0, 'the send refusal event')
+      expect(member.socket.frames.some((frame) => frame.t === 'sendErr' && frame.id === 's1')).toBe(true)
+      expect(events).toHaveLength(1)
+      expect(events[0]!.name).toBe('socketServerSendRefused')
+      expect(events[0]!.data.reason).toBe('handlerNotFound')
+      expect(events[0]!.data.handlerName).toBe('ghostHandler')
+      expect(events[0]!.data.connectionId).toBe(member.cid)
+      expect((events[0]!.data.error as ErrorPoint0).code).toBe('POINT0_SOCKET_HANDLER_NOT_FOUND')
+
+      // an unknown CONNECTION is the earlier refusal — no entry, so the payload carries only what the frame claimed
+      events.length = 0
+      await a.socket.handleMessage(
+        member.socket as never,
+        JSON.stringify({ t: 'send', id: 's2', cid: 'not-a-cid', handler: 'echoHandler' }),
+      )
+      await waitFor(() => events.length > 0, 'the unknown-connection refusal event')
+      expect(events[0]!.data.reason).toBe('unknownConnection')
+      expect(events[0]!.data.connectionId).toBe('not-a-cid')
+
+      // and a message that DOES reach its handler emits nothing here — the point families own that half
+      events.length = 0
+      await a.socket.handleMessage(
+        member.socket as never,
+        JSON.stringify({ t: 'send', id: 's3', cid: member.cid, handler: 'echoHandler' }),
+      )
+      await waitFor(
+        () => member.socket.frames.some((frame) => frame.t === 'reply' && frame.id === 's3'),
+        'the successful reply',
+      )
+      expect(events).toEqual([])
+    } finally {
+      a.socket.dispose()
     }
   })
 })

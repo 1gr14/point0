@@ -1,13 +1,16 @@
 # CI & release
 
 point0 follows the classic OSS shape: one `main` trunk, contributors fork → PR →
-`main`, and **a `v*` git tag is the only thing that publishes**. Pushing code
-never releases. Seven workflow files, one policy script, one test planner.
+`main`, and **a release is a push to `main` whose pipeline goes green**. The
+release job publishes the version if npm doesn't have it yet, then creates the
+`v<version>` tag — the tag is the **result** of a release, never its trigger,
+and nothing runs on a tag push. Seven workflow files, one policy script, one
+test planner.
 
 The pipeline is a single linear path on every trigger:
 
 ```
-decide → build → check → test → gate (ci.yml) / publish (release.yml)
+decide → build → check → test → gate (ci.yml) / release (release.yml)
                      └→ coverage (ci.yml, off to the side — never gates)
 ```
 
@@ -16,12 +19,12 @@ decide → build → check → test → gate (ci.yml) / publish (release.yml)
 - **`ci.yml`** — the test GATE. Runs on `pull_request → main` and on opt-in
   branch pushes (`push` to any branch except `main`). A cheap `decide` job runs
   [`scripts/ci-decide.ts`](../../scripts/ci-decide.ts) (policy + the test plan),
-  then `build` → `check` → `test` → `gate`. Never publishes. `main` is **not**
-  gated on push — the PR is the gate, and a push-to-main gate would just
-  re-test.
+  then `build` → `check` → `test` → `gate`. Never publishes. Pushes to `main`
+  are excluded here because `release.yml` owns them — same pipeline, plus the
+  release job at the end. One pipeline per push, never two.
 - **`build.yml`** — builds the framework once (ubuntu-only) and uploads the
   single `dist` artifact. Runs on **every** run of the gate and the release —
-  `check` and `test` consume the artifact, and on a release so does `publish`,
+  `check` and `test` consume the artifact, and on a release so does `release`,
   so the published bytes are the ones the pipeline ran against and the code is
   never built twice. (Which jobs really exercise those bytes: the `.e2e` and
   heavy `.int` files, which spawn the real `point0` bin, plus the type-aware
@@ -50,10 +53,15 @@ decide → build → check → test → gate (ci.yml) / publish (release.yml)
   tool. Reproduces a release-matrix leg (built artifact, guarded runner) without
   burning the whole matrix:
   `gh workflow run test-one.yml --ref <branch> -f file=… -f os=… -f repeat=5`.
-- **`release.yml`** — PUBLISH. Runs on `push` of a `v*` tag (and
-  `workflow_dispatch` for an idempotent retry). Same linear pipeline, then
-  publishes. Reachable only via a tag — a fork can't push one, so untrusted code
-  can never publish.
+- **`release.yml`** — the gate for `main` AND the publish path. Runs on `push`
+  to `main` (and `workflow_dispatch`, which tests but never publishes). Same
+  linear pipeline, then the `release` job: ask npm whether `package.json`'s
+  version is already there → publish if not → create and push the annotated
+  `v<version>` tag at that commit. Reachable only from a push to `main` in this
+  repo — a fork can't push there, so untrusted code can never publish. The job
+  is serialized (`concurrency: release`, never cancelled) so two releases can't
+  interleave their `latest` moves. Keeping the publish in **this filename**
+  matters: npm's Trusted Publisher is keyed to repo + workflow file.
 
 ## `decide` — the one place policy lives
 
@@ -63,36 +71,43 @@ from [`scripts/test.ts`](../../scripts/test.ts). It's unit-tested
 ([`ci-decide.unit.test.ts`](../../scripts/ci-decide.unit.test.ts)) so the
 invariants can't silently regress. The full table:
 
-| event                 | tests                         | publish               |
-| --------------------- | ----------------------------- | --------------------- |
-| `pull_request → main` | full matrix                   | no                    |
-| …docs-only diff       | none (only build + check)     | no                    |
-| `push` tag `v*`       | full matrix, **mandatory**    | yes → `latest`/`next` |
-| `push` to a branch    | only if `--run-tests[=os]`    | no                    |
-| branch `--skip-ci`    | none (a tag or PR ignores it) | no                    |
+| event                 | tests                            | publish                         |
+| --------------------- | -------------------------------- | ------------------------------- |
+| `pull_request → main` | full matrix                      | no                              |
+| …docs-only diff       | none (only build + check)        | no                              |
+| `push` to `main`      | full matrix, **mandatory**       | if not on npm → `latest`/`next` |
+| `push` to a branch    | only if `--run-tests[=os]`       | no                              |
+| branch `--skip-ci`    | none (`main` or a PR ignores it) | no                              |
+| `push` of a tag       | —                                | nothing listens on tags         |
 
 **Commit-message flags** (dash style): `--run-tests[=os]`, `--skip-ci` — both
 apply to the maintainer's own **branch pushes only**: a PR ignores every flag
 (no one can merge an untested change by writing `--skip-ci` into the tip
-commit), and a tag always tests. OS = `linux`/`windows` (`macos` accepted, off
-by default). `--run-tests=linux,windows` runs both; a bare flag means all OSes.
-There is **no `--skip-tests`** — every tag tests, stable or prerelease (it died
-in the CI rework: when a prerelease must ship despite a broken suite, fix the
-suite locally instead of publishing untested bytes).
+commit), and `main` always tests, because a push to `main` is the release path.
+OS = `linux`/`windows` (`macos` accepted, off by default).
+`--run-tests=linux,windows` runs both; a bare flag means all OSes. There is **no
+`--skip-tests`** — every release tests, stable or prerelease (it died in the CI
+rework: when a prerelease must ship despite a broken suite, fix the suite
+locally instead of publishing untested bytes).
 
 ## Invariants (the things that must always hold)
 
-1. **A tag can never skip tests.** Stable or prerelease — a `v*` tag always runs
-   the full matrix before publishing; no flag weakens it.
-2. **Publishing is only reachable via a tag.** No PR, fork, or branch push can
-   publish; the `publish` job requires `decide`, `build`, `check` AND `test` to
-   all be exactly `success` (tags always test, so there is no
-   legitimately-skipped stage on a release).
-3. **Format + lint can never be skipped.** `check.yml` runs on every PR and
-   every tag; `ci.yml`'s `gate` and `release.yml`'s `publish` both require its
-   result to be exactly `success`. So unformatted or unlinted code can't land
-   via a `--no-verify` commit or a docs-only PR.
-4. **The major version is pinned.**
+1. **`main` can never skip tests.** Stable, prerelease or an ordinary fix — a
+   push to `main` always runs the full matrix before the release job; no flag
+   weakens it.
+2. **Publishing is only reachable from a push to `main`.** No PR, fork, feature
+   branch or tag can publish; the `release` job requires `decide`, `build`,
+   `check` AND `test` to all be exactly `success` (`main` always tests, so there
+   is no legitimately-skipped stage on a release).
+3. **A tag never precedes a green run.** The tag is created by the release job
+   after the publish, from the version in `package.json`, at the commit that was
+   built and tested — so a tag can't point at unproven code, and tag ↔ version
+   can't drift. Tags are never moved: an existing one is left alone.
+4. **Format + lint can never be skipped.** `check.yml` runs on every PR and
+   every push to `main`; `ci.yml`'s `gate` and `release.yml`'s `release` both
+   require its result to be exactly `success`. So unformatted or unlinted code
+   can't land via a `--no-verify` commit or a docs-only PR.
+5. **The major version is pinned.**
    [`scripts/release.ts`](../../scripts/release.ts) refuses any bump whose major
    ≠ `PINNED_MAJOR` — no command or flag can raise it. A major is cut only by a
    human hardcoding that constant. Never automatic, never accidental.
@@ -135,18 +150,18 @@ The OS list is `FULL_OSES` in `ci-decide.ts`: **Linux + Windows**. macOS is out
 
 ## Releasing
 
-You release by tagging. `bun run release <bump>` bumps every package in
-lockstep, commits + tags `v<version>`, and pushes nothing; you review and
-`git push origin main --follow-tags`. The tag triggers `release.yml`. Full flow,
-the channel/dist-tag rules, and the tag↔version guard:
-[releasing.md](releasing.md).
+You release by pushing. `bun run release <bump>` bumps every package in lockstep
+and commits — no tag, nothing pushed; you review and `git push origin main`.
+That push runs `release.yml`, and the green run publishes and then tags
+`v<version>`. A red run costs a fix commit, not a version. Full flow, the
+channel/dist-tag rules and the failure replays: [releasing.md](releasing.md).
 
 ## What's important to know
 
 - **Forks are safe.** PR CI uses `pull_request` (not `pull_request_target`), so
   fork code runs without repository secrets. Publishing is reachable only from
-  the tag-triggered publish job, which authenticates via OIDC — there is no
-  long-lived npm token for fork code to reach.
+  the release job on a push to `main` in this repo, which authenticates via OIDC
+  — there is no long-lived npm token for fork code to reach.
 - **One Windows exception.** `assets.e2e.test.tsx`'s "dev" sub-test is
   quarantined on Windows (`it.skipIf(process.platform === 'win32')`) — the dev
   server intermittently ECONNRESETs mid-request on the `--hot` path there. Build

@@ -13,6 +13,7 @@ import {
   POINT0_PUSH_RSC_BUFFER_GLOBAL,
   POINT0_PUSH_RSC_GLOBAL,
   serializeErrorsInDehydratedState,
+  stringifyOrThrow,
   superstore,
 } from '@point0/core'
 import type { AppComponent, ClientPoints, ErrorPoint0, EventerEmitFn, PagePoint } from '@point0/core'
@@ -493,7 +494,9 @@ window.${POINT0_DEHYDRATED_SUPER_STORE_GLOBAL} = ${uneval(superstore.stringify(c
           ErrorClass,
         ).queries[0]
         scripts.push(
-          `<script>window.${POINT0_PUSH_QUERY_GLOBAL}(${uneval(clientPoints.transformer.stringify(payload))})</script>`,
+          `<script>window.${POINT0_PUSH_QUERY_GLOBAL}(${uneval(
+            stringifyOrThrow(clientPoints.transformer, payload, `pushed query ${query.queryHash}`),
+          )})</script>`,
         )
       }
       return scripts.length > 0 ? scripts.join('') : undefined
@@ -518,7 +521,9 @@ window.${POINT0_DEHYDRATED_SUPER_STORE_GLOBAL} = ${uneval(superstore.stringify(c
         // projection so the client hole slot re-throws it to the nearest boundary) — here wrapped in an inline script.
         const payload = buildHolePushPayload(entry, ErrorClass)
         scripts.push(
-          `<script>window.${POINT0_PUSH_RSC_GLOBAL}(${uneval(clientPoints.transformer.stringify(payload))})</script>`,
+          `<script>window.${POINT0_PUSH_RSC_GLOBAL}(${uneval(
+            stringifyOrThrow(clientPoints.transformer, payload, `rsc hole ${entry.label ?? entry.id}`),
+          )})</script>`,
         )
       }
       return scripts.length > 0 ? scripts.join('') : undefined

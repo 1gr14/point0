@@ -22,6 +22,7 @@ import { CompilerPoint } from './point.js'
 import { getHash, parseVirtualModulePath, resolveTempDirPath } from './index.js'
 import { Walker } from './walker.js'
 import nodePath from 'node:path'
+import type * as nodeFsSync from 'node:fs'
 import { createRequire } from 'node:module'
 import { CriticalCompilerError } from './error.js'
 import { stringify } from 'safe-stable-stringify'
@@ -388,23 +389,18 @@ export class Compiler {
     if (pruneWalkerFiles) {
       this.walker.pruneFiles()
     }
-    const side = this.side
-    const features = this.features
-    const scope = this.scope
-    const consts = this.consts
-    // const hmrFix = this.hmrFix // now provided in props
-    const built = this.built
-    const mode = this.mode
-    const runtime = this.runtime
-    const os = this.os
-    const ssr = this.ssr
-    const processEnvAliases = this.processEnvAliases
     const initialCf = CompilerFile.create({
       walker: this.walker,
       file: providedFilePath,
       content,
     })
-    const useCache = cacheOpt !== false && this.cache
+    // A compile handed explicit `content` (Vite's `transform` hook, the babel `parserOverride`) stays out of the disk
+    // cache entirely — no read, no write, no stale-entry sweep. The cache is keyed by the file's mtime, and that key
+    // says nothing about the content the caller passed: reading would answer with an emit computed from what is on
+    // disk instead of from the content handed in, and writing would file the result under a key (`<hash>.0`, since a
+    // content-backed file carries no mtime) that no later read looks up while its glob-based sweep deletes the valid
+    // entries the content-less compiles wrote. Those callers cache upstream anyway.
+    const useCache = cacheOpt !== false && this.cache && content === undefined
     const initialCfCache = useCache ? initialCf.getCache({ map: sourceMaps, hmrFix, compiler: this }) : undefined
     if (initialCfCache?.result) {
       return {
@@ -418,8 +414,80 @@ export class Compiler {
         imports: initialCfCache.result.imports,
       }
     }
+    if (initialCfCache?.invalidated) {
+      // An entry for this exact path+mtime existed and failed validation: a DEPENDENCY moved or changed. The file's
+      // own mtime check would keep every walker memo — the fresh pass below would quietly recompile from stale
+      // memory and rewrite a poisoned entry. Drop the memos; the content itself didn't change.
+      initialCf.pruneMemory()
+    }
+    // The compile-level read log: every file whose content this compile consumes (directly or replayed from a reused
+    // point's chainReads) lands here, and the cache entry stores the list so getCache can invalidate on any change.
+    // Opened only when the result is cacheable; point-level logs (chainReads) run regardless.
+    const readLog = useCache ? this.walker.pushReadLog() : undefined
+    try {
+      return this.compileUncached({
+        content,
+        initialCf,
+        initialCfStats: initialCfCache?.stats,
+        tryIndex,
+        sourceMaps,
+        hmrFix,
+        writeVirtual,
+        useCache,
+        readLog,
+      })
+    } finally {
+      if (readLog) {
+        this.walker.popReadLog(readLog)
+      }
+    }
+  }
+
+  /** The non-cached tail of {@link compile}: collect, shake, apply importer/babel, emit, write the cache entry. */
+  private compileUncached({
+    content,
+    initialCf,
+    initialCfStats,
+    tryIndex,
+    sourceMaps,
+    hmrFix,
+    writeVirtual,
+    useCache,
+    readLog,
+  }: {
+    content: string | undefined
+    initialCf: CompilerFile<boolean>
+    initialCfStats: nodeFsSync.Stats | undefined
+    tryIndex: number
+    sourceMaps: boolean
+    hmrFix: boolean
+    writeVirtual: boolean | undefined
+    useCache: boolean
+    readLog: Map<string, number> | undefined
+  }): {
+    file: CompilerFile<true> | undefined
+    code: string
+    map: GeneratorResult['map']
+    points: CompilerPoint[] | undefined
+    errors: unknown[]
+    modified: boolean
+    tryIndex: number
+    imports: ImportsTraceResult['items']
+  } {
+    const providedFile = initialCf.abs
+    const side = this.side
+    const features = this.features
+    const scope = this.scope
+    const consts = this.consts
+    // const hmrFix = this.hmrFix // now provided in props
+    const built = this.built
+    const mode = this.mode
+    const runtime = this.runtime
+    const os = this.os
+    const ssr = this.ssr
+    const processEnvAliases = this.processEnvAliases
     const errors: unknown[] = []
-    const collectResult = this.walker.collectPointsFromFile({ file: initialCf, content, stats: initialCfCache?.stats })
+    const collectResult = this.walker.collectPointsFromFile({ file: initialCf, content, stats: initialCfStats })
     errors.push(...collectResult.errors)
     if (!collectResult.ok) {
       return {
@@ -512,8 +580,8 @@ export class Compiler {
         column: importItem.loc.column,
       })),
     }
-    if (useCache) {
-      cf.writeCache({ map: sourceMaps, hmrFix, compiler: this, mtime: cf.mtime, result })
+    if (useCache && readLog) {
+      cf.writeCache({ map: sourceMaps, hmrFix, compiler: this, mtime: cf.mtime, result, reads: readLog })
     }
     return result
   }
@@ -990,9 +1058,7 @@ export type CompilerOptions = {
   assets?: CompilerAssetsOptions | false
 }
 export type CompilerMarkdownPluginRef =
-  | NonNullable<MdxCompileOptions['remarkPlugins']>[number]
-  | string
-  | [string, ...unknown[]]
+  NonNullable<MdxCompileOptions['remarkPlugins']>[number] | string | [string, ...unknown[]]
 export type CompilerMarkdownOptions = Omit<MdxCompileOptions, 'remarkPlugins' | 'rehypePlugins' | 'recmaPlugins'> & {
   remarkPlugins?: CompilerMarkdownPluginRef[]
   rehypePlugins?: CompilerMarkdownPluginRef[]

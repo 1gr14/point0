@@ -297,7 +297,9 @@ export const upgradeChannel = root.lets('channel', 'upgradeChannel')
 
 export const upgradeSpace = upgradeChannel.lets<{ userId: string }>('space', 'upgradeSpace')
   .enroller(({ identity }) => {
-    if (identity.me === 'user-cursed') {
+    // every \`cursed*\` identity is refused, so a test that needs its OWN refused connect (a different input = a
+    // different connection key, no reuse of a lingering one) just picks another suffix
+    if (identity.me.startsWith('user-cursed')) {
       throw new ErrorPoint0('enrollment refused')
     }
     return { userId: identity.me }
@@ -441,6 +443,10 @@ const socketClientEventNames: AnyEventerEventName[] = [
   'pointHandlerClientSettled',
   'pointHandlerClientSuccess',
   'pointHandlerClientError',
+  'pointHandlerSendClientStart',
+  'pointHandlerSendClientSettled',
+  'pointHandlerSendClientSuccess',
+  'pointHandlerSendClientError',
   'socketClientConnect',
   'socketClientDisconnect',
 ]
@@ -2048,15 +2054,52 @@ describe('socket client runtime', () => {
   it('an upgrade-connect refused AFTER the handshake falls back at once — no wait on the upgrade timeout', async () => {
     // the fallback needs the shared socket down, or the upgrade path is not even attempted
     await waitFor(() => getSocket().status !== 'open')
+    const events = recordSocketEvents()
     // the connector admits and the handshake succeeds, so the refusal (a throwing enroller) answers a claimErr on a
     // cid the client never learned: resolving the upgrade attempt right there is what keeps this under the 5000ms
     // the `upgradeTimeout` guard — the ticket-path retry then surfaces the typed error
     const startedAt = Date.now()
     const connection = points.upgradeChannel.connect({ userId: 'cursed' }, { upgradable: true })
-    await waitFor(() => connection.status === 'error', 8000)
-    expect(connection.error?.message).toContain('enrollment refused')
-    expect(Date.now() - startedAt).toBeLessThan(3000)
-    connection.disconnect()
+    try {
+      await waitFor(() => connection.status === 'error', 8000)
+      expect(connection.error?.message).toContain('enrollment refused')
+      expect(Date.now() - startedAt).toBeLessThan(3000)
+      // ONE attempt, ONE family: the upgrade and the ticket-path fallback are two ways to reach the same claim, so the
+      // hand-over opens no second `Start` and the refusal settles the one that is open — exactly once
+      const channelId = idOf(points.upgradeChannel)
+      await waitFor(() => phasesOf(events, 'pointChannelConnectClient', channelId).length === 3)
+      expect(phasesOf(events, 'pointChannelConnectClient', channelId)).toEqual(['Start', 'Settled', 'Error'])
+    } finally {
+      connection.disconnect()
+      stopRecordingSocketEvents()
+    }
+  })
+
+  it('a claim refused AFTER a successful connect request settles the family with Error — the ticket announced nothing', async () => {
+    const events = recordSocketEvents()
+    // the plain ticket path, no upgrade: the connector ADMITS, so the POST answers a cid and a ticket — and the
+    // `.enroller` then throws at the claim (its own `cursed*` identity, so this connect is not the previous test's
+    // still-lingering one). The family settles at the CLAIM, so the successful request announces nothing at all and
+    // the refusal is what closes it: no `Success` was ever emitted for a connection that never went live (before the
+    // settle moved to the claim, this attempt reported Settled/Success and the refusal was silent)
+    const connection = points.upgradeChannel.connect({ userId: 'cursed-ticket' })
+    try {
+      const channelId = idOf(points.upgradeChannel)
+      await waitFor(() => connection.status === 'error', 8000)
+      await waitFor(() => phasesOf(events, 'pointChannelConnectClient', channelId).length === 3)
+      expect(phasesOf(events, 'pointChannelConnectClient', channelId)).toEqual(['Start', 'Settled', 'Error'])
+      const refused = eventOf(events, 'pointChannelConnectClientError', channelId)
+      expect((refused?.data.error as ErrorPoint0 | undefined)?.message).toContain('enrollment refused')
+      // a claim refusal is an error phase like any other: the counter, the typed error, and no entry to describe —
+      // the cid the ticket named never became a connection
+      expect(refused?.data.connectionId).toBeUndefined()
+      expect(refused?.data.connectionIndex).toBe(0)
+      expect(refused?.data.resumed).toBeUndefined()
+      expect(refused?.data.gapless).toBeUndefined()
+    } finally {
+      connection.disconnect()
+      stopRecordingSocketEvents()
+    }
   })
 
   it('a half-open socket trips the client liveness deadline: the client closes it itself and reconnects', async () => {
@@ -2156,8 +2199,8 @@ describe('socket client runtime', () => {
       const cid = connection.id as string
       await waitFor(() => phasesOf(events, 'pointChannelConnectClient', channelId).length === 3)
       expect(phasesOf(events, 'pointChannelConnectClient', channelId)).toEqual(['Start', 'Settled', 'Success'])
-      // the CLIENT family is the connect REQUEST: the input it asked with and the cid it got back — the identity is
-      // the server family's, it never leaves the server
+      // the CLIENT family is the connect the app asked for, settled by the CLAIM that made it live: the input it
+      // asked with and the cid that answered — the identity is the server family's, it never leaves the server
       const connectSuccess = eventOf(events, 'pointChannelConnectClientSuccess', channelId)
       expect(connectSuccess?.side).toBe('client')
       expect(connectSuccess?.data.input).toEqual({ userId: 'evh' })
@@ -2201,6 +2244,21 @@ describe('socket client runtime', () => {
       expect(handlerSuccess?.data.input).toEqual({ ask: 'hi' })
       expect(handlerSuccess?.data.output).toEqual({ answer: 'pong:hi' })
       expect(handlerSuccess?.data.connectionId).toBe(cid)
+
+      // …and the TRANSPORT family of the send that started all this — the other altitude: `pointHandlerClient*` is the
+      // dispatch this client RAN, `pointHandlerSendClient*` is the send this client TRANSMITTED, closed by the
+      // server's reply
+      const collectId = idOf(points.pingCollectHandler)
+      await waitFor(() => phasesOf(events, 'pointHandlerSendClient', collectId).length === 3)
+      expect(phasesOf(events, 'pointHandlerSendClient', collectId)).toEqual(['Start', 'Settled', 'Success'])
+      const sendSuccess = eventOf(events, 'pointHandlerSendClientSuccess', collectId)
+      expect(sendSuccess?.side).toBe('client')
+      // `output` is the `.serverReply` return, exactly as `sendToServer` resolved it
+      expect(sendSuccess?.data.output).toEqual({ answers: ['pong:hi'] })
+      expect(sendSuccess?.data.error).toBeUndefined()
+      expect(sendSuccess?.data.connectionId).toBe(cid)
+      // `Start` fires at the call, before the target is resolved — no connection to name yet
+      expect(eventOf(events, 'pointHandlerSendClientStart', collectId)?.data.connectionId).toBeUndefined()
 
       membership.leave()
       connection.disconnect()
@@ -2257,6 +2315,22 @@ describe('socket client runtime', () => {
       expect(handlerError?.data.output).toBeUndefined()
       expect(handlerError?.data.input).toEqual({ text: 'kaboom' })
       expect(handlerError?.data.connectionId).toBe(connection.id)
+
+      // the TRANSPORT family's error side: the server refuses the send (an empty text fails `.clientSend` there) and
+      // the `sendErr` comes back as the typed error — the one sink a fire-and-forget `void ...sendToServer()` has
+      const membershipForSend = points.chatSpace.join({ chatId: 'everr' }, undefined, { userId: 'everr' })
+      await waitFor(() => membershipForSend.status === 'joined')
+      const sendId = idOf(points.messageSendHandler)
+      const refused = recordSocketEvents()
+      await expect(points.messageSendHandler(membershipForSend).sendToServer({ text: '' })).rejects.toThrow()
+      await waitFor(() => phasesOf(refused, 'pointHandlerSendClient', sendId).length === 3)
+      expect(phasesOf(refused, 'pointHandlerSendClient', sendId)).toEqual(['Start', 'Settled', 'Error'])
+      const sendError = eventOf(refused, 'pointHandlerSendClientError', sendId)
+      expect(sendError?.data.error).toBeDefined()
+      expect(sendError?.data.output).toBeUndefined()
+      expect(sendError?.data.input).toEqual({ text: '' })
+      expect(sendError?.data.connectionId).toBe(connection.id)
+      membershipForSend.leave()
 
       connection.disconnect()
     } finally {

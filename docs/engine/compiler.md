@@ -368,11 +368,14 @@ for modes and config.
 
 ## Caching
 
-The compiler caches every result on disk, keyed on the file's contents (via its
-mtime) and the compiler's own settings. The first run pays full price; after
-that a file recompiles only when it changes — or when the settings that produced
-its cache entry change. Cache is on by default (`compiler.cache`); clear it
-with:
+The compiler caches every result on disk. The first run pays full price; after
+that a file recompiles only when something it depends on changed: its own
+content, the compiler settings, where one of its imports resolves (a renamed or
+moved dependency recompiles its importers), or the content of a file its compile
+read (a point's base chain). The checks run on every hit and cost microseconds —
+the cache stays fast.
+
+Cache is on by default (`compiler.cache`); clear it with:
 
 ```sh
 point0 prune

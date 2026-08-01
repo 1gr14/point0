@@ -2,7 +2,7 @@
 
 Thanks for considering a contribution! point0 follows the standard GitHub flow:
 **fork → branch → pull request into `main`**. `main` is the one trunk; releases
-are cut from it by tagging (you don't need to touch that).
+are cut from it by the maintainer (you don't need to touch that).
 
 ## Setup
 
@@ -40,7 +40,7 @@ autofix) — together they are the merge gate. The format/lint check runs on
 _every_ PR, even a docs-only one where the test matrix is skipped, so run
 `bun run format && bun run lint` before pushing. PRs from forks run **without
 repository secrets**, and nothing a PR does can ever publish to npm (only a
-maintainer's release tag publishes), so it's safe to propose anything.
+maintainer's push to `main` can), so it's safe to propose anything.
 
 You don't normally need CI before opening a PR, but if you want to run it on a
 branch (in a clone of this repo, not a fork) without a PR, add a flag to your
@@ -61,6 +61,7 @@ page.
 
 ## Releases
 
-Releasing is maintainer-only and tag-driven — see
+Releasing is maintainer-only: a release is a push to `main` whose CI run goes
+green, and CI creates the `v<version>` tag afterwards — see
 [dev/docs/releasing.md](dev/docs/releasing.md). You never need to bump versions
 or tag in a PR.

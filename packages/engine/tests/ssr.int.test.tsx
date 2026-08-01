@@ -18,6 +18,35 @@ describe('ssr', () => {
     `)
   })
 
+  it.concurrent('page without loader: a data request on its endpoint is a 400, not a 500', async () => {
+    // An SSR page keeps its endpoint even with no server loader, so its `queryClientDehydratedState` stays
+    // prefetchable — which makes the URL publicly reachable. A raw request with no output-type header falls back to
+    // `data`, an output this point structurally does not have: that is the caller asking for the wrong thing, not the
+    // server failing, so it must answer 400 and name what IS available.
+    // (Endpoint existence for a loaderless page is fixed at `.page()` time from the ambient SSR default, not from the
+    // engine created below — so turn it on first. Every test here boots `createTestThings({ ssr: true })`, which sets
+    // the same global to 'true'; this only gets there earlier.)
+    process.env.POINT0_SSR_ENABLED_DEFAULT = 'true'
+    const root = Point0.lets('root', 'root').root()
+    const page = root.lets('page', 'noloader', '/noloader').page(() => <div id="page">x</div>)
+    const { fetch, fetchQueryClientDehydratedState } = await createTestThings({ ssr: true, points: [root, page] })
+    const endpointUrl = (page.point as any)._endpoint?.route?.get({}, { origin: 'http://localhost' }) as
+      string | undefined
+    expect(endpointUrl).toBeTruthy()
+
+    const response = await fetch(endpointUrl!, { headers: { Accept: 'application/json' } })
+    expect(response.status).toBe(400)
+    const body = (await response.json()) as { code?: string; message?: string; status?: number }
+    expect(body.code).toBe('POINT0_POINT_NO_SERVER_LOADER')
+    expect(body.status).toBe(400)
+    expect(body.message).toContain('queryClientDehydratedState')
+
+    // The output the point does serve on that same URL still answers.
+    const dehydrated = await fetchQueryClientDehydratedState(page as never)
+    expect(dehydrated.response.status).toBe(200)
+    expect(Array.isArray(dehydrated.dehydratedState.queries)).toBe(true)
+  })
+
   it.concurrent('page with loader', async () => {
     const root = Point0.lets('root', 'root').root()
     const page = root

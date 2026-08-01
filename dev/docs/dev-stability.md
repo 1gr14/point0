@@ -48,16 +48,25 @@ never kills a port holder — lives in [dev-lifecycle](./dev-lifecycle.md).
   a replaced child (e.g. it lost a port race) must not tear down a healthy tree
   whose replacement is already running — and nothing spawns into a tree that
   began tearing down.
+- **A clean exit is not a death.** An entry that exits **0** finished its work
+  (a one-shot sync script, a migration): its child is dropped,
+  `Entry "<name>" finished` is logged, and the tree keeps serving. It re-runs
+  only on a change inside its own import graph — the watch set narrows to that
+  graph the way a booted server's does. Non-zero is still a crash and still
+  tears the tree down.
 
 ## How to re-verify (stress recipe)
 
 Unit: `bun test packages/engine/tests/watcher.unit.test.ts`. Integration: the
 bun-native half of `packages/engine/tests/dev-hot-reload.e2e.test.ts` (its
 `server hot reload (bun-native, --hot)` suite asserts hot-swap keeps the child
-pid). Real-world: run an app (start0) with `bun dev --hot`, then script
-agent-style bursts — 2–4 edits per burst, 30–150 ms apart, ~60 % written via
-tmp+rename — across several hot files, plus a burst on a **cold** file (one
-absent from `node_modules/.cache/server-hot/<scope>-<port>/`). Healthy log:
+pid), plus `packages/engine/tests/dev-entries.int.test.ts` for entry selection
+and the clean-exit path (it drives the orchestrator from source with two
+throwaway entry scripts — seconds, no build, no ports). Real-world: run an app
+(start0) with `bun dev --hot`, then script agent-style bursts — 2–4 edits per
+burst, 30–150 ms apart, ~60 % written via tmp+rename — across several hot files,
+plus a burst on a **cold** file (one absent from
+`node_modules/.cache/server-hot/<scope>-<port>/`). Healthy log:
 `hot reloading...` only, `Server started` once, a cold burst coalescing into ~1
 restart, zero `Failed to restart entry` / `Tearing down dev` / `*.tmp.*`
 mentions, no `[xN]` duplicate growth; after SIGTERM — zero

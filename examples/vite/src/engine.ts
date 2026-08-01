@@ -2,7 +2,7 @@ import { Engine } from '@point0/engine'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { analyzer } from 'vite-bundle-analyzer'
-import { clientEnvKeys } from '@/lib/env/client-shape'
+import { clientEnvKeys } from '@/lib/env/shared'
 
 export const engine = Engine.create({
   file: import.meta.url,

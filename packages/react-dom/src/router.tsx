@@ -65,8 +65,7 @@ import {
 import type { BrowserLocationHook } from 'wouter/use-browser-location'
 
 type AsChildProps<ComponentProps, DefaultElementProps> =
-  | ({ asChild?: false } & DefaultElementProps)
-  | ({ asChild: true } & ComponentProps)
+  ({ asChild?: false } & DefaultElementProps) | ({ asChild: true } & ComponentProps)
 
 type HTMLLinkAttributes = AnchorHTMLAttributes<HTMLAnchorElement>
 type LinkAsChildProps = AsChildProps<
@@ -306,6 +305,7 @@ export const linkSpecialOptionKeys = [
   'after',
   'newTab',
   'scrollToHash',
+  'keepScroll',
 ] as const
 export const linkTargetKeys = ['route', 'input', 'to', 'href'] as const
 // wouter HookNavigationOptions / NavigationalProps (adapter-level nav options).
@@ -412,8 +412,7 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
   wouterLinkProps: WouterLinkProps
   tohref: string
   pointWithLocation:
-    | { point: NormalizedLazyPointsCollectionRecord | ReadyPointsCollectionRecord; location: AnyLocation }
-    | undefined
+    { point: NormalizedLazyPointsCollectionRecord | ReadyPointsCollectionRecord; location: AnyLocation } | undefined
 } => {
   const {
     to,
@@ -428,6 +427,7 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
     after,
     newTab,
     scrollToHash,
+    keepScroll,
     ...rest
   } = props as WouterLinkProps<any> & { tohref: string } & SpecialLinkOptions<
       HookNavigationOptions<TBaseLocationHook>
@@ -542,6 +542,7 @@ const _getWouterLinkProps = <TBaseLocationHook extends BaseLocationHook = Browse
       [specialNavigationOptionsSymbols.after]: after,
       [specialNavigationOptionsSymbols.newTab]: newTab,
       [specialNavigationOptionsSymbols.scrollToHash]: scrollToHash,
+      [specialNavigationOptionsSymbols.keepScroll]: keepScroll,
     } as WouterLinkProps, // & SpecialLinkOptionsInDataAttributes,
   }
 }
@@ -578,6 +579,7 @@ const splitOptions = <TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavi
     status: getOptionValue('status'),
     newTab: getOptionValue('newTab'),
     scrollToHash: getOptionValue('scrollToHash'),
+    keepScroll: getOptionValue('keepScroll'),
   }
   const specialOptionsWithSymbolKeys = {
     [specialNavigationOptionsSymbols.prefetchOnNavigate]: specialOptionsWithStringKeys.prefetchOnNavigate,
@@ -588,6 +590,7 @@ const splitOptions = <TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavi
     [specialNavigationOptionsSymbols.status]: specialOptionsWithStringKeys.status,
     [specialNavigationOptionsSymbols.newTab]: specialOptionsWithStringKeys.newTab,
     [specialNavigationOptionsSymbols.scrollToHash]: specialOptionsWithStringKeys.scrollToHash,
+    [specialNavigationOptionsSymbols.keepScroll]: specialOptionsWithStringKeys.keepScroll,
   }
   const optionsWithoutSpecialKeys = {
     ...options,
@@ -600,6 +603,7 @@ const splitOptions = <TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavi
   delete optionsWithoutSpecialKeys.status
   delete optionsWithoutSpecialKeys.newTab
   delete optionsWithoutSpecialKeys.scrollToHash
+  delete optionsWithoutSpecialKeys.keepScroll
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.prefetchOnNavigate]
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.prefetchOnHover]
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.prefetch]
@@ -608,6 +612,7 @@ const splitOptions = <TAdapterNavigateFn extends AdapterNavigateFn = AdapterNavi
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.status]
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.newTab]
   delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.scrollToHash]
+  delete (optionsWithoutSpecialKeys as any)[specialNavigationOptionsSymbols.keepScroll]
   const wouterOptions = {
     ...optionsWithoutSpecialKeys,
     ...specialOptionsWithSymbolKeys,

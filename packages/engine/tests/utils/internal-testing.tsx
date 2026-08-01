@@ -446,8 +446,7 @@ export const createTestThings = async <TRoutes extends RoutesPretty>({
   ): Promise<TResult>
   async function render(
     ...args:
-      | [callback?: (state: TestThingsState) => unknown]
-      | [path: string, callback?: (state: TestThingsState) => unknown]
+      [callback?: (state: TestThingsState) => unknown] | [path: string, callback?: (state: TestThingsState) => unknown]
   ): Promise<any> {
     const [path = '/', callback = () => undefined] =
       typeof args[0] === 'string' ? [args[0], args[1]] : [undefined, args[0]]
@@ -711,8 +710,9 @@ ${value.error ? `Error: ${value.error}` : value.data ? value.data : `Status: ${v
   // Data-only request (outputType: queryClientDehydratedState) — the client navigation
   // prefetch path. Hits the page's ENDPOINT route (e.g. /_point0/<scope>/page/<name>),
   // not the display route, with the queryClientDehydratedState header. Returns the
-  // dehydrated query state only (no HTML). The page must have a server loader so it owns
-  // an endpoint. On the server this runs the same executor.prefetchAppPagePointDeep loop
+  // dehydrated query state only (no HTML). The page owns an endpoint whenever it SSRs —
+  // a server loader is NOT required for this output. On the server this runs the same
+  // executor.prefetchAppPagePointDeep loop
   // as HTML (committing staged SSR-store/cookie values between passes), just without the
   // final HTML render.
   const fetchQueryClientDehydratedState = (async (point: ReadyPoint, ...args: [any, any?]) => {

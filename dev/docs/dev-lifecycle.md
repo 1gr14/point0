@@ -48,11 +48,12 @@ closing the DB pool, draining a job queue —
 orchestrator's SIGINT/SIGTERM/SIGHUP handlers: SIGTERM every registered child,
 wait up to `POINT0_DEV_SHUTDOWN_GRACE_MS` (5s) for them to exit on their own,
 SIGKILL stragglers, exit. The same path runs when a core child dies unexpectedly
-(`requestDevShutdown` — the tree lives and dies as one unit). An `exit` backstop
-SIGKILLs anything still registered; `--no-orphans` remains the kernel-level
-backstop for paths that skip handlers entirely. Ctrl-C stays graceful end-to-end
-because `bun run` waits for its child after forwarding SIGINT (verified against
-bun 1.3.14).
+(`requestDevShutdown` — the tree lives and dies as one unit; the one exit that
+is _not_ a death is code **0**, an entry that simply finished — see
+[dev-stability](./dev-stability.md)). An `exit` backstop SIGKILLs anything still
+registered; `--no-orphans` remains the kernel-level backstop for paths that skip
+handlers entirely. Ctrl-C stays graceful end-to-end because `bun run` waits for
+its child after forwarding SIGINT (verified against bun 1.3.14).
 
 ## Ports: never killed, only named
 

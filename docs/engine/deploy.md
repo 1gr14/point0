@@ -72,7 +72,10 @@ dist/
 
 The server entry filename comes from your engine `entry` map. The basic example
 uses `entry: { main: './index.server.ts' }`, which builds to
-`dist/server/index.server.js`.
+`dist/server/index.server.js`. Every declared entry is built, so a second one
+(`sync: './sync.server.ts'` → `dist/server/sync.server.js`) is right there to
+run in production — even though [dev](dev#multiple-server-entries) starts only
+`main` unless you ask for more.
 
 > **Deploy gotcha — build both sides.** URL-mode asset bytes are written by the
 > **client** build. `point0 build --side server` alone does not populate
@@ -96,9 +99,12 @@ export {}
 
 ```ts
 // dist source: app.server.ts
-// Validate server env before anything else so a misconfigured server fails fast.
-import '@/lib/env/server'
+import { serverEnv } from '@/lib/env/server'
 import { engine } from '@/engine.js'
+
+// The env handle is lazy — validate the whole server shape up front so a
+// misconfigured server fails at startup, not on the first request that reads it.
+serverEnv.validate()
 
 await engine.serve()
 
@@ -121,6 +127,31 @@ handlers; the websocket settings merge (see
 [websocket settings](engine-config#websocket-settings)). Calling `serve()` twice
 is a no-op (it returns early if a server is already running), which matters for
 dev re-serve, not production.
+
+### A one-shot entry at container start
+
+A second entry is the natural home for work that must run **before** the server
+takes traffic — a migration, a cache warm-up, a data sync. It is a program, not
+a server: it runs, prints, and exits 0.
+
+```ts
+// src/sync.server.ts
+await import('./preload.js')
+const { syncEverything } = await import('./lib/sync.js')
+await syncEverything()
+export {}
+```
+
+```json
+"scripts": {
+  "start": "bun run ./dist/server/sync.server.js && bun run ./dist/server/index.server.js"
+}
+```
+
+A non-zero exit fails the container start, which is exactly what you want from a
+migration that did not apply. In development the same pair runs under one tree —
+`point0 dev --entry main,sync` — where the clean exit is logged as
+`Entry "sync" finished` and the script re-runs whenever its own code changes.
 
 ### Port
 
@@ -236,8 +267,9 @@ Two rules that bite in production:
   (`ENV NODE_ENV=production`), compose, or `cross-env` in your `start` script.
 - **Fail fast in `app.server`, not in the engine file.** The engine file is
   imported raw (no plugins) in some processes, so it must be side-effect free —
-  no env validation at module scope. Eager validation lives in `app.server`
-  (`import '@/lib/env/server'` as the first line), which runs at runtime.
+  nothing that validates or throws at module scope. The env handles are lazy
+  precisely so they can be declared there safely; the explicit
+  `serverEnv.validate()` lives in `app.server`, which runs at runtime.
 
 point0 loads Bun's native `.env` cascade by `NODE_ENV`: `.env` → `.env.<mode>` →
 `.env.local` → `.env.<mode>.local` (shell-exported vars always win). A real

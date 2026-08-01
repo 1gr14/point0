@@ -1,6 +1,6 @@
 import { dehydrate, hydrate, QueryClient, replaceEqualDeep } from '@tanstack/react-query'
 import type { DehydratedState, QueryClientConfig, QueryState } from '@tanstack/react-query'
-import { POINT0_ERROR_CODES_MAP, serializeStateError } from './error.js'
+import { POINT0_ERROR_CODES_MAP, serializeStateError, stringifyOrThrow } from './error.js'
 import type { ClassLikeError0, ErrorPoint0 } from './error.js'
 import { log } from './logger.js'
 import type { DataTransformerExtended } from './types.js'
@@ -591,7 +591,9 @@ export const findRedirectTaskInQueryClientCache = (
   }
   const { pageLocation } = page
   const input = { ...pageLocation.params, ...(pageLocation.searchString ? { '?': pageLocation.search } : {}) }
-  const inputTransformed = clientPoints.transformer.stringify(input)
+  // the SAME serialization the page's query key carries — a failure here would compare against every key and silently
+  // find no redirect, so it fails loud instead
+  const inputTransformed = stringifyOrThrow(clientPoints.transformer, input, `page ${page.name}`)
 
   for (const query of cache.findAll()) {
     const redirectQuery = toQueryClientDehydratedStateRedirectQuery(query)

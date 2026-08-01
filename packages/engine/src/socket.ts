@@ -81,7 +81,12 @@ type SpaceParticipation = {
  * subscriber (a redeploy answers `gapless: false` for what it cannot vouch; the catch-up refetch covers the gap).
  */
 type TopicStream = {
-  /** the DENSE per-stream counter — every frame of the stream consumes one, buffered or not (the gap proof) */
+  /**
+   * the DENSE per-stream counter — every frame of the stream consumes one, buffered or not (the gap proof). Bounded by
+   * `Number.MAX_SAFE_INTEGER` (2^53−1), where `++` saturates instead of wrapping; it is incremented only in lockstep
+   * with the process delivery clock, so `EngineSocket.deliveryClockSaturated` is the single honest signal for both, and
+   * a saturated process answers every resume non-vouched rather than proving a gapless it can no longer number.
+   */
   tseq: number
   /**
    * the buffered frames of opted-in handlers, tseq ascending — what a resume replays. `json` is the ready wire string
@@ -254,6 +259,13 @@ type StoredConnection = {
     rooms: Record<string, string[]>
   }
 }
+
+/**
+ * How a ticket claim refuses: the frame the client reads plus the `pointChannelClaimServerError` it emits. `reason`
+ * says how far the claim got, `cid` rides along once the ticket resolved to a connection record (a refused ticket names
+ * none — and the frame's cid stays empty either way, deliberately: no oracle).
+ */
+type ClaimFailFn = (message: string, code: string, reason: 'ticket' | 'connection' | 'channel', cid?: string) => void
 
 /**
  * The serialized `$`-dictionary admin/enumeration selector on the wire — parts AND-combine. Bare keys are exact
@@ -576,8 +588,23 @@ export class EngineSocket<TError extends ErrorPoint0> {
    * The process DELIVERY CLOCK — one monotonic counter across every stream of this process, stamped into each frame's
    * log entry (never the wire): the merge-replay of a resume orders the tails of all a connection's streams by it,
    * which is what preserves the total per-connection order across streams within a process epoch.
+   *
+   * Bounded by `Number.MAX_SAFE_INTEGER` (2^53−1) and it does not wrap: past the bound `++` STICKS on the same value,
+   * so both the stamps and the per-stream `tseq` they travel with would silently stop advancing — the gapless formula
+   * would then keep proving `true` over frames that were never numbered apart. The counter resets with the process, and
+   * at a million frames a second the bound is ~285 years away, so this is a floor under the arithmetic rather than a
+   * live concern; {@link deliveryClockSaturated} is what makes it honest if it ever arrives.
    */
   private deliveryStamp = 0
+
+  /**
+   * Set once the delivery clock reached `Number.MAX_SAFE_INTEGER` — the clock is dead and so is the numbering it feeds:
+   * `stream.tseq` and `deliveryStamp` are incremented ONLY together (in {@link stampStreamFrame}), so `tseq` can never
+   * outrun the stamp and this one flag covers every stream of the process. From then on every resume is answered
+   * non-vouched (`gapless: false`, no replay) — the dangerous branch is a FALSE `gapless: true` telling a client
+   * nothing was missed while frames it never saw kept reusing the same number.
+   */
+  private deliveryClockSaturated = false
 
   /**
    * Frames evicted from the stream logs by the ceilings since the process started — the observability counter behind
@@ -1303,6 +1330,9 @@ export class EngineSocket<TError extends ErrorPoint0> {
   ): string {
     const tseq = ++stream.tseq
     const stamp = ++this.deliveryStamp
+    if (stamp >= Number.MAX_SAFE_INTEGER) {
+      this.deliveryClockSaturated = true
+    }
     const json = JSON.stringify({ ...frame, tseq })
     if (bufferLimit === undefined) {
       stream.maxNonBufferedTseq = tseq
@@ -1693,14 +1723,9 @@ export class EngineSocket<TError extends ErrorPoint0> {
     const seed = this.pendingUpgrades.get(cid)
     if (!seed) {
       // by construction the seed is same-process and fresh; only a lapsed TTL (or a duplicate open) reaches here
-      this.send(ws, {
-        t: 'claimErr',
-        cid,
-        error: this.serializeInfraError(
-          'Socket connection not found',
-          POINT0_ERROR_CODES_MAP.SOCKET_CONNECTION_NOT_FOUND,
-        ),
-      })
+      const error = this.infraError('Socket connection not found', POINT0_ERROR_CODES_MAP.SOCKET_CONNECTION_NOT_FOUND)
+      this.send(ws, { t: 'claimErr', cid, error: this.serializeErrorInstance(error) })
+      this.emitClaimError({ scope: socketData.scope, connectionId: cid, reason: 'connection', error })
       return
     }
     this.pendingUpgrades.delete(cid)
@@ -1743,6 +1768,13 @@ export class EngineSocket<TError extends ErrorPoint0> {
     } catch (error) {
       await this.cleanupConnection(cid, 'close')
       this.send(ws, { t: 'claimErr', cid, error: this.serializeError(entry.channelPoint, error) })
+      this.emitClaimError({
+        scope: entry.scope,
+        point: entry.channelPoint,
+        connectionId: cid,
+        reason: 'enroller',
+        error,
+      })
       return
     }
     // the socket may have died while the enrollers ran — see the same check in handleClaimInner
@@ -1921,12 +1953,22 @@ export class EngineSocket<TError extends ErrorPoint0> {
   }
 
   /**
-   * Serialize an infrastructure failure through the ROOT error class — for refusals where no channel point is (or may
-   * be) resolved yet: bad tickets, unknown connections. Same public serialization as every other error on the wire.
+   * An infrastructure failure as an INSTANCE of the ROOT error class — for refusals where no channel point is (or may
+   * be) resolved yet: bad tickets, unknown connections. The instance is what the refusal events carry; the wire gets
+   * {@link serializeErrorInstance} of the same object, so the frame and the event never drift.
    */
-  private serializeInfraError(message: string, code: string): string {
+  private infraError(message: string, code: string): ErrorPoint0 {
     const ErrorClass = this.server.points.manager.root._Error
-    return JSON.stringify(ErrorClass.serializePublic(new ErrorClass(message, { code })))
+    return new ErrorClass(message, { code })
+  }
+
+  /** Same public serialization as every other error on the wire, for an error instance already in hand. */
+  private serializeErrorInstance(error: ErrorPoint0): string {
+    return JSON.stringify(this.server.points.manager.root._Error.serializePublic(error))
+  }
+
+  private serializeInfraError(message: string, code: string): string {
+    return this.serializeErrorInstance(this.infraError(message, code))
   }
 
   private serializeError(point: AnyPoint, error: unknown): string {
@@ -2219,13 +2261,17 @@ export class EngineSocket<TError extends ErrorPoint0> {
     if (!socketData) {
       return
     }
-    const fail = (message: string, code: string) => {
-      this.send(ws, { t: 'claimErr', ticket, cid: '', error: this.serializeInfraError(message, code) })
+    // the ONE refusal path of the ticket claim: the frame the client reads and the server-side event, from one place —
+    // the cid is known only once the ticket resolved to a record (`reason` says how far the claim got)
+    const fail: ClaimFailFn = (message, code, reason, cid) => {
+      const error = this.infraError(message, code)
+      this.send(ws, { t: 'claimErr', ticket, cid: '', error: this.serializeErrorInstance(error) })
+      this.emitClaimError({ scope: socketData.scope, connectionId: cid, reason, error })
     }
     // a ticket is one-time: the KV get→delete pair is not atomic, so a concurrent claim of the SAME ticket (two
     // frames racing the awaits) is refused synchronously here — the in-flight set is this process's atomicity
     if (this.claimingTickets.has(ticket)) {
-      fail('Unknown or expired socket ticket', POINT0_ERROR_CODES_MAP.SOCKET_TICKET_INVALID)
+      fail('Unknown or expired socket ticket', POINT0_ERROR_CODES_MAP.SOCKET_TICKET_INVALID, 'ticket')
       return
     }
     this.claimingTickets.add(ticket)
@@ -2239,7 +2285,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
   private async handleClaimInner(
     ws: Bun.ServerWebSocket<SocketData>,
     ticket: string,
-    fail: (message: string, code: string) => void,
+    fail: ClaimFailFn,
   ): Promise<void> {
     const socketData = ws.data.__point0Socket
     if (!socketData) {
@@ -2252,7 +2298,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
     const ticketKey = this.ticketKey(ticket)
     const rawTicket = backplane.getDelete ? await backplane.getDelete(ticketKey) : await backplane.get(ticketKey)
     if (!rawTicket) {
-      fail('Unknown or expired socket ticket', POINT0_ERROR_CODES_MAP.SOCKET_TICKET_INVALID)
+      fail('Unknown or expired socket ticket', POINT0_ERROR_CODES_MAP.SOCKET_TICKET_INVALID, 'ticket')
       return
     }
     const storedTicket = JSON.parse(rawTicket) as StoredTicket
@@ -2261,19 +2307,24 @@ export class EngineSocket<TError extends ErrorPoint0> {
     }
     if (storedTicket.exp < Date.now()) {
       await backplane.delete(this.connKey(storedTicket.cid))
-      fail('Socket ticket expired', POINT0_ERROR_CODES_MAP.SOCKET_TICKET_INVALID)
+      fail('Socket ticket expired', POINT0_ERROR_CODES_MAP.SOCKET_TICKET_INVALID, 'ticket', storedTicket.cid)
       return
     }
     // the bare websocket endpoint is per-scope — a ticket minted for another scope's channel must not bind here
     // (the socket rode this scope's middleware pipeline; the entry would land in topics the dial never authorized)
     if (storedTicket.scope !== socketData.scope) {
       await backplane.delete(this.connKey(storedTicket.cid))
-      fail('Unknown or expired socket ticket', POINT0_ERROR_CODES_MAP.SOCKET_TICKET_INVALID)
+      fail('Unknown or expired socket ticket', POINT0_ERROR_CODES_MAP.SOCKET_TICKET_INVALID, 'ticket', storedTicket.cid)
       return
     }
     const rawConnection = await backplane.get(this.connKey(storedTicket.cid))
     if (!rawConnection) {
-      fail('Socket connection not found', POINT0_ERROR_CODES_MAP.SOCKET_CONNECTION_NOT_FOUND)
+      fail(
+        'Socket connection not found',
+        POINT0_ERROR_CODES_MAP.SOCKET_CONNECTION_NOT_FOUND,
+        'connection',
+        storedTicket.cid,
+      )
       return
     }
     const storedConnection = JSON.parse(rawConnection) as StoredConnection
@@ -2284,7 +2335,12 @@ export class EngineSocket<TError extends ErrorPoint0> {
     })
     if (!channelRecord) {
       await backplane.delete(this.connKey(storedTicket.cid))
-      fail(`Channel point "${storedConnection.channel}" not found`, POINT0_ERROR_CODES_MAP.NOT_FOUND)
+      fail(
+        `Channel point "${storedConnection.channel}" not found`,
+        POINT0_ERROR_CODES_MAP.NOT_FOUND,
+        'channel',
+        storedTicket.cid,
+      )
       return
     }
     const channelPoint = channelRecord.point
@@ -2293,16 +2349,21 @@ export class EngineSocket<TError extends ErrorPoint0> {
       (cid) => this.connections.get(cid)?.channelName === storedConnection.channel,
     ).length
     if (sameChannelCount >= options.maxConnections) {
+      const capError = Object.assign(new Error(`Too many live connections to channel "${storedConnection.channel}"`), {
+        code: POINT0_ERROR_CODES_MAP.SOCKET_MAX_CONNECTIONS,
+      })
       this.send(ws, {
         t: 'claimErr',
         ticket,
         cid: storedTicket.cid,
-        error: this.serializeError(
-          channelPoint,
-          Object.assign(new Error(`Too many live connections to channel "${storedConnection.channel}"`), {
-            code: POINT0_ERROR_CODES_MAP.SOCKET_MAX_CONNECTIONS,
-          }),
-        ),
+        error: this.serializeError(channelPoint, capError),
+      })
+      this.emitClaimError({
+        scope: storedConnection.scope,
+        point: channelPoint,
+        connectionId: storedTicket.cid,
+        reason: 'maxConnections',
+        error: capError,
       })
       await backplane.delete(this.connKey(storedTicket.cid))
       return
@@ -2344,6 +2405,13 @@ export class EngineSocket<TError extends ErrorPoint0> {
         ticket,
         cid: entry.cid,
         error: this.serializeError(entry.channelPoint, error),
+      })
+      this.emitClaimError({
+        scope: entry.scope,
+        point: entry.channelPoint,
+        connectionId: entry.cid,
+        reason: 'enroller',
+        error,
       })
       return
     }
@@ -2725,14 +2793,16 @@ export class EngineSocket<TError extends ErrorPoint0> {
    * clock — ONE tail, so the total per-connection order survives across streams; a replayed TOPIC frame is re-addressed
    * to this connection (`rcid`) so another connection sharing the topic does not dispatch it twice. A KV restore passes
    * `vouch: false`: every verdict is forced `false` and nothing replays — the reborn entry re-enters its streams at the
-   * current heads (its epochs), and a restore cannot vouch for the window it slept through.
+   * current heads (its epochs), and a restore cannot vouch for the window it slept through. A process whose delivery
+   * clock saturated ({@link deliveryClockSaturated}) takes the same branch for every resume, for the same reason: it can
+   * no longer number frames apart, so it cannot prove a gap's absence.
    */
   private answerResume(
     entry: SocketConnectionEntry,
     cursors: Record<string, number>,
     options?: { vouch?: false },
   ): void {
-    const vouch = options?.vouch !== false
+    const vouch = options?.vouch !== false && !this.deliveryClockSaturated
     const streams: Record<string, { gapless: boolean; head: number }> = {}
     const replay: Array<{ stamp: number; json: string; topicFrame: boolean }> = []
     const epochs = entry.streamEpochs
@@ -3100,27 +3170,35 @@ export class EngineSocket<TError extends ErrorPoint0> {
     message: string | Buffer,
   ): Promise<void> {
     const entry = this.connections.get(frame.cid)
+    // the four refusals below happen BEFORE any point runs — the sender reads them off the `sendErr` frame, the server
+    // off `socketServerSendRefused` (a `.serverReply` that ran and threw is the other family's business)
     if (!entry || entry.ws !== ws) {
-      this.send(ws, {
-        t: 'sendErr',
-        id: frame.id,
-        error: this.serializeInfraError(
-          'Unknown socket connection',
-          POINT0_ERROR_CODES_MAP.SOCKET_CONNECTION_NOT_FOUND,
-        ),
+      const unknownError = this.infraError(
+        'Unknown socket connection',
+        POINT0_ERROR_CODES_MAP.SOCKET_CONNECTION_NOT_FOUND,
+      )
+      this.send(ws, { t: 'sendErr', id: frame.id, error: this.serializeErrorInstance(unknownError) })
+      this.emitSendRefused({
+        scope: ws.data.__point0Socket?.scope ?? this.server.scope,
+        reason: 'unknownConnection',
+        handlerName: frame.handler,
+        connectionId: frame.cid,
+        error: unknownError,
       })
       return
     }
     if (this.exceedsChannelMaxMessageSize(entry, message)) {
-      this.send(ws, {
-        t: 'sendErr',
-        id: frame.id,
-        error: this.serializeError(
-          entry.channelPoint,
-          Object.assign(new Error('Message is bigger than the channel maxMessageSize'), {
-            code: POINT0_ERROR_CODES_MAP.SOCKET_MESSAGE_TOO_BIG,
-          }),
-        ),
+      const tooBigError = Object.assign(new Error('Message is bigger than the channel maxMessageSize'), {
+        code: POINT0_ERROR_CODES_MAP.SOCKET_MESSAGE_TOO_BIG,
+      })
+      this.send(ws, { t: 'sendErr', id: frame.id, error: this.serializeError(entry.channelPoint, tooBigError) })
+      this.emitSendRefused({
+        scope: entry.scope,
+        point: entry.channelPoint,
+        reason: 'tooLarge',
+        handlerName: frame.handler,
+        connectionId: entry.cid,
+        error: tooBigError,
       })
       return
     }
@@ -3132,15 +3210,17 @@ export class EngineSocket<TError extends ErrorPoint0> {
     // a handler of ANOTHER channel is "not found" for this connection (same message — no oracle): the reply would run
     // against an identity a different connector produced, bypassing that channel's own gate
     if (!handlerRecord || handlerRecord.point._channelPoint?.name !== entry.channelName) {
-      this.send(ws, {
-        t: 'sendErr',
-        id: frame.id,
-        error: this.serializeError(
-          entry.channelPoint,
-          Object.assign(new Error(`serverHandler point "${frame.handler}" not found`), {
-            code: POINT0_ERROR_CODES_MAP.SOCKET_HANDLER_NOT_FOUND,
-          }),
-        ),
+      const notFoundError = Object.assign(new Error(`serverHandler point "${frame.handler}" not found`), {
+        code: POINT0_ERROR_CODES_MAP.SOCKET_HANDLER_NOT_FOUND,
+      })
+      this.send(ws, { t: 'sendErr', id: frame.id, error: this.serializeError(entry.channelPoint, notFoundError) })
+      this.emitSendRefused({
+        scope: entry.scope,
+        point: entry.channelPoint,
+        reason: 'handlerNotFound',
+        handlerName: frame.handler,
+        connectionId: entry.cid,
+        error: notFoundError,
       })
       return
     }
@@ -3152,15 +3232,17 @@ export class EngineSocket<TError extends ErrorPoint0> {
     if (frame.room !== undefined && spacePoint) {
       const covers = entry.spaces.get(spacePoint.name)?.rooms.has(frame.room) === true
       if (!covers) {
-        this.send(ws, {
-          t: 'sendErr',
-          id: frame.id,
-          error: this.serializeError(
-            handler,
-            Object.assign(new Error(`Connection is not in room for space "${spacePoint.name}"`), {
-              code: POINT0_ERROR_CODES_MAP.SOCKET_NOT_IN_ROOM,
-            }),
-          ),
+        const notInRoomError = Object.assign(new Error(`Connection is not in room for space "${spacePoint.name}"`), {
+          code: POINT0_ERROR_CODES_MAP.SOCKET_NOT_IN_ROOM,
+        })
+        this.send(ws, { t: 'sendErr', id: frame.id, error: this.serializeError(handler, notInRoomError) })
+        this.emitSendRefused({
+          scope: entry.scope,
+          point: handler,
+          reason: 'notInRoom',
+          handlerName: frame.handler,
+          connectionId: entry.cid,
+          error: notInRoomError,
         })
         return
       }
@@ -4308,6 +4390,73 @@ export class EngineSocket<TError extends ErrorPoint0> {
     scope: PointsScope,
   ): void {
     this.server.points.manager.root._emit(name, { scope }, { scope })
+  }
+
+  /**
+   * `pointChannelClaimServerError` — the claim's refusal single, emitted wherever a `claimErr` frame is answered. The
+   * connect family fires at connector time, BEFORE the claim, so without this a connection that never went live leaves
+   * the server eventer silent. Rides the channel point once the refusal knows one (a channel-level subscription then
+   * sees it), the root otherwise — a refused ticket names no channel at all.
+   */
+  private emitClaimError({
+    scope,
+    point,
+    connectionId,
+    reason,
+    error,
+  }: {
+    scope: PointsScope
+    point?: AnyPoint
+    connectionId?: string
+    reason: 'ticket' | 'connection' | 'channel' | 'maxConnections' | 'enroller'
+    error: unknown
+  }): void {
+    const emitPoint = point ?? (this.server.points.manager.root as AnyPoint)
+    emitPoint._emit(
+      'pointChannelClaimServerError',
+      {
+        scope,
+        point,
+        connectionId,
+        reason,
+        error: emitPoint._Error.from(error),
+      } as never,
+      { scope, point: point?.id, connection: connectionId, reason },
+    )
+  }
+
+  /**
+   * `socketServerSendRefused` — an incoming send the engine refused before any point could run. The sender learns it
+   * from the `sendErr` frame (and its own `pointHandlerSendClientError`); this is the server-side half, which is where
+   * abuse and misconfiguration are worth watching. Rides the channel point when the connection is known.
+   */
+  private emitSendRefused({
+    scope,
+    point,
+    reason,
+    handlerName,
+    connectionId,
+    error,
+  }: {
+    scope: PointsScope
+    point?: AnyPoint
+    reason: 'unknownConnection' | 'tooLarge' | 'handlerNotFound' | 'notInRoom'
+    handlerName: string | undefined
+    connectionId: string | undefined
+    error: unknown
+  }): void {
+    const emitPoint = point ?? (this.server.points.manager.root as AnyPoint)
+    emitPoint._emit(
+      'socketServerSendRefused',
+      {
+        scope,
+        reason,
+        handlerName,
+        connectionId,
+        error: emitPoint._Error.from(error),
+      } as never,
+      { scope, point: point?.id, reason, handler: handlerName, connection: connectionId },
+    )
   }
 
   /**

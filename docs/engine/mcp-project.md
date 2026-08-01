@@ -120,9 +120,7 @@ Lists points, with filtering, pagination, and optional field selection.
 ```jsonc
 // structuredContent
 {
-  "points": [
-    /* … */
-  ],
+  "points": [/* … */],
   "total": 12,
   "hasMore": false,
   "nextOffset": null,

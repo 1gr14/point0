@@ -158,6 +158,55 @@ export class Walker {
     return routes?.[routeKey]
   }
 
+  /**
+   * Active read logs — the mechanics behind the disk cache's read-log invalidation (see `CompilerFile.getCache`).
+   *
+   * A compile's emit can depend on the CONTENT of files it never emits a byte of: base-point resolution walks into
+   * imported files (parent chains, sugar-relatedness) and bakes what it finds into the importer's output. Every such
+   * read funnels through `CompilerFile.readSync`, which reports `(abs, mtimeMs)` here; `Compiler.compile` keeps a log
+   * open for the duration of a cacheable compile and stores the collected list in the cache payload, so a later cache
+   * read can stat each recorded file and reject the entry when any of them changed or disappeared.
+   *
+   * It is a STACK, not a single slot, because `CompilerPoint.parse` keeps its own log too (`chainReads`): a point
+   * registered in `this.points` outlives the compile that parsed it, and a later compile that REUSES it never re-reads
+   * the chain files — so the reuse sites replay the point's recorded reads into whatever logs are open (see
+   * `mergeReads` callers). A read lands in every open log, which keeps nested parses transitive: a grandparent read
+   * during a parent's parse is recorded on the child's log as well.
+   */
+  private readonly readLogs: Array<Map<string, number>> = []
+
+  /** Opens a read log; every subsequent {@link recordRead} lands in it until {@link popReadLog}. */
+  pushReadLog(): Map<string, number> {
+    const log = new Map<string, number>()
+    this.readLogs.push(log)
+    return log
+  }
+
+  /** Closes a read log opened by {@link pushReadLog}. LIFO — pass the same map to keep the stack honest. */
+  popReadLog(log: Map<string, number>): void {
+    const index = this.readLogs.lastIndexOf(log)
+    if (index !== -1) {
+      this.readLogs.splice(index, 1)
+    }
+  }
+
+  /** Reports a content read (or a memoized re-use of on-disk content) to every open read log. */
+  recordRead(abs: string, mtimeMs: number): void {
+    for (const log of this.readLogs) {
+      log.set(abs, mtimeMs)
+    }
+  }
+
+  /** Replays a reused point's recorded chain reads into every open read log (see {@link readLogs}). */
+  mergeReads(reads: ReadonlyMap<string, number>): void {
+    if (this.readLogs.length === 0 || reads.size === 0) {
+      return
+    }
+    for (const [abs, mtimeMs] of reads) {
+      this.recordRead(abs, mtimeMs)
+    }
+  }
+
   prunePoints(): void {
     this.points.clear()
   }
@@ -209,7 +258,13 @@ export class Walker {
       }
 
       if (file.allPointsWasCollected) {
-        return { points: file.getCollectedPoints(), errors, file, ok: true }
+        const collectedPoints = file.getCollectedPoints()
+        // Memoized collection skips the chain resolution that would have re-read the parent files — replay each
+        // point's recorded chain reads so an open read log still learns what this file's emit depends on.
+        for (const point of collectedPoints) {
+          this.mergeReads(point.chainReads)
+        }
+        return { points: collectedPoints, errors, file, ok: true }
       }
 
       if (!file.mayContainPoints()) {
@@ -284,6 +339,8 @@ export class Walker {
       }
       const pointFromMemory = file.getPointFormMemoryByLetsNodePath(letsNodePath)
       if (pointFromMemory) {
+        // Reused parse — its chain files are not re-read, so replay what it read into any open read log.
+        this.mergeReads(pointFromMemory.chainReads)
         return { point: pointFromMemory, errors }
       }
       const letsNode = letsNodePath.node
@@ -423,6 +480,8 @@ export class Walker {
       // the one that gets shaken.
       const exPoint = this.points.get(point.strpos)
       if (exPoint && exPoint.file === file && exPoint.letsNodePath === letsNodePath) {
+        // Reused parse (see the reuse comment above) — replay its chain reads into any open read log.
+        this.mergeReads(exPoint.chainReads)
         return { point: exPoint, errors }
       }
       this.points.set(point.strpos, point)

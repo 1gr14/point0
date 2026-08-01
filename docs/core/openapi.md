@@ -187,7 +187,9 @@ Two header parameters can appear that you did not declare:
   the client that owns the page (`enum` of `data` / `queryClientDehydratedState`
   / `html`), selecting the output format of the page response. SSR resolves per
   client, so the spec advertises this header by the owning client's SSR, not the
-  server's.
+  server's. On a page with **no server loader** there is no data output, so the
+  enum drops `data` and the header becomes `required` — sending none makes the
+  request fall back to `data` and the endpoint answers `400`.
 
 ## Response schemas — `.response()`
 

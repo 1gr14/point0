@@ -21,6 +21,91 @@ const decodeCookieValue = (value: string): string => {
   }
 }
 
+/**
+ * Normalize one IP candidate from a header or the socket peer into a comparable address: trims, unwraps `[v6]` /
+ * `[v6]:port` brackets, cuts the `:port` off an IPv4, strips the `::ffff:` prefix of an IPv4-mapped IPv6, lowercases.
+ * `undefined` for anything that is not an address — the empty string, RFC 7239 `unknown`, and `_obfuscated` tokens.
+ */
+export const normalizeIp = (raw: string): string | undefined => {
+  let ip = raw.trim()
+  if (!ip) {
+    return undefined
+  }
+  if (ip.startsWith('[')) {
+    const end = ip.indexOf(']')
+    if (end === -1) {
+      return undefined
+    }
+    ip = ip.slice(1, end)
+  } else if (/^\d{1,3}(\.\d{1,3}){3}:\d+$/.test(ip)) {
+    ip = ip.slice(0, ip.lastIndexOf(':'))
+  }
+  ip = ip.toLowerCase()
+  if (ip.startsWith('::ffff:') && ip.includes('.')) {
+    ip = ip.slice('::ffff:'.length)
+  }
+  if (ip === 'unknown' || ip.startsWith('_')) {
+    return undefined
+  }
+  return ip
+}
+
+/**
+ * Whether an address is publicly routable — the filter behind `from.clientIp`. Excludes the ranges a proxy chain is
+ * made of: IPv4 `0/8`, `10/8`, `127/8`, `169.254/16` (link-local), `172.16/12`, `192.168/16`, and `100.64/10`
+ * (carrier-grade NAT — what e.g. Railway's internal hops use); IPv6 `::`, `::1`, `fe80` (link-local) and `fc`/`fd`
+ * (unique-local). Accepts the raw header spelling — the candidate is normalized first ({@link normalizeIp}).
+ */
+export const isPublicIp = (raw: string): boolean => {
+  const ip = normalizeIp(raw)
+  if (!ip) {
+    return false
+  }
+  if (ip.includes('.') && !ip.includes(':')) {
+    const parts = ip.split('.').map(Number)
+    if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+      return false
+    }
+    const [a, b] = parts
+    if (a === 0 || a === 10 || a === 127) {
+      return false
+    }
+    if (a === 100 && b >= 64 && b <= 127) {
+      return false
+    }
+    if (a === 169 && b === 254) {
+      return false
+    }
+    if (a === 172 && b >= 16 && b <= 31) {
+      return false
+    }
+    if (a === 192 && b === 168) {
+      return false
+    }
+    return true
+  }
+  if (ip === '::' || ip === '::1') {
+    return false
+  }
+  // fe80::/10 spans fe80–febf; fc00::/7 is fc + fd
+  if (/^fe[89ab]/.test(ip) || ip.startsWith('fc') || ip.startsWith('fd')) {
+    return false
+  }
+  return true
+}
+
+// Single-value headers where a proxy/CDN claims "this is the client" — most trustworthy first. All spoofable by a
+// client that no proxy overwrites, so they feed `ips` and the `clientIp` fallback, never `ip`.
+const SINGLE_VALUE_CLIENT_IP_HEADERS = [
+  'cf-connecting-ip',
+  'true-client-ip',
+  'fastly-client-ip',
+  'x-envoy-external-address',
+  'x-client-ip',
+  'x-cluster-client-ip',
+  'x-real-ip',
+] as const
+
 export class Request0<
   TVariant extends RequestVariantType = any,
   TError = unknown,
@@ -95,6 +180,8 @@ export class Request0<
     // Compute the origin from the real client request: the socket peer IP and the request's own headers.
     const buildClientFrom = (): RequestFrom => {
       let cachedIps: string[] | undefined
+      let cachedForwardedChain: string[] | undefined
+      let cachedClientIp: string | null | undefined
       let cachedBunIp: string | null | undefined
       let cachedUserAgent: string | null | undefined
       let cachedLocation: AnyLocation | null | undefined
@@ -119,33 +206,119 @@ export class Request0<
         return cachedBunIp
       }
 
+      // The two spellings of the forwarded chain, parsed separately and each client-first: `x-forwarded-for`
+      // entries, and RFC 7239 `Forwarded: for=…` entries. Every entry normalized; non-addresses (`unknown`,
+      // `_obfuscated`) dropped. `ips` merges both; the `clientIp` scan deliberately does NOT (see getClientIp).
+      let cachedXffChain: string[] | undefined
+      const getXffChain = (): string[] => {
+        if (cachedXffChain) {
+          return cachedXffChain
+        }
+        const chain: string[] = []
+        const forwardedFor = original.headers.get('x-forwarded-for')
+        if (forwardedFor) {
+          for (const entry of forwardedFor.split(',')) {
+            const normalized = normalizeIp(entry)
+            if (normalized) {
+              chain.push(normalized)
+            }
+          }
+        }
+        cachedXffChain = chain
+        return chain
+      }
+      let cachedRfcForwardedChain: string[] | undefined
+      const getRfcForwardedChain = (): string[] => {
+        if (cachedRfcForwardedChain) {
+          return cachedRfcForwardedChain
+        }
+        const chain: string[] = []
+        const forwarded = original.headers.get('forwarded')
+        if (forwarded) {
+          for (const element of forwarded.split(',')) {
+            const forPair = element
+              .split(';')
+              .map((pair) => pair.trim())
+              .find((pair) => /^for=/i.test(pair))
+            if (!forPair) {
+              continue
+            }
+            let value = forPair.slice('for='.length).trim()
+            if (value.startsWith('"') && value.endsWith('"')) {
+              value = value.slice(1, -1)
+            }
+            const normalized = normalizeIp(value)
+            if (normalized) {
+              chain.push(normalized)
+            }
+          }
+        }
+        cachedRfcForwardedChain = chain
+        return chain
+      }
+      const getForwardedChain = (): string[] => {
+        cachedForwardedChain ??= [...getXffChain(), ...getRfcForwardedChain()]
+        return cachedForwardedChain
+      }
+
       const getIps = (): string[] => {
         if (cachedIps) {
           return cachedIps
         }
-        // Bun's requestIP (unspoofable) leads the list; the spoofable header candidates follow.
+        // Every candidate the request carries, CLIENT-FIRST: the forwarded chain in header order (the claimed
+        // client leads), then the single-value client-claim headers, then the unspoofable socket peer LAST.
+        // De-duped, normalized. Everything but the peer can be spoofed — for a security decision use `ip`, for
+        // the visitor's address use `clientIp`; never index into this list.
         const ipsSet = new Set<string>()
+        for (const candidate of getForwardedChain()) {
+          ipsSet.add(candidate)
+        }
+        for (const header of SINGLE_VALUE_CLIENT_IP_HEADERS) {
+          const value = original.headers.get(header)
+          const normalized = value ? normalizeIp(value) : undefined
+          if (normalized) {
+            ipsSet.add(normalized)
+          }
+        }
         const bunIp = getBunIp()
-        if (bunIp) {
-          ipsSet.add(bunIp)
-        }
-        // These header values CAN be spoofed by the client, so they live only in `ips`, never in `ip`.
-        const forwardedFor = original.headers.get('x-forwarded-for')
-        if (forwardedFor) {
-          forwardedFor.split(',').forEach((ip) => {
-            ipsSet.add(ip.trim())
-          })
-        }
-        const realIp = original.headers.get('x-real-ip')
-        if (realIp) {
-          ipsSet.add(realIp)
-        }
-        const cfConnectingIp = original.headers.get('cf-connecting-ip')
-        if (cfConnectingIp) {
-          ipsSet.add(cfConnectingIp)
+        const bunIpNormalized = bunIp ? normalizeIp(bunIp) : undefined
+        if (bunIpNormalized) {
+          ipsSet.add(bunIpNormalized)
         }
         cachedIps = Array.from(ipsSet)
         return cachedIps
+      }
+
+      const getClientIp = (): string | null => {
+        if (cachedClientIp !== undefined) {
+          return cachedClientIp
+        }
+        cachedClientIp = null
+        // Scan the chain (forwarded header + peer as the final hop) RIGHT-TO-LEFT for the first public address —
+        // correct whether the edge replaced the header or appended to it; private/CGNAT hops and spoofed prefixes
+        // are stepped over. ONE spelling only, XFF winning: proxies manage `x-forwarded-for` and pass a client-sent
+        // `Forwarded` through untouched — merging both would put a spoofed entry where the scan trusts most.
+        const bunIp = getBunIp()
+        const bunIpNormalized = bunIp ? normalizeIp(bunIp) : undefined
+        const forwardedChain = getXffChain().length > 0 ? getXffChain() : getRfcForwardedChain()
+        const chain = [...forwardedChain, ...(bunIpNormalized ? [bunIpNormalized] : [])]
+        for (let index = chain.length - 1; index >= 0; index--) {
+          if (isPublicIp(chain[index])) {
+            cachedClientIp = chain[index]
+            return cachedClientIp
+          }
+        }
+        // No public hop in the chain (or no chain at all) — fall back to the single-value client claims,
+        // most trustworthy first, public only.
+        for (const header of SINGLE_VALUE_CLIENT_IP_HEADERS) {
+          const value = original.headers.get(header)
+          const normalized = value ? normalizeIp(value) : undefined
+          if (normalized && isPublicIp(normalized)) {
+            cachedClientIp = normalized
+            return cachedClientIp
+          }
+        }
+        return cachedClientIp
       }
 
       return {
@@ -156,6 +329,9 @@ export class Request0<
         // null when no Bun server is wired in (e.g. a synthetic request). Spoofable candidates live in `ips`.
         get ip(): string | null {
           return getBunIp()
+        },
+        get clientIp(): string | null {
+          return getClientIp()
         },
         get userAgent(): string | null {
           if (cachedUserAgent !== undefined) {
@@ -196,6 +372,9 @@ export class Request0<
           },
           get ip(): string | null {
             return first.from.ip
+          },
+          get clientIp(): string | null {
+            return first.from.clientIp
           },
           get userAgent(): string | null {
             return first.from.userAgent
@@ -319,8 +498,23 @@ export type WideRequestMethod = RequestMethod | (string & {})
 export type PopularRequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD'
 
 export interface RequestFrom {
+  /**
+   * Every IP candidate the request carries, client-first: the forwarded chain in header order, then the single-value
+   * client-claim headers, then the unspoofable socket peer LAST. Normalized and de-duped — never index into it.
+   */
   ips: string[]
+  /**
+   * The socket peer address (Bun's `requestIP`) — unspoofable, so it's the one for security decisions. Behind a
+   * proxy/CDN it is the last hop's address, not the visitor's — that one is `clientIp`. `null` without a Bun server.
+   */
   ip: string | null
+  /**
+   * Best guess at the visitor's address: the forwarded chain plus the peer, scanned right-to-left for the first PUBLIC
+   * address (private/CGNAT hops and spoofed prefixes stepped over); falls back to the client-claim headers, else
+   * `null`. For geo, per-visitor rate limits, logs — NOT for security: with no proxy in front one header spoofs it,
+   * `ip` is the unspoofable one.
+   */
+  clientIp: string | null
   userAgent: string | null
   location: AnyLocation | null
   scope: string | null

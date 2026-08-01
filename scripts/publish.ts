@@ -5,10 +5,10 @@
  * packages are skipped. Runs in CI with OIDC trusted publishing — no NPM_TOKEN.
  *
  * The dist-tag comes from the version: a prerelease x.y.z-next.N publishes under `--tag next`, a stable x.y.z under
- * `latest`. The tag ↔ version guard (scripts/check-channel.ts) is asserted first, so the git tag that triggered the
- * release must match the version being published. Packages whose publishConfig.access is `public` publish with npm
- * provenance (`--provenance`, via the workflow's OIDC id-token); a restricted package would skip it (provenance needs a
- * public package), but all @point0/* are public.
+ * `latest`. The version guard (scripts/check-channel.ts) is asserted first, so a hand-edited version can't invent a
+ * third channel. Packages whose publishConfig.access is `public` publish with npm provenance (`--provenance`, via the
+ * workflow's OIDC id-token); a restricted package would skip it (provenance needs a public package), but all @point0/*
+ * are public.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url'
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const packagesDir = join(rootDir, 'packages')
 
-// Channel guard first — refuse to publish anything if the version doesn't match the branch.
+// Version guard first — refuse to publish anything if the version isn't a shape that maps onto one of our channels.
 const guard = Bun.spawnSync(['bun', join(rootDir, 'scripts/check-channel.ts')], {
   stdout: 'inherit',
   stderr: 'inherit',

@@ -20,16 +20,16 @@ describe('ci-decide', () => {
       })
     })
 
-    it('push to main → full matrix', () => {
-      expect(decide(run({ ref: 'main', message: 'squash merge' }))).toMatchObject({
+    it('workflow_dispatch on main → full matrix, never publishes', () => {
+      expect(decide(run({ event: 'workflow_dispatch', ref: 'main', message: 'squash merge' }))).toMatchObject({
         oses: FULL,
         publish: false,
       })
     })
 
-    it('--skip-ci short-circuits a branch run', () => {
-      expect(decide(run({ ref: 'main', message: 'docs only --skip-ci' })).oses).toEqual([])
+    it('--skip-ci short-circuits a feature-branch run (never a push to main)', () => {
       expect(decide(run({ ref: 'feature', message: 'wip --skip-ci --run-tests' })).oses).toEqual([])
+      expect(decide(run({ event: 'workflow_dispatch', ref: 'main', message: 'docs only --skip-ci' })).oses).toEqual([])
     })
 
     it('INVARIANT: commit-message flags are ignored on a PR — no flag can skip the merge gate', () => {
@@ -91,41 +91,46 @@ describe('ci-decide', () => {
     })
   })
 
-  describe('release (tags publish)', () => {
-    it('stable tag → full matrix + publish', () => {
-      expect(decide(run({ refType: 'tag', ref: 'v0.1.0', message: 'chore(release): v0.1.0' }))).toMatchObject({
+  describe('release (a push to main publishes)', () => {
+    it('push to main → full matrix + publish', () => {
+      expect(decide(run({ ref: 'main', message: 'chore(release): v0.1.0' }))).toMatchObject({
         oses: FULL,
         publish: true,
       })
     })
 
-    it('prerelease tag → full matrix + publish, same as stable', () => {
-      expect(decide(run({ refType: 'tag', ref: 'v0.1.0-next.3', message: 'release' }))).toMatchObject({
-        oses: FULL,
-        publish: true,
-      })
+    it('a plain (non-release) push to main decides the same — npm, not the message, decides what ships', () => {
+      expect(decide(run({ ref: 'main', message: 'fix: typo' }))).toMatchObject({ oses: FULL, publish: true })
     })
 
-    it('INVARIANT: a tag can never skip tests — stable or prerelease, no flag works', () => {
-      for (const ref of ['v2.0.0', 'v0.1.0-next.3']) {
-        for (const message of ['--skip-tests', '--skip-tests=linux,windows', '--skip-ci']) {
-          expect(decide(run({ refType: 'tag', ref, message })).oses).toEqual(FULL)
-        }
+    it('INVARIANT: a push to main can never skip tests — no flag works', () => {
+      for (const message of ['--skip-tests', '--skip-tests=linux,windows', '--skip-ci', '--run-tests=linux']) {
+        expect(decide(run({ ref: 'main', message })).oses).toEqual(FULL)
       }
-      // …not even a docs-only file set (which skips on a PR) weakens a tag release.
-      expect(decide(run({ refType: 'tag', ref: 'v2.0.0', changedFiles: ['docs/x.md'] })).oses).toEqual(FULL)
+      // …not even a docs-only file set (which skips on a PR) weakens the release path.
+      expect(decide(run({ ref: 'main', changedFiles: ['docs/x.md'] })).oses).toEqual(FULL)
+    })
+
+    it('a tag ref tests but never publishes — tags are the RESULT of a release, nothing listens on them', () => {
+      for (const ref of ['v0.1.0', 'v0.1.0-next.3']) {
+        expect(decide(run({ refType: 'tag', ref, message: 'chore(release): ' + ref }))).toMatchObject({
+          oses: FULL,
+          publish: false,
+        })
+      }
     })
   })
 
-  describe('INVARIANT: publish is true only for tags', () => {
-    const nonTagContexts: DecideInput[] = [
+  describe('INVARIANT: publish is true only for a push to main', () => {
+    const nonReleaseContexts: DecideInput[] = [
       run({ event: 'pull_request', ref: '1/merge' }),
-      run({ ref: 'main' }),
-      run({ ref: 'main', message: 'chore(release): v0.1.0' }),
+      run({ event: 'pull_request', ref: '1/merge', message: 'chore(release): v0.1.0' }),
+      run({ refType: 'tag', ref: 'v0.1.0' }),
       run({ ref: 'feature', message: '--run-tests' }),
+      run({ ref: 'release-main', message: 'chore(release): v0.1.0' }), // not `main`, just looks like it
       run({ event: 'workflow_dispatch', ref: 'main' }),
     ]
-    for (const ctx of nonTagContexts) {
+    for (const ctx of nonReleaseContexts) {
       it(`${ctx.event} ${ctx.refType}:${ctx.ref} → publish=false`, () => {
         expect(decide(ctx).publish).toBe(false)
       })

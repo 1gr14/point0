@@ -1,5 +1,6 @@
 import {
   serializeStateError,
+  stringifyOrThrow,
   type ClassLikeError0,
   type DataTransformerExtended,
   type ErrorPoint0,
@@ -96,9 +97,9 @@ export const createHoleNdjsonStream = ({
   emit,
   heartbeatMs = RSC_STREAM_HEARTBEAT_MS,
 }: {
-  // The transformer's `stringify` is typed `string | undefined`; the caller only builds this stream when the output
-  // carries holes (so it is always a real object → a real string), but coalesce defensively rather than assert.
-  firstLine: string | undefined
+  // Line 1 of the NDJSON body. Always a real string: both callers build it with `stringifyOrThrow`, so a transformer
+  // that refuses the payload fails there — an empty first line would reach the client as a broken frame instead.
+  firstLine: string
   holeRegistry: RscHoleRegistry
   transformer: DataTransformerExtended
   ErrorClass: ClassLikeError0<ErrorPoint0>
@@ -126,7 +127,7 @@ export const createHoleNdjsonStream = ({
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        controller.enqueue(encoder.encode(assertSingleLine(firstLine ?? '') + '\n'))
+        controller.enqueue(encoder.encode(assertSingleLine(firstLine) + '\n'))
         for (;;) {
           if (isCancelled()) {
             return
@@ -136,8 +137,12 @@ export const createHoleNdjsonStream = ({
               return
             }
             emitHoleError(emit, entry, ErrorClass)
-            const line = transformer.stringify(buildHolePushPayload(entry, ErrorClass))
-            controller.enqueue(encoder.encode(assertSingleLine(line ?? '') + '\n'))
+            const line = stringifyOrThrow(
+              transformer,
+              buildHolePushPayload(entry, ErrorClass),
+              `rsc hole ${entry.label ?? entry.id}`,
+            )
+            controller.enqueue(encoder.encode(assertSingleLine(line) + '\n'))
           }
           const undelivered = [...holeRegistry.entries.values()].filter((entry) => !entry.delivered)
           if (undelivered.length === 0) {

@@ -215,5 +215,4 @@ export type FetchRecorderRecordFinished<
 }
 
 export type FetchRecorderRecord<TError extends ErrorPoint0 = ErrorPoint0> =
-  | FetchRecorderRecordStarted
-  | FetchRecorderRecordFinished<undefined, TError>
+  FetchRecorderRecordStarted | FetchRecorderRecordFinished<undefined, TError>

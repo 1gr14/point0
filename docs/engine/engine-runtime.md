@@ -181,8 +181,8 @@ existing request — call `query.fetch()` (or `fetchServer`) from within
 These three are what the CLI commands map to.
 
 ```ts
-await engine.dev() // start dev (server + clients), watch, regenerate, hot-reload
-await engine.build() // production build of every side
+await engine.dev() // start dev (one server entry + clients), watch, regenerate, hot-reload
+await engine.build() // production build of every side, and every server entry
 await engine.generate() // codegen only (points, routes, meta, assets types)
 ```
 
@@ -197,9 +197,12 @@ sourcemaps and unminified bundles…
 ```
 
 Each takes options — `dev` has `side`, `scope`, `entries`, `watch`, `serverHot`,
-and more; `build` has `side`, `scope`, `clean`, `publicdir`. The full option and
-flag tables live on [dev](dev) and [build](build); the command-to-method mapping
-is on [cli](cli). The matching watch and codegen variants are
+and more; `build` has `side`, `scope`, `clean`, `publicdir`. `dev`'s `entries`
+(`string[] | '*'`) is the selection `--entry` fills in; with it omitted dev
+starts the `devEntries` selection, and failing that the single main entry — see
+[multiple server entries](dev#multiple-server-entries). The full option and flag
+tables live on [dev](dev) and [build](build); the command-to-method mapping is
+on [cli](cli). The matching watch and codegen variants are
 `engine.buildWatch(...)`, `engine.generateWatch(...)`, and
 `engine.preparePublicdirs()`.
 
@@ -461,7 +464,7 @@ A few are useful in app and config code:
 ### Boot order
 
 ```
-src/index.server.ts        # server entry (server.entry.main)
+src/index.server.ts        # server entry (server.entry.main — the one dev starts by default)
   → await import preload.ts   # engine.preload(): env + compiler plugin
   → await import app.server.ts# engine.serve()
 

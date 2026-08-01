@@ -1,8 +1,8 @@
 diff --git a/lib/coreBundle.js b/lib/coreBundle.js
-index bc601fcf741792e3fc76884a28a3c43f80c6472f..01e5311763aa72133827361fc475a3fce33a4e91 100644
+index d9041dd0f009072511a7d808dec83121ff29e127..889cba8d84bce84e456a3ee4b63e20f17ee75a77 100644
 --- a/lib/coreBundle.js
 +++ b/lib/coreBundle.js
-@@ -38023,7 +38023,7 @@ var init_transport = __esm({
+@@ -39218,7 +39218,7 @@ var init_transport = __esm({
      "use strict";
      init_happyEyeballs();
      init_task();

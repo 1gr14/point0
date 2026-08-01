@@ -748,7 +748,13 @@ transports ship (which is why there is no Prisma adapter: Prisma cannot
   `autoResubscribe`, default on); node-redis restores pub/sub too but does not
   document it, so its adapter wraps the subscriber in
   `createResilientRedisSubscriber` replayed on `'ready'` — correct in both
-  worlds (the defensive unsubscribe clears, the subscribe re-adds one).
+  worlds (the defensive unsubscribe clears, the subscribe re-adds one). Both
+  client majors are supported (ioredis 5/6, node-redis 4/5/6): the 6s default to
+  **RESP3**, and every command signature, reply type and subscribe-listener
+  shape the adapters touch survives it unchanged (ioredis 6 ships
+  `replyMapping: 'legacy'`). The devDeps ride the 6s, so
+  `realClientTypesCheck` + `backplane-redis-clients.int.test.ts` pin the newer
+  typings and the newer wire.
 - **postgres** — postgres.js only (`sql.listen` keeps a dedicated auto-reconnect
   connection and re-listens itself). Absorbs the two Postgres limits: channel
   names are identifiers (63-byte cap, SILENT truncation → long room topics would
@@ -842,6 +848,18 @@ subscriber-less topic publishes plain — a stream nobody holds could never be
 released) and dies with the last subscriber leaving the matching index
 (`releaseStream` next to the bus-topic release in `unindexRooms` /
 `dropEntryFromIndexes` / `unindexEntryChannel`).
+
+Both counters are bounded by `Number.MAX_SAFE_INTEGER` (2^53−1) and neither
+wraps — past the bound JS `++` returns the same value forever, so the numbering
+would STICK and the gapless formula would start proving `true` over frames that
+share a number. They only ever advance together (one `stampStreamFrame` ticks
+both), so `stream.tseq <= deliveryStamp` always and a single flag covers every
+stream: `stampStreamFrame` sets `deliveryClockSaturated` when the stamp reaches
+the bound, and `answerResume` then folds it into `vouch` — every resume of that
+process is answered `gapless: false` with no replay, exactly the KV-restore
+branch, and the clients refetch. The counters reset with the process, and at a
+million frames a second the bound is ~285 years out; the guard exists so the
+failure mode is an honest refetch rather than silent message loss.
 
 **Subscription epochs** (`entry.streamEpochs`: topic string → tseq at entry).
 Stamped at claim (the channel topic), at `addRoomsToEntry` (each ADDED room +
@@ -1350,12 +1368,27 @@ them.
   `...Client*` fires around the client operation and has no identity field at
   all.
 - `pointChannelConnectServer*` (the connector run — `Success`/`Settled` carry
-  `identity`) / `pointChannelConnectClient*` (the connect request):
-  `Settled`/`Success`/`Error` carry `connectionId` (`undefined` on error); the
-  server-only singles `pointChannelOpenServer` / `pointChannelCloseServer` carry
-  `{ connectionId, identity }`; `pointChannelOpenServer` adds `resumed: boolean`
-  (`true` on a resume revival — unpark or KV restore, no connector ran for that
-  open); `pointChannelCloseServer` adds `reason: 'close' | 'socket' | 'kick'`.
+  `identity`) / `pointChannelConnectClient*` (the connect, settled at its
+  CLAIM): `Settled`/`Success`/`Error` carry `connectionId` (`undefined` on
+  error); the server-only singles `pointChannelOpenServer` /
+  `pointChannelCloseServer` carry `{ connectionId, identity }`;
+  `pointChannelOpenServer` adds `resumed: boolean` (`true` on a resume revival —
+  unpark or KV restore, no connector ran for that open);
+  `pointChannelCloseServer` adds `reason: 'close' | 'socket' | 'kick'`.
+- `pointChannelClaimServerError` — the server-only single for a claim that never
+  landed, emitted at EVERY site answering a `claimErr` frame (`emitClaimError`
+  in engine/src/socket.ts; the ticket path routes through the one `fail` closure
+  of `handleClaim`):
+  `reason: 'ticket' | 'connection' | 'channel' | 'maxConnections' | 'enroller'`,
+  plus `{ scope, point, connectionId, error }` — `point`/`connectionId` are
+  undefined when the refusal came before the ticket resolved to a record (a bad
+  ticket must name nothing: no oracle). The connect family fires at connector
+  time, BEFORE the claim, so this is the only server-side trace of a connection
+  that never went live. No CLIENT counterpart is needed — and this is the reason
+  a `pointChannelClaimClient*` was never added: the client family SETTLES at the
+  claim (`handleServerFrame`'s `claimed` / `claimErr` cases in core socket.ts),
+  so the same refusal closes `pointChannelConnectClient*` with `Settled`/`Error`
+  carrying the server's typed error.
 - `pointSpaceJoinServer*` (the `.joiner` run, with `identity`) /
   `pointSpaceJoinClient*` (the join frame): `Start` / `Settled` / `Success` /
   `Error`, each with `connectionId`; `Success` carries `rooms: unknown[]` (`[]`
@@ -1378,6 +1411,56 @@ them.
   resume is one shared frame at the socket's open, and its refusal falls back
   into the full connect/join whose family runs the complete cycle (a resume
   `Start` would dangle there).
+- **The CLIENT connect family settles at the CLAIM, and settles ONCE**
+  (2026-08-01). A connect POST only earns a ticket, so `connectInternalRun`
+  emits the `Start` and nothing else on a successful request; the settle lives
+  in `handleServerFrame`: `claimed` → `Settled`/`Success` with the outcome
+  `onConnect` just read (`connectionIndex` captured before the same `++`,
+  `resumed: false` — a resume never arrives as a `claimed` frame — and
+  `gapless: index === 0`), `claimErr` → `Settled`/`Error` with the server's
+  typed error. Both go through `settleConnectClient` (core socket.ts), the one
+  place the family closes. The four settle sites and their attempt:
+  1. the claim (`claimed`) — the ticket path AND the cold-start upgrade, which
+     now reaches the SAME site: the upgrade hand-off writes the cid and falls
+     through into the shared claim bookkeeping instead of emitting its own pair
+     (that duplicate is exactly what the move would have caused);
+  2. the claim refusal (`claimErr`) — the enroller throw, the `maxConnections`
+     cap, a lapsed record, an unresolvable ticket. The `!internal` branch (an
+     upgrade refusal on a cid the client never learned) emits NOTHING and hands
+     over to the ticket path: the attempt continues on the same `Start` and
+     settles at ITS claim, so the whole upgrade-then-fallback story is one
+     `Start` and one settle;
+  3. a connect request that never earned a ticket (`connectInternalRun`'s error
+     branch) — the claim it would have settled at never happens;
+  4. a socket that died with the claim unanswered (`handleSocketClosed`, ticket
+     in hand + not claimed + still `connecting`): the ticket is burned with the
+     socket and the reconnect re-POSTs a fresh `Start`, so the dying attempt
+     settles with `POINT0_SOCKET_CONNECTION_LOST` instead of dangling. An
+     attempt still waiting for its POST is left alone — its claim goes out on
+     the next socket.
+
+  The single deliberate gap: a connection DISPOSED mid-attempt abandons its
+  family (no settle), like a cancelled operation — the discard/close paths
+  already tear the connection down and nobody is left to report to. Before the
+  move the ticket path emitted `Settled`/`Success` with a hardcoded
+  `resumed: false` and a GUESSED `gapless: index === 0` one round trip early,
+  and a `claimErr` emitted nothing at all — a connection that never went live
+  was reported as a successful connect and its refusal was invisible to
+  `.on('error')`.
+
+- **The `Start` of both server families sits ABOVE the schema parse**
+  (2026-08-01). `_executeServerReply` emits `pointHandlerServerStart` before the
+  `.clientSend` parse and `_executeJoiner` emits `pointSpaceJoinServerStart`
+  before the space's `.input` parse, so the commonest refusal of all — a bad
+  input — closes the family with `Settled`/`Error` instead of throwing before
+  anything was announced. The consequence, and the reason it is safe: the
+  family's `input` is now the RAW payload on every phase, exactly like the
+  fetch/query/mutation families (whose one `_eventData` carries what the caller
+  passed, unvalidated). The `.serverReply` / `.joiner` callbacks and their
+  `onBefore*`/`onAfter*` customizers still see the PARSED input — the
+  customizers are merged below the parse and do not run for a parse failure (a
+  schema refusal is neither the reply nor a guard). `_executeEnroller` needs
+  nothing: an enrollment has no input to parse.
 - **The socket-level client singles are two**: `socketClientConnect` fires on
   EVERY successful transport open — its data carries `socketIndex: number`
   (successful opens before this one; the manager counter resets on a full idle
@@ -1387,6 +1470,17 @@ them.
   the first-vs-repeat distinction, mirroring the lifecycle indexes. No
   `resumed`/`gapless` on the singles — those are per-connection entry verdicts,
   while the transport always opens with a fresh handshake.
+- **`socketClientError`** is their failure sibling (client-only single,
+  `{ scope, socketIndex, reason: 'open' | 'exhausted', error }`): `'open'` from
+  the socket's `onerror` when the handshake never completed (guarded on
+  `wsStatus !== 'open'` — an error on a LIVE socket is the ordinary drop, which
+  `socketClientDisconnect` reports), `'exhausted'` from `scheduleReconnect` when
+  the policy runs out of attempts and the connections flip to `closed`. The
+  browser's error event carries nothing by design, so the payload's error is a
+  framework-built `POINT0_SOCKET_CONNECTION_LOST`. Like the other client singles
+  the emit rides `heldInternals(manager)[0].channel` — a socket held with zero
+  connections (a bare `<Socket>`) fails silently, there is no point to emit
+  through.
 - **When the server join events fire is a contract.** `Start` fires before the
   joiner/enroller runs, from `_executeJoiner`/`_executeEnroller`. The
   Settled/Success pair does NOT: the execute returns the rooms, the engine
@@ -1409,7 +1503,47 @@ them.
 - `pointHandlerServer*` (`.serverReply`, with `identity`) /
   `pointHandlerClient*` (a clientHandler dispatch) carry `connectionId` on every
   phase.
-- Every side-split `...Error` name sits in `uniqEventerErrorEventNames`.
+- `pointHandlerServerLateError` — the server-only single for a `.serverReply`
+  that threw AFTER its imperative `reply()` settled the message. It cannot
+  re-settle the family (the client already has its answer and
+  `onAfterServerReply` already ran with it), so the throw rides its own event
+  next to the error log — otherwise the post-reply work an early `reply()`
+  exists to keep running would fail invisibly to every app reporter.
+- `pointHandlerSendClient*` / `pointHandlerSendServer*` — the TRANSPORT
+  altitude, the socket's answer to `engineFetch*` vs `pointQuery*`: the families
+  above report the side that RAN a message, these report the side that
+  TRANSMITTED it. The client family wraps `sendToServerHandler` end to end
+  (`Start` at the call — the target is not resolved yet, so its `connectionId`
+  is undefined — `Settled`/`Success` when the server's reply resolves the send,
+  `Settled`/`Error` on every failure, since every one of them comes out of that
+  single `await`: an unresolvable target, a serialize throw, the timeout, a
+  fail-fast, a `claimErr`, a `sendErr`). The server family wraps
+  `_sendClientHandler`: `Start` before anything is built, `Success` when the
+  engine ACCEPTED the frame (a push is fire-and-forget — never a delivery claim;
+  the collect window is a different surface), `Error` when the target, the
+  serialization or the dispatch threw. A push nobody receives is a successful
+  send.
+- **`socketServerSendRefused`** — the server-only single for an incoming send
+  the engine refused BEFORE any point ran (`emitSendRefused`, wired at the four
+  pre-execution `sendErr` sites of `handleSend`):
+  `reason: 'unknownConnection' | 'tooLarge' | 'handlerNotFound' | 'notInRoom'`,
+  plus `{ scope, handlerName, connectionId, error }`. Not to be confused with
+  `pointHandlerServerError` (a `.serverReply` that RAN and threw) — nothing
+  executed here, so nothing settles. The two `sendErr` sites INSIDE the
+  execution (the imperative `reply(Error)` and the catch around
+  `_executeServerReply`) are deliberately not wired: the handler family already
+  owns them.
+- Every side-split `...Error` name sits in `uniqEventerErrorEventNames` — the
+  transport errors and the three refusal singles
+  (`pointChannelClaimServerError`, `socketServerSendRefused`,
+  `socketClientError`) included, which is what gives a fire-and-forget
+  `void handler.sendToServer(...)` a sink and puts an unclaimable connection or
+  a dead transport in front of the same reporter. Nineteen names in all.
+- A push whose clientHandler MODULE is not loaded in this client bundle is
+  dropped (nothing can dispatch it) with a `warn` naming the handler id —
+  `logMissingClientHandler`, both the connection and the memberships path. No
+  event: the server cannot know what a client loaded, so this is not a failure
+  of the send.
 
 ## The message iterator (clientHandler `iterateMessagesFromServer`)
 
@@ -1459,9 +1593,12 @@ Answer now, keep running — the route:
    `sendReply` — the engine sends `{t:'reply'|'sendErr', id}` if the connection
    still lives (at-most-once, a dead socket drops it silently).
 3. Everything after the first call no longer reaches the client: later `reply()`
-   calls warn, the `return` is ignored, a throw only logs server-side.
-   `_executeServerReply` reports `replied: true` and the engine skips its own
-   send.
+   calls warn, the `return` is ignored, a throw is logged AND emitted as
+   `pointHandlerServerLateError` (the message is NOT re-settled — the reply
+   already emitted `Settled`/`Success` and already ran `onAfterServerReply`, so
+   the late event is the only trace, and the `'error'` shorthand carries it to
+   the app's reporter). `_executeServerReply` reports `replied: true` and the
+   engine skips its own send.
 4. A result that outlives the request is DATA, not a pending promise: write it,
    push into a personal room (`.enroller`) or invalidate a query — survives
    reconnect/redeploy/closed tab. This replaced the old `replyLater`/
@@ -1543,7 +1680,9 @@ could ever read. The system (in `types.ts`) that replaces ad-hoc `Pick`s:
     `_getSpacePointOptions()`, respected on every write path with
     `POINT0_SOCKET_MAX_ROOMS`) + its own `resume` ceilings override, top-level =
     `resumable: false`; serverHandler ClientOnly =
-    `timeout`/`queue`/`onReplyFromServer`, ServerOnly =
+    `timeout`/`queue`/`onReplyFromServer`/`onSendError` (the reply callback's
+    twin — the failure half of the same send, fired from the one `failSend`
+    choke point next to `pointHandlerSendClientError`), ServerOnly =
     `onBeforeServerReply`/`onAfterServerReply`; clientHandler ClientOnly =
     `onMessageFromServer`, ServerOnly = `timeout`, top-level = `resumable`.
 - The grouping is what makes the compiler's split STRUCTURAL: the client bundle
@@ -2380,7 +2519,7 @@ retry may land inside the send window). `SC` = `socket-client.int.test.ts`, `S`
 
 | File                                                  | Covers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `core/tests/socket-builders.unit.test.ts`             | builders, guards, `_executeServerReply`/`_executeJoiner`, events, type surface (148 `expectTypeOf` + 79 `@ts-expect-error`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `core/tests/socket-builders.unit.test.ts`             | builders, guards, `_executeServerReply`/`_executeJoiner`, events (incl. the `Start`-above-the-parse contract and the raw-input payload), `onSendError`, type surface (148 `expectTypeOf` + 79 `@ts-expect-error`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `core/tests/socket-selfref.unit.test.ts`              | self-referential callbacks compile: `.serverReply<T>`, and `.joiner`/`.enroller`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `core/tests/socket-mountable.unit.test.tsx`           | `<Connection>`/`<Membership>` gates (`gate` defaults, `gate={false}`), `.with(channel)`/`.with(space)`, the `LoadingComponent`/`ErrorComponent` overrides, the joiner-less refusal in the tree                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `core/tests/reconnect.unit.test.ts`                   | the SHARED reconnect policy math (channels + subscriptions): delays, backoff, `retries`, `immediately`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -2394,14 +2533,14 @@ retry may land inside the send window). `SC` = `socket-client.int.test.ts`, `S`
 | `engine/tests/socket-redis.int.test.ts`               | one ticket, two processes, one winner — `getDelete` claim atomicity over a real Redis (gated on `REDIS_URL`; CI: the engine-backplane runner)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `engine/tests/websocket-endpoint.int.test.ts`         | the bare endpoint as a request variant: middleware sees/vetoes it — the origin recipe's `endpoint` arm pinned against the cold-start channel-endpoint upgrade too — `socket: false` (channels declared + default features = the loud startup refusal; with `features: { socket: true }` = no endpoint + the startup warning), the websocket settings merge (engine defaults → `bunServeConfig.websocket` → `serve()`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `engine/tests/websocket-dev-proxy.int.test.ts`        | the dev proxy replays the browser's handshake headers upstream (the cookie-loss bug), `isSocketUpgradeRequest` recognition of both upgrade shapes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `engine/tests/socket-client.int.test.ts`              | the real core client runtime headless: holds, memberships, room binding (multi-room sends/queries/listeners), kick/refresh/reconnect, enrollments (install, leave, re-enroll on refresh), the `client` enumeration floor                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `engine/tests/socket-client.int.test.ts`              | the real core client runtime headless: holds, memberships, room binding (multi-room sends/queries/listeners), kick/refresh/reconnect, enrollments (install, leave, re-enroll on refresh), the `client` enumeration floor, the client event families incl. the settle-at-the-claim contract (a claim refused after a successful connect request → `Start`/`Settled`/`Error`, no `Success`; the upgrade-then-fallback story settling exactly once)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `engine/tests/socket-backplane.int.test.ts`           | a custom Backplane end-to-end (+ a REDIS_URL-gated real-Redis block; CI: the engine-backplane runner)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `engine/tests/backplane-adapters.unit.test.ts`        | the ready-made adapters over fakes: command mapping, lazy duplicate, dispose ownership (+ `closeClient`), postgres channel hashing / payload spill without reordering / DB-clock TTL reads / sweeper stop; plus the never-called type-assert pinning the structural client types against the real `postgres`/`ioredis`/`redis` typings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `engine/tests/backplane-redis-clients.int.test.ts`    | ioredis + node-redis adapters against a real Redis this file spawns itself (skips without the binary; CI provisions it on the engine-backplane Linux runner): the shared contract run — KV TTL expiry, one-shot getDelete, cross-instance pub/sub, unsubscribe, dispose leaves the passed client alive                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `engine/tests/redis-subscriber-reconnect.int.test.ts` | the resilient subscriber wrapper against a killed-and-restarted real Redis (skips without the binary; CI: the engine-backplane runner): the whole channel set replays on reconnect, no listener stacking                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `engine/tests/backplane-postgres.int.test.ts`         | the postgres adapter against a real Postgres (`POSTGRES_URL` or the probed local default; skips otherwise; CI: the engine-backplane runner): UNLOGGED tables on first use, DB-clock TTL, cross-instance getDelete race, LISTEN/NOTIFY across instances with >63-byte sibling topics staying distinct, a 100 KB spill arriving intact, dispose ownership                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `engine/tests/socket-resumable.int.test.ts`           | resumable connections over a FILE-backed backplane: the redeploy (server killed + respawned; the real client runtime resumes — markers fire, connector/joiner counters stay zero), the blip (park + stream replay in tseq order with `rcid` re-addressing, verdicts both ways), the PER-STREAM verdict divergence (a hole in the busy room, the quiet one provably clean), the `$room`-matcher push riding the room topics, the MERGE replay (room + personal frames back in delivery order), the byte ceiling (`server.resume.streamMaxBytes` evicting oldest with an honest gap), the takeover, the oracle-free refusals (wrong key ≡ unknown cid; kick/close/TTL void the record), the hash-only KV dump, the opt-out space, the space kick into a park (room stream out of the connection's verdicts + passport, the queued `left` on resume, ordinary rooms survive), the `$identity` push into a park («случай Бори»: the personal stream buffers + `gapless: true`, non-opted holes it + `gapless: false`, the live twin receives at once, the parked one stays out of the enumerations), the UNPARK order (a synchronous push from the resumed Open lands after the replay, exactly once), the `replay: 'gapless'` policy (a gappy stream withholds the strict handler and replays the ordinary one; the clean follow-up delivers the withheld tail in full) |
-| `engine/tests/socket-bus.unit.test.ts`                | two EngineSocket instances over one backplane: push/reply/kick/gather, plus the sharded-topology pins — channel layout per envelope kind, subscribe-before-confirm, the unsubscribe linger, multi-room dedup, the parked entry's streams as topic consumers (cross-process room and `$identity` pushes buffered for a park), the redis resubscribe wrapper, POINT0_SOCKET_BUS_FORCE_SHARED                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `engine/tests/socket-bus.unit.test.ts`                | two EngineSocket instances over one backplane: push/reply/kick/gather, plus the sharded-topology pins — channel layout per envelope kind, subscribe-before-confirm, the unsubscribe linger, multi-room dedup, the parked entry's streams as topic consumers (cross-process room and `$identity` pushes buffered for a park), the redis resubscribe wrapper, POINT0_SOCKET_BUS_FORCE_SHARED; plus the refusal singles (`pointChannelClaimServerError` on a bad ticket, `socketServerSendRefused` on an unknown handler / unknown connection, and neither on a send that reaches its handler)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `engine/tests/socket-backpressure.unit.test.ts`       | the send funnel's reading of Bun's status: `0` on an OPEN socket closes it, `-1` and a byte count do not, `0` on a closing one is the ordinary teardown, and the close never recurses                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `engine/tests/socket-backpressure.int.test.ts`        | a real Bun server + a raw TCP client that stops reading: the fan-out disconnects the slow subscriber, the funnel does it when an app overrode that, the fast peer keeps every frame                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `engine/tests/engine-socket-helpers.unit.test.ts`     | `engine.socket.local.get()` / `.status()`: empty (never throwing) before `prepare()` and with no live socket (`socket: () => null` stands in for the option; the real `socket: false` path is pinned by `websocket-endpoint.int`), the counts and parsed values once live, the backplane kinds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |

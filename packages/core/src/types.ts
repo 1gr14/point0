@@ -1237,14 +1237,7 @@ export type FinalInputRaw<
   : TPointType extends 'page' | 'layout'
     ? RoutedInputRaw<TParamsSchema, TSearchSchema>
     : TPointType extends
-          | 'component'
-          | 'provider'
-          | 'query'
-          | 'infiniteQuery'
-          | 'mutation'
-          | 'subscription'
-          | 'channel'
-          | 'space'
+          'component' | 'provider' | 'query' | 'infiniteQuery' | 'mutation' | 'subscription' | 'channel' | 'space'
       ? InputRaw<MergeRecordValidationSchemas<TServerInputSchema, TClientInputSchema>>
       : InputRaw
 export type IsFinalInputOptional<
@@ -2026,11 +2019,7 @@ export type LoaderFn<
   TRequestVariant extends RequestVariantType = any,
   TError extends ErrorPoint0 = ErrorPoint0,
   TNewServerLoaderOutput extends LoaderOutput | RedirectTask | Error | undefined | void =
-    | LoaderOutput
-    | RedirectTask
-    | Error
-    | undefined
-    | void,
+    LoaderOutput | RedirectTask | Error | undefined | void,
 > = (
   props: LoaderProps<
     TCtx,
@@ -2068,26 +2057,8 @@ export type InferLoaderFnOutput<TLoaderResponseFn extends (...args: any[]) => an
 
 export type ServerExecuteAction<
   TType extends
-    | 'ctx'
-    | 'loader'
-    | 'input'
-    | 'body'
-    | 'params'
-    | 'search'
-    | 'headers'
-    | 'cookies'
-    | 'pluginStart'
-    | 'pluginEnd' =
-    | 'ctx'
-    | 'loader'
-    | 'input'
-    | 'body'
-    | 'params'
-    | 'search'
-    | 'headers'
-    | 'cookies'
-    | 'pluginStart'
-    | 'pluginEnd',
+    'ctx' | 'loader' | 'input' | 'body' | 'params' | 'search' | 'headers' | 'cookies' | 'pluginStart' | 'pluginEnd' =
+    'ctx' | 'loader' | 'input' | 'body' | 'params' | 'search' | 'headers' | 'cookies' | 'pluginStart' | 'pluginEnd',
 > = TType extends 'ctx'
   ? {
       type: 'ctx'
@@ -2121,12 +2092,7 @@ export type ServerExecuteAction<
 
 export type ClientExecuteAction<
   TType extends 'loader' | 'input' | 'params' | 'search' | 'pluginStart' | 'pluginEnd' =
-    | 'loader'
-    | 'input'
-    | 'params'
-    | 'search'
-    | 'pluginStart'
-    | 'pluginEnd',
+    'loader' | 'input' | 'params' | 'search' | 'pluginStart' | 'pluginEnd',
 > = TType extends 'loader'
   ? {
       type: 'loader'
@@ -2182,11 +2148,7 @@ export type ClientLoaderFn<
   TServerLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TClientLoaderOutput extends LoaderOutput | UndefinedLoaderOutput = LoaderOutput | UndefinedLoaderOutput,
   TNewClientLoaderOutput extends LoaderOutput | RedirectTask | Error | undefined | void =
-    | LoaderOutput
-    | RedirectTask
-    | Error
-    | undefined
-    | void,
+    LoaderOutput | RedirectTask | Error | undefined | void,
 > = (
   props: ClientLoaderProps<TClientInputSchema, TParamsSchema, TSearchSchema, TServerLoaderOutput, TClientLoaderOutput>,
 ) => Promise<TNewClientLoaderOutput> | TNewClientLoaderOutput
@@ -2234,10 +2196,7 @@ export type FetchServerDetailedOutput<
     }
 
 export type FetchServerOutputType =
-  | 'data'
-  | 'queryClientDehydratedState'
-  | 'queryClientDehydratedStateRedirect'
-  | 'html'
+  'data' | 'queryClientDehydratedState' | 'queryClientDehydratedStateRedirect' | 'html'
 
 // mountable app
 
@@ -2316,8 +2275,7 @@ export type FetcherFetchDetailedResultNoMiddleware<TError extends ErrorPoint0> =
   | FetcherFetchDetailedResultOptions<TError>
   | FetcherFetchDetailedResultWebsocket<TError>
 export type FetcherFetchDetailedResult<TError extends ErrorPoint0> =
-  | FetcherFetchDetailedResultNoMiddleware<TError>
-  | FetcherFetchDetailedResultMiddleware<TError>
+  FetcherFetchDetailedResultNoMiddleware<TError> | FetcherFetchDetailedResultMiddleware<TError>
 export type FetcherFetchDetailedResultSpecific<
   TVariant extends FetcherFetchDetailedResult<any>['variant']['type'] | undefined = undefined,
   TError extends ErrorPoint0 = ErrorPoint0,
@@ -5078,64 +5036,61 @@ export type NiceActionReadyPoint<
   | 'type'
   | 'Infer'
   | (TQueryResultType extends 'query'
-      ?
-          | 'useQuery'
+      ? | 'useQuery'
+        | 'getQueryKey'
+        | 'getQueryOptions'
+        | 'fetchQuery'
+        | 'prefetchQuery'
+        | 'getQueryData'
+        | 'ensureQueryData'
+        | 'refetchQuery'
+        | 'setQueryData'
+        | 'getQueryCache'
+        | 'getQueriesCache'
+        | 'getQueryState'
+        | 'cancelQuery'
+        | 'invalidateQuery'
+        | 'removeQuery'
+        | 'resetQuery'
+        | 'fetch'
+        | 'fetchServer'
+        | 'fetchServerDetailed'
+        | 'getFetchServerOptions'
+      : TQueryResultType extends 'infiniteQuery'
+        ? | 'useInfiniteQuery'
           | 'getQueryKey'
-          | 'getQueryOptions'
-          | 'fetchQuery'
-          | 'prefetchQuery'
-          | 'getQueryData'
-          | 'ensureQueryData'
-          | 'refetchQuery'
-          | 'setQueryData'
-          | 'getQueryCache'
-          | 'getQueriesCache'
-          | 'getQueryState'
-          | 'cancelQuery'
-          | 'invalidateQuery'
-          | 'removeQuery'
-          | 'resetQuery'
+          | 'getInfiniteQueryKey'
+          | 'getInfiniteQueryOptions'
+          | 'fetchInfiniteQuery'
+          | 'prefetchInfiniteQuery'
+          | 'getInfiniteQueryData'
+          | 'ensureInfiniteQueryData'
+          | 'refetchInfiniteQuery'
+          | 'setInfiniteQueryData'
+          | 'getInfiniteQueryCache'
+          | 'getInfiniteQueriesCache'
+          | 'getInfiniteQueryState'
+          | 'cancelInfiniteQuery'
+          | 'invalidateInfiniteQuery'
+          | 'removeInfiniteQuery'
+          | 'resetInfiniteQuery'
           | 'fetch'
           | 'fetchServer'
           | 'fetchServerDetailed'
           | 'getFetchServerOptions'
-      : TQueryResultType extends 'infiniteQuery'
-        ?
-            | 'useInfiniteQuery'
-            | 'getQueryKey'
-            | 'getInfiniteQueryKey'
-            | 'getInfiniteQueryOptions'
-            | 'fetchInfiniteQuery'
-            | 'prefetchInfiniteQuery'
-            | 'getInfiniteQueryData'
-            | 'ensureInfiniteQueryData'
-            | 'refetchInfiniteQuery'
-            | 'setInfiniteQueryData'
-            | 'getInfiniteQueryCache'
-            | 'getInfiniteQueriesCache'
-            | 'getInfiniteQueryState'
-            | 'cancelInfiniteQuery'
-            | 'invalidateInfiniteQuery'
-            | 'removeInfiniteQuery'
-            | 'resetInfiniteQuery'
+        : TQueryResultType extends 'subscription'
+          ? // an action whose generator loader closed with `.subscription()` — the stream surface, no plain fetches
+            'useSubscription' | 'fetchSubscription'
+          : | 'useMutation'
+            | 'getMutationKey'
+            | 'getMutationOptions'
+            | 'getMutationCache'
+            | 'getMutationsCache'
+            | 'fetchMutation'
             | 'fetch'
             | 'fetchServer'
             | 'fetchServerDetailed'
-            | 'getFetchServerOptions'
-        : TQueryResultType extends 'subscription'
-          ? // an action whose generator loader closed with `.subscription()` — the stream surface, no plain fetches
-              'useSubscription' | 'fetchSubscription'
-          :
-              | 'useMutation'
-              | 'getMutationKey'
-              | 'getMutationOptions'
-              | 'getMutationCache'
-              | 'getMutationsCache'
-              | 'fetchMutation'
-              | 'fetch'
-              | 'fetchServer'
-              | 'fetchServerDetailed'
-              | 'getFetchServerOptions')
+            | 'getFetchServerOptions')
 >
 
 export type NiceQueryReadyPoint<
@@ -5492,8 +5447,7 @@ export type NiceSpaceReadyPoint<
  * (binding by input SEARCHES the live connections — it never opens one).
  */
 export type ChannelHandlerBindTarget<TChannelInput, TError extends ErrorPoint0> =
-  | ClientChannelConnection<TChannelInput, TError>
-  | TChannelInput
+  ClientChannelConnection<TChannelInput, TError> | TChannelInput
 
 /**
  * A SPACE handler's target for binding by call — a space handler is always addressed by ROOM: pass the room object
@@ -5516,9 +5470,7 @@ export type SpaceHandlerBindTarget<
  * connection the fuzzy forms match the handler across ALL connections).
  */
 export type SocketQueryFuzzyInput<TServerInputSchema extends InputSchema | UndefinedInputSchema> =
-  | InputRaw<TServerInputSchema>
-  | ((input: InputRaw<TServerInputSchema>) => boolean)
-  | true
+  InputRaw<TServerInputSchema> | ((input: InputRaw<TServerInputSchema>) => boolean) | true
 
 /**
  * The flavor-gated connection-query members of a serverHandler — identical on the bare point (ambient/single-live
@@ -7570,11 +7522,7 @@ export type ActionLoaderFnWithStream<
   TCookiesSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema,
   TError extends ErrorPoint0 = ErrorPoint0,
   TNewServerLoaderOutput extends LoaderOutput | RedirectTask | Error | undefined | void =
-    | LoaderOutput
-    | RedirectTask
-    | Error
-    | undefined
-    | void,
+    LoaderOutput | RedirectTask | Error | undefined | void,
   TYield extends UnknownData = UnknownData,
 > = (
   props: LoaderProps<
@@ -7881,6 +7829,23 @@ export type ExtraUseConnectionOptions<
   enabled?: boolean
 }
 
+/**
+ * What `onSendError` receives — the typed failure of a send next to the raw input it carried. The mirror of
+ * {@link ServerHandlerReplyEventProps}: one of the two fires for every `sendToServer`, never both.
+ */
+export type ServerHandlerSendErrorEventProps<TInput = unknown> = {
+  /**
+   * the input the send carried, RAW — exactly what was passed to `sendToServer` (a send that died on the server's own
+   * `.clientSend` parse never produced a parsed one)
+   */
+  input: TInput
+  /** the error the send rejected with — the same instance `pointHandlerSendClientError` carries */
+  error: ErrorPoint0
+  /** the connection the send rode — `undefined` when it failed before one could be resolved */
+  connection: AnyClientChannelConnection | undefined
+  point: AnyNiceReadyPoint
+}
+
 /** What `onReplyFromServer` receives — the server's reply (`data`) next to the raw input the send carried. */
 export type ServerHandlerReplyEventProps<TData = unknown, TInput = unknown> = {
   /**
@@ -7918,6 +7883,15 @@ export type ServerHandlerOptionsClientOnly<TData = unknown, TInput = unknown> = 
    * bundle with its imports.
    */
   onReplyFromServer?: (props: ServerHandlerReplyEventProps<TData, TInput>) => void | Promise<void>
+  /**
+   * Runs on the client on every FAILED send of this handler — `onReplyFromServer`'s twin, for the point of call: a
+   * toast, a retry button, a rollback next to the code that sent. It fires for every failure a send can take (no live
+   * connection, a serialize throw, the timeout, a refused claim, the server's own refusal), fire-and-forget sends
+   * included, and its own throw only logs. App-wide reporting is the `.on('error')` subscriber on
+   * `pointHandlerSendClientError` — the same failures, one place. Client code; cut from the SERVER bundle with its
+   * imports.
+   */
+  onSendError?: (props: ServerHandlerSendErrorEventProps<TInput>) => void | Promise<void>
 }
 
 /**

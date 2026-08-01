@@ -197,10 +197,12 @@ basicAuth({
 The limit trips when **either** the per-user **or** the per-IP count is reached
 (they're OR-combined). A successful login clears every recorded failure matching
 that IP _or_ that username — so a login from one user can also wipe another
-user's recorded failures that share the same IP. The IP comes from
-[`request.from.ip`](request) (Bun's trusted source first, then `x-forwarded-for`
-/ `x-real-ip` / `cf-connecting-ip`); requests with no resolvable IP all share
-one `'unknown'` bucket.
+user's recorded failures that share the same IP. The IP is
+[`request.from.clientIp`](request) — the visitor's address even behind a
+proxy/CDN, where the raw peer would be the same internal hop for everyone and
+the per-IP limit would collapse into one global bucket — falling back to the
+unspoofable `request.from.ip`; requests with no resolvable IP all share one
+`'unknown'` bucket.
 
 > **Gotcha — the memory is in-process and volatile.** It resets on restart and
 > is per-instance. Across multiple server processes, the limit counts per

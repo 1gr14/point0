@@ -78,6 +78,13 @@ export class CompilerPoint<TValid extends boolean = boolean> {
   endpoint: undefined | { method: string; route: AnyRoute; methods: string[] }
   tags: string[]
   description: string | undefined
+  /**
+   * Every file whose content this point's {@link parse} consumed (abs → mtimeMs at read time): the parent-chain files,
+   * the re-export hops between them — everything `readSync` touched while the parse ran. A point outlives the compile
+   * that parsed it (walker memory), and a compile that REUSES it never re-reads these files — so the walker's reuse
+   * sites replay this map into the open read logs to keep the disk cache's read-log invalidation complete.
+   */
+  chainReads: ReadonlyMap<string, number>
 
   constructor({
     walker,
@@ -124,6 +131,7 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     this.ssr = ssr
     this.tags = []
     this.description = undefined
+    this.chainReads = new Map()
 
     file.addPointToMemory(this)
   }
@@ -805,6 +813,10 @@ export class CompilerPoint<TValid extends boolean = boolean> {
     if (this.parsed) {
       return this
     }
+    // Log every file readSync touches while THIS parse runs (parent chains, re-export hops) — see chainReads. The log
+    // is a walker-level sink, so a nested parent parse records into this one too (transitively complete), and any
+    // outer compile-level log receives the same reads at the same time.
+    const chainReadsLog = this.walker.pushReadLog()
     try {
       const parentsResult = this.walker.collectParentPointsByPoint({ point: this })
       this.errors.push(...parentsResult.errors)
@@ -924,6 +936,9 @@ export class CompilerPoint<TValid extends boolean = boolean> {
       this.errors.push(e)
       this.valid = false as TValid extends true ? true : false
       this.parsed = true
+    } finally {
+      this.walker.popReadLog(chainReadsLog)
+      this.chainReads = chainReadsLog
     }
     return this
   }

@@ -170,12 +170,14 @@ effects) has run. The only gate left inside `Engine.preload` is the objective
 
 `engine.ts`'s import graph is loaded raw (no plugins) by the CLI and by
 preload.ts itself, in processes where only the CLI has fixed the env. So it must
-not throw or validate at module scope. The convention: env **shapes** live in
-`env/shared-shape.ts` (pure — reads like `process.env.NODE_ENV === 'production'`
-for zod defaults are fine, no validation), `engine.ts` imports only shapes
-(`client-shape.ts` → `shared-shape.ts`); eager validation (`shared.ts` →
-`sharedEnv`, `server.ts`) is imported by runtime code (`app.server.ts`,
-`root.tsx`), never by `engine.ts`.
+not throw or validate at module scope. The convention: the env handles
+(`env/utils.ts`'s `createEnv`) are **lazy** — declaring a shape only defines
+getters, nothing reads `process.env` until a variable is read. `engine.ts`
+imports `clientEnvKeys` from `env/shared.ts`, which is safe for exactly that
+reason (reads like `process.env.NODE_ENV === 'production'` for zod defaults are
+fine too). Validation is explicit and lives in runtime code:
+`serverEnv.validate()` in `app.server.ts`, `clientEnv.validate()` in
+`index.client.tsx` — never in `engine.ts`.
 
 ## Facts pinned by tests
 

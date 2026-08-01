@@ -58,6 +58,11 @@ export type SpecialNavigateOptions<TAdapterNavigateOptions extends AdapterNaviga
    * {@link ScrollToHashPolicy}.
    */
   scrollToHash?: ScrollToHashPolicy
+  /**
+   * Keep the scroll where it is for this one navigation: no scroll-to-top, no restore, no `#hash` jump — for URL
+   * changes that don't mean "a new page" (mid-page tabs, a filter in the pathname).
+   */
+  keepScroll?: boolean
 }
 export type SpecialLinkOptions<TAdapterNavigateOptions extends AdapterNavigateOptions> = {
   prefetch?: PrefetchPagePolicy
@@ -72,6 +77,11 @@ export type SpecialLinkOptions<TAdapterNavigateOptions extends AdapterNavigateOp
    * {@link ScrollToHashPolicy}.
    */
   scrollToHash?: ScrollToHashPolicy
+  /**
+   * Keep the scroll where it is for this one navigation: no scroll-to-top, no restore, no `#hash` jump — for URL
+   * changes that don't mean "a new page" (mid-page tabs, a filter in the pathname).
+   */
+  keepScroll?: boolean
 }
 export type SpecialRedirectOptions = {
   status?: number
@@ -598,8 +608,7 @@ export function useLocation<TRouteDefinition extends AnyRouteOrDefinition = AnyR
  * Full reference: https://1gr14.dev/point0/latest/navigation
  */
 export const getLocation = <TRouteDefinition extends AnyRouteOrDefinition = AnyRouteOrDefinition>():
-  | ExactLocation<TRouteDefinition>
-  | UnknownLocation => {
+  ExactLocation<TRouteDefinition> | UnknownLocation => {
   const location = _ss.__POINT0_CURRENT_LOCATION__.getOrUndefined()
   if (!location) {
     throw new Error(
@@ -626,8 +635,7 @@ export type SetSearchValues<TSearchInput = UnknownSearchInput> = {
   [TKey in keyof TSearchInput]?: TSearchInput[TKey] | undefined
 }
 export type SetSearchInput<TSearchInput = UnknownSearchInput> =
-  | SetSearchValues<TSearchInput>
-  | ((prev: SetSearchValues<TSearchInput>) => SetSearchValues<TSearchInput>)
+  SetSearchValues<TSearchInput> | ((prev: SetSearchValues<TSearchInput>) => SetSearchValues<TSearchInput>)
 /**
  * Sets the URL query. The value is the search **input** (raw) — the same type `route.get({ '?': ... })` takes; the page
  * re-parses it through its own schema (so e.g. for a `z.coerce.number()` search the value here is the schema's input,
@@ -771,6 +779,7 @@ export const specialNavigationOptionsSymbols = {
   status: Symbol('status'),
   newTab: Symbol('newTab'),
   scrollToHash: Symbol('scrollToHash'),
+  keepScroll: Symbol('keepScroll'),
 }
 
 export type NavigateWithTransitionsReturnType<
@@ -941,10 +950,14 @@ export async function navigateWithTransitions<
   // imperatively below, because the manager's location effect doesn't refire for
   // a hash-only change.
   const scrollToHashOption = (options as { scrollToHash?: ScrollToHashPolicy } | undefined)?.scrollToHash
+  // `keepScroll` freezes the scroll for this one navigation: the manager's location effect skips its
+  // whole apply (top / restore / #hash), and the imperative current-page #hash jump below is off too.
+  const keepScrollOption = (options as { keepScroll?: boolean } | undefined)?.keepScroll === true
   const isCurrentPathname = location.pathname === prevLocation.pathname
-  const currentScrollToHashBehavior = isCurrentPathname
-    ? resolveScrollToHashBehavior(scrollToHashOption, helpers.scrollToHash, 'current')
-    : undefined
+  const currentScrollToHashBehavior =
+    isCurrentPathname && !keepScrollOption
+      ? resolveScrollToHashBehavior(scrollToHashOption, helpers.scrollToHash, 'current')
+      : undefined
   // Commit the location change through the adapter. The scroll signals and the leaving page's
   // position are handled here — immediately before the commit — rather than when the navigation
   // starts: every abort path (redirect found, superseded by another navigate) returns before this
@@ -958,12 +971,17 @@ export async function navigateWithTransitions<
       scrollToHashSignal.override = scrollToHashOption
       scrollRestorationSignal.programmaticPush = true
       scrollRestorationSignal.captureSuspended = true
+      scrollRestorationSignal.keepScroll = keepScrollOption
     }
     try {
       await navigate(to)
     } catch (error) {
-      // The location effect that would resume the capture may never fire — resume it here.
+      // The location effect that would consume the signals may never fire — reset ALL of them, or they leak into an
+      // unrelated later location change (a pop would read a stale push/keepScroll/override).
       scrollRestorationSignal.captureSuspended = false
+      scrollRestorationSignal.programmaticPush = false
+      scrollRestorationSignal.keepScroll = false
+      scrollToHashSignal.override = undefined
       throw error
     }
   }

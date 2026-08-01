@@ -372,8 +372,7 @@ export class ClientPoints<TError extends ErrorPoint0> {
     { rethrowLoadError = false }: { rethrowLoadError?: boolean } = {},
   ): Promise<void> => {
     const anyComp = component as
-      | { _init?: (payload: unknown) => unknown; _payload?: unknown; preload?: () => Promise<unknown> }
-      | undefined
+      { _init?: (payload: unknown) => unknown; _payload?: unknown; preload?: () => Promise<unknown> } | undefined
     if (!anyComp) {
       return
     }
@@ -615,6 +614,19 @@ export class ClientPoints<TError extends ErrorPoint0> {
       return undefined
     }
     return { point, location }
+  }
+
+  /**
+   * Load the page (and its layouts') chunks matching `href` — the pre-hydration barrier's entry (see `mount`). Resolves
+   * without loading anything when no page matches (a 404 — nothing to warm). Chunk-load failures re-throw exactly like
+   * {@link loadPage} (the caller decides whether to swallow).
+   */
+  readonly loadPageByHref = async (href: string): Promise<void> => {
+    const found = this._getPageByHref(href)
+    if (!found) {
+      return
+    }
+    await this.loadPage({ location: found.location })
   }
 
   /**

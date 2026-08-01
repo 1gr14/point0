@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import * as React from 'react'
-import { ErrorPoint0, RscHoleRegistry, type DataTransformerExtended } from '@point0/core'
+import { ErrorPoint0, POINT0_ERROR_CODES_MAP, RscHoleRegistry, type DataTransformerExtended } from '@point0/core'
 import { buildHolePushPayload, createHoleNdjsonStream } from '../src/rsc-stream.js'
 
 // Unit tests for the NDJSON hole framing — no server: a hand-fed RscHoleRegistry drives the exported stream factory
@@ -163,5 +163,30 @@ describe('rsc stream units', () => {
     // queued line 1 and the very first read rejects (live, a later fill line errors a stream the client is reading)
     const reader = stream.getReader()
     await expect(reader.read()).rejects.toThrow(/multi-line/)
+  })
+
+  it('a refused stringify fails the stream loudly instead of writing an empty hole line', async () => {
+    const holes = new RscHoleRegistry()
+    const entry = holes.register(async () => React.createElement('b'))
+    await entry.throwable
+    // the app transformer answers undefined — an empty line would be skipped by the client reader and the hole
+    // would hang forever, so the stream errors with the coded failure instead
+    const refusingTransformer = {
+      ...jsonTransformer,
+      stringify: () => undefined,
+    } as unknown as DataTransformerExtended
+    const stream = createHoleNdjsonStream({
+      firstLine: '{"a":1}',
+      holeRegistry: holes,
+      transformer: refusingTransformer,
+      ErrorClass: ErrorPoint0,
+      emit: undefined,
+    })
+    const reader = stream.getReader()
+    const thrown = await reader.read().then(
+      () => undefined,
+      (error: unknown) => error,
+    )
+    expect((thrown as ErrorPoint0).code).toBe(POINT0_ERROR_CODES_MAP.SERIALIZE_FAILED)
   })
 })

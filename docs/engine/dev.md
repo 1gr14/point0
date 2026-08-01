@@ -39,6 +39,12 @@ inside the orchestrator process** as a single instance — they own HMR / Fast
 Refresh and are never restarted by an edit. The **server** runs as a child
 process (for the bun-native pipeline) and is the thing that restarts.
 
+**One server child, not one per declared entry.** `point0 build` builds every
+entry in the server `entry` record; dev starts a single one — `main`, or the
+first declared key when there is no `main`. A second entry (a worker, a one-shot
+sync script) joins the tree only when you ask: `--entry`, `--entry '*'`, or the
+[`devEntries`](#multiple-server-entries) option.
+
 `engine.dev()` does this in order:
 
 ```ts
@@ -111,6 +117,80 @@ polite: SIGTERM first, a grace window for your shutdown hooks, then SIGKILL for
 stragglers.
 
 To keep server state across edits, turn on hot mode.
+
+## Multiple server entries
+
+The server `entry` record can declare more than one entry point — the app, a
+background worker, a one-shot sync script:
+
+```ts
+server: {
+  entry: {
+    main: './index.server.ts',
+    worker: './worker.server.ts',
+    sync: './sync.server.ts',
+  },
+}
+```
+
+[`point0 build`](build) always builds **all** of them. `point0 dev` starts
+**one**: `main`, or the first declared key when there is no `main`. Everything
+else is opt-in — plain `point0 dev` boots your app, not your whole fleet.
+
+```sh
+point0 dev                       # main only (the default)
+point0 dev --entry worker        # worker only, by name
+point0 dev --entry main,worker   # both (comma-separated, or repeat --entry)
+point0 dev --entry ./scripts/probe.ts   # a path that isn't even declared
+point0 dev --entry '*'           # every declared entry (quote it — an unquoted * globs in the shell)
+```
+
+`'*'` can never be a real entry name, so the sentinel is unambiguous.
+
+To fix a selection in the config instead of typing it every time, use
+`devEntries` on the server side:
+
+```ts
+server: {
+  entry: { main: './index.server.ts', worker: './worker.server.ts' },
+  devEntries: ['main', 'worker'], // or '*', or a single string
+}
+```
+
+The ladder is: `--entry` (or `engine.dev({ entries })`) → `devEntries` → the
+single main entry.
+
+A worker or a script has no browser side, and the client dev servers cost a
+bundler each. `--side server` leaves them out:
+
+```sh
+point0 dev --entry worker --side server
+```
+
+### An entry that exits 0 has finished, not crashed
+
+Not every entry is a server. A one-shot program — a sync script, a seeder, a
+migration you keep as its own entry — runs to completion and exits. Dev treats a
+**zero** exit code as success:
+
+```sh
+point0 dev --entry main,sync
+# Server started http://localhost:3000 in 412ms
+# Entry "sync" finished
+```
+
+The tree keeps running, and the finished entry re-runs on the next change **in
+its own import graph** — editing a page that only `main` imports does not re-run
+`sync`:
+
+```sh
+# edit src/sync/upload.ts (imported by sync.server.ts) →
+# Entry "sync" re-running... (changed: src/sync/upload.ts)
+# Entry "sync" finished
+```
+
+Any **non-zero** exit of a booted child is still a crash, and the dev tree lives
+and dies as one unit — the rest of it is torn down.
 
 ## Server hot mode (`--hot`)
 
@@ -255,6 +335,10 @@ Two MVP cuts to know:
 - An **initial store build failure** defers the server child entirely; the
   watcher retries the build on each save and starts the server the moment it
   succeeds.
+- A child that exits with **code 0** is not a failure at all: the entry
+  [finished](#an-entry-that-exits-0-has-finished-not-crashed). Dev logs
+  `Entry "<name>" finished`, keeps the rest of the tree running, and re-runs
+  that entry on the next change in its own import graph.
 
 To bound memory across a long session, the orchestrator periodically restarts
 instead of hot-swapping (every 200th hot reload by default) to release Bun's
@@ -394,19 +478,19 @@ precise import graph.
 Every flag on `point0 dev` (each maps to an `engine.dev()` option). Full CLI
 reference on [CLI](cli).
 
-| Flag                      | Default               | What it does                                                                                                            |
-| ------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `--hot`                   | off                   | Server-side hot reload (bun-native). Hot-swap edited points without restarting; cold files still restart. Experimental. |
-| `-G, --no-generate`       | generate on           | Skip files generation.                                                                                                  |
-| `--side <server\|client>` | both                  | Serve only one side.                                                                                                    |
-| `--scope <scope>`         | all                   | Serve only one scope.                                                                                                   |
-| `-w, --watch [glob]`      | engine `devWatchGlob` | Watch files and rebuild on change (comma-separated or repeated; no value = the engine's `devWatchGlob`).                |
-| `-W, --no-watch`          | watch on              | Disable file watching (no restart / regenerate on change).                                                              |
-| `--entry <name\|path>`    | all server entries    | Server entry points, by name or path (comma-separated or repeated).                                                     |
-| `--engine <path>`         | auto-find             | Path to the engine file.                                                                                                |
-| `--env <name=value>`      | none                  | Define env vars (override `.env`); repeatable.                                                                          |
-| `--mode <mode>`           | `development`         | `production` \| `development` \| `test` — which `.env` files apply.                                                     |
-| `-- <args>`               | none                  | Everything after `--` is forwarded to the spawned `bun run`.                                                            |
+| Flag                      | Default                           | What it does                                                                                                                                                                |
+| ------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--hot`                   | off                               | Server-side hot reload (bun-native). Hot-swap edited points without restarting; cold files still restart. Experimental.                                                     |
+| `-G, --no-generate`       | generate on                       | Skip files generation.                                                                                                                                                      |
+| `--side <server\|client>` | both                              | Serve only one side.                                                                                                                                                        |
+| `--scope <scope>`         | all                               | Serve only one scope.                                                                                                                                                       |
+| `-w, --watch [glob]`      | engine `devWatchGlob`             | Watch files and rebuild on change (comma-separated or repeated; no value = the engine's `devWatchGlob`).                                                                    |
+| `-W, --no-watch`          | watch on                          | Disable file watching (no restart / regenerate on change).                                                                                                                  |
+| `--entry <name\|path>`    | `devEntries`, else the main entry | Server entries to start, by name or path (comma-separated or repeated); `--entry '*'` starts every declared entry. See [multiple server entries](#multiple-server-entries). |
+| `--engine <path>`         | auto-find                         | Path to the engine file.                                                                                                                                                    |
+| `--env <name=value>`      | none                              | Define env vars (override `.env`); repeatable.                                                                                                                              |
+| `--mode <mode>`           | `development`                     | `production` \| `development` \| `test` — which `.env` files apply.                                                                                                         |
+| `-- <args>`               | none                              | Everything after `--` is forwarded to the spawned `bun run`.                                                                                                                |
 
 ### `engine.dev()` options
 
@@ -415,7 +499,7 @@ await engine.dev({
   generateFiles, // boolean — run codegen first + watch (default true)
   side, // 'server' | 'client' — one side only
   scope, // a single points scope
-  entries, // string[] — server entry names or paths
+  entries, // string[] | '*' — server entry names or paths (default: devEntries, else main)
   bunRunArgs, // string[] — extra args for the server child's `bun run`
   watch, // string | string[] | boolean — watch globs, or true/false
   cwd, // string — defaults to process.cwd()

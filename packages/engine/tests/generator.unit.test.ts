@@ -85,7 +85,7 @@ function helper(...args: [HelperCallback] | [HelperOptions, HelperCallback]): It
             }
           }),
         )
-        nodeFs.rmdirSync(dir, { recursive: true })
+        nodeFs.rmSync(dir, { recursive: true, force: true })
       }
     }
   }

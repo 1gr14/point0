@@ -1,6 +1,7 @@
 import { AsyncLocalStorage as AsyncLocalStorage } from 'node:async_hooks'
 import type { AsyncLocalStorage as AsyncLocalStorageType } from 'node:async_hooks'
 import type { ClientRuntime } from './env.types.js'
+import type { Point0ErrorCode } from './error.js'
 import type { DataTransformer, DataTransformerExtended, PointsScope, RichFetchFn } from './types.js'
 import type { ClientPoints } from './client-points.js'
 import { singletonize, blankDataTransformerExtended, toExtendedTransformer } from './utils.js'
@@ -484,7 +485,21 @@ export class SuperStore {
   }
 
   stringify(transformer?: DataTransformerExtended | false | undefined): string {
-    return this.getSuitableTransformer(transformer).stringify(this.dehydrate()) as string
+    // `dehydrate()` always answers an object, so `undefined` here means the app transformer refused it — the SSR
+    // store would then be embedded as the literal `undefined` and every `clientServerTransferredSsr` item would
+    // arrive missing on the client. Fail loud instead.
+    const serialized = this.getSuitableTransformer(transformer).stringify(this.dehydrate())
+    if (serialized === undefined) {
+      // A plain Error, not `ErrorPoint0`: this module sits UNDER error.ts in the import graph (error → env →
+      // super-store), so importing the class as a value would close a runtime cycle. The code is what matters and it
+      // survives — `ErrorPoint0.from` copies `code`/`meta` off any thrown object — and the type-only `Point0ErrorCode`
+      // annotation keeps the literal in sync with the registry by construction.
+      const code: Point0ErrorCode = 'POINT0_SERIALIZE_FAILED'
+      const error = new Error('Transformer returned undefined serializing a value on the SSR store')
+      Object.assign(error, { code, meta: { subject: 'the SSR store' } })
+      throw error
+    }
+    return serialized
   }
 
   parse(dehydratedString: string, transformer?: DataTransformerExtended | false | undefined): Record<string, unknown> {

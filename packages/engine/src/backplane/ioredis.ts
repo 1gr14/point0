@@ -1,7 +1,7 @@
 /**
- * The ready-made socket backplane over an ioredis client — for apps that already run one (BullMQ neighbors, Sentinel
- * setups, custom TLS). The adapter carries ZERO dependencies: it is typed structurally against the handful of methods
- * it calls, and the docs tell you to install `ioredis` yourself. Requires Redis >= 6.2 (`GETDEL` — the atomic
+ * The ready-made socket backplane over an ioredis client (v5 or v6) — for apps that already run one (BullMQ neighbors,
+ * Sentinel setups, custom TLS). The adapter carries ZERO dependencies: it is typed structurally against the handful of
+ * methods it calls, and the docs tell you to install `ioredis` yourself. Requires Redis >= 6.2 (`GETDEL` — the atomic
  * cross-process ticket claim).
  *
  * ```ts
@@ -13,11 +13,15 @@
  * }
  * ```
  *
- * KV + publishes ride the given client; the bus subscriptions ride a lazy `duplicate()` (a Redis connection in
- * subscriber mode cannot run regular commands), or the `subscriber` option if you hold one already. Reconnect
+ * KV + publishes ride the given client; the bus subscriptions ride a lazy `duplicate()` (under RESP2 a connection in
+ * subscriber mode cannot run regular commands at all, and under v6's default RESP3, where it can, a dedicated
+ * subscriber still keeps the bus off the command path), or the `subscriber` option if you hold one already. Reconnect
  * durability — the `Backplane` contract's one duty on the implementation — is ioredis's own documented behavior:
- * `autoResubscribe` (default `true`) re-subscribes every channel after a transport reconnect. Do not turn it off on the
- * subscriber connection.
+ * `autoResubscribe` (default `true`, in v5 and v6 alike) re-subscribes every channel after a transport reconnect. Do
+ * not turn it off on the subscriber connection.
+ *
+ * v6 keeps every command and reply shape the adapter depends on: it defaults to RESP3 with `replyMapping: 'legacy'`, so
+ * `get`/`getdel` still answer `string | null` and the `'message'` listener still hands you plain strings.
  */
 import type { Backplane } from '../config.js'
 import { backplaneLogError } from './log.js'

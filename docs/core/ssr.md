@@ -19,9 +19,7 @@ import { Engine } from '@point0/engine'
 
 export const engine = Engine.create({
   ssr: true, // server-render pages; off unless you turn it on
-  clients: [
-    /* ... */
-  ],
+  clients: [/* ... */],
 })
 ```
 
@@ -82,6 +80,13 @@ of the `<head>`. On the client, `mount()` (from `@point0/react-dom/mount`)
 prepares that dehydrated superstore — which carries the query cache — then calls
 React's `hydrateRoot` over the existing markup. From there the page is a normal
 SPA — navigations no longer hit the server for HTML.
+
+`mount()` waits for the current page's code-split chunks before it hydrates, so
+hydration renders exactly the tree the server did — a chunk still in flight
+would leave a dehydrated boundary that the first update client-renders into its
+loading fallback (a loading flash on a fully-rendered page). The wait is
+bounded: past `pageChunkHydrationTimeoutMs` (a `mount()` option, default 10s)
+hydration proceeds with the shell alone.
 
 A page that started life as a bare `index.html` and fetched on the client ends
 up identical to its SSR'd version. SSR changes _when_ the data arrives (with the
@@ -683,7 +688,14 @@ You don't call this endpoint directly; the prefetch policy does. Two things are
 worth knowing:
 
 - **Pages always keep an endpoint** so this can be requested — even a page with
-  no server loader stays addressable for its dehydrated state.
+  no server loader stays addressable for its dehydrated state. That endpoint is
+  publicly reachable, and on a loaderless page it serves only
+  `queryClientDehydratedState` and `html` — there is no data output. A request
+  that omits the `x-point0-output-type` header falls back to `data`, so it
+  answers **`400`** with code `POINT0_POINT_NO_SERVER_LOADER` and a message
+  naming the two output types that do work. The generated [OpenAPI](openapi)
+  spec says the same: on such a page the header is `required` and its enum
+  excludes `data`.
 - Tune the prefetch query itself with
   [`.pageDehydratedStateQueryOptions(...)`](stage-methods) on the root, base, or
   page. This is the dehydrated-state fetch's own query options, separate from

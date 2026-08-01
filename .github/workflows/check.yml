@@ -2,7 +2,7 @@ name: check
 
 # The format + lint gate. Reusable (workflow_call), called by BOTH ci.yml and release.yml so prettier +
 # eslint block EVERY path a change can land through: pull requests (including docs-only PRs, where the
-# test matrix is skipped) and release tags. The husky pre-commit hook runs the same checks locally, but a
+# test matrix is skipped) and pushes to `main`. The husky pre-commit hook runs the same checks locally, but a
 # hook is advisory (--no-verify exists) — this is the hard gate.
 #
 # It does NOT build: the caller's `build` job already produced the single `dist` artifact, and this job

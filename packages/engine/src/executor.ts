@@ -453,8 +453,11 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
         }
 
         // (a connectorless channel never lands here — its `.channel()` closer registers a default `{}` connector)
+        // Asking a point for data it structurally cannot produce is a caller mistake, so this is a 400. The endpoint
+        // pipeline catches the common case earlier and with better guidance (see the sibling guard in `fetchEndpoint`);
+        // this stays the last-resort guard for any other entry path into `execute`.
         if (!point._hasServerLoader) {
-          const status = 500
+          const status = 400
           const error0 = new ErrorClass(`Point "${point.id}" has no server loader`, {
             status,
             code: POINT0_ERROR_CODES_MAP.POINT_NO_SERVER_LOADER,
@@ -672,11 +675,7 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
                 ...getParsed(),
               })
               const result = (await (promise as any)) as
-                | [number, Data | Response | undefined | RedirectTask]
-                | Data
-                | Response
-                | RedirectTask
-                | undefined
+                [number, Data | Response | undefined | RedirectTask] | Data | Response | RedirectTask | undefined
               if (Array.isArray(result)) {
                 if (RedirectTask.is(result[1])) {
                   throw result[1]

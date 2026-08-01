@@ -1,7 +1,7 @@
 name: test
 
 # Reusable cross-OS test pipeline. Proves the PREBUILT framework's tests pass on each runner OS.
-# Called by ci.yml (the PR/branch gate) and release.yml (before publishing a tag). NO build, NO publish here:
+# Called by ci.yml (the PR/branch gate) and release.yml (before publishing from `main`). NO build, NO publish here:
 # the `dist` artifact is built ONCE (build.yml, ubuntu-only) by the caller and downloaded here, so every OS —
 # Windows included — tests exactly the bytes that ship to npm.
 #

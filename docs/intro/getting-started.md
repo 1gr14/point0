@@ -208,7 +208,7 @@ find points, where to write generated code, and one config block per side
 ```ts
 // src/engine.ts (Bun-bundled form)
 import { Engine } from '@point0/engine'
-import { clientEnvKeys } from '@/lib/env/client-shape'
+import { clientEnvKeys } from '@/lib/env/shared'
 
 export const engine = Engine.create({
   file: import.meta.url, // engine anchors all relative paths to this file
@@ -319,12 +319,14 @@ generated points to `mount` from `@point0/react-dom/mount`:
 
 ```tsx
 // src/index.client.tsx
-import '@/lib/env/client' // validate client env before mounting
+import { clientEnv } from '@/lib/env/client' // first import — see below
 import App from '@/app.client'
 import points from '@/generated/point0/points.client'
 import '@/styles/index.css'
 import { ErrorBoundary } from '@/ui/error-boundary'
 import { mount } from '@point0/react-dom/mount'
+
+clientEnv.validate() // whole client shape at once, so a misconfigured build fails fast
 
 mount(
   <ErrorBoundary>
@@ -337,6 +339,11 @@ if (import.meta.hot) {
   import.meta.hot.accept()
 }
 ```
+
+The env import stays **first**: in dev `client.ts` rewrites `SERVER_URL` to
+`CLIENT_URL` at module scope, the env getters cache on first read, and
+`src/lib/root.tsx` reads `sharedEnv.SERVER_URL` while it loads. Move the import
+down and the root point captures the old value.
 
 `mount` mounts into `#root` by default (it throws if `#root` is missing) and
 hydrates from the SSR-dehydrated store when one is present. `index.html` is the
@@ -358,8 +365,8 @@ working example built on top of them:
 - **`src/lib/query-client.ts`**, **`src/lib/prisma.ts`**, **`src/lib/error.ts`**
   (a custom `AppError` class wired in via `.errorClass(...)` — the template
   builds it with [Error0](error-handling), but any compatible class works, and
-  the default is `ErrorPoint0`), and the five-file **`src/lib/env/*`** system
-  (shared / client / server [env](env) shapes and validators).
+  the default is `ErrorPoint0`), and the four-file **`src/lib/env/*`** system
+  (`utils.ts` + shared / server / client [env](env) shapes and handles).
 - **Example points**: `src/layouts/general.tsx` (a [layout](layout)),
   `src/pages/home.tsx` (a [page](page)), `src/pages/about.mdx` (an [mdx](mdx)
   page). The home page doubles as a playground: right in `home.tsx` it declares

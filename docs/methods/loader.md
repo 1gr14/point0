@@ -100,8 +100,8 @@ export const ideaNewsQuery = root.lets
 - **`request`** — the incoming [request](request): `request.original` (the raw
   `Request`), `request.method`, `request.location`, the lazy getters
   `request.headers` and `request.cookies` (direct on the request), and the
-  caller details under `request.from` (`request.from.ips`, `request.from.ip`,
-  `request.from.userAgent`).
+  caller details under `request.from` (`request.from.ip`,
+  `request.from.clientIp`, `request.from.ips`, `request.from.userAgent`).
 - **`set`** — a [response](response) helper: `set.headers(name, value)`,
   `set.cookies(name, value, options?)`, `set.status(code)`. It also carries
   `set.inspect` — a read-only snapshot of the headers, cookies, and status set
