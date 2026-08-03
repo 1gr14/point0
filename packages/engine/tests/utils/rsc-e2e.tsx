@@ -626,6 +626,31 @@ export const expectDeferIslandSsrDeadFlow = async (tp: TestProjectOneClient) => 
   await page.close()
 }
 
+// The same page as {@link expectDeferIslandSsrDeadFlow} and the OPPOSITE outcome — vite's DEV server only, from vite
+// 8.1 on (bisected: with vite 8.0.16 pinned, the dead flow above still passes here). Its dev client mounts the
+// late-revealed hole's subtree cleanly, so the island comes up live, with no hydration or recoverable error and no
+// refetch. Not a timing window: the fill lands seconds after hydration (proven up to an 8s fixture sleep) and the
+// island is live anyway.
+//
+// This is pinned as a FACT, NOT AS A CONTRACT. `vite build` keeps the island dead, so dev here is lying about prod —
+// an app that leans on it breaks in production, and the rule stays what the docs say: interactive slow content rides
+// `suspend: 'server'` or a promise prop, never a defer hole. Pinning beats deleting: if a later vite flips it back,
+// this fires and the difference gets judged again instead of vanishing quietly.
+export const expectDeferIslandSsrLiveOnViteDevFlow = async (tp: TestProjectOneClient) => {
+  const page = await tp.gotoServer('/defer-island')
+  await page.waitContent('DEFER_ISLAND_MARKER', 15000)
+  await page.waitContent('clicks=0', 15000)
+  await page.stable
+  await page.original.click('#cta')
+  // short window — a dead island never reaches clicks=1, so a flip back fails fast instead of hanging 15s
+  await page.waitContent('clicks=1', 5000)
+  // and it came up clean: React entered the revealed boundary rather than masking a mismatch
+  const logsText = page.strlogs.join('\n')
+  expect(logsText).not.toContain('recoverable hydration/render error')
+  expect(logsText).not.toContain('Hydration')
+  await page.close()
+}
+
 // CONFIRMED (both bundlers): the "loader on the island itself" pattern — an island fetching its OWN slow data with
 // suspend:'server' inside its body (top-level, no defer) — is also live on the first SSR load, same observer rescue. So
 // the rule holds both ways: interactive slow content on SSR → suspend (island or query), never defer.

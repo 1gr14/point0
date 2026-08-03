@@ -13,7 +13,7 @@ import {
   bootRscProject,
   expectDeferErrorFallbackSsrFlow,
   expectDeferErrorFnFlow,
-  expectDeferIslandSsrDeadFlow,
+  expectDeferIslandSsrLiveOnViteDevFlow,
   expectNestedIslandLoadersFlow,
   expectPromisePropClientNavFlow,
   expectPromisePropSsrFlow,
@@ -85,8 +85,9 @@ describe('rsc e2e (browser, vite dev)', () => {
     await expectSuspendIslandSsrFlow(tp)
   })
 
-  it('SSR limitation: an island inside a defer hole is NOT interactive on first load', async () => {
-    await expectDeferIslandSsrDeadFlow(tp)
+  // The one place the four RSC lanes disagree, and it is vite's doing, not point0's — see the flow's comment.
+  it("vite dev only: an island inside a defer hole comes up interactive (vite build's does NOT)", async () => {
+    await expectDeferIslandSsrLiveOnViteDevFlow(tp)
   })
 
   it('SSR: an island with its OWN suspend:server loader IS interactive on first load', async () => {

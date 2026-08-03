@@ -602,12 +602,18 @@ stream in as a **live** island. One page, three arrival times, one response.
 Interactivity only differs on the **first SSR paint** — every client fetch
 renders the subtree fresh on the client, so everything is live there.
 
-|                                | first SSR paint    | client fetch (nav / mutation) |
-| ------------------------------ | ------------------ | ----------------------------- |
-| top-level island               | 🟢 live            | 🟢 live                       |
-| island inside a `defer` hole   | 🔴 shows, but dead | 🟢 live                       |
-| island via `suspend: 'server'` | 🟢 live            | 🟢 live                       |
-| island reading a promise prop  | 🟢 live            | 🟢 live                       |
+|                                | first SSR paint      | client fetch (nav / mutation) |
+| ------------------------------ | -------------------- | ----------------------------- |
+| top-level island               | 🟢 live              | 🟢 live                       |
+| island inside a `defer` hole   | 🔴 shows, but dead\* | 🟢 live                       |
+| island via `suspend: 'server'` | 🟢 live              | 🟢 live                       |
+| island reading a promise prop  | 🟢 live              | 🟢 live                       |
+
+\* Everywhere it counts: both bundlers in production, and Bun's dev server. The
+one exception is **vite's dev server from vite 8.1 on**, where the island comes
+up live — dev telling you something production will not do. Build the same page
+and it is dead again, so treat the row as written and reach for one of the live
+patterns below.
 
 So the rule is one line: **`defer` for server markup; for interactive islands, a
 `suspend: 'server'` query (query values) or a promise prop (ad-hoc values).** On
@@ -743,7 +749,10 @@ Point0's RSC is deliberately smaller than Flight, and its edges are explicit:
   [promise prop](#promises-as-island-props), or a top-level island — first-class
   patterns, covered on this page. Lifting the limit would take a Flight-style
   client reconciler, and that machinery is exactly what this model trades away,
-  so don't plan around it changing.
+  so don't plan around it changing. (Vite's dev server does mount such an island
+  live from vite 8.1 — a dev-only divergence from its own build output, noted
+  under the matrix. Point0 pins it in tests so it can't drift unnoticed, and
+  does not build on it.)
 - **Not planned: Flight compatibility, `'use server'` actions, a second
   react-server module graph.** Elements ride the normal data pipe — that is the
   point. Server work goes in loaders, mutations are mutations.
