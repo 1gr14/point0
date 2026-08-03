@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.5 — 2026-08-03
+
 - **A bare `useOnMessageFromServer` on a space handler could stay deaf for the
   life of the component.** The hook attaches its listener in an effect, and when
   no connection or membership is passed it resolves one itself — but that
