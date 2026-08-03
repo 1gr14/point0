@@ -4563,6 +4563,35 @@ export const useSocketConnection = (
 }
 
 /**
+ * The manager's connection/membership version — the retry signal a BARE listener needs. A bare hook is handed no
+ * facade: it resolves one INSIDE `addClientHandlerListener`, and that resolution is invisible to a dependency array, so
+ * nothing would ever re-run the attach when the facade finally exists. Inert when the caller passed a facade (its own
+ * `status` already drives the effect) and on the server.
+ */
+const useResolvedFacadeVersion = (active: boolean): string => {
+  const manager = _point0_env.side.is.server ? undefined : getManagerForClientScope()
+  const subscribe = React.useCallback(
+    (listener: () => void) => {
+      if (!active || !manager) {
+        return () => {}
+      }
+      manager.connectionsListeners.add(listener)
+      manager.membershipsListeners.add(listener)
+      return () => {
+        manager.connectionsListeners.delete(listener)
+        manager.membershipsListeners.delete(listener)
+      }
+    },
+    [manager, active],
+  )
+  const getSnapshot = React.useCallback(
+    () => (active && manager ? `${manager.connectionsVersion}|${manager.membershipsVersion}` : '-'),
+    [manager, active],
+  )
+  return React.useSyncExternalStore(subscribe, getSnapshot, () => '-')
+}
+
+/**
  * Subscribe a React consumer to a clientHandler on a connection (a space handler's: on a membership). `boundRoom` —
  * what `handler(room)` bound — narrows the listener to that room's pushes.
  */
@@ -4583,6 +4612,12 @@ export const useSocketOnMessage = (
   const space = handler._spacePoint
   const boundRoomKey =
     space && boundRoom !== undefined ? stringifyOrThrow(space._getSocketTransformer(), boundRoom, space.id) : undefined
+  // A BARE hook resolves its own facade below, and that resolution is not something a dependency array can watch:
+  // `connectionId`/`connectionStatus` stay `undefined` for the life of the component. Without this signal the FIRST
+  // attach was also the only one — fatal for a space handler on an `.enroller` space, whose membership is born from
+  // the server's `claimed` frame and therefore never exists on the first render. The listener then stayed silent
+  // forever while its pushes kept arriving on the wire.
+  const resolvedFacadeVersion = useResolvedFacadeVersion(connection === undefined)
   React.useEffect(() => {
     if (isServer || !enabled) {
       return
@@ -4591,8 +4626,17 @@ export const useSocketOnMessage = (
     let remover: { remove: () => void } | undefined
     try {
       remover = addClientHandlerListener(handler, connection, (input) => listenerRef.current(input), boundRoom)
-    } catch {
-      // no live connection yet (still connecting) — the status dep below re-runs the effect when it lands
+    } catch (error) {
+      // Nothing live to attach to YET — the deps below re-run this when a facade lands. Said out loud because the
+      // other reasons this throws (an ambiguous space, an unknown connection) are permanent: they need the developer
+      // to pass a membership or wrap the tree, and a silent return leaves a handler that never fires and never says
+      // why. Debug level: on the happy path this fires once or twice per mount before the connect lands.
+      getLogFnForPoint(handler)({
+        level: 'debug',
+        category: ['socket'],
+        message: `Listener not attached yet for ${handler.id}`,
+        error,
+      })
       return
     }
     return () => {
@@ -4601,7 +4645,7 @@ export const useSocketOnMessage = (
         remover.remove()
       }
     }
-  }, [handler.id, connectionId, connectionStatus, isServer, enabled, boundRoomKey])
+  }, [handler.id, connectionId, connectionStatus, isServer, enabled, boundRoomKey, resolvedFacadeVersion])
 }
 
 // the context is a property of the POINT itself (a lazy per-instance cache, like `_callableHandlerCache`) — the

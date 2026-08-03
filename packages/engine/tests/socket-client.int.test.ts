@@ -59,6 +59,24 @@ export const chatSpace = chatChannel.lets<{ chatId: string }>('space', 'chatSpac
   })
   .space()
 
+// a SECOND enroller space on the SAME channel, declared BEFORE userSpace — one connection carries TWO enrolled
+// memberships, in rooms of different shapes. Its handler is PAYLOAD-LESS: the push is the whole message
+export const sessionSpace = chatChannel.lets<{ sessionId: string }>('space', 'sessionSpace')
+  .enroller(({ identity }) => ({ sessionId: 'sess-' + identity.me }))
+  .space()
+
+export const sessionEndedHandler = sessionSpace.lets('clientHandler', 'sessionEndedHandler')
+  .clientHandler()
+
+// pushes into the FIRST enroller space's room of one identity
+export const sessionPushHandler = chatChannel.lets('serverHandler', 'sessionPushHandler')
+  .clientSend(z.object({ me: z.string() }))
+  .serverReply(async ({ input }) => {
+    void sessionEndedHandler.sendToClient(undefined, { room: { sessionId: 'sess-' + input.me } })
+    return { ok: true }
+  })
+  .serverHandler()
+
 // the server-side enrollment: every connection gets a personal { userId } room, no client join involved.
 // The enroller reads MUTABLE server state — by default the identity's own room, but adminPersonalRoomsHandler can
 // rewrite the answer for one identity, so the next connection setup (a refresh) enrolls it somewhere else
@@ -451,6 +469,9 @@ const failureOf = async (run: () => unknown): Promise<Error | undefined> => {
 // what the module-level personalHandler listener received — the enrolled-membership pushes land here
 const personalReceived: Array<{ text: string }> = []
 
+// the payload-less twin on the OTHER enroller space of the same channel — one entry per delivered push
+const sessionReceived: number[] = []
+
 // what the module-level messageReceivedHandler listener received — imperative-enroll pushes have no facade to bind on
 const roomReceived: Array<{ text: string }> = []
 
@@ -591,7 +612,9 @@ const buildClientPoints = (serverPort: number) => {
     .input(z.object({ chatId: z.string() }))
     .joiner()
     .space()
-  // the stripped client bundle keeps a bare `.enroller()` — the client learns the enrollments from the claimed frame
+  // the stripped client bundle keeps a bare `.enroller()` — the client learns the enrollments from the claimed frame.
+  // TWO enroller spaces on one channel, in the SAME declaration order as the server bundle
+  const sessionSpace = anyLets(chatChannel)('space', 'sessionSpace').enroller().space()
   const userSpace = anyLets(chatChannel)('space', 'userSpace').enroller().space()
   // its own scope on a dead port — the transport-failure fixture: every connect request fails at fetch, no server
   // answer ever (nothing listens on port 1)
@@ -635,6 +658,18 @@ const buildClientPoints = (serverPort: number) => {
       },
     })
   const personalPushHandler = anyLets(chatChannel)('serverHandler', 'personalPushHandler')
+    .clientSend()
+    .serverReply()
+    .serverHandler()
+  // the payload-less clientHandler of the FIRST enroller space — same shape as personalHandler, no `.serverSend`
+  const sessionEndedHandler = anyLets(sessionSpace)('clientHandler', 'sessionEndedHandler').clientHandler({
+    client: {
+      onMessageFromServer: () => {
+        sessionReceived.push(1)
+      },
+    },
+  })
+  const sessionPushHandler = anyLets(chatChannel)('serverHandler', 'sessionPushHandler')
     .clientSend()
     .serverReply()
     .serverHandler()
@@ -782,6 +817,9 @@ const buildClientPoints = (serverPort: number) => {
     chatChannel,
     chatSpace,
     userSpace,
+    sessionSpace,
+    sessionEndedHandler,
+    sessionPushHandler,
     messageSendHandler,
     messageReceivedHandler,
     pingHandler,
@@ -846,6 +884,9 @@ describe('socket client runtime', () => {
       points.chatChannel,
       points.chatSpace,
       points.userSpace,
+      points.sessionSpace,
+      points.sessionEndedHandler,
+      points.sessionPushHandler,
       points.messageSendHandler,
       points.messageReceivedHandler,
       points.pingHandler,
@@ -1136,6 +1177,132 @@ describe('socket client runtime', () => {
 
     admin.disconnect()
     connection.disconnect()
+  })
+
+  it('TWO enroller spaces on one channel: a push into the FIRST space reaches its payload-less handler', async () => {
+    const beforeSession = sessionReceived.length
+    const beforePersonal = personalReceived.length
+    const connection = points.chatChannel.connect({ userId: 'two-enr' })
+    await waitFor(() => connection.status === 'open')
+    const admin = points.chatChannel.connect({ userId: 'two-enr-adm' })
+    await waitFor(() => admin.status === 'open')
+
+    // both enrollments of the SAME connection landed from the one claimed frame
+    await waitFor(
+      () =>
+        (points.sessionSpace.memberships.client.list() as LooseMembership[]).some(
+          (candidate) => candidate.connection.id === connection.id,
+        ) &&
+        (points.userSpace.memberships.client.list() as LooseMembership[]).some(
+          (candidate) => candidate.connection.id === connection.id,
+        ),
+    )
+
+    // the push into the FIRST-declared enroller space's room — the payload-less handler must hear it
+    await points.sessionPushHandler(admin).sendToServer({ me: 'user-two-enr' })
+    await waitFor(() => sessionReceived.length > beforeSession)
+
+    // the second space still works next to it
+    await points.personalPushHandler(admin).sendToServer({ me: 'user-two-enr', text: 'to-user-space' })
+    await waitFor(() => personalReceived.slice(beforePersonal).some((message) => message.text === 'to-user-space'))
+
+    admin.disconnect()
+    connection.disconnect()
+  })
+
+  it('two BARE useOnMessageFromServer hooks, one per enroller space, both hear their own push', async () => {
+    const beforeSession = sessionReceived.length
+    const beforePersonal = personalReceived.length
+    // ONE connection only, and nothing left over from an earlier test: the bare form resolves "the single live
+    // membership of the space", so a second live connection would enroll a second one and the bare hooks would resolve
+    // NOTHING. The pushes ride this same connection back to its own rooms
+    const connection = points.chatChannel.connect({ userId: 'hook-enr' })
+    await waitFor(() => connection.status === 'open')
+    await waitFor(
+      () =>
+        (points.sessionSpace.memberships.client.list() as LooseMembership[]).length === 1 &&
+        (points.userSpace.memberships.client.list() as LooseMembership[]).length === 1 &&
+        (points.sessionSpace.memberships.client.list() as LooseMembership[])[0]!.connection.id === connection.id,
+      20_000,
+    )
+
+    const hookSession: number[] = []
+    const hookPersonal: number[] = []
+    await withDomGlobals(async () => {
+      // the app shape: two bare hooks in ONE component, one per enroller space of the same channel — the
+      // payload-less handler first
+      const Listener = (): React.ReactNode => {
+        ;(points.sessionEndedHandler as { useOnMessageFromServer: (fn: () => void) => void }).useOnMessageFromServer(
+          () => {
+            hookSession.push(1)
+          },
+        )
+        ;(points.personalHandler as { useOnMessageFromServer: (fn: () => void) => void }).useOnMessageFromServer(() => {
+          hookPersonal.push(1)
+        })
+        return null
+      }
+      const view = render(React.createElement(Listener))
+      try {
+        await points.sessionPushHandler(connection).sendToServer({ me: 'user-hook-enr' })
+        await points.personalPushHandler(connection).sendToServer({ me: 'user-hook-enr', text: 'to-user-space' })
+        // the module-level listeners prove the DISPATCH reached both handlers
+        await waitFor(() => sessionReceived.length > beforeSession)
+        await waitFor(() => personalReceived.slice(beforePersonal).some((message) => message.text === 'to-user-space'))
+        // and the bare hooks' listeners prove the ATTACHMENT
+        await rtlWaitFor(
+          () => {
+            expect(hookPersonal.length).toBeGreaterThan(0)
+          },
+          { timeout: 10_000 },
+        )
+        await rtlWaitFor(
+          () => {
+            expect(hookSession.length).toBeGreaterThan(0)
+          },
+          { timeout: 10_000 },
+        )
+      } finally {
+        view.unmount()
+      }
+    })
+
+    connection.disconnect()
+  })
+
+  // The order a real app has, and the one that used to break: the component mounts FIRST — its bare hook has nothing
+  // to attach to yet — and the connection follows. An `.enroller` membership is born from the server's `claimed`
+  // frame, so for a space handler this order is not a corner case but the ONLY one an app ever has. The listener has
+  // to attach when the membership lands; it used to give up after the first try, silently, and stay deaf for the life
+  // of the component while its pushes kept arriving on the wire.
+  it('a BARE hook mounted BEFORE the connection still hears the enrolled room (it attaches when the membership lands)', async () => {
+    const hookSession: number[] = []
+    await withDomGlobals(async () => {
+      const Listener = (): React.ReactNode => {
+        ;(points.sessionEndedHandler as { useOnMessageFromServer: (fn: () => void) => void }).useOnMessageFromServer(
+          () => {
+            hookSession.push(1)
+          },
+        )
+        return null
+      }
+      const view = render(React.createElement(Listener))
+      const connection = points.chatChannel.connect({ userId: 'hook-late' })
+      try {
+        await waitFor(() => connection.status === 'open')
+        await waitFor(() => (points.sessionSpace.memberships.client.list() as LooseMembership[]).length === 1, 20_000)
+        await points.sessionPushHandler(connection).sendToServer({ me: 'user-hook-late' })
+        await rtlWaitFor(
+          () => {
+            expect(hookSession.length).toBeGreaterThan(0)
+          },
+          { timeout: 10_000 },
+        )
+      } finally {
+        view.unmount()
+        connection.disconnect()
+      }
+    })
   })
 
   it('a room push excepting a room skips the connection that holds the excluded room', async () => {

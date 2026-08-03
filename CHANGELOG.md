@@ -5,6 +5,20 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **A bare `useOnMessageFromServer` on a space handler could stay deaf for the
+  life of the component.** The hook attaches its listener in an effect, and when
+  no connection or membership is passed it resolves one itself — but that
+  resolution was invisible to the effect's dependencies, so the first attempt was
+  the only one. For a space grown from an `.enroller` that is fatal rather than
+  unlucky: the membership is born from the server's `claimed` frame, which always
+  lands after the first render, so the attach threw "No membership for space …",
+  the throw was swallowed, and the pushes kept arriving on the wire with nobody
+  listening. The listener now attaches the moment its facade appears, and a
+  refused attach is logged (debug) instead of vanishing — the other reasons it
+  throws, an ambiguous space or an unknown connection, are permanent and used to
+  leave no trace at all. Found from an app, where a sign-out in one tab never
+  reached the others.
+
 ## 0.3.4 — 2026-08-03
 
 Sockets were audited end to end — the wire, the connect/resume path, the
