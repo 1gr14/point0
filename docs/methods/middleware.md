@@ -85,12 +85,15 @@ A middleware receives one options object and returns a `Promise` of either a
 `Response` or the result of `next()`:
 
 ```tsx
-.middleware(async ({ request, set, next, points }) => {
-  // ...do something before the request is handled
-  const result = await next() // run the rest of the chain + the point
-  // ...do something after
-  return result
-})
+export const root = Point0.lets
+  .root()
+  .middleware(async ({ request, set, next, points }) => {
+    // ...do something before the request is handled
+    const result = await next() // run the rest of the chain + the point
+    // ...do something after
+    return result
+  })
+  .root()
 ```
 
 `next()` runs the remaining middleware and finally the point itself. Call it
@@ -115,14 +118,17 @@ outer middleware can inspect what the inner chain produced before deciding what
 to send:
 
 ```tsx
-.middleware(async ({ next }) => {
-  const result = await next()
-  // result.variant.type: 'page' | 'endpoint' | 'middleware' | 'error' | 'options' | 'publicdir' | 'asset'
-  if (result.variant.type === 'page') {
-    return new Response('overriden page response', { status: 200 })
-  }
-  return result // pass it through unchanged
-})
+export const root = Point0.lets
+  .root()
+  .middleware(async ({ next }) => {
+    const result = await next()
+    // result.variant.type: 'page' | 'endpoint' | 'middleware' | 'error' | 'options' | 'publicdir' | 'asset'
+    if (result.variant.type === 'page') {
+      return new Response('overriden page response', { status: 200 })
+    }
+    return result // pass it through unchanged
+  })
+  .root()
 ```
 
 `result` carries `response`, `request`, `scope`, `error` (your error class, or
@@ -137,7 +143,12 @@ match; on any other path it transparently forwards via `next()`:
 
 ```tsx
 // only on /api/auth/* — better-auth owns that whole subtree
-.middleware('/api/auth/*', async ({ request }) => authServer.handler(request.original))
+export const root = Point0.lets
+  .root()
+  .middleware('/api/auth/*', async ({ request }) =>
+    authServer.handler(request.original),
+  )
+  .root()
 ```
 
 A trailing `*` is a wildcard segment that captures the remainder of the path, so
@@ -145,10 +156,13 @@ A trailing `*` is a wildcard segment that captures the remainder of the path, so
 `params`:
 
 ```tsx
-.middleware('/zxc/:id', async ({ params }) => {
-  // params is { id: string }
-  return Response.json({ id: params.id }, { status: 201 })
-})
+export const root = Point0.lets
+  .root()
+  .middleware('/zxc/:id', async ({ params }) => {
+    // params is { id: string }
+    return Response.json({ id: params.id }, { status: 201 })
+  })
+  .root()
 ```
 
 This only illustrates route params and a returned `Response` — don't build your
@@ -160,10 +174,13 @@ The wildcard's captured remainder arrives in `params` under the key `*`. For
 `{ '*': '/sign-in/email' }`:
 
 ```tsx
-.middleware('/api/auth/*', async ({ request, params }) => {
-  // params['*'] is the part after /api/auth, e.g. '/sign-in/email'
-  return authServer.handler(request.original)
-})
+export const root = Point0.lets
+  .root()
+  .middleware('/api/auth/*', async ({ request, params }) => {
+    // params['*'] is the part after /api/auth, e.g. '/sign-in/email'
+    return authServer.handler(request.original)
+  })
+  .root()
 ```
 
 A **string** route is extended off the point's own route, so a route on a based
@@ -177,14 +194,18 @@ method. A request that misses the method falls through — for an
 otherwise-unknown path that means a 404:
 
 ```tsx
-.middleware('POST', '/zxc/:id', async ({ params }) => {
-  return Response.json({ id: params.id }, { status: 201 })
-})
-// POST /zxc/123 => 201
-// PUT  /zxc/123 => 404 Not Found  (method didn't match, nothing else handles it)
-
-.middleware(['POST', 'PUT'], '/zxc/:id', () => { /* ... */ })
-// POST and PUT => handled; DELETE => 404
+export const root = Point0.lets
+  .root()
+  .middleware('POST', '/zxc/:id', async ({ params }) => {
+    return Response.json({ id: params.id }, { status: 201 })
+  })
+  // POST /zxc/123 => 201
+  // PUT  /zxc/123 => 404 Not Found  (method didn't match, nothing else handles it)
+  .middleware(['POST', 'PUT'], '/zxc/:id', () => {
+    /* ... */
+  })
+  // POST and PUT => handled; DELETE => 404
+  .root()
 ```
 
 A route-only middleware (no method) reacts to **any** method on that path.
@@ -195,22 +216,28 @@ A route-only middleware (no method) reacts to **any** method on that path.
 applied even when a later middleware returns its own `Response` or throws:
 
 ```tsx
-.middleware(async ({ set, next }) => {
-  set.headers('x-timing', 'on')
-  return next()
-})
+export const root = Point0.lets
+  .root()
+  .middleware(async ({ set, next }) => {
+    set.headers('x-timing', 'on')
+    return next()
+  })
+  .root()
 ```
 
 `set` in a middleware is the same helper a loader gets, so `set.cookies(...)`
 and `set.status(n)` work alongside `set.headers(...)`:
 
 ```tsx
-.middleware(async ({ set, next }) => {
-  set.headers('x-timing', 'on')
-  set.cookies('seen', '1')
-  set.status(201)
-  return next()
-})
+export const root = Point0.lets
+  .root()
+  .middleware(async ({ set, next }) => {
+    set.headers('x-timing', 'on')
+    set.cookies('seen', '1')
+    set.status(201)
+    return next()
+  })
+  .root()
 ```
 
 `set.inspect` reads back what's been set so far (`set.inspect.headers.y`),
@@ -240,6 +267,12 @@ const page = root.lets
 // order for a /home request: root, then page
 ```
 
+**A scope with no middleware of its own runs the server scope's chain.** A
+multi-client app declares a root per scope, and a client root that adds no
+`.middleware()` is not opting out of the gates the server root declares — the
+server chain runs for its requests too, socket upgrades included. Declare a
+middleware on that root and its own chain takes over.
+
 Under [SSR](ssr) a page request can run the middleware chain more than once:
 point0 uses a render-to-discover loop, so a page may re-render a few times (or
 just once, if it has no pending data) before the HTML settles. Keep middleware
@@ -254,12 +287,15 @@ Throwing from a middleware turns into an error response. A plain `Error` becomes
 status:
 
 ```tsx
-.middleware(async () => {
-  throw new ErrorPoint0('restricted error', { status: 403 }) // => 403
-})
-.middleware(async () => {
-  throw new Error('custom error') // => 500
-})
+export const root = Point0.lets
+  .root()
+  .middleware(async () => {
+    throw new ErrorPoint0('restricted error', { status: 403 }) // => 403
+  })
+  .middleware(async () => {
+    throw new Error('custom error') // => 500
+  })
+  .root()
 ```
 
 Headers you set with `set.headers` before the throw survive onto the error
@@ -274,11 +310,14 @@ the whole request chain (and across SSR render passes), so a value written in
 middleware reaches every downstream loader:
 
 ```tsx
-.middleware(({ request, next }) => {
-  request.state.x = 123 // per-instance scratch
-  request.cache.y = 456 // chain-shared — survives across SSR hops & re-renders
-  return next()
-})
+export const root = Point0.lets
+  .root()
+  .middleware(({ request, next }) => {
+    request.state.x = 123 // per-instance scratch
+    request.cache.y = 456 // chain-shared — survives across SSR hops & re-renders
+    return next()
+  })
+  .root()
 ```
 
 See [Request0](request#per-request-storage-state-vs-cache) for when to use
@@ -291,11 +330,14 @@ These ship as functions you pass straight to the functions-only form — they ar
 its imports removed), so it never ships to the browser and is a no-op there.
 
 ```tsx
-.middleware(cors({ origin: true, credentials: true }))
-.middleware(basicAuth({ users: { admin: 'adminpassword' } }))
-.middleware(openapi({ route: '/openapi.json', scalar: '/scalar' }))
-.middleware(compress())
-.middleware(cacheControl())
+export const root = Point0.lets
+  .root()
+  .middleware(cors({ origin: 'https://app.example.com', credentials: true }))
+  .middleware(basicAuth({ users: { admin: 'adminpassword' } }))
+  .middleware(openapi({ route: '/openapi.json', scalar: '/scalar' }))
+  .middleware(compress())
+  .middleware(cacheControl())
+  .root()
 ```
 
 - **[`cors`](cors)** (`@point0/cors`) — sets CORS headers and answers preflight

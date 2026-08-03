@@ -7,6 +7,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import { render, waitFor as rtlWaitFor } from '@testing-library/react/pure.js'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { Window } from 'happy-dom'
 import * as React from 'react'
 import { z } from 'zod'
@@ -235,6 +236,37 @@ export const adminEnrollHandler = chatChannel.lets('serverHandler', 'adminEnroll
   .clientSend(z.object({ me: z.string(), chatIds: z.array(z.string()) }))
   .serverReply(async ({ input }) => {
     await chatSpace.enroll({ $identity: { me: input.me } }, input.chatIds.map((chatId) => ({ chatId })))
+    return { ok: true }
+  })
+  .serverHandler()
+
+// a space whose joiner consults MUTABLE server state: it admits a room until that room is revoked, and refuses
+// every join afterwards. A revoke + refresh replays the client's join, the server refuses the replay, and the
+// membership lands in the terminal 'error' — the REVOKED-MEMBERSHIP fixture
+const revokedRooms = new Set()
+export const revokeSpace = chatChannel.lets<{ chatId: string }>('space', 'revokeSpace')
+  .input(z.object({ chatId: z.string() }))
+  .joiner(async ({ input }) => {
+    if (revokedRooms.has(input.chatId)) {
+      throw new ErrorPoint0('membership revoked', { preventRetry: true })
+    }
+    return { chatId: input.chatId }
+  })
+  .space()
+
+// the query-flavored handler of that space — one cache entry per room, and the entry a deny must take with it
+let revokeWhoCalls = 0
+export const revokeWhoHandler = revokeSpace.lets('serverHandler', 'revokeWhoHandler')
+  .serverReply(async ({ room }) => ({ n: ++revokeWhoCalls, chatId: room.chatId }))
+  .query({ staleTime: 60_000 })
+  .serverHandler()
+
+// revoke the room, then refresh the identity — the refresh replays the join the joiner now refuses
+export const adminRevokeRoomHandler = chatChannel.lets('serverHandler', 'adminRevokeRoomHandler')
+  .clientSend(z.object({ chatId: z.string(), me: z.string() }))
+  .serverReply(async ({ input }) => {
+    revokedRooms.add(input.chatId)
+    await chatChannel.refresh({ $identity: { me: input.me } })
     return { ok: true }
   })
   .serverHandler()
@@ -658,6 +690,18 @@ const buildClientPoints = (serverPort: number) => {
     .serverReply()
     .query({ staleTime: 60_000 })
     .serverHandler()
+  const revokeSpace = anyLets(chatChannel)('space', 'revokeSpace')
+    .input(z.object({ chatId: z.string() }))
+    .joiner()
+    .space()
+  const revokeWhoHandler = anyLets(revokeSpace)('serverHandler', 'revokeWhoHandler')
+    .serverReply()
+    .query({ staleTime: 60_000 })
+    .serverHandler()
+  const adminRevokeRoomHandler = anyLets(chatChannel)('serverHandler', 'adminRevokeRoomHandler')
+    .clientSend()
+    .serverReply()
+    .serverHandler()
   const dmNoticeHandler = anyLets(dmSpace)('clientHandler', 'dmNoticeHandler')
     .serverSend(z.object({ text: z.string() }))
     .clientHandler()
@@ -760,6 +804,9 @@ const buildClientPoints = (serverPort: number) => {
     multiEchoHandler,
     multiNoticeHandler,
     multiWhoHandler,
+    revokeSpace,
+    revokeWhoHandler,
+    adminRevokeRoomHandler,
     chatInfoHandler,
     earlyEchoHandler,
     earlyFailHandler,
@@ -821,6 +868,9 @@ describe('socket client runtime', () => {
       points.multiEchoHandler,
       points.multiNoticeHandler,
       points.multiWhoHandler,
+      points.revokeSpace,
+      points.revokeWhoHandler,
+      points.adminRevokeRoomHandler,
       points.chatInfoHandler,
       points.earlyEchoHandler,
       points.earlyFailHandler,
@@ -1510,6 +1560,106 @@ describe('socket client runtime', () => {
     expect(third.n).toBeGreaterThan(other.n)
 
     connection.disconnect()
+  })
+
+  it('a DENIED membership drops its socket query from the CACHE — the roomful key, not the roomless one the deny leaves behind', async () => {
+    // `enabled: false` stops a query from FETCHING, never from RENDERING what it already holds: without the eviction a
+    // membership the server just refused keeps serving its last answer to the next identity forever. The proof has to
+    // be the cache — a component that merely fell back to pending would look identical
+    const connection = points.chatChannel.connect({ userId: 'rvk' })
+    await waitFor(() => connection.status === 'open')
+    const membership = points.revokeSpace.join({ chatId: 'rvk-room' }, undefined, { userId: 'rvk' }) as LooseMembership
+    await waitFor(() => membership.status === 'joined')
+    const admin = points.chatChannel.connect({ userId: 'rvkadm' })
+    await waitFor(() => admin.status === 'open')
+
+    // every assertion below sits inside the try: a failure here must not leave a live connection and a held
+    // membership behind for the rest of the file (the `<Socket>` keeper waits on an idle transport)
+    try {
+      const bound = points.revokeWhoHandler(membership)
+      // the key while the membership is still GOOD — it carries the room, the entry that must not survive
+      const roomfulKey = bound.getSocketQueryKey() as [unknown, Record<string, unknown>]
+      expect(roomfulKey[1].space).toBe('revokeSpace')
+      expect(roomfulKey[1].room).toBe(JSON.stringify({ chatId: 'rvk-room' }))
+
+      const queryClient = createQueryClient()
+      // the cache ENTRY, rendered as `status:data` — the failure message then names what leaked instead of dumping a
+      // whole `Query`; `undefined` means the entry itself is gone, which is stronger than "its data is undefined"
+      const entryFor = (key: unknown): string | undefined => {
+        const query = queryClient.getQueryCache().find({ queryKey: key as never, exact: true })
+        return query === undefined ? undefined : query.state.status + ':' + JSON.stringify(query.state.data)
+      }
+      // every cached socket query still addressed at the revoked room, by handler name — the honest sweep: an entry that
+      // survived under a DIFFERENT key would still be the denied room's data sitting there for the next identity
+      const cachedAtRevokedRoom = (): string[] =>
+        queryClient
+          .getQueryCache()
+          .getAll()
+          .map((query) => query.queryKey[1] as { name?: string; room?: string } | undefined)
+          .filter((meta) => meta?.room === JSON.stringify({ chatId: 'rvk-room' }))
+          .map((meta) => String(meta?.name))
+
+      await withDomGlobals(async () => {
+        const Who = (): React.ReactNode => {
+          const { data } = bound.useSocketQuery() as { data?: { chatId: string } }
+          return React.createElement('div', null, data ? 'room:' + data.chatId : 'pending')
+        }
+        const view = render(
+          React.createElement(QueryClientProvider, { client: queryClient as never }, React.createElement(Who)),
+        )
+        try {
+          // the hook ran over the socket and its answer IS in the cache, under the roomful key
+          await rtlWaitFor(
+            () => {
+              expect(queryClient.getQueryData(roomfulKey as never)).toBeDefined()
+            },
+            { timeout: 20_000 },
+          )
+          expect((queryClient.getQueryData(roomfulKey as never) as { chatId: string }).chatId).toBe('rvk-room')
+          expect(cachedAtRevokedRoom()).toEqual(['revokeWhoHandler'])
+
+          // the server revokes the room and refreshes the identity: the connect re-runs, the join is REPLAYED, and this
+          // time the joiner refuses it — the membership lands in the terminal 'error'
+          const oldCid = connection.id as string
+          await points.adminRevokeRoomHandler(admin).sendToServer({ chatId: 'rvk-room', me: 'user-rvk' })
+          await rtlWaitFor(
+            () => {
+              expect(membership.status).toBe('error')
+            },
+            { timeout: 20_000 },
+          )
+          expect(connection.id).not.toBe(oldCid)
+
+          // the deny granted nothing and CLEARED the rooms, so the key this render computes carries no room at all —
+          // exactly why the eviction has to drop the last key seen while the membership was still good. Evicting the
+          // key of the denied render would remove an entry that never held anything (below) and leave the real one
+          const roomlessKey = bound.getSocketQueryKey() as [unknown, Record<string, unknown>]
+          expect(membership.rooms).toEqual([])
+          expect(roomlessKey[1].room).toBeUndefined()
+          expect(queryClient.getQueryData(roomlessKey as never)).toBeUndefined()
+
+          // THE POINT: the denied membership's answer is gone from the CACHE, not merely unrendered
+          await rtlWaitFor(
+            () => {
+              expect(cachedAtRevokedRoom()).toEqual([])
+            },
+            { timeout: 10_000 },
+          )
+          expect(entryFor(roomfulKey)).toBeUndefined()
+          expect(queryClient.getQueryData(roomfulKey as never)).toBeUndefined()
+
+          // and it stays gone — the membership is denied, so nothing re-enables the query and refetches it back
+          await new Promise((resolve) => setTimeout(resolve, 500))
+          expect(cachedAtRevokedRoom()).toEqual([])
+        } finally {
+          view.unmount()
+        }
+      })
+    } finally {
+      membership.leave()
+      admin.disconnect()
+      connection.disconnect()
+    }
   })
 
   it('the socket parity surface: await-the-connect fetches, cache read/write, fuzzy ops, the mutation machinery', async () => {

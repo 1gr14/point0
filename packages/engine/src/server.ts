@@ -739,6 +739,9 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
             if (upgraded) {
               return undefined as never
             }
+            // the handshake did not happen, so `handleOpen` will never consume the cold-start seed — drop it now
+            // instead of leaving it to its TTL (a refused upgrade is exactly what a flood produces)
+            this.socket.releasePendingUpgrade(upgradeMarker)
           }
           return new Response(null, { status: 400 })
         }

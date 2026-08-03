@@ -34,7 +34,9 @@ import {
 // The socket surface has ONE door — the main entry deliberately does not re-export it, so that an app without the
 // feature strips the whole module out of its client bundle. See `@point0/core`'s socket.ts.
 import {
+  parseSocketClientFrame,
   registerSocketServerAdapter,
+  type SocketWireLimits,
   unregisterSocketServerAdapter,
   type SocketAdminTarget,
   type SocketClientFrame,
@@ -58,6 +60,8 @@ export type SocketData = {
     cids: Set<string>
     /** set on a cold-start GET+Upgrade socket — the cid whose stashed entry seed `handleOpen` installs and claims */
     pendingClaimCid?: string
+    /** the frame budget window — see {@link EngineSocket.exceedsFrameBudget}; `claimed` marks which half it counts */
+    frameBudget?: { windowStart: number; count: number; claimed: boolean }
   }
 }
 
@@ -418,6 +422,83 @@ const RESUME_HANDLER_BUFFER_DEFAULT = 128
  * arguments; a user implementation just routes what it is given (a future second consumer — cache invalidation, crons —
  * takes its own channels, never multiplexes these).
  */
+const isStr = (value: unknown): value is string => typeof value === 'string'
+const isOptStr = (value: unknown): value is string | undefined => value === undefined || typeof value === 'string'
+const isStrArray = (value: unknown): value is string[] => Array.isArray(value) && value.every(isStr)
+const isOptStrArray = (value: unknown): value is string[] | undefined => value === undefined || isStrArray(value)
+
+/** An admin selector as it arrives on the bus: the addressing half of `kick` / `enroll` / `refresh` / the gathers. */
+const isBusSelector = (value: unknown): value is AdminSelector => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+  const selector = value as Record<string, unknown>
+  return (
+    isStr(selector.scope) &&
+    isStr(selector.channel) &&
+    isOptStr(selector.space) &&
+    isOptStr(selector.matcher) &&
+    isOptStr(selector.roomMatcher) &&
+    isOptStrArray(selector.rooms) &&
+    isOptStrArray(selector.connectionId)
+  )
+}
+
+/**
+ * Parse ONE envelope off the bus — the {@link parseSocketClientFrame} of the backplane.
+ *
+ * The bus is infrastructure, not a client, so this is not a trust boundary in the same sense: whoever can publish here
+ * can usually read the KV too. It is a SHAPE boundary all the same. These envelopes kick connections, rewrite stored
+ * identities and answer with connection snapshots addressed to a topic the envelope itself names, and they arrive from
+ * whatever else shares the Redis: an older point0 mid-deploy, a neighbouring app, a fuzzed key. A field is used only
+ * once its type is known, and an envelope that does not match its `kind` never happened.
+ */
+const parseBusEnvelope = (parsed: unknown): BusEnvelope | undefined => {
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return undefined
+  }
+  const envelope = parsed as Record<string, unknown>
+  if (envelope.v !== 1 || !isStr(envelope.pid)) {
+    return undefined
+  }
+  const ok = ((): boolean => {
+    switch (envelope.kind) {
+      case 'push':
+        return (
+          isStr(envelope.scope) &&
+          isStr(envelope.channel) &&
+          isStr(envelope.handler) &&
+          typeof envelope.target === 'object' &&
+          envelope.target !== null &&
+          !Array.isArray(envelope.target) &&
+          isOptStr(envelope.input) &&
+          isOptStr(envelope.mid) &&
+          isOptStr(envelope.eid)
+        )
+      case 'reply':
+        return isStr(envelope.mid) && isStr(envelope.cid) && isOptStr(envelope.data) && isOptStr(envelope.error)
+      case 'kick':
+        return isBusSelector(envelope.selector) && isOptStr(envelope.reason)
+      case 'enroll':
+        return isBusSelector(envelope.selector) && isStrArray(envelope.rooms)
+      case 'refresh':
+        return isBusSelector(envelope.selector)
+      case 'amend':
+        return isBusSelector(envelope.selector) && isStr(envelope.patch)
+      case 'connections-req':
+      case 'count-req':
+        return isStr(envelope.reqId) && isBusSelector(envelope.selector)
+      case 'connections-res':
+        return isStr(envelope.reqId) && Array.isArray(envelope.items)
+      case 'count-res':
+        return isStr(envelope.reqId) && typeof envelope.count === 'number' && Number.isFinite(envelope.count)
+      default:
+        return false
+    }
+  })()
+  return ok ? (envelope as BusEnvelope) : undefined
+}
+
 const BUS_CHANNEL = 'point0:socket:bus'
 const BUS_PROC_TOPIC_PREFIX = 'point0:socket:proc:'
 const BUS_ROOM_TOPIC_PREFIX = 'point0:socket:room:'
@@ -839,14 +920,18 @@ export class EngineSocket<TError extends ErrorPoint0> {
   }
 
   private handleBusMessage(raw: string): void {
-    let envelope: BusEnvelope | undefined
+    let parsed: unknown
     try {
-      envelope = JSON.parse(raw) as BusEnvelope | undefined
+      parsed = JSON.parse(raw)
     } catch {
       return
     }
-    // the wire may carry anything — an older point0 on the same bus, garbage; the version gate is real
-    if (this.disposed || !envelope || (envelope.v as number) !== 1 || envelope.pid === this.pid) {
+    // the bus may carry anything — an older point0 sharing it, a neighbouring app on the same Redis, garbage. The
+    // version gate is real, and the SHAPE gate behind it is the envelope's twin of the client wire's: these commands
+    // kick connections, rewrite identities and answer with connection snapshots, so a field is used only once its
+    // type is known
+    const envelope = parseBusEnvelope(parsed)
+    if (this.disposed || !envelope || envelope.pid === this.pid) {
       return
     }
     // a multi-topic push reaches a process once per topic it is subscribed to — the eid collapses the copies to one
@@ -882,7 +967,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
     switch (envelope.kind) {
       case 'push': {
         // deliver to this process's sockets; replies from them flow back through handleReply → a 'reply' envelope
-        this.deliverPushLocal({
+        const { expectedByCid } = this.deliverPushLocal({
           scope: envelope.scope,
           channel: envelope.channel,
           handler: envelope.handler,
@@ -890,6 +975,10 @@ export class EngineSocket<TError extends ErrorPoint0> {
           input: envelope.input,
           mid: envelope.mid,
         })
+        // a collect push: remember what each local connection was actually sent — the forward authorization
+        if (envelope.mid !== undefined && expectedByCid.size > 0) {
+          this.rememberForwardAllowance(envelope.mid, expectedByCid)
+        }
         return
       }
       case 'reply': {
@@ -1521,8 +1610,14 @@ export class EngineSocket<TError extends ErrorPoint0> {
    * in `handleOpen` without a ticket. Same-process by construction (the upgrade rides the very request that created the
    * cid); an unref'd TTL sweep drops it if the handshake never lands.
    */
-  stashPendingUpgrade(args: { cid: string; point: AnyPoint; identitySerialized: string }): void {
+  stashPendingUpgrade(args: { cid: string; point: AnyPoint; identitySerialized: string }): boolean {
     const { cid, point, identitySerialized } = args
+    // the same ceiling the bare path has: a cold-start connect is minted by an unauthenticated request too, and each
+    // seed holds a channel point, an identity and a conn record until its TTL. Full means the handshake is refused,
+    // not that the set grows
+    if (this.pendingUpgrades.size >= this.server.socketOptions.maxPendingUpgrades) {
+      return false
+    }
     const connectionTtl = point._getChannelPointOptions().connectionTtl
     const connJson = JSON.stringify({
       scope: point.scope,
@@ -1543,6 +1638,17 @@ export class EngineSocket<TError extends ErrorPoint0> {
       connectionTtl,
       timer,
     })
+    return true
+  }
+
+  /** Drop a stashed cold-start seed the handshake never used — the server top calls it when `bunServer.upgrade` fails. */
+  releasePendingUpgrade(cid: string): void {
+    const seed = this.pendingUpgrades.get(cid)
+    if (!seed) {
+      return
+    }
+    clearTimeout(seed.timer)
+    this.pendingUpgrades.delete(cid)
   }
 
   /**
@@ -1639,7 +1745,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
       await backplane.delete(this.ticketKey(ticket))
       await backplane.delete(this.connKey(stored.cid))
     } catch {
-      await backplane.delete(this.ticketKey(ticket))
+      // an unparseable record is not this scope's to delete — nobody can claim it either, and its TTL sweeps it
     }
   }
 
@@ -1677,11 +1783,78 @@ export class EngineSocket<TError extends ErrorPoint0> {
   }
 
   /**
+   * May this handshake open a socket? The CSRF gate of the WebSocket upgrade, applied to BOTH shapes — the bare
+   * endpoint and the cold-start channel upgrade-connect — before either MINTS anything: no upgrade token, no
+   * connection, and on the channel shape not even a `.connector` run. (A middleware still runs before it on the bare
+   * shape, as one does for every request; this gate is the engine's own, not a replacement for yours.)
+   *
+   * A browser sends `Origin` on a handshake and then applies no same-origin policy to the answer — the upgrade succeeds
+   * cross-site, cookies and all. So an `Origin` that is not ours is refused unless the app listed it; a request with NO
+   * `Origin` passes, because that is not a browser and there is no site to forge from (a native client, a server, curl
+   * — none of which carry someone else's cookies by ambient authority).
+   *
+   * Same-origin compares HOSTS, not full origins: a TLS-terminating proxy leaves the engine speaking http while the
+   * browser dialed https, so the scheme would mismatch for every deployment behind one. `x-forwarded-host` wins when
+   * present — the browser WebSocket API cannot set headers, so a hostile page cannot forge it.
+   *
+   * See {@link EngineSocketServerOptions.allowedOrigins}.
+   */
+  isUpgradeOriginAllowed(request: Request): boolean {
+    const origin = request.headers.get('origin')
+    if (origin === null) {
+      return true
+    }
+    const { allowedOrigins } = this.server.socketOptions
+    if (allowedOrigins === '*') {
+      return true
+    }
+    if (allowedOrigins !== 'same-origin' && allowedOrigins.includes(origin)) {
+      return true
+    }
+    // `null` (a sandboxed iframe, a `file://` page) and any other unparseable origin land here as undefined — refused
+    const originHost = URL.canParse(origin) ? new URL(origin).host : undefined
+    if (originHost === undefined) {
+      return false
+    }
+    const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
+    const ownHost = forwardedHost || request.headers.get('host') || new URL(request.url).host
+    if (originHost === ownHost) {
+      // the scheme too, WHEN the deployment tells us what it is: behind a TLS-terminating proxy the engine speaks
+      // http while the browser dialed https, so `x-forwarded-proto` is the only honest source. Absent it, host
+      // equality is the whole check — an http page on the same host is a same-site page either way
+      const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()
+      return forwardedProto === undefined || `${forwardedProto}:` === new URL(origin).protocol
+    }
+    // THIS ENGINE's own dev client is not a foreign site. In dev the browser holds a page served by the client (its
+    // own port) and the socket handshake reaches the server through the client's proxy, which replays the browser's
+    // `Origin` verbatim — so a same-app handshake legitimately arrives with a different port on it. The ports are the
+    // engine's own configuration, not something a request can claim, and a BUILT server never serves that way: there
+    // the client rides the server's own origin, or it is hosted elsewhere and belongs in `allowedOrigins`
+    if (this.server.itWasBuilt) {
+      return false
+    }
+    return this.server.clients.some(
+      (client) => originHost === `localhost:${client.port}` || originHost === `127.0.0.1:${client.port}`,
+    )
+  }
+
+  /**
+   * The 403 both upgrade shapes answer a refused origin with. The body is for the developer reading a log or a network
+   * panel — a browser never shows a failed handshake's response to the page that attempted it.
+   */
+  private forbiddenOriginResponse(): Response {
+    return new Response('Forbidden websocket origin', { status: 403 })
+  }
+
+  /**
    * The `websocket`-variant handler: mint a one-time upgrade token, emit the endpoint's own event, and answer the
    * marker response the server top turns into the Bun handshake. Runs AFTER every middleware passed the request through
    * — a middleware that answered an ordinary response instead is the veto (the handshake then fails).
    */
-  acceptBareUpgrade(scope: PointsScope): Response {
+  acceptBareUpgrade(scope: PointsScope, request: Request): Response {
+    if (!this.isUpgradeOriginAllowed(request)) {
+      return this.forbiddenOriginResponse()
+    }
     // an unauthenticated request mints a token — cap the pending set so a request flood cannot grow it unbounded
     if (this.pendingBareUpgrades.size >= this.server.socketOptions.maxPendingUpgrades) {
       return new Response('Too many pending websocket upgrades', { status: 503 })
@@ -1809,6 +1982,17 @@ export class EngineSocket<TError extends ErrorPoint0> {
     }
   }
 
+  /** The frame caps this server resolved — {@link parseSocketClientFrame} takes them per message. */
+  private get wireLimits(): SocketWireLimits {
+    const options = this.server.socketOptions
+    return {
+      id: options.maxFrameIdLength,
+      name: options.maxFrameNameLength,
+      resumeEntries: options.maxResumeEntries,
+      leaveRooms: options.maxLeaveRooms,
+    }
+  }
+
   handleClose(ws: Bun.ServerWebSocket<SocketData>): void {
     const socketData = ws.data.__point0Socket
     if (!socketData) {
@@ -1825,10 +2009,15 @@ export class EngineSocket<TError extends ErrorPoint0> {
     if (!socketData) {
       return
     }
-    let frame: SocketClientFrame
-    try {
-      frame = JSON.parse(typeof message === 'string' ? message : message.toString()) as SocketClientFrame
-    } catch {
+    // the pre-claim budget is charged BEFORE the parse: garbage costs a `JSON.parse` too, and a socket that only ever
+    // sends garbage must still run out of budget
+    if (this.exceedsFrameBudget(ws, socketData)) {
+      return
+    }
+    // the wire is untrusted: `parseSocketClientFrame` is the door — a frame whose fields are not the types the union
+    // promises never reaches a handler (see its JSDoc for why it drops rather than closes)
+    const frame = parseSocketClientFrame(typeof message === 'string' ? message : message.toString(), this.wireLimits)
+    if (!frame) {
       return
     }
     // Socket frames bypass the fetch pipeline, so they need its dev points gate too (same condition as
@@ -1882,6 +2071,55 @@ export class EngineSocket<TError extends ErrorPoint0> {
         return
       }
     }
+  }
+
+  /**
+   * The frame budget of a socket, charged per raw message before anything is parsed. Two windows, because the two
+   * halves of a socket's life are bounded for different reasons — both are engine options
+   * ({@link EngineSocketServerOptions.unclaimedFrameMax} / {@link EngineSocketServerOptions.claimedFrameMax}), and either
+   * is switched off with `0`.
+   *
+   * BEFORE the claim there is no identity and no hook of the app's at all — no `.connector` has run, no `.joiner`, no
+   * `onBeforeServerReply` — yet `claim`, `discard` and `resume` each cost backplane round trips. That budget is the one
+   * rate bound the engine owes outright, and it is tight: a real client spends ONE frame there.
+   *
+   * AFTER the claim the app's own hooks can refuse a message, and they are the ones that know what it costs — so this
+   * budget is a coarse backstop, not the domain limit. Generous by default; an app doing tens of frames a second per
+   * connection is normal, thousands is not.
+   *
+   * Exceeding either closes the socket: a client this far off protocol has nothing left to say on it.
+   */
+  private exceedsFrameBudget(
+    ws: Bun.ServerWebSocket<SocketData>,
+    socketData: NonNullable<SocketData['__point0Socket']>,
+  ): boolean {
+    const claimed = socketData.cids.size > 0
+    const { unclaimedFrameMax, unclaimedFrameWindow, claimedFrameMax, claimedFrameWindow } = this.server.socketOptions
+    const max = claimed ? claimedFrameMax : unclaimedFrameMax
+    if (max <= 0) {
+      return false
+    }
+    const windowMs = claimed ? claimedFrameWindow : unclaimedFrameWindow
+    const now = Date.now()
+    // one counter, reset on the switch: a socket that claims mid-window starts the claimed budget from zero, and the
+    // pre-claim frames it already spent do not follow it in
+    const budget = socketData.frameBudget
+    if (!budget || budget.claimed !== claimed || now - budget.windowStart >= windowMs) {
+      socketData.frameBudget = { windowStart: now, count: 1, claimed }
+      return false
+    }
+    budget.count++
+    if (budget.count <= max) {
+      return false
+    }
+    this.server.log({
+      level: 'warn',
+      category: ['point0', 'socket'],
+      message: `Closing a socket that flooded its ${claimed ? 'claimed' : 'pre-claim'} frame budget`,
+      meta: { scope: socketData.scope },
+    })
+    ws.close()
+    return true
   }
 
   private renewConnectionRecords(cids: Set<string>): void {
@@ -2328,6 +2566,15 @@ export class EngineSocket<TError extends ErrorPoint0> {
       return
     }
     const storedConnection = JSON.parse(rawConnection) as StoredConnection
+    // the ticket's scope was checked above; the RECORD carries its own, and it is the one the entry is filed under.
+    // Both are written by the same `createConnection`, so they agree — but every resume path re-checks the record's
+    // scope, and a claim that trusted it would be the one way a record could file an entry into a scope this socket
+    // never dialed (and never ran the middlewares of)
+    if (storedConnection.scope !== socketData.scope) {
+      await backplane.delete(this.connKey(storedTicket.cid))
+      fail('Unknown or expired socket ticket', POINT0_ERROR_CODES_MAP.SOCKET_TICKET_INVALID, 'ticket', storedTicket.cid)
+      return
+    }
     const channelRecord = this.server.points.findPoint({
       scope: storedConnection.scope,
       type: 'channel',
@@ -2438,8 +2685,11 @@ export class EngineSocket<TError extends ErrorPoint0> {
    * first: a LIVE entry (the server never noticed the death) is a TAKEOVER — the zombie socket loses the binding, the
    * new one gets it; a PARKED entry revives in place and its streams replay; anything else restores from the KV
    * passport — identity and rooms re-enter from the record, no connector, no joiners, no enrollers. Every refusal is
-   * the ONE `resumeErr` shape: an unknown cid and a wrong key must be indistinguishable (no oracle), and the client's
-   * answer to any refusal is the ordinary full connect anyway.
+   * the ONE `resumeErr` shape: an unknown cid and a wrong key answer identically, so the frame tells an attacker
+   * nothing, and the client's answer to any refusal is the ordinary full connect anyway. (The frame, not the clock: a
+   * cid live or parked on THIS process is refused without touching the backplane, so the latency still separates "not
+   * here" from "here, wrong key". Cids are random uuids, so that is a liveness probe for a cid you already hold, not an
+   * enumeration primitive.)
    */
   private async handleResume(
     ws: Bun.ServerWebSocket<SocketData>,
@@ -2455,11 +2705,18 @@ export class EngineSocket<TError extends ErrorPoint0> {
     // which the floor (`max(cursor, epoch)`) resolves honestly
     for (const offered of frame.entries as unknown[]) {
       const entry = (offered ?? {}) as { cid?: unknown; key?: unknown; cursors?: unknown }
-      if (typeof entry.cid !== 'string' || entry.cid === '') {
+      // the same bound the frame's own ids answer to (the resolved wire limits) — a cid is interpolated into a
+      // backplane key, and one the size of a payload is not a cid
+      if (
+        typeof entry.cid !== 'string' ||
+        entry.cid === '' ||
+        entry.cid.length > this.server.socketOptions.maxFrameIdLength
+      ) {
         continue
       }
       if (
         typeof entry.key !== 'string' ||
+        entry.key.length > this.server.socketOptions.maxFrameIdLength ||
         entry.cursors === null ||
         typeof entry.cursors !== 'object' ||
         Array.isArray(entry.cursors)
@@ -2924,6 +3181,27 @@ export class EngineSocket<TError extends ErrorPoint0> {
         connectionId: entry.cid,
         points: this.server.points as NiceServerPoints,
       })
+      // an engine-side refusal after the joiner ran — closes the family with the error, exactly like a joiner throw
+      const refuseOverCap = (): void => {
+        const maxRoomsError = new spacePoint._Error(`Too many rooms of space "${frame.space}" on one connection`, {
+          code: POINT0_ERROR_CODES_MAP.SOCKET_MAX_ROOMS,
+        })
+        this.send(ws, { t: 'joinErr', id: frame.id, error: this.serializeError(spacePoint, maxRoomsError) })
+        spacePoint._emitSpaceJoinSettled({
+          rooms: undefined,
+          identity: entry.identityParsed,
+          connectionId: entry.cid,
+          input,
+          error: maxRoomsError,
+        })
+      }
+      // the cap BEFORE the topics: a refused join must cost no bus traffic. Walking a subscribe back afterwards still
+      // issued it, and holds the topic through the unsubscribe linger — so a connection at its ceiling could otherwise
+      // make the process subscribe a fresh room per frame and release it a moment later
+      if (!this.roomsFit(entry, spacePoint, roomsSerialized)) {
+        refuseOverCap()
+        return
+      }
       // the room bus topics go up BEFORE the rooms are indexed and the `joined` frame confirms them — a push
       // published right after the confirmation must already have this process listening
       await this.subscribeRoomBusTopics(entry, spacePoint.name, roomsSerialized)
@@ -2944,21 +3222,12 @@ export class EngineSocket<TError extends ErrorPoint0> {
         return
       }
       // a join UNIONS — in what you were, you stay; what the joiner admitted, you additionally enter. Removal is
-      // never a join side-effect: it is `leave` (the client's), `kick` (the server's) or `refresh` (start over)
+      // never a join side-effect: it is `leave` (the client's), `kick` (the server's) or `refresh` (start over).
+      // Re-checked past the await: frames interleave, so another join of this same connection may have landed rooms
+      // while this one subscribed
       if (!this.roomsFit(entry, spacePoint, roomsSerialized)) {
         this.sweepRoomBusTopics(entry, spacePoint.name, roomsSerialized)
-        const maxRoomsError = new spacePoint._Error(`Too many rooms of space "${frame.space}" on one connection`, {
-          code: POINT0_ERROR_CODES_MAP.SOCKET_MAX_ROOMS,
-        })
-        this.send(ws, { t: 'joinErr', id: frame.id, error: this.serializeError(spacePoint, maxRoomsError) })
-        // an engine-side refusal after the run — close the family with the error, exactly like a joiner throw
-        spacePoint._emitSpaceJoinSettled({
-          rooms: undefined,
-          identity: entry.identityParsed,
-          connectionId: entry.cid,
-          input,
-          error: maxRoomsError,
-        })
+        refuseOverCap()
         return
       }
       this.addRoomsToEntry(
@@ -3110,6 +3379,19 @@ export class EngineSocket<TError extends ErrorPoint0> {
     if (entry.opened) {
       this.emitChannelConnectionEvent('pointChannelCloseServer', entry, { reason: 'socket' })
     }
+    // the ceiling on parks this process holds: every park keeps its rooms indexed, its streams buffered and its bus
+    // topics subscribed for the whole park window, and connect-then-drop is a cheap thing to do in a loop. Oldest goes
+    // first — it is the closest to expiring anyway, and the one whose client is least likely to still be coming back.
+    // A swept park is not a lost connection: the KV record and its resume right outlive the buffer, so the client
+    // resumes from the passport instead of the buffer (and hears `gapless: false` for what the buffer would have held)
+    const maxParked = this.server.socketOptions.maxParkedConnections
+    while (maxParked > 0 && this.parkedByCid.size >= maxParked) {
+      const oldest = this.parkedByCid.keys().next()
+      if (oldest.done) {
+        break
+      }
+      this.sweepParked(oldest.value)
+    }
     const timer = setTimeout(() => {
       this.sweepParked(entry.cid)
     }, entry.channelPoint._getChannelPointOptions().resume.parkWindow)
@@ -3226,15 +3508,23 @@ export class EngineSocket<TError extends ErrorPoint0> {
     }
     const handler = handlerRecord.point
     // a space handler's send names the concrete room it addresses — verify this connection IS in that room, then
-    // parse it with the SPACE transformer; a channel handler send carries no room
+    // parse it with the SPACE transformer; a channel handler send carries no room. A frame that names NO room is
+    // refused by the same check: the client always fills it for a space handler, and a hand-built frame that leaves it
+    // out must not buy a run of the reply — the reply would execute for a non-member with `room` missing, and its
+    // `{ room }` pushes would widen into space-WIDE ones
     const spacePoint = handler._spacePoint
     let room: unknown = undefined
-    if (frame.room !== undefined && spacePoint) {
-      const covers = entry.spaces.get(spacePoint.name)?.rooms.has(frame.room) === true
-      if (!covers) {
-        const notInRoomError = Object.assign(new Error(`Connection is not in room for space "${spacePoint.name}"`), {
-          code: POINT0_ERROR_CODES_MAP.SOCKET_NOT_IN_ROOM,
-        })
+    if (spacePoint) {
+      const roomSerialized = frame.room
+      if (roomSerialized === undefined || entry.spaces.get(spacePoint.name)?.rooms.has(roomSerialized) !== true) {
+        const notInRoomError = Object.assign(
+          new Error(
+            roomSerialized === undefined
+              ? `Space handler send named no room for space "${spacePoint.name}"`
+              : `Connection is not in room for space "${spacePoint.name}"`,
+          ),
+          { code: POINT0_ERROR_CODES_MAP.SOCKET_NOT_IN_ROOM },
+        )
         this.send(ws, { t: 'sendErr', id: frame.id, error: this.serializeError(handler, notInRoomError) })
         this.emitSendRefused({
           scope: entry.scope,
@@ -3246,7 +3536,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
         })
         return
       }
-      room = spacePoint._getSocketTransformer().parse(frame.room)
+      room = spacePoint._getSocketTransformer().parse(roomSerialized)
     }
     try {
       // the server-side message id — `.serverReply` sees it as `messageId`
@@ -3290,6 +3580,63 @@ export class EngineSocket<TError extends ErrorPoint0> {
     }
   }
 
+  /**
+   * What a collect push published from ANOTHER process delivered to this one's connections — mid → cid → frames sent.
+   * The forwarding half of the collect window's per-connection allowance: this process is the only one that knows what
+   * its own sockets received, and a reply it never sent a frame for is not a reply.
+   *
+   * Bounded twice, because it is fed by traffic: entries fall out after `forwardAllowanceTtl` (an initiator's window is
+   * seconds, never a minute) and the oldest are evicted past `forwardAllowanceMax`, exactly like the bus dedup set.
+   * Losing an entry early only costs a late reply its forward.
+   */
+  private forwardAllowances = new Map<string, { allowanceByCid: Map<string, number>; expiresAt: number }>()
+
+  private rememberForwardAllowance(mid: string, expectedByCid: Map<string, number>): void {
+    const existing = this.forwardAllowances.get(mid)
+    if (existing) {
+      for (const [cid, count] of expectedByCid) {
+        existing.allowanceByCid.set(cid, (existing.allowanceByCid.get(cid) ?? 0) + count)
+      }
+      return
+    }
+    if (this.forwardAllowances.size >= this.server.socketOptions.forwardAllowanceMax) {
+      const oldest = this.forwardAllowances.keys().next()
+      if (!oldest.done) {
+        this.forwardAllowances.delete(oldest.value)
+      }
+    }
+    this.forwardAllowances.set(mid, {
+      allowanceByCid: new Map(expectedByCid),
+      expiresAt: Date.now() + this.server.socketOptions.forwardAllowanceTtl,
+    })
+  }
+
+  /** Spend one forward of `(mid, cid)` — false when this process never sent that connection a frame of that push. */
+  private spendForwardAllowance(mid: string, cid: string): boolean {
+    const refuse = (why: string): false => {
+      this.server.log({
+        level: 'warn',
+        category: ['point0', 'socket'],
+        message: `Dropped a collected reply this process never sent a frame for (connection ${cid}): ${why}`,
+      })
+      return false
+    }
+    const record = this.forwardAllowances.get(mid)
+    if (!record) {
+      return refuse('unknown message id')
+    }
+    if (record.expiresAt <= Date.now()) {
+      this.forwardAllowances.delete(mid)
+      return refuse('the push is older than the forward window')
+    }
+    const left = record.allowanceByCid.get(cid) ?? 0
+    if (left <= 0) {
+      return refuse('no frames of that push were delivered to it')
+    }
+    record.allowanceByCid.set(cid, left - 1)
+    return true
+  }
+
   private handleReply(
     ws: Bun.ServerWebSocket<SocketData>,
     frame: SocketClientFrame & { t: 'reply' },
@@ -3306,8 +3653,16 @@ export class EngineSocket<TError extends ErrorPoint0> {
     if (!pending) {
       // not ours — the collect lives in the process that initiated the push; forward the reply over the bus (the
       // reply's room/space context comes from that collect's push target, so the envelope carries only the answer).
-      // Rate-capped per connection: the mid is client-supplied here, so a garbage flood must not become bus traffic
+      // The mid is CLIENT-supplied, so the forward is authorized first: this process delivered that push, so it knows
+      // exactly how many frames of it this cid received. Without that check a member of the room could answer any mid
+      // it ever saw, any number of times, as a reply the initiator cannot tell from a real one — the local half of the
+      // window has always checked this ({@link landCollectedReply}), and the remote half now checks the same thing on
+      // the process that actually knows the answer. It also settles the amplification: an invented mid was delivered
+      // to nobody, so it never becomes bus traffic
       if (this.hasExternalBackplane()) {
+        if (!this.spendForwardAllowance(frame.id, frame.cid)) {
+          return
+        }
         const now = Date.now()
         if (now - entry.replyForwards.windowStart >= this.server.socketOptions.replyForwardWindow) {
           entry.replyForwards = { windowStart: now, count: 0 }
@@ -3400,16 +3755,31 @@ export class EngineSocket<TError extends ErrorPoint0> {
       }
       pending.receivedByCid.set(reply.cid, seen + 1)
     }
+    // the window's accounting comes FIRST, and the consumer runs guarded: `onReply` deserializes a client-supplied
+    // payload and then runs app code. A throw there must not leave the slot spent but uncounted — the window would
+    // stop closing early and wait out its whole timeout, which one malformed byte per addressed client would buy
+    pending.received++
     if (reply.error !== undefined) {
       this.server.log({
         level: 'warn',
         category: ['point0', 'socket'],
-        message: `A client .clientReply failed for a collected push (connection ${reply.cid}): ${reply.error}`,
+        // the string is the CLIENT's — control characters would forge lines in a pretty-printed log, so it rides as
+        // bounded, stripped meta rather than inside the message
+        message: `A client .clientReply failed for a collected push (connection ${reply.cid})`,
+        meta: { error: reply.error.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 500) },
       })
     } else {
-      pending.onReply({ cid: reply.cid, data: reply.data, room: pending.room, space: pending.space })
+      try {
+        pending.onReply({ cid: reply.cid, data: reply.data, room: pending.room, space: pending.space })
+      } catch (error) {
+        this.server.log({
+          level: 'error',
+          category: ['point0', 'socket'],
+          message: `A collected reply consumer threw (connection ${reply.cid})`,
+          error,
+        })
+      }
     }
-    pending.received++
     if (pending.expected !== null && pending.received >= pending.expected) {
       this.finishCollect(pending.mid)
     }
@@ -4042,18 +4412,20 @@ export class EngineSocket<TError extends ErrorPoint0> {
 
   /**
    * Deliver one push to this process's sockets and count the local answers expected. ONE addressing watershed for
-   * resumable and plain channels alike — what decides the path is whether the target carries CONNECTION parts
-   * (`connectionId` / `identityMatcher`), i.e. whether the frame's audience is exactly a topic's audience:
+   * resumable and plain channels alike — what decides the path is whether the frame's audience is exactly a topic's
+   * audience, which it is not when the target names CONNECTIONS (`connectionId` / `identityMatcher`) or carves an
+   * audience out of the topic (`exceptRooms`):
    *
-   * - NO connection parts (bare / `space` / `rooms` / `$room`) → the TOPIC path: one frame per topic — the channel
+   * - a topic-shaped audience (bare / `space` / `rooms` / `$room`) → the TOPIC path: one frame per topic — the channel
    *   `*all*` topic, the space-wide topic, or one publish per targeted room — serialized ONCE and fanned out by the
    *   native pub/sub. A `$room` matcher resolves here, per process, into the concrete local rooms (the sift scan the
    *   `$`-key announces) and then rides the same room topics — a room push with late binding of the room set. On a
    *   resumable channel the frame is stamped into the topic's STREAM first ({@link stampStreamFrame}); parked
    *   subscribers cost nothing — the stream IS their buffer.
-   * - ANY connection part → the PERSONAL path: AND-filter the entries (exact cids are O(1) lookups, the identity matcher
-   *   is a sift scan; room parts require a covering membership), then a direct send per frame, stamped into each
-   *   recipient's personal stream on a resumable channel ({@link sendPersonalFrame}; parked recipients only log).
+   * - ANY connection part, or an `exceptRooms` carve-out → the PERSONAL path: AND-filter the entries (exact cids are O(1)
+   *   lookups, the identity matcher is a sift scan; room parts require a covering membership), then a direct send per
+   *   frame, stamped into each recipient's personal stream on a resumable channel ({@link sendPersonalFrame}; parked
+   *   recipients only log). Every exclusion is applied HERE, so the frames carry no `except` fields onward.
    *
    * ONE frame = ONE reply: the expectation is the frames that reach a LIVE connection — one for a channel or space-wide
    * push, one per targeted room the connection is in for a room push (how many components the client mounted is its own
@@ -4078,12 +4450,19 @@ export class EngineSocket<TError extends ErrorPoint0> {
       ? this.server.points.findPoint({ scope: push.scope, type: 'clientHandler', name: push.handler })?.point
       : undefined
     const bufferLimit = handlerPoint ? this.handlerBufferLimit(handlerPoint) : undefined
-    const baseFrame: SocketServerFrame & { t: 'msg' } = {
+    // the frame as a recipient of the PERSONAL path sees it: that path applies every exclusion itself, so shipping the
+    // excepts on would only tell each recipient which connections and rooms were left out
+    const personalBaseFrame: SocketServerFrame & { t: 'msg' } = {
       t: 'msg',
       channel: push.channel,
       handler: push.handler,
       ...(push.input === undefined ? {} : { input: push.input }),
       ...(push.mid === undefined ? {} : { mid: push.mid }),
+    }
+    // the topic path cannot filter — a topic's audience is its subscribers — so the frame carries the excepted
+    // connection ids for the client to drop on (echo suppression; `exceptRooms` never takes this path)
+    const baseFrame: SocketServerFrame & { t: 'msg' } = {
+      ...personalBaseFrame,
       ...(target.exceptConnectionIds === undefined ? {} : { exceptConnectionIds: target.exceptConnectionIds }),
       ...(target.exceptRooms === undefined ? {} : { exceptRooms: target.exceptRooms }),
     }
@@ -4121,9 +4500,16 @@ export class EngineSocket<TError extends ErrorPoint0> {
       }
       return siftQueryTester(spacePoint._getSocketTransformer().parse(target.roomMatcher))
     })()
-    const hasConnectionParts = target.connectionId !== undefined || target.identityMatcher !== undefined
+    // an `except` of ROOMS names an audience — other people — so it is enforced here, per entry, and never by asking
+    // the recipient to drop the frame. An `except` of CONNECTION IDS stays on the topic path on purpose: it excludes
+    // the connection that authored the payload (echo suppression), and hiding a message from its own author protects
+    // nothing. See the `except` section of docs/core/socket.md
+    const needsEntryFilter =
+      target.connectionId !== undefined ||
+      target.identityMatcher !== undefined ||
+      (target.exceptRooms !== undefined && target.exceptRooms.length > 0)
     let expected = 0
-    if (!hasConnectionParts) {
+    if (!needsEntryFilter) {
       // ---- the TOPIC path: serialize once, publish once per topic ----
       const publishToStream = (
         topicKey: string,
@@ -4255,14 +4641,14 @@ export class EngineSocket<TError extends ErrorPoint0> {
       // the frames this entry receives — one for a channel or space-wide push, one per targeted room it is in
       const frames: Array<SocketServerFrame & { t: 'msg' }> = []
       if (target.space === undefined) {
-        frames.push({ ...baseFrame, cid: entry.cid })
+        frames.push({ ...personalBaseFrame, cid: entry.cid })
       } else {
         const participation = entry.spaces.get(target.space)
         if (!participation) {
           continue
         }
         if (target.rooms === undefined && matchesRoom === undefined) {
-          frames.push({ ...baseFrame, space: target.space, cid: entry.cid })
+          frames.push({ ...personalBaseFrame, space: target.space, cid: entry.cid })
         } else {
           for (const [roomSerialized, roomParsed] of participation.rooms) {
             if (target.rooms !== undefined && !target.rooms.includes(roomSerialized)) {
@@ -4271,7 +4657,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
             if (matchesRoom && !matchesRoom(roomParsed)) {
               continue
             }
-            frames.push({ ...baseFrame, space: target.space, room: roomSerialized, cid: entry.cid })
+            frames.push({ ...personalBaseFrame, space: target.space, room: roomSerialized, cid: entry.cid })
           }
         }
       }

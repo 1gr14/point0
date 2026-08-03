@@ -125,6 +125,25 @@ describe.skipIf(!available)('postgres backplane over a real Postgres', () => {
     expect(receivedA).toHaveLength(2)
   })
 
+  it('schema: creates the schema on first use, the tables live inside it, KV round-trips', async () => {
+    const SCHEMA = 'point0_bp_test_schema'
+    const sql = postgres(postgresUrl, { max: 2, onnotice: () => {} })
+    try {
+      await sql.unsafe(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`)
+      const backplane = postgresBackplane(sql, { schema: SCHEMA, tablePrefix: TABLE_PREFIX })
+      await backplane.set('scoped', 'value')
+      expect(await backplane.get('scoped')).toBe('value')
+      const rows = await sql.unsafe(
+        `SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = '${SCHEMA}' AND c.relkind = 'r' ORDER BY relname`,
+      )
+      expect(rows.map((row) => row.relname)).toEqual([`${TABLE_PREFIX}_kv`, `${TABLE_PREFIX}_payload`])
+      await backplane.dispose?.()
+    } finally {
+      await sql.unsafe(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => undefined)
+      await sql.end({ timeout: 5 }).catch(() => undefined)
+    }
+  })
+
   it('dispose leaves the passed-in sql usable', async () => {
     const sql = postgres(postgresUrl, { max: 2, onnotice: () => {} })
     const backplane = postgresBackplane(sql, { tablePrefix: TABLE_PREFIX })

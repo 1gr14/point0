@@ -1002,6 +1002,32 @@ describe('socket', () => {
     }
   })
 
+  it('refuses a space-handler send that names NO room (the wire cannot skip the membership check)', async () => {
+    // the SDK always fills `room` for a space handler — a hand-built frame does not have to, and omitting it must not
+    // buy a run of the reply: this connection never joined chatSpace at all
+    const victim = await openAndClaim(tp, 'nr-victim')
+    const attacker = await openAndClaim(tp, 'nr-att')
+    try {
+      await joinRoom(victim.wire, victim.cid, 'nr-secret')
+      attacker.wire.send({
+        t: 'send',
+        id: 'nr1',
+        cid: attacker.cid,
+        handler: 'messageSendHandler',
+        input: JSON.stringify({ text: 'sneak' }),
+      })
+      const sendErr = await attacker.wire.waitFrame((frame) => frame.t === 'sendErr' && frame.id === 'nr1')
+      expect(String(sendErr.error)).toContain('POINT0_SOCKET_NOT_IN_ROOM')
+      // and the space heard nothing: a roomless `{ room }` target is a space-WIDE push, so a reply that ran would
+      // have reached every member of chatSpace
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      expect(victim.wire.frames.find((frame) => frame.t === 'msg')).toBeUndefined()
+    } finally {
+      victim.wire.close()
+      attacker.wire.close()
+    }
+  })
+
   it('collects clientReply answers from the whole room; the local expected count closes the window early', async () => {
     const a = await openAndClaim(tp, 'ca')
     const b = await openAndClaim(tp, 'cb')
@@ -1800,7 +1826,7 @@ describe('socket', () => {
     }
   })
 
-  it('except: by a connection-id array on the frame, by a room snapshot filtered server-side and on the frame', async () => {
+  it('except: connection ids ride the frame (echo suppression), room snapshots are filtered server-side', async () => {
     const a = await openAndClaim(tp, 'ex-a') // in ex-room AND ex-other
     const b = await openAndClaim(tp, 'ex-b') // in ex-room only
     try {
@@ -1835,7 +1861,9 @@ describe('socket', () => {
       await b.wire.waitFrame((frame) => frame.t === 'reply' && frame.id === 'ex2')
       await new Promise((resolve) => setTimeout(resolve, 300))
       expect(a.wire.frames.find(isTextMsg('rooms-narrowed'))).toBeUndefined()
-      // the same except on the pure pub/sub path rides the frame as exceptRooms (the client filters)
+      // the same except WITHOUT a narrowing part: an excluded room names an audience, so it leaves the topic path and
+      // the server filters it too — the frame never reaches the excluded member's wire, and the one that does reach a
+      // recipient carries no `exceptRooms` (it was already applied; shipping it would only name the excluded rooms)
       b.wire.send({
         t: 'send',
         id: 'ex3',
@@ -1844,7 +1872,11 @@ describe('socket', () => {
         input: JSON.stringify({ chatId: 'ex-room', exceptChatIds: ['ex-other'], text: 'rooms-pubsub' }),
       })
       const pubsubMsg = await b.wire.waitFrame(isTextMsg('rooms-pubsub'))
-      expect(pubsubMsg.exceptRooms).toEqual([JSON.stringify({ chatId: 'ex-other' })])
+      expect(pubsubMsg.exceptRooms).toBeUndefined()
+      expect(pubsubMsg.cid).toBe(b.cid)
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      // `a` sits in the excluded room — it hears nothing, whatever its client would have done with the frame
+      expect(a.wire.frames.find(isTextMsg('rooms-pubsub'))).toBeUndefined()
     } finally {
       a.wire.close()
       b.wire.close()

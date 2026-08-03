@@ -24,10 +24,16 @@ export const root = Point0.lets
   .root()
 ```
 
-That bare `cors()` is the most permissive default: it **reflects** whatever
-`Origin` the request carried, allows credentials, mirrors the request method,
-and echoes the requested headers back. The shipped `expo` example uses it
-because the Expo app and the API server live on different origins.
+That bare `cors()` **reflects** whatever `Origin` the request carried, mirrors
+the request method, and echoes the requested headers back — but it sends **no**
+`Access-Control-Allow-Credentials`, so the browser makes those cross-origin
+calls anonymously. That is the safe half of permissive: reflecting an origin
+_and_ allowing credentials is the one combination that lets any site on the
+internet read your authenticated responses with the visitor's own cookies. You
+opt into credentials deliberately, together with an `origin` — see
+[Credentials and caching](#credentials-and-caching). The shipped `expo` example
+uses bare `cors()` because the Expo app and the API server live on different
+origins and it authenticates nothing by cookie.
 
 `cors()` is **cut from the client bundle — its body and the imports it uses are
 removed, so it never ships to the browser.** `.middleware(...)` arguments are
@@ -41,7 +47,7 @@ them.
 is the usual placement:
 
 ```tsx
-Point0.lets
+export const root = Point0.lets
   .root()
   .middleware(cors({ origin: 'https://app.example.com' }))
   .root()
@@ -50,7 +56,7 @@ Point0.lets
 `.middleware` also takes a route, so you can scope CORS to a subtree:
 
 ```tsx
-.middleware('/api/*', cors())
+export const root = Point0.lets.root().middleware('/api/*', cors()).root()
 ```
 
 ## Locking down the origin: `origin`
@@ -58,18 +64,18 @@ Point0.lets
 `origin` decides which request origins are allowed. It defaults to `true`.
 
 ```tsx
-cors({ origin: true }) //                          allow any origin (default)
-cors({ origin: false }) //                         allow none
-cors({ origin: 'https://app.example.com' }) //     one origin
-cors({ origin: ['https://app.example.com', 'https://admin.example.com'] }) // a list
-cors({ origin: /\.example\.com$/ }) //             a RegExp tested against the origin
-cors({ origin: (ctx) => isAllowed(ctx) }) //       a predicate
+export const root = Point0.lets
+  .root()
+  .middleware(cors({ origin: 'https://app.example.com' }))
+  .root()
 ```
 
-How each form resolves:
+It takes `true` (any origin), `false` (none), one origin string, a RegExp, a
+predicate, or an array mixing them. How each form resolves:
 
 - **`true`** — reflects the request's `Origin` header back. With no `Origin`
-  header it falls back to `*`.
+  header it falls back to `*`. Anonymous-only unless you also pass
+  `credentials: true`, which spells out that you mean any origin _with_ cookies.
 - **`false`** — never sets `Access-Control-Allow-Origin`; no cross-origin client
   is allowed.
 - **string** — compared against the request origin. A bare host like
@@ -96,17 +102,26 @@ preflight first. By default (`preflight: true`) `cors()` answers it with a bare
 (no CORS headers added):
 
 ```tsx
-cors({ preflight: false }) // OPTIONS is passed through to next(), no CORS headers
+export const root = Point0.lets
+  .root()
+  // OPTIONS is passed through to next(), no CORS headers
+  .middleware(cors({ preflight: false }))
+  .root()
 ```
 
 ## Methods and headers
 
 ```tsx
-cors({
-  methods: ['GET', 'POST'], //              Access-Control-Allow-Methods
-  allowedHeaders: ['Content-Type', 'Authorization'], // Access-Control-Allow-Headers
-  exposeHeaders: ['X-Total-Count'], //      Access-Control-Expose-Headers
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    cors({
+      methods: ['GET', 'POST'], //                           Access-Control-Allow-Methods
+      allowedHeaders: ['Content-Type', 'Authorization'], //  Access-Control-Allow-Headers
+      exposeHeaders: ['X-Total-Count'], //                   Access-Control-Expose-Headers
+    }),
+  )
+  .root()
 ```
 
 Each of `methods`, `allowedHeaders`, and `exposeHeaders` takes a string, a
@@ -123,16 +138,35 @@ means "reflect what the request asked for":
 ## Credentials and caching
 
 ```tsx
-cors({
-  credentials: true, // Access-Control-Allow-Credentials: true (default)
-  maxAge: 600, //       Access-Control-Max-Age in seconds
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    cors({
+      origin: 'https://app.example.com', // required once credentials are on
+      credentials: true, //                Access-Control-Allow-Credentials: true
+      maxAge: 600, //                      Access-Control-Max-Age in seconds
+    }),
+  )
+  .root()
 ```
 
-- **`credentials`** defaults to `true`, which sends
-  `Access-Control-Allow-Credentials: true`. Set it to `false` to drop the
-  header. With credentials on, an allowed origin is always echoed back literally
-  — the spec forbids `*` together with credentials, and `cors()` honors that.
+- **`credentials`** defaults to `false`. Set it to `true` to send
+  `Access-Control-Allow-Credentials: true`, which is what lets a cross-origin
+  browser client send cookies (and read the response) — pair it with
+  [`.fetchOptions({ credentials: 'include' })`](stage-methods) on the client
+  side.
+- **`credentials: true` requires an explicit `origin`, and `cors()` throws
+  without one.** A reflected origin plus credentials means any page the visitor
+  opens can `fetch` your API with their session cookie and read the body —
+  account data, a socket connect ticket, anything the session reaches. Name the
+  origins you trust:
+  `cors({ origin: 'https://app.example.com', credentials: true })`. Writing
+  `cors({ origin: true, credentials: true })` still works and still reflects
+  everything — that spelling is you saying you mean it (a closed network, a dev
+  machine), not a default you can walk into.
+- When the origin resolves to `*` — `origin: true` and a request with no
+  `Origin` header — the credentials header is dropped: browsers reject that pair
+  outright, and there is no origin to echo instead.
 - **`maxAge`** is the preflight cache lifetime in seconds, written to
   `Access-Control-Max-Age`. It defaults to `5`. A `maxAge` of `0` omits the
   header entirely.
@@ -141,17 +175,18 @@ cors({
 
 ### `cors(options)`
 
-Every option is optional; `cors()` with no argument is the permissive default.
+Every option is optional. `cors()` with no argument allows any origin
+anonymously; credentials are opt-in and require an `origin`.
 
-| Option           | Type                                                        | Default | What                                                           |
-| ---------------- | ----------------------------------------------------------- | ------- | -------------------------------------------------------------- |
-| `origin`         | `boolean` \| `string` \| `RegExp` \| `fn` \| array of those | `true`  | which origins are allowed (`true` reflects the request origin) |
-| `methods`        | `boolean` \| `'*'` \| method \| method[]                    | `true`  | `Access-Control-Allow-Methods` (`true` mirrors the request)    |
-| `allowedHeaders` | `true` \| `string` \| `string[]`                            | `true`  | `Access-Control-Allow-Headers` (`true` reflects the request)   |
-| `exposeHeaders`  | `true` \| `string` \| `string[]`                            | `true`  | `Access-Control-Expose-Headers` (`true` reflects the request)  |
-| `credentials`    | `boolean`                                                   | `true`  | send `Access-Control-Allow-Credentials: true`                  |
-| `maxAge`         | `number`                                                    | `5`     | `Access-Control-Max-Age` in seconds (`0` omits the header)     |
-| `preflight`      | `boolean`                                                   | `true`  | answer `OPTIONS` preflight with `204` (else pass through)      |
+| Option           | Type                                                        | Default | What                                                                                    |
+| ---------------- | ----------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------- |
+| `origin`         | `boolean` \| `string` \| `RegExp` \| `fn` \| array of those | `true`  | which origins are allowed (`true` reflects the request origin)                          |
+| `methods`        | `boolean` \| `'*'` \| method \| method[]                    | `true`  | `Access-Control-Allow-Methods` (`true` mirrors the request)                             |
+| `allowedHeaders` | `true` \| `string` \| `string[]`                            | `true`  | `Access-Control-Allow-Headers` (`true` reflects the request)                            |
+| `exposeHeaders`  | `true` \| `string` \| `string[]`                            | `true`  | `Access-Control-Expose-Headers` (`true` reflects the request)                           |
+| `credentials`    | `boolean`                                                   | `false` | send `Access-Control-Allow-Credentials: true` (needs an explicit `origin`, else throws) |
+| `maxAge`         | `number`                                                    | `5`     | `Access-Control-Max-Age` in seconds (`0` omits the header)                              |
+| `preflight`      | `boolean`                                                   | `true`  | answer `OPTIONS` preflight with `204` (else pass through)                               |
 
 ### Behavior at a glance
 
@@ -159,7 +194,8 @@ Every option is optional; `cors()` with no argument is the permissive default.
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Side                 | cut from the client bundle — the `.middleware(...)` argument and its imports are removed, so it never ships to the browser |
 | Default origin       | reflects the request `Origin`; `*` only when there's no `Origin` header                                                    |
-| Credentials + origin | an allowed origin is echoed literally, never `*` (spec requirement)                                                        |
+| Default credentials  | off — a reflected origin never carries credentials unless you name an `origin` yourself                                    |
+| Credentials + origin | an allowed origin is echoed literally; next to a `*` the credentials header is dropped (browsers reject that pair)         |
 | String origin match  | host-only by default; add a protocol to require a protocol match                                                           |
 | Preflight `OPTIONS`  | answered with `204` when `preflight: true`; passed through otherwise                                                       |
 | `Vary`               | set to `Origin` for a reflected origin, `*` for a wildcard                                                                 |

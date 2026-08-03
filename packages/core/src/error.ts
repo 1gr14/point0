@@ -293,7 +293,7 @@ export const POINT0_ERROR_CODES = [
   'POINT0_SOCKET_MESSAGE_TOO_BIG', // an incoming socket message exceeded the channel's maxMessageSize
   'POINT0_SOCKET_SPACE_NOT_FOUND', // a join named a space point this server does not have
   'POINT0_SOCKET_JOIN_NOT_ALLOWED', // a client join hit a space with no `.joiner` — only the server enrolls into it
-  'POINT0_SOCKET_NOT_IN_ROOM', // a space-handler send named a room the connection's membership does not cover
+  'POINT0_SOCKET_NOT_IN_ROOM', // a space-handler send named a room the connection does not hold — or named none at all
   'POINT0_SOCKET_MAX_ROOMS', // the space's maxRooms cap refused the write (rooms per connection per space)
   // subscription streams (@point0/core)
   'POINT0_SUBSCRIPTION_LOST', // the stream broke (no terminal line) and reconnect was off or gave up

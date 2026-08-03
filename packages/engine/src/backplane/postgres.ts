@@ -34,7 +34,8 @@
  * an expired-but-unswept row as missing; a periodic sweeper (interval `sweepIntervalMs`, unref'd) deletes expired KV
  * rows and aged payload rows. `getDelete` is `DELETE … RETURNING` — the atomic cross-process ticket claim. Both tables
  * are created on first use (`CREATE UNLOGGED TABLE IF NOT EXISTS` — turn it off with `createTables: false` and run the
- * SQL from the docs yourself when the app's DB role cannot create tables).
+ * SQL from the docs yourself when the app's DB role cannot create tables), in their own schema when the `schema` option
+ * names one — the way to keep them out of the schema a migration tool (Prisma) diffs.
  */
 import { createHash } from 'node:crypto'
 import type { Backplane } from '../config.js'
@@ -59,6 +60,14 @@ export type PostgresBackplaneOptions = {
    * when the app's DB role cannot create tables — run the SQL from the docs in your own migration instead.
    */
   createTables?: boolean
+  /**
+   * The schema the two tables live in — created on first use (`CREATE SCHEMA IF NOT EXISTS`) when `createTables` is on.
+   * Default: none — the tables land in the connection's default schema (usually `public`). Give the backplane its own
+   * schema (pg-boss style) when a migration tool diffs the app schema — Prisma's `migrate` reads foreign tables next to
+   * its own as drift. Lowercase `[a-z_][a-z0-9_]*`, at most 63 characters; the factory throws synchronously on anything
+   * else.
+   */
+  schema?: string
   /**
    * The tables' common name prefix — `<prefix>_kv` and `<prefix>_payload`. Default `'point0_backplane'`. Lowercase
    * `[a-z_][a-z0-9_]*`, at most 55 characters (55 + `_payload` = 63, exactly Postgres's identifier cap); the factory
@@ -111,8 +120,12 @@ export const postgresBackplane = (sql: PostgresJsSqlLike, options?: PostgresBack
       `postgresBackplane: invalid tablePrefix "${tablePrefix}" — lowercase [a-z_][a-z0-9_]*, at most 55 characters`,
     )
   }
-  const kvTable = `${tablePrefix}_kv`
-  const payloadTable = `${tablePrefix}_payload`
+  const schema = options?.schema
+  if (schema !== undefined && (!/^[a-z_][a-z0-9_]*$/.test(schema) || schema.length > 63)) {
+    throw new Error(`postgresBackplane: invalid schema "${schema}" — lowercase [a-z_][a-z0-9_]*, at most 63 characters`)
+  }
+  const kvTable = schema ? `${schema}.${tablePrefix}_kv` : `${tablePrefix}_kv`
+  const payloadTable = schema ? `${schema}.${tablePrefix}_payload` : `${tablePrefix}_payload`
   const sweepIntervalMs = options?.sweepIntervalMs ?? 30_000
   const payloadRetentionMs = options?.payloadRetentionMs ?? 60_000
 
@@ -135,6 +148,9 @@ export const postgresBackplane = (sql: PostgresJsSqlLike, options?: PostgresBack
   const ready = (): Promise<void> => {
     readyPromise ??= (async () => {
       if (options?.createTables !== false) {
+        if (schema) {
+          await sql.unsafe(`CREATE SCHEMA IF NOT EXISTS ${schema}`)
+        }
         await sql.unsafe(
           `CREATE UNLOGGED TABLE IF NOT EXISTS ${kvTable} (key text PRIMARY KEY, value text NOT NULL, expires_at timestamptz)`,
         )

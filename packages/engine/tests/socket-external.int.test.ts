@@ -620,13 +620,14 @@ describe('socket over an external backplane', () => {
     }
   })
 
-  it('replies for an unknown mid are forwarded over the bus — rate-capped per connection', async () => {
+  it('replies for an unknown mid never reach the bus — this process delivered no such push', async () => {
     const flooder = await openAndClaim('flood')
     const observer = await openAndClaim('flood-observer')
     try {
-      // the mid is client-supplied: nothing stops a client inventing 300 of them, so the forward is bounded per
-      // connection per window (REPLY_FORWARD_MAX_PER_WINDOW = 256). An invented mid carries no `<pid>:` marker, so
-      // each forward falls back to the shared channel — the rate cap is exactly what keeps that from being a hose
+      // the mid is client-supplied: nothing stops a client inventing 300 of them. A forward is authorized by what THIS
+      // process actually delivered — an invented mid was delivered to nobody, so not one frame becomes bus traffic.
+      // (The old bound was a rate cap: 256 of these DID reach the shared channel, and on the far side they landed in a
+      // stranger's collect window as replies the initiator could not tell from a member's.)
       for (let index = 0; index < 300; index++) {
         flooder.wire.send({
           t: 'reply',
@@ -647,10 +648,9 @@ describe('socket over an external backplane', () => {
         const reply = await observer.wire.waitFrame((frame) => frame.t === 'reply' && frame.id === sendId)
         return (JSON.parse(reply.data as string) as { forwarded: number }).forwarded
       }
-      await waitFor(async () => (await forwarded()) >= 256, 'the forwarded replies to reach the cap')
-      // exactly the cap — the 44 frames past it were dropped, not queued
-      await new Promise((resolve) => setTimeout(resolve, 300))
-      expect(await forwarded()).toBe(256)
+      // settle: a forward would be published within the round trip the observer's own send already takes
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      expect(await forwarded()).toBe(0)
     } finally {
       flooder.wire.close()
       observer.wire.close()

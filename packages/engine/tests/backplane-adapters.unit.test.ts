@@ -516,6 +516,27 @@ describe('postgresBackplane', () => {
     await backplane.dispose?.()
   })
 
+  it('schema: rejects an unsafe one, creates it on first use, and qualifies every table reference', async () => {
+    expect(() => postgresBackplane(createFakeSql().sql, { schema: 'point0; DROP SCHEMA public' })).toThrow(
+      /invalid schema/,
+    )
+    expect(() => postgresBackplane(createFakeSql().sql, { schema: 'x'.repeat(64) })).toThrow(/invalid schema/)
+    const fake = createFakeSql()
+    const backplane = postgresBackplane(fake.sql, { schema: 'point0' })
+    await backplane.set('k', 'v')
+    expect(fake.queries[0]!.query).toBe('CREATE SCHEMA IF NOT EXISTS point0')
+    expect(fake.queries.some(({ query }) => query.includes('point0.point0_backplane_kv'))).toBe(true)
+    await backplane.dispose?.()
+
+    // createTables: false skips the CREATE SCHEMA too, but references stay qualified
+    const bare = createFakeSql()
+    const bareBackplane = postgresBackplane(bare.sql, { schema: 'point0', createTables: false })
+    await bareBackplane.set('k', 'v')
+    expect(bare.queries.some(({ query }) => query.startsWith('CREATE'))).toBe(false)
+    expect(bare.queries.some(({ query }) => query.includes('point0.point0_backplane_kv'))).toBe(true)
+    await bareBackplane.dispose?.()
+  })
+
   it('KV: TTL rides the database clock expression, expired rows read as missing, getDelete consumes once', async () => {
     const fake = createFakeSql()
     const backplane = postgresBackplane(fake.sql)

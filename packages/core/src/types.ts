@@ -8845,27 +8845,30 @@ export type ExtraUseMembershipOptions<TMembership = AnyClientSpaceMembership> = 
   enabled?: boolean
 }
 
-/** The props of `<space.Membership>` — the join input (requiredness follows the space's schema), options, gating. */
+/**
+ * The props of `<space.Membership>` — the join input (requiredness follows the space's schema), gating, and the
+ * `useMembership` options (`onEnter`, `enabled`, …) sitting FLAT on the props.
+ */
 export type SpaceMembershipComponentProps<TInputRaw, TOptions> = (IsEmptyObjectSpecial<TInputRaw> extends true
   ? { input?: EmptyObjectOnly | undefined }
   : IsObjectOptional<TInputRaw> extends true
     ? { input?: TInputRaw }
-    : { input: TInputRaw }) & {
-  options?: TOptions
-  /**
-   * which non-ready states gate the children — default `{ loading: false, error: true }`: the children render right
-   * away while joining (the handlers inside wait for the join on their own) and the chain's `.error()` still shows on a
-   * failed join. `gate={false}` renders through everything, `gate={true}` waits on both, an object overrides only the
-   * named aspects (e.g. `gate={{ loading: true }}` also shows `.loading()` while joining; errors stay surfaced unless
-   * explicitly `error: false`).
-   */
-  gate?: Gate
-  /** on-the-spot override of the gate's loading component — wins over the chain's `.loading()` for THIS mount */
-  LoadingComponent?: LoadingComponentType<any>
-  /** on-the-spot override of the gate's error component — wins over the chain's `.error()` for THIS mount */
-  ErrorComponent?: ErrorComponentType<any, ErrorPoint0>
-  children?: React.ReactNode
-}
+    : { input: TInputRaw }) &
+  TOptions & {
+    /**
+     * which non-ready states gate the children — default `{ loading: false, error: true }`: the children render right
+     * away while joining (the handlers inside wait for the join on their own) and the chain's `.error()` still shows on
+     * a failed join. `gate={false}` renders through everything, `gate={true}` waits on both, an object overrides only
+     * the named aspects (e.g. `gate={{ loading: true }}` also shows `.loading()` while joining; errors stay surfaced
+     * unless explicitly `error: false`).
+     */
+    gate?: Gate
+    /** on-the-spot override of the gate's loading component — wins over the chain's `.loading()` for THIS mount */
+    LoadingComponent?: LoadingComponentType<any>
+    /** on-the-spot override of the gate's error component — wins over the chain's `.error()` for THIS mount */
+    ErrorComponent?: ErrorComponentType<any, ErrorPoint0>
+    children?: React.ReactNode
+  }
 
 /**
  * An `onMessageFromServer` / `useOnMessageFromServer` listener — receives {@link ClientHandlerMessageEventProps}
@@ -8898,27 +8901,30 @@ export type ServerHandlerInputArgs<TInputRaw> =
       ? [input?: TInputRaw]
       : [input: TInputRaw]
 
-/** Props of `<channel.Connection>` — `input` requiredness follows the channel's input schema. */
+/**
+ * Props of `<channel.Connection>` — `input` requiredness follows the channel's input schema; the `useConnection`
+ * options (`reconnect`, `onConnect`, `enabled`, …) sit FLAT on the props.
+ */
 export type ChannelConnectionComponentProps<TInputRaw, TOptions> = (IsEmptyObjectSpecial<TInputRaw> extends true
   ? { input?: EmptyObjectOnly | undefined }
   : IsObjectOptional<TInputRaw> extends true
     ? { input?: TInputRaw }
-    : { input: TInputRaw }) & {
-  options?: TOptions
-  /**
-   * which non-ready states gate the children — default `{ loading: false, error: true }`: the children render right
-   * away while connecting (the handlers inside wait for the connect on their own) and the chain's `.error()` still
-   * shows on a failed connect. `gate={false}` renders through everything, `gate={true}` waits on both, an object
-   * overrides only the named aspects (e.g. `gate={{ loading: true }}` also shows `.loading()` while connecting; errors
-   * stay surfaced unless explicitly `error: false`).
-   */
-  gate?: Gate
-  /** on-the-spot override of the gate's loading component — wins over the chain's `.loading()` for THIS mount */
-  LoadingComponent?: LoadingComponentType<any>
-  /** on-the-spot override of the gate's error component — wins over the chain's `.error()` for THIS mount */
-  ErrorComponent?: ErrorComponentType<any, ErrorPoint0>
-  children?: React.ReactNode
-}
+    : { input: TInputRaw }) &
+  TOptions & {
+    /**
+     * which non-ready states gate the children — default `{ loading: false, error: true }`: the children render right
+     * away while connecting (the handlers inside wait for the connect on their own) and the chain's `.error()` still
+     * shows on a failed connect. `gate={false}` renders through everything, `gate={true}` waits on both, an object
+     * overrides only the named aspects (e.g. `gate={{ loading: true }}` also shows `.loading()` while connecting;
+     * errors stay surfaced unless explicitly `error: false`).
+     */
+    gate?: Gate
+    /** on-the-spot override of the gate's loading component — wins over the chain's `.loading()` for THIS mount */
+    LoadingComponent?: LoadingComponentType<any>
+    /** on-the-spot override of the gate's error component — wins over the chain's `.error()` for THIS mount */
+    ErrorComponent?: ErrorComponentType<any, ErrorPoint0>
+    children?: React.ReactNode
+  }
 
 /** The `.clientReply` callback return must be what the schema accepts — checked inside `.clientReply` itself. */
 export type AssertClientReplyMatchesSchema<

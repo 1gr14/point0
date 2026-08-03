@@ -106,6 +106,117 @@ export type SocketClientFrame =
   | { t: 'resume'; entries: Array<{ cid: string; key: string; cursors: Record<string, number> }> }
   | { t: 'ping' }
 
+/**
+ * The structural caps one incoming frame answers to — how much FAN-OUT it may ask the server for and how long its ids
+ * may be, never how many bytes it carries (bytes are bounded twice already: Bun's `maxPayloadLength` at the transport
+ * and the channel's `maxMessageSize` per frame). The engine resolves them from its `socket` server options and hands
+ * them in, so an app that genuinely addresses more can say so; these defaults stand when nobody passes any.
+ */
+export type SocketWireLimits = {
+  /** connection ids, message ids, tickets, resume keys — the ones we mint are ~36 chars */
+  id: number
+  /** point names — a handler or space name is whatever a source file could declare */
+  name: number
+  /** connections one `resume` frame may offer (each one costs backplane lookups) */
+  resumeEntries: number
+  /** rooms one `leave` frame may name */
+  leaveRooms: number
+}
+
+export const SOCKET_WIRE_LIMITS_DEFAULT: SocketWireLimits = {
+  id: 256,
+  name: 512,
+  resumeEntries: 64,
+  leaveRooms: 1024,
+}
+
+const isWireId = (value: unknown, limits: SocketWireLimits): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= limits.id
+
+const isWireName = (value: unknown, limits: SocketWireLimits): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= limits.name
+
+/** A transformer-serialized payload (`input`, `data`, `room`, `error`) — optional, and bounded by `maxMessageSize`. */
+const isWirePayload = (value: unknown): value is string | undefined => value === undefined || typeof value === 'string'
+
+/**
+ * Parse ONE client frame off the wire — the single door into the server's socket dispatch.
+ *
+ * `JSON.parse` answers `any`, and {@link SocketClientFrame} is a TYPE: nothing at runtime ever made the parsed object
+ * match it. Every field in it is attacker-chosen — a raw WebSocket needs no SDK — so the shape is checked here, once,
+ * before any handler reads a field. A frame that does not match the union it claims to be never happened: it is
+ * dropped, silently, exactly like unparseable bytes. (Dropping the frame rather than closing the socket keeps a
+ * version-skewed client alive; an unknown `t`, and unknown extra fields, are ignored for the same reason — the protocol
+ * has to survive a client one version ahead of the server.)
+ *
+ * Deliberately fast: `typeof` and a length bound per field, no schema library, no allocation, no regex. This runs on
+ * every message of every socket.
+ *
+ * `resume` is the one frame whose ELEMENTS are not checked here — the server answers a malformed entry per cid
+ * (`resumeErr`) instead of dropping the whole batch, so that validation lives with that answer. This bounds the batch.
+ */
+export const parseSocketClientFrame = (
+  message: string,
+  limits: SocketWireLimits = SOCKET_WIRE_LIMITS_DEFAULT,
+): SocketClientFrame | undefined => {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(message)
+  } catch {
+    return undefined
+  }
+  // `null` is the one that matters: `JSON.parse('null').t` throws, and this runs inside the ws message callback
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return undefined
+  }
+  const frame = parsed as Record<string, unknown>
+  switch (frame.t) {
+    case 'ping':
+      return frame as SocketClientFrame
+    case 'claim':
+    case 'discard':
+      return isWireId(frame.ticket, limits) ? (frame as SocketClientFrame) : undefined
+    case 'close':
+      return isWireId(frame.cid, limits) ? (frame as SocketClientFrame) : undefined
+    case 'send':
+      return isWireId(frame.id, limits) &&
+        isWireId(frame.cid, limits) &&
+        isWireName(frame.handler, limits) &&
+        isWirePayload(frame.input) &&
+        isWirePayload(frame.room)
+        ? (frame as SocketClientFrame)
+        : undefined
+    case 'join':
+      return isWireId(frame.id, limits) &&
+        isWireId(frame.cid, limits) &&
+        isWireName(frame.space, limits) &&
+        isWirePayload(frame.input)
+        ? (frame as SocketClientFrame)
+        : undefined
+    case 'leave':
+      return isWireId(frame.cid, limits) &&
+        isWireName(frame.space, limits) &&
+        Array.isArray(frame.rooms) &&
+        frame.rooms.length <= limits.leaveRooms &&
+        frame.rooms.every((room) => typeof room === 'string')
+        ? (frame as SocketClientFrame)
+        : undefined
+    case 'reply':
+      return isWireId(frame.id, limits) &&
+        isWireId(frame.cid, limits) &&
+        isWirePayload(frame.data) &&
+        isWirePayload(frame.error)
+        ? (frame as SocketClientFrame)
+        : undefined
+    case 'resume':
+      return Array.isArray(frame.entries) && frame.entries.length <= limits.resumeEntries
+        ? (frame as SocketClientFrame)
+        : undefined
+    default:
+      return undefined
+  }
+}
+
 /** Frames the server sends over the socket. `error` fields carry the error class's public serialization as JSON. */
 export type SocketServerFrame =
   /**
@@ -3769,6 +3880,14 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
       const joinError = membership.space._Error.from(safeJsonParse(frame.error))
       membership.status = 'error'
       membership.error = joinError
+      // a deny grants NOTHING — drop whatever this membership was holding, index included. The rooms of a previous
+      // grant would otherwise survive a re-join the server just refused: `membership.rooms` would keep announcing
+      // them, and a frame for one of them (another connection still covers it, or the old server-side connection is
+      // still subscribed through a refresh) would dispatch into this membership's listeners
+      unindexMembershipRooms(membership)
+      membership.roomsSerialized = []
+      membership.rooms = []
+      membership.roomKeys = []
       // a hard deny — the join is not replayed on reconnects until reconnectAll()/remount
       if (joinError.preventRetry) {
         membership.preventRejoin = true
@@ -4133,6 +4252,15 @@ const dispatchIncomingMessage = async (
     const byConnection = new Map<InternalConnection, InternalMembership[]>()
     for (const membership of memberships) {
       if (membership.disposed) {
+        continue
+      }
+      // only a membership the server actually admitted hears anything. A space-wide frame reaches the connection, not
+      // the membership, so one joined membership keeps the socket subscribed — a second one still joining, denied, or
+      // closed must not ride along on its subscription. (The server subscribes a join's topics before it writes the
+      // `joined` frame, so a push in that sliver reaches the socket while this membership still reads `joining` and is
+      // dropped here. It is the honest answer — nothing has confirmed the rooms yet — and it costs a collect window
+      // one uncounted reply.)
+      if (membership.status !== 'joined') {
         continue
       }
       const internal = membershipConnection(membership)

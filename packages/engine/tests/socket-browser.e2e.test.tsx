@@ -127,7 +127,9 @@ function ChatBody({ room }: { room: string }) {
 export const chatPage = root.lets('page', 'chatPage', '/chat')
   .search(z.object({ userId: z.string(), room: z.string() }))
   .page(({ search }) => (
-    <chatChannel.Connection input={{ userId: search.userId }}>
+    // the connection options sit FLAT on the component — the whole chat flow rides them, so a broken rest-props
+    // plumbing (an option not reaching the hook, input captured into the options) fails these tests visibly
+    <chatChannel.Connection input={{ userId: search.userId }} reconnect={{ retries: 3 }} ping={15_000}>
       <ChatBody room={search.room} />
     </chatChannel.Connection>
   ))

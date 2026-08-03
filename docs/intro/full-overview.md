@@ -2455,7 +2455,7 @@ import { basicAuth } from '@point0/basic-auth'
 
 export const root = Point0.lets
   .root()
-  .middleware(cors({ origin: true, credentials: true }))
+  .middleware(cors({ origin: 'https://app.example.com', credentials: true }))
   .middleware(basicAuth({ users: { admin: 'adminpassword' } }))
   .middleware(openapi({ route: '/openapi.json', scalar: '/scalar' }))
   .root()
@@ -4471,19 +4471,23 @@ export const TaskProgress = ({ taskId }: { taskId: string }) => {
 ```
 
 And when the flow starts from outside — a push to many clients, two-way —
-there's the **channel**: one authenticated WebSocket per client. Its
-`.connector` runs like a loader and establishes who you are as an identity. A
-**space** grows rooms from the channel — the client joins, the server's
-`.joiner` decides which rooms it enters. Handlers are the typed messages that
-ride the socket: a serverHandler is client → server (the client sends, the
-server answers), a clientHandler is server → client (the server pushes to a
-room, subscribed components wake). One socket carries everything; joins and
-messages are cheap frames on it.
+there's the **channel**: one WebSocket per client. Its `.connector` runs like a
+loader and establishes the connection's server-held identity — keep the channel
+open (`userId: null` marks a guest) and gate where the action runs. A **space**
+grows rooms from the channel — the client joins, the server's `.joiner` decides
+which rooms it enters. Handlers are the typed messages that ride the socket: a
+serverHandler is client → server (the client sends, the server answers), a
+clientHandler is server → client (the server pushes to a room, subscribed
+components wake). One socket carries everything; joins and messages are cheap
+frames on it.
 
 ```tsx
 export const appChannel = root.lets
   .channel()
-  .connector(({ ctx }) => ({ userId: ctx.me.user.id })) // this connection's identity
+  .connector(async ({ request }) => {
+    const me = await readSession(request)
+    return { userId: me?.userId ?? null } // this connection's identity; null = a guest
+  })
   .channel()
 
 export const chatSpace = appChannel.lets
@@ -4492,11 +4496,14 @@ export const chatSpace = appChannel.lets
   .joiner(({ input }) => ({ chatId: input.chatId })) // which room you enter
   .space()
 
-// client → server: save the message, then push it to the whole room
+// client → server: check the identity, save the message, push it to the whole room
 export const messageSend = chatSpace.lets
   .serverHandler()
   .clientSend(z.object({ text: z.string().min(1) }))
   .serverReply(async ({ input, identity, room }) => {
+    if (identity.userId === null) {
+      throw new AppError('Sign in to send messages', { code: 'UNAUTHORIZED' })
+    }
     const message = await createMessage(
       room.chatId,
       identity.userId,
@@ -4515,12 +4522,13 @@ export const messageAdded = chatSpace.lets
 
 export const ChatRoom = ({ chatId }: { chatId: string }) => {
   const membership = chatSpace.useMembership({ chatId }) // join the room while mounted
-  const { data } = messageAdded(membership).useOnMessageFromServer(() => {}, {
-    lastMessageFromServerAsData: true, // keep the latest push in `data`
+  const [messages, setMessages] = useState<Message[]>([])
+  messageAdded(membership).useOnMessageFromServer(({ message }) => {
+    setMessages((prev) => [...prev, message])
   })
   const send = (text: string) => messageSend(membership).sendToServer({ text })
   // an <appChannel.Connection> at the app root holds the one socket every room rides
-  return <Chat newest={data} onSend={send} />
+  return <Chat messages={messages} onSend={send} />
 }
 ```
 

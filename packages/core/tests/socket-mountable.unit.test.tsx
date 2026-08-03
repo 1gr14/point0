@@ -139,6 +139,23 @@ describe('channels and spaces as mountables (SSR render)', () => {
     expect(html).not.toContain('ready')
   })
 
+  it('options sit FLAT on <Connection>/<Membership> — the SSR render accepts them next to gate and children', () => {
+    // the SSR facade deliberately reports 'connecting' whatever the options say, so the semantics of a single
+    // option are proven in the browser e2e (socket-browser.e2e.test.tsx passes reconnect/ping flat on the app's
+    // <Connection>); here the render must ACCEPT the flat options and keep gate/children behavior intact
+    const chan = root
+      .lets('channel', 'flatOptsChan')
+      .loading(() => <em>connecting…</em>)
+      .channel()
+    const html = renderToString(
+      <chan.Connection gate={false} reconnect={{ retries: 3 }} ping={15_000} onConnect={() => {}}>
+        <span>kids</span>
+      </chan.Connection>,
+    )
+    expect(html).toContain('kids')
+    expect(html).not.toContain('connecting…')
+  })
+
   it('the LoadingComponent prop overrides the chain .loading() for THIS mount only', () => {
     const chan = root
       .lets('channel', 'overrideChan')

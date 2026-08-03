@@ -5,6 +5,95 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+Sockets were audited end to end — the wire, the connect/resume path, the
+backplane, and the client. Everything below that is marked **breaking** changes
+a default that used to be unsafe.
+
+- **Breaking: the socket upgrade is gated by `Origin`.** A browser does not
+  apply CORS to a WebSocket handshake, so any page could open a socket carrying
+  the victim's cookies, and on the cold-start channel upgrade could get a live
+  connection under their identity. `upgradable` never protected this — it is a
+  client-group option the compiler strips from the server bundle, so the server
+  cannot read it. Both upgrade shapes now pass the gate _before_ the
+  `.connector` runs; the default is `socket.allowedOrigins: 'same-origin'`, and
+  a request without an `Origin` header (not a browser) passes. A Capacitor app
+  or a separate front-end domain lists its origins explicitly.
+- **Breaking: `cors()` no longer sends `credentials` by default**, and
+  `cors({ credentials: true })` without an explicit `origin` throws at creation.
+  Bare `cors()` reflected any origin together with credentials, which is what
+  let a foreign page read the connect ticket.
+- **Breaking: `except` by room is enforced by the server** instead of riding the
+  topic path, so a client cannot be reached by a frame that excluded it. `except`
+  by connection id stays what it always was — echo suppression on the client —
+  and is documented as such, not as a confidentiality boundary. Personal frames
+  no longer carry `except*` fields at all.
+- **Every client frame is validated on arrival.** The wire was parsed as
+  `JSON.parse(...) as SocketClientFrame` and trusted to match the type: field
+  types, non-empty ids, and caps on `resume.entries` and `leave.rooms` are now
+  checked, and `null` no longer crashes the socket callback. Unknown frame kinds
+  and extra fields are still ignored, so older and newer clients interoperate.
+- **A frame budget per socket, in two halves.** Before `claim` it is tight —
+  there is no identity and no application hook there yet; after `claim` it is
+  generous, a backstop rather than a policy. Both are options and `0` disables
+  them. Domain limits belong in `onBeforeServerReply` and `.joiner`, which are
+  the only places that know what a particular message costs.
+- **A ceiling on parked connections** (`maxParkedConnections`, oldest evicted
+  first): connect-and-drop in a loop held parkings in bulk, each with its
+  indexes, streams and subscriptions. An evicted parking does not lose the
+  connection — the right to resume lives on the record's TTL, and the client
+  returns by passport.
+- **Cross-process replies to a collect are authorized**: a process forwards only
+  the `(mid, cid)` pair it actually sent a frame to. This also removes the
+  client-uplink → bus amplification that came with it.
+- **Bus envelopes are validated like client frames** — `kick`, `amend`, `enroll`
+  and the gathers are read only after the shape checks out.
+- A space handler frame that names **no room** is refused with
+  `POINT0_SOCKET_NOT_IN_ROOM`. The membership check sat under
+  `frame.room !== undefined`, so a push with `{ room: undefined }` widened to
+  the whole space.
+- A payload that does not deserialize now **opens and immediately settles its
+  event family** with `input: undefined` — it was the one frame the events never
+  saw, which is exactly what a hostile client sends.
+- Client: a `joinErr` no longer leaves rooms in the dispatch index, space frames
+  never reach a membership that is not `joined`, and a socket query whose
+  membership was denied drops its cache entry instead of showing the previous
+  room's data forever.
+- Smaller: `claim` re-checks the connection record's scope, `discard` does not
+  delete an unreadable record from another scope, `pendingUpgrades` is capped and
+  its seed released when the upgrade fails, `maxRooms` is checked before the bus
+  subscription, the client's error string stays out of the log body, and a
+  collect window no longer wedges on a broken payload.
+- **All the new thresholds are engine options, not constants** — thirteen keys
+  under `server.socket`, listed in
+  [engine config](https://1gr14.dev/point0/latest/engine-config): frame field
+  caps, both budgets, the parking ceiling, and the TTL and size of the forward
+  authorization map.
+
+Everything else in this release:
+
+- **Breaking: `<channel.Connection>` and `<space.Membership>` take their options
+  flat on props** — `reconnect`, `enabled`, the callbacks — and the `options`
+  prop is gone.
+- `from.ips` is ordered client-first with the peer **last**, and `from.clientIp`
+  gives the one address a rate limit or a geo lookup should key on.
+  `isPublicIp` and `normalizeIp` are exported from `@point0/core/request0`.
+- `point0 dev` starts only the `main` entry by default. Add `devEntries` to the
+  config or `--entry '*'` for the rest; an entry that exits cleanly is reported
+  as finished, not as an error.
+- A page without a server loader answers a `data` request with 400 instead of
+  500 — `POINT_NO_SERVER_LOADER`.
+- `keepScroll` on `navigate`, `<Link>` and a redirect keeps the current scroll
+  position across a navigation. `mount()` takes `pageChunkHydrationTimeoutMs`,
+  and hydration waits behind one barrier, which is what made a code-split page
+  flash its loading state after the server had already rendered it.
+- New events: `pointHandlerSendClient*`, `pointHandlerSendServer*`,
+  `pointHandlerServerLateError`, and the `POINT0_SERIALIZE_FAILED` error.
+- `postgresBackplane` takes a `schema` option, so its tables live outside
+  `public` and `prisma migrate` stops reading them as drift.
+- Dependencies: redis/ioredis v5 or v6, Playwright 1.62.1, `@types/node` 26,
+  `@scalar/types` 0.17 (the openapi peer is `^0.17.0`), Expo SDK 57, Prettier
+  3.9.
+
 ## 0.3.3 — 2026-07-31
 
 - **0.3.2 never reached npm either** — three more Windows/format landmines: a

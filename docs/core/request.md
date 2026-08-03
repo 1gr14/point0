@@ -33,9 +33,16 @@ deferred until first read and then cached.
 `request` is injected into the three server-side callbacks:
 
 ```tsx
-.loader(({ request }) => { /* ... */ })       // a query/mutation/page loader
-.ctx(({ request }) => { /* ... */ })          // .ctx
-.middleware(({ request, next }) => next())    // .middleware
+export const ideaQuery = root.lets
+  .query()
+  .middleware(({ request, next }) => next()) // .middleware
+  .ctx(({ request }) => {
+    /* .ctx */
+  })
+  .loader(({ request }) => {
+    /* the loader — same on a mutation or a page */
+  })
+  .query()
 ```
 
 Outside those, reach it from anywhere on the server with `getRequest()`:
@@ -105,10 +112,13 @@ sent. To _set_ or _delete_ a cookie on the response, use the `set` helper, not
 `request.cookies`:
 
 ```tsx
-.loader(({ request, set }) => {
-  const current = request.cookies['session'] // read incoming
-  set.cookies('session', newToken) // write outgoing
-})
+export const meQuery = root.lets
+  .query()
+  .loader(({ request, set }) => {
+    const current = request.cookies['session'] // read incoming
+    set.cookies('session', newToken) // write outgoing
+  })
+  .query()
 ```
 
 See [Response](response) for `set.cookies`, and [CookieStore](cookie-store) for
@@ -152,9 +162,13 @@ validated `params` option prop when you declare a
 `headers`/`cookies` subsets:
 
 ```tsx
-.loader(({ request, params }) => {
-  params // typed & validated — only present if .params(schema) was declared
-})
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .params(z.object({ id: z.coerce.number() }))
+  .loader(({ request, params }) => {
+    params // typed & validated — only present if .params(schema) was declared
+  })
+  .page(/* ... */)
 ```
 
 There is no raw, untyped route-params view on `request`. `request.location` is
@@ -272,13 +286,17 @@ Two scratch maps hang off the request. They differ in **lifetime**.
 it in a later loader of the **same** request:
 
 ```tsx
-.middleware(({ request, next }) => {
-  request.state.startedAt = Date.now()
-  return next()
-})
-.loader(({ request }) => {
-  const elapsed = Date.now() - (request.state.startedAt as number)
-})
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .middleware(({ request, next }) => {
+    request.state.startedAt = Date.now()
+    return next()
+  })
+  .loader(({ request }) => {
+    const elapsed = Date.now() - (request.state.startedAt as number)
+    return { elapsed }
+  })
+  .page(/* ... */)
 ```
 
 `request.cache` is **shared along the whole request chain**. During SSR, point0
@@ -320,8 +338,13 @@ for anything that wants the raw request — auth libraries, a handler you delega
 to:
 
 ```tsx
-// hand the whole raw request to an auth handler
-.middleware('/api/auth/*', async ({ request }) => authServer.handler(request.original))
+export const root = Point0.lets
+  .root()
+  // hand the whole raw request to an auth handler
+  .middleware('/api/auth/*', async ({ request }) =>
+    authServer.handler(request.original),
+  )
+  .root()
 ```
 
 Reach for `request.original` when you need native `Headers`, the request body
@@ -410,8 +433,8 @@ into `_point0/<scope>/build-assets.json` and the server checks against it.
 `'websocket'` is the bare WebSocket upgrade — `GET /_point0/<scope>/websocket`
 with an `Upgrade: websocket` header, matched only when the engine's `socket`
 server option is on. It carries the resolved `scope`, and it is the middleware
-hook for gating the socket (an `Origin` allowlist, say) — see the
-[recipe](socket#origin-allowlist-for-the-socket).
+hook for a rule of your own on top of the engine's built-in origin gate — see
+[the origin gate](socket#origins-allowed-to-open-a-socket).
 
 ### `request.renders`
 
@@ -438,11 +461,14 @@ status — use the `set` helper that arrives next to `request` in every loader,
 `.ctx`, and middleware:
 
 ```tsx
-.loader(({ request, set }) => {
-  const token = request.headers['authorization'] // read
-  set.status(201) // write
-  set.cookies('session', token) // write
-})
+export const signInMutation = root.lets
+  .mutation()
+  .loader(({ request, set }) => {
+    const token = request.headers['authorization'] // read
+    set.status(201) // write
+    set.cookies('session', token) // write
+  })
+  .mutation()
 ```
 
 Full response surface is on [Response](response); the reactive cookie store is

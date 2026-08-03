@@ -28,3 +28,26 @@ yourself can simply be written `<MyComponent />` — that's the **same** as
 `<MyComponent.X />`. The `.X` form exists only for people who prefer to keep
 their point exported as a lowercase **object** (`myComponent.fetchQuery()`, …)
 and still want a terse way to render it. Their choice. **Decision: keep `.X`.**
+
+## Why is there no indexed `identity` target next to `$identity`?
+
+Considered and rejected (2026-08-01). The idea: `.connector(fn, ['userId'])`
+declares indexed identity keys, and targets gain `identity: { userId }` resolved
+through a per-key engine index instead of the `$identity` sift scan.
+
+Two facts kill it. First, an index cuts only the LOCAL scan, never the bus: an
+identity-addressed command is a broadcast either way, so with 50 processes all
+50 still receive and filter — and the local scan it saves is ~1–5 ms per 10k
+connections on events that are rare by nature (logout, ban, admin ops). Second,
+the only thing that DOES cut the bus is a subscription per value — and that is
+exactly what a room is. "Identity as a topic" would duplicate the whole room
+machinery (subscribes, resume streams, `amendIdentity`/`refresh` reactions) as a
+crooked twin of the enroller-space, which already turns an identity key into a
+real topic (`.enroller(({ identity }) => ({ userId: identity.userId }))`) with
+bus narrowing and resumability for free.
+
+So the table is complete without it: rare identity selections ride `$identity`
+(a flat matcher is already equality sugar), hot per-user addressing rides an
+enroller room. An `identity:` key that LOOKS like the hot `room:` address but
+works like a filter would only mislead. **Decision: no identity index —
+`$identity` for rare scans, enroller rooms for hot addressing.**

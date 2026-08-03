@@ -123,11 +123,14 @@ browser bundle. The client-only options you almost always set are `indexHtml`
 (the HTML shell) and `app` (the client app component):
 
 ```ts
-client: {
-  scope: 'root',
-  indexHtml: './index.html',
-  app: async () => await import('./app.client'),
-}
+Engine.create({
+  file: import.meta.url,
+  client: {
+    scope: 'root',
+    indexHtml: './index.html',
+    app: async () => await import('./app.client'),
+  },
+})
 ```
 
 ### `serving: false` clients
@@ -136,10 +139,13 @@ A client can opt out of being served by the engine — useful for a native shell
 (Capacitor, Expo) you build but don't host:
 
 ```ts
-clients: [
-  { scope: 'root' }, // served (serving: true is the default)
-  { scope: 'native', serving: false }, // built, but not bound to the server or dev serve
-]
+Engine.create({
+  file: import.meta.url,
+  clients: [
+    { scope: 'root' }, // served (serving: true is the default)
+    { scope: 'native', serving: false }, // built, but not bound to the server or dev serve
+  ],
+})
 ```
 
 A `serving: false` client is excluded from the server, from prepare, and from
@@ -161,12 +167,15 @@ The object form tunes the re-render loop. Point0 may re-render a page during SSR
 until its data store stabilizes; these options bound that:
 
 ```ts
-ssr: {
-  enabled: true,                          // default true when you pass an object
-  allowedDiscoveryRenders: 5,             // soft budget of discovery renders (default Infinity)
-  forbiddenDiscoveryRenders: 25,          // hard cap — stop AND log a server error (default 25)
-  prefetchLoadersBeforePageRender: true,  // prefetch declared loaders first, so fewer re-renders (default false)
-}
+Engine.create({
+  file: import.meta.url,
+  ssr: {
+    enabled: true, // default true when you pass an object
+    allowedDiscoveryRenders: 5, // soft budget of discovery renders (default Infinity)
+    forbiddenDiscoveryRenders: 25, // hard cap — stop AND log a server error (default 25)
+    prefetchLoadersBeforePageRender: true, // prefetch declared loaders first, so fewer re-renders (default false)
+  },
+})
 ```
 
 Both caps count **discovery renders** — the passes before the final render (the
@@ -233,37 +242,52 @@ the points/routes manifests. See [generator](generator) for the full picture.
 General form (top level):
 
 ```ts
-generate: {
-  meta: './generated/point0/meta.ts',          // analyzer meta — powers `point0 points` + MCP
-  assetsTypes: './generated/point0/assets.d.ts', // ambient types for asset imports
-  // custom: [ /* custom file generators */ ],
-}
+Engine.create({
+  file: import.meta.url,
+  generate: {
+    meta: './generated/point0/meta.ts', // analyzer meta — powers `point0 points` + MCP
+    assetsTypes: './generated/point0/assets.d.ts', // ambient types for asset imports
+    // custom: [ /* custom file generators */ ],
+  },
+})
 ```
 
 Per-side form:
 
 ```ts
-server: {
-  generate: { points: './generated/point0/points.server.ts' },
-},
-client: {
-  generate: {
-    points: './generated/point0/points.client.ts',
-    routes: { outfile: './generated/point0/routes.ts', origin: 'process.env.CLIENT_URL' },
+Engine.create({
+  file: import.meta.url,
+  server: {
+    generate: { points: './generated/point0/points.server.ts' },
   },
-},
+  client: {
+    generate: {
+      points: './generated/point0/points.client.ts',
+      routes: {
+        outfile: './generated/point0/routes.ts',
+        origin: 'process.env.CLIENT_URL',
+      },
+    },
+  },
+})
 ```
 
 Each path can be a string or `{ outfile, banner? }`. The client `points` form
 also takes a `lazy` flag, and `routes` takes an `origin`:
 
 ```ts
-client: {
-  generate: {
-    points: { outfile: './generated/point0/points.client.ts', lazy: false }, // eager imports
-    routes: { outfile: './generated/point0/routes.ts', origin: 'process.env.CLIENT_URL' },
+Engine.create({
+  file: import.meta.url,
+  client: {
+    generate: {
+      points: { outfile: './generated/point0/points.client.ts', lazy: false }, // eager imports
+      routes: {
+        outfile: './generated/point0/routes.ts',
+        origin: 'process.env.CLIENT_URL',
+      },
+    },
   },
-}
+})
 ```
 
 **Pages are lazy by default.** The generator forces `lazy: true` for client
@@ -277,8 +301,11 @@ object, for full control. Default when omitted: `[]` (no codegen).
 ## Ports
 
 ```ts
-server: { port: process.env.SERVER_PORT || process.env.PORT }, // default 3000
-client: { port: process.env.CLIENT_PORT },                     // default serverPort + index + 1
+Engine.create({
+  file: import.meta.url,
+  server: { port: process.env.SERVER_PORT || process.env.PORT }, // default 3000
+  client: { port: process.env.CLIENT_PORT }, // default serverPort + index + 1
+})
 ```
 
 - **Server `port`** defaults to `3000`; **client `port`** to
@@ -311,9 +338,12 @@ It also accepts a function, handed `{ mode, side, scope }`, so you can branch on
 who's building:
 
 ```ts
-bunBuildConfig: ({ mode, side, scope }) => ({
-  minify: mode === 'production',
-}),
+Engine.create({
+  file: import.meta.url,
+  bunBuildConfig: ({ mode, side, scope }) => ({
+    minify: mode === 'production',
+  }),
+})
 ```
 
 Lists that Point0 manages itself (`plugins`, `external`, `entrypoints`,
@@ -379,10 +409,13 @@ travels there like every other compiler setting — so a `compiler` block can
 override it, the side's own winning over the engine-level one:
 
 ```ts
-client: {
-  scope: 'web',
-  compiler: { features: { socket: false } }, // strip the compile, leave the side alone
-}
+Engine.create({
+  file: import.meta.url,
+  client: {
+    scope: 'web',
+    compiler: { features: { socket: false } }, // strip the compile, leave the side alone
+  },
+})
 ```
 
 That is compile-time only: it changes what `env.feature.*` is inlined as (and so
@@ -430,11 +463,14 @@ over the transport cap is dropped by Bun with the socket (no error frame: this
 is below Point0).
 
 ```ts
-server: {
-  socket: true,
-  // a tighter cap than the channels imply, for an edge that should never see big frames
-  bunServeConfig: { websocket: { maxPayloadLength: 256 * 1024 } },
-}
+Engine.create({
+  file: import.meta.url,
+  server: {
+    socket: true,
+    // a tighter cap than the channels imply, for an edge that should never see big frames
+    bunServeConfig: { websocket: { maxPayloadLength: 256 * 1024 } },
+  },
+})
 ```
 
 ### Socket infrastructure (`server.socket` as an object)
@@ -447,23 +483,38 @@ own options instead; what belongs to the transport lives in
 `bunServeConfig.websocket` above. All keys optional:
 
 ```ts
-server: {
-  socket: { ticketTtl: 60_000, gatherTimeout: 2000 },
-}
+Engine.create({
+  file: import.meta.url,
+  server: {
+    socket: { ticketTtl: 60_000, gatherTimeout: 2000 },
+  },
+})
 ```
 
-| Key                   | Default  | What it bounds                                                                                                            |
-| --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `ticketTtl`           | `30_000` | ms a one-time connect ticket stays claimable                                                                              |
-| `pendingUpgradeTtl`   | `30_000` | ms a stashed cold-start upgrade seed (and a bare-upgrade token) stays usable                                              |
-| `maxPendingUpgrades`  | `4096`   | pending bare-upgrade tokens at most — they are minted by unauthenticated requests                                         |
-| `gatherTimeout`       | `1000`   | ms a `connections.server.list` / `forEach` / `count` gather window stays open by default (per-call `timeoutMs` overrides) |
-| `renewMinInterval`    | `10_000` | ms between two KV TTL-slide writes per connection — a ping flood must not become a KV write flood                         |
-| `replyForwardWindow`  | `10_000` | ms of one unknown-mid reply-forward window per connection                                                                 |
-| `replyForwardMax`     | `256`    | unknown-mid reply forwards to the bus per window per connection                                                           |
-| `uncountableReplyCap` | `1024`   | per-cid reply bound of an uncountable collect window over a `$room`-matcher push                                          |
-| `busTopicLinger`      | `2_000`  | ms an unneeded dynamic bus-topic subscription lingers before the unsubscribe                                              |
-| `busDedupSize`        | `2_048`  | remembered envelope ids for the multi-topic bus dedup                                                                     |
+| Key                    | Default       | What it bounds                                                                                                               |
+| ---------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `ticketTtl`            | `30_000`      | ms a one-time connect ticket stays claimable                                                                                 |
+| `pendingUpgradeTtl`    | `30_000`      | ms a stashed cold-start upgrade seed (and a bare-upgrade token) stays usable                                                 |
+| `maxPendingUpgrades`   | `4096`        | pending bare-upgrade tokens at most — they are minted by unauthenticated requests                                            |
+| `gatherTimeout`        | `1000`        | ms a `connections.server.list` / `forEach` / `count` gather window stays open by default (per-call `timeoutMs` overrides)    |
+| `renewMinInterval`     | `10_000`      | ms between two KV TTL-slide writes per connection — a ping flood must not become a KV write flood                            |
+| `replyForwardWindow`   | `10_000`      | ms of one unknown-mid reply-forward window per connection                                                                    |
+| `replyForwardMax`      | `256`         | unknown-mid reply forwards to the bus per window per connection                                                              |
+| `uncountableReplyCap`  | `1024`        | per-cid reply bound of an uncountable collect window over a `$room`-matcher push                                             |
+| `busTopicLinger`       | `2_000`       | ms an unneeded dynamic bus-topic subscription lingers before the unsubscribe                                                 |
+| `busDedupSize`         | `2_048`       | remembered envelope ids for the multi-topic bus dedup                                                                        |
+| `allowedOrigins`       | `same-origin` | which origins may open a socket — the handshake CSRF gate ([details](../core/socket#origins-allowed-to-open-a-socket))       |
+| `maxFrameIdLength`     | `256`         | longest id a frame may carry (cid, message id, ticket, resume key)                                                           |
+| `maxFrameNameLength`   | `512`         | longest point name a frame may name (handler, space)                                                                         |
+| `maxResumeEntries`     | `64`          | connections one `resume` frame may offer — each costs backplane lookups                                                      |
+| `maxLeaveRooms`        | `1024`        | rooms one `leave` frame may name                                                                                             |
+| `unclaimedFrameMax`    | `64`          | frames a socket holding NO claimed connection may send per window (`0` switches it off)                                      |
+| `unclaimedFrameWindow` | `10_000`      | ms of one pre-claim budget window                                                                                            |
+| `claimedFrameMax`      | `3_000`       | frames a socket may send per window once it holds a claimed connection — the coarse backstop under your own guards (`0` off) |
+| `claimedFrameWindow`   | `10_000`      | ms of one claimed-connection budget window                                                                                   |
+| `maxParkedConnections` | `4_096`       | parked (awaiting a resume) connections this process holds at most — oldest swept first                                       |
+| `forwardAllowanceTtl`  | `60_000`      | ms a process remembers what a remote collect push delivered to its connections                                               |
+| `forwardAllowanceMax`  | `4_096`       | remembered remote collect pushes at most — the forward-authorization map                                                     |
 
 ### Outbound backpressure
 
@@ -489,11 +540,14 @@ happens, and it is also the memory one stalled socket can hold. Raise it for
 large frames or flaky mobile links, lower it to fail slow clients faster:
 
 ```ts
-server: {
-  socket: true,
-  // a tighter buffer: a client that falls more than 1 MiB behind is dropped sooner
-  bunServeConfig: { websocket: { backpressureLimit: 1024 * 1024 } },
-}
+Engine.create({
+  file: import.meta.url,
+  server: {
+    socket: true,
+    // a tighter buffer: a client that falls more than 1 MiB behind is dropped sooner
+    bunServeConfig: { websocket: { backpressureLimit: 1024 * 1024 } },
+  },
+})
 ```
 
 Never set it to `0` — that does not mean "no buffering", it disables the limit
@@ -562,29 +616,50 @@ is present: set it (top level or per side) and that side builds with Vite; omit
 it and you get Bun-native bundling.
 
 ```ts
-client: {
-  // function form: point0 hands you the injected `plugins` and the build context;
-  // spread `...plugins` where you want point0's compiler plugin to run
-  viteConfig: ({ plugins, side }) => ({
-    resolve: { tsconfigPaths: true },
-    plugins: [
-      ...plugins, // point0's vite compiler plugin lives here
-      react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
-      tailwindcss(),
-      side === 'client' ? analyzer({ analyzerMode: 'static', openAnalyzer: false }) : null,
-    ],
-  }),
-}
+Engine.create({
+  file: import.meta.url,
+  client: {
+    // function form: point0 hands you the injected `plugins` and the build context;
+    // spread `...plugins` where you want point0's compiler plugin to run
+    viteConfig: ({ plugins, side }) => ({
+      resolve: { tsconfigPaths: true },
+      plugins: [
+        ...plugins, // point0's vite compiler plugin lives here
+        react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
+        tailwindcss(),
+        side === 'client'
+          ? analyzer({ analyzerMode: 'static', openAnalyzer: false })
+          : null,
+      ],
+    }),
+  },
+})
 ```
 
 `viteConfig` accepts three forms:
 
 ```ts
-viteConfig: ({ plugins, side, command, mode, scope }) => ({/* UserConfig */}) // function
-viteConfig: {
-  /* a literal Vite UserConfig */
-} // object
-viteConfig: './vite.config.ts' // path to your own config
+// function
+Engine.create({
+  file: import.meta.url,
+  viteConfig: ({ plugins, side, command, mode, scope }) => ({/* UserConfig */}),
+})
+```
+
+```ts
+// object
+Engine.create({
+  file: import.meta.url,
+  viteConfig: {/* a literal Vite UserConfig */},
+})
+```
+
+```ts
+// path to your own config
+Engine.create({
+  file: import.meta.url,
+  viteConfig: './vite.config.ts',
+})
 ```
 
 The function receives
@@ -597,28 +672,36 @@ comparison and trade-offs on [bun-vs-vite](bun-vs-vite).
 `publicdir` mounts static files. It lives on the server and on each client:
 
 ```ts
-client: {
-  publicdir: {
-    source: '../public', // a string dir → mounted at /
-    outdir: '../dist/client',
+Engine.create({
+  file: import.meta.url,
+  client: {
+    publicdir: {
+      source: '../public', // a string dir → mounted at /
+      outdir: '../dist/client',
+    },
   },
-}
+})
 ```
 
 `source` can be a string, a record of route → file, or an array mixing both. A
 function value synthesizes a file on the fly:
 
 ```ts
-publicdir: {
-  source: [
-    '../public', // serve everything under ../public at /
-    {
-      '.well-known/appspecific/com.chrome.devtools.json': () => '{}',
-      'robots.txt': () => 'User-agent: *\nDisallow: /',
+Engine.create({
+  file: import.meta.url,
+  client: {
+    publicdir: {
+      source: [
+        '../public', // serve everything under ../public at /
+        {
+          '.well-known/appspecific/com.chrome.devtools.json': () => '{}',
+          'robots.txt': () => 'User-agent: *\nDisallow: /',
+        },
+      ],
+      outdir: '../dist/client',
     },
-  ],
-  outdir: '../dist/client',
-}
+  },
+})
 ```
 
 - **`source`** — string dir, record, array, or tuples. Function values are
@@ -636,12 +719,15 @@ Production static serving of built assets uses this wiring too. See
 Both sides take `env: { vars?, consts? }`. The split matters:
 
 ```ts
-client: {
-  env: {
-    vars: clientEnvKeys,        // RUNTIME — injected into the HTML, read at run time
-    consts: ['PUBLIC_FLAG'],    // COMPILE-TIME — inlined into the bundle as literals
+Engine.create({
+  file: import.meta.url,
+  client: {
+    env: {
+      vars: clientEnvKeys, // RUNTIME — injected into the HTML, read at run time
+      consts: ['PUBLIC_FLAG'], // COMPILE-TIME — inlined into the bundle as literals
+    },
   },
-}
+})
 ```
 
 - **`consts`** are inlined at compile time — `process.env.X` becomes a JSON
@@ -654,17 +740,30 @@ Each form is a string (a single var name, or a `*` glob matched against
 `process.env`), a record, or an array of those:
 
 ```ts
-env: {
-  vars: ['SOURCE_BASE_URL']
-} // pick named vars
-env: {
-  vars: {
-    API_URL: process.env.API_URL
-  }
-} // explicit record
-env: {
-  consts: 'PUBLIC_*'
-} // glob — all PUBLIC_-prefixed vars
+Engine.create({
+  file: import.meta.url,
+  client: {
+    env: { vars: ['SOURCE_BASE_URL'] }, // pick named vars
+  },
+})
+```
+
+```ts
+Engine.create({
+  file: import.meta.url,
+  client: {
+    env: { vars: { API_URL: process.env.API_URL } }, // explicit record
+  },
+})
+```
+
+```ts
+Engine.create({
+  file: import.meta.url,
+  client: {
+    env: { consts: 'PUBLIC_*' }, // glob — all PUBLIC_-prefixed vars
+  },
+})
 ```
 
 **Client env is guarded.** An empty string `''` or a bare `'*'` in a client's
@@ -683,9 +782,12 @@ Point0 always injects these consts: `NODE_ENV`, `POINT0_SCOPE`, `POINT0_SIDE`,
 specially. The most common use is mocking native-only deps in a server build:
 
 ```ts
-server: {
-  importer: { mock: ['react-native', 'expo-router'] }, // rewrite these to a mock at compile time
-}
+Engine.create({
+  file: import.meta.url,
+  server: {
+    importer: { mock: ['react-native', 'expo-router'] }, // rewrite these to a mock at compile time
+  },
+})
 ```
 
 - **`mock`** — rewrite a matched import to a mock module, at compile time, in
@@ -708,9 +810,12 @@ model (it also covers the in-file `import '@point0/core/cold'` marker).
 imports. Both have an engine-level default and a per-side override.
 
 ```ts
-client: {
-  compiler: { babel: ['babel-plugin-react-compiler'] }, // add a babel plugin to this side
-}
+Engine.create({
+  file: import.meta.url,
+  client: {
+    compiler: { babel: ['babel-plugin-react-compiler'] }, // add a babel plugin to this side
+  },
+})
 ```
 
 `compiler` also accepts a boolean: `compiler: false` turns the transform off for
@@ -723,11 +828,14 @@ page covers them.
 `assets` is `boolean | { enabled?, extensions?, defaultMode?, svgr? }`:
 
 ```ts
-assets: {
-  extensions: ['png', 'svg', 'woff2'], // which extensions go through the asset pipeline
-  defaultMode: 'url',                  // 'url' | 'file' | 'text' | 'react' | false
-  svgr: false,                         // disable ?react SVG-to-component
-}
+Engine.create({
+  file: import.meta.url,
+  assets: {
+    extensions: ['png', 'svg', 'woff2'], // which extensions go through the asset pipeline
+    defaultMode: 'url', // 'url' | 'file' | 'text' | 'react' | false
+    svgr: false, // disable ?react SVG-to-component
+  },
+})
 ```
 
 `defaultMode` defaults to `'url'`; `extensions` defaults to a broad image/font/
@@ -739,11 +847,14 @@ allowed but a footgun. Full pipeline on [assets](assets).
 ## Logger
 
 ```ts
-logger: {
-  log: ({ level, category, message, error, meta }) => {
-    /* ... */
-  }
-}
+Engine.create({
+  file: import.meta.url,
+  logger: {
+    log: ({ level, category, message, error, meta }) => {
+      /* ... */
+    },
+  },
+})
 ```
 
 Pass a `{ log }` object, or a function (sync or async) that returns one. The
@@ -751,13 +862,21 @@ function form is resolved during preload, **after** the bun plugins load, so a
 logger you import inside it goes through the compiler transforms:
 
 ```ts
-logger: async () => {
-  const { logger } = await import('@/lib/logger')
-  return {
-    log: ({ category, level, message, error, meta }) =>
-      console.error({ level, category, input: message, props: { ...meta, ...(error ? { error } : {}) } }),
-  }
-},
+Engine.create({
+  file: import.meta.url,
+  logger: async () => {
+    const { logger } = await import('@/lib/logger')
+    return {
+      log: ({ category, level, message, error, meta }) =>
+        console.error({
+          level,
+          category,
+          input: message,
+          props: { ...meta, ...(error ? { error } : {}) },
+        }),
+    }
+  },
+})
 ```
 
 See [events](events) for the event/logging model.
@@ -805,31 +924,31 @@ The remaining general options rarely appear in app code:
 
 ### Server block (`EngineServerOptions`)
 
-| Option           | Type                              | Default                    | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ---------------- | --------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scope`          | `PointsScope`                     | — (required)               | e.g. `'root'`, `'site'`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `points`         | points loader                     | bare root point            | Usually `async () => import('./generated/point0/points.server')`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `generate`       | object                            | `[]`                       | `{ points?, custom? }`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `entry`          | `string \| Record<string,string>` | `null`                     | A string becomes `{ main: <string> }`. `build` builds every entry; `dev` starts only the one picked by `devEntries`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `devEntries`     | `string \| string[] \| '*'`       | `main`, else the first key | Which entries `point0 dev` starts — names or paths; `'*'` = every declared entry. `--entry` overrides it. See [multiple server entries](dev#multiple-server-entries).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `port`           | `number \| string`                | `3000`                     | Coerced with `Number()`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `hmrPort`        | `number \| string \| boolean`     | `port + 100`               | `false` disables.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `outdir`         | `string`                          | `'dist'`                   | Auto-set; drives the after-build cwd.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `publicdir`      | `{ source, outdir, cacheLimit? }` | `null`                     | See [publicdir](#static-files-publicdir).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `importer`       | importer options                  | `{ cwd }`                  | See [importer](#guarding-imports-importer).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `env`            | `{ vars?, consts? }`              | `{}`                       | Server `vars` is **strict** (no glob form).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `routes`         | routes loader                     | `null`                     | `() => import('./lib/routes')` or a routes object.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `compiler`       | `object \| boolean`               | inherits general           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `assets`         | `boolean \| object`               | inherits general           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `viteConfig`     | fn \| object \| string            | inherits general           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `ssr`            | `boolean \| SsrOptions`           | inherits general / `false` | Only the on/off value is used here; re-render tuning is read from the client. See [SSR](#ssr).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `devWatchGlob`   | `string \| string[]`              | `[]`                       | Default watch glob for `point0 dev` when `--watch` has no value.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `bunBuildConfig` | object                            | `{}`                       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `bunPlugins`     | plugin list                       | `[]`                       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `bunServeConfig` | `Serve.Options`                   | `null`                     | Raw `Bun.serve` config. Options passed to `engine.serve()` win over it; `port`, `fetch` and the `websocket` **handlers** are always owned by Point0. The `websocket` **settings** merge instead — Point0's defaults (`idleTimeout: 120`, `closeOnBackpressureLimit: true`, `backpressureLimit: 16 MiB`, and a `maxPayloadLength` computed from the channels), then this option, then the `serve()` argument. See [websocket settings](#websocket-settings).                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `backplane`      | `Backplane \| (() => …)`          | server memory              | Socket backplane — the shared layer server processes sync through (per-connection `{ scope, channel, identity }` + tickets with a TTL, plus channel pub/sub — point0 owns the bus channel names and passes each as an argument). Redis-shaped: five functions plus an optional sixth, `getDelete` (Redis `GETDEL`) — implement it and a connect ticket is claimed atomically across processes; leave it out and Point0 falls back to `get` + `delete` — and an optional seventh, `dispose`, called on engine dispose to release what the backplane itself created. A `'redis://…'` URL string is the shortcut; ready-made adapters for Postgres (postgres.js), ioredis, node-redis and Bun's client live under `@point0/engine/backplane/*`, plugged in through the (async) factory form. See [channel](socket#where-its-stored--the-engine-serverbackplane). |
-| `socket`         | `boolean \| object`               | `false`                    | Turn on the bare WebSocket endpoint (`GET /_point0/<scope>/websocket`) that every channel of the scope multiplexes over. Off, the endpoint does not exist (and declaring channels logs a startup warning). The upgrade rides the full fetch pipeline as the `websocket` request variant, so a middleware can veto it — e.g. an `Origin` allowlist. An OBJECT turns it on AND tunes the process-wide socket infrastructure — see [the socket infra options](#socket-infrastructure-server-socket) below. See [channel](socket).                                                                                                                                                                                                                                                                                                                                |
-| `banner`         | `string`                          | `null`                     |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Option           | Type                              | Default                    | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------- | --------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scope`          | `PointsScope`                     | — (required)               | e.g. `'root'`, `'site'`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `points`         | points loader                     | bare root point            | Usually `async () => import('./generated/point0/points.server')`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `generate`       | object                            | `[]`                       | `{ points?, custom? }`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `entry`          | `string \| Record<string,string>` | `null`                     | A string becomes `{ main: <string> }`. `build` builds every entry; `dev` starts only the one picked by `devEntries`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `devEntries`     | `string \| string[] \| '*'`       | `main`, else the first key | Which entries `point0 dev` starts — names or paths; `'*'` = every declared entry. `--entry` overrides it. See [multiple server entries](dev#multiple-server-entries).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `port`           | `number \| string`                | `3000`                     | Coerced with `Number()`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `hmrPort`        | `number \| string \| boolean`     | `port + 100`               | `false` disables.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `outdir`         | `string`                          | `'dist'`                   | Auto-set; drives the after-build cwd.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `publicdir`      | `{ source, outdir, cacheLimit? }` | `null`                     | See [publicdir](#static-files-publicdir).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `importer`       | importer options                  | `{ cwd }`                  | See [importer](#guarding-imports-importer).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `env`            | `{ vars?, consts? }`              | `{}`                       | Server `vars` is **strict** (no glob form).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `routes`         | routes loader                     | `null`                     | `() => import('./lib/routes')` or a routes object.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `compiler`       | `object \| boolean`               | inherits general           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `assets`         | `boolean \| object`               | inherits general           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `viteConfig`     | fn \| object \| string            | inherits general           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `ssr`            | `boolean \| SsrOptions`           | inherits general / `false` | Only the on/off value is used here; re-render tuning is read from the client. See [SSR](#ssr).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `devWatchGlob`   | `string \| string[]`              | `[]`                       | Default watch glob for `point0 dev` when `--watch` has no value.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `bunBuildConfig` | object                            | `{}`                       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `bunPlugins`     | plugin list                       | `[]`                       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `bunServeConfig` | `Serve.Options`                   | `null`                     | Raw `Bun.serve` config. Options passed to `engine.serve()` win over it; `port`, `fetch` and the `websocket` **handlers** are always owned by Point0. The `websocket` **settings** merge instead — Point0's defaults (`idleTimeout: 120`, `closeOnBackpressureLimit: true`, `backpressureLimit: 16 MiB`, and a `maxPayloadLength` computed from the channels), then this option, then the `serve()` argument. See [websocket settings](#websocket-settings).                                                                                                                                                                                                                                                                                                                                                                |
+| `backplane`      | `Backplane \| (() => …)`          | server memory              | Socket backplane — the shared layer server processes sync through (per-connection `{ scope, channel, identity }` + tickets with a TTL, plus channel pub/sub — point0 owns the bus channel names and passes each as an argument). Redis-shaped: five functions plus an optional sixth, `getDelete` (Redis `GETDEL`) — implement it and a connect ticket is claimed atomically across processes; leave it out and Point0 falls back to `get` + `delete` — and an optional seventh, `dispose`, called on engine dispose to release what the backplane itself created. A `'redis://…'` URL string is the shortcut; ready-made adapters for Postgres (postgres.js), ioredis, node-redis and Bun's client live under `@point0/engine/backplane/*`, plugged in through the (async) factory form. See [channel](socket#backplane). |
+| `socket`         | `boolean \| object`               | `false`                    | Turn on the bare WebSocket endpoint (`GET /_point0/<scope>/websocket`) that every channel of the scope multiplexes over. Off, the endpoint does not exist (and declaring channels logs a startup warning). The upgrade rides the full fetch pipeline as the `websocket` request variant, so a middleware can veto it — e.g. an `Origin` allowlist. An OBJECT turns it on AND tunes the process-wide socket infrastructure — see [the socket infra options](#socket-infrastructure-server-socket) below. See [channel](socket).                                                                                                                                                                                                                                                                                             |
+| `banner`         | `string`                          | `null`                     |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 ### Client block (`EngineClientOptions`)
 

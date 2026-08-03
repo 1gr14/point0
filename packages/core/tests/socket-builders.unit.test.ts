@@ -548,6 +548,49 @@ describe('socket builders', () => {
     expect((events[2]!.error as { status?: number }).status).toBe(400)
   })
 
+  it('a payload that does not DESERIALIZE settles the family too — Start above the parse, the input unknowable', async () => {
+    // one step earlier than the schema refusal above: these are bytes no transformer can turn into a value, which is
+    // exactly what a hostile client sends. It must not be the one message the event families never see — the Start
+    // sits above the deserialize as well, so the family closes with Settled/Error and carries `input: undefined`,
+    // because the raw send input genuinely is not knowable.
+    const events: Array<{ name: string; input: unknown; error: unknown }> = []
+    const eventedRoot = Point0.lets('root', 'eventedDeserializeFail')
+      .serverOn('*', (event) => {
+        if (event.name.startsWith('pointHandlerServer')) {
+          events.push({ name: event.name, input: (event.data as { input?: unknown }).input, error: event.error })
+        }
+      })
+      .root()
+    const channel = eventedRoot.lets('channel', 'deserializeFailChannel').channel()
+    const handler = channel
+      .lets('serverHandler', 'deserializeFailPoke')
+      .clientSend(z.object({ n: z.number() }))
+      .serverReply(({ input }) => ({ n: input.n }))
+      .serverHandler()
+    await expect(
+      handler.point._executeServerReply({
+        inputSerialized: '{"n":',
+        room: undefined,
+        identity: {},
+        connectionId: 'c1',
+        messageId: 'm1',
+        points: undefined as never,
+      }),
+    ).rejects.toThrow()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(events.map((event) => event.name)).toEqual([
+      'pointHandlerServerStart',
+      'pointHandlerServerSettled',
+      'pointHandlerServerError',
+    ])
+    expect(events.every((event) => event.input === undefined)).toBe(true)
+    // the typed error the engine frames into `sendErr` — a client fault, told apart from a schema refusal by its code
+    expect(events[0]!.error).toBeUndefined()
+    const failed = events[2]!.error as ErrorPoint0
+    expect(failed.status).toBe(400)
+    expect(failed.code).toBe(POINT0_ERROR_CODES_MAP.INPUT_PARSE_FAILED)
+  })
+
   it('handler stages are strict: message schemas and replies close the setup stage like a loader', () => {
     const channel = root.lets('channel', 'chatStages').channel()
     const replied = channel.lets('serverHandler', 'strictStages').serverReply(() => ({ ok: true })) as any
@@ -957,6 +1000,43 @@ describe('socket builders', () => {
     ])
     // the raw join input rides every phase — the parse never produced another one
     expect(events.every((event) => (event.input as { chatId: unknown }).chatId === 123)).toBe(true)
+  })
+
+  it('_executeJoiner: an unparseable join payload settles the family too — Start above the deserialize', async () => {
+    // the join half of the same rule: bytes that do not deserialize at all still open AND close the family, with
+    // `input: undefined` (unknowable) and the parse-failure code — never a silent throw before anything was announced
+    const events: Array<{ name: string; input: unknown; error: unknown }> = []
+    const eventedRoot = Point0.lets('root', 'eventedJoinDeserializeFail')
+      .serverOn('*', (event) => {
+        if (event.name.startsWith('pointSpaceJoinServer')) {
+          events.push({ name: event.name, input: (event.data as { input?: unknown }).input, error: event.error })
+        }
+      })
+      .root()
+    const channel = eventedRoot.lets('channel', 'joinDeserializeFailChannel').channel()
+    const space = channel
+      .lets<{ chatId: string }>('space', 'joinDeserializeFailRoom')
+      .input(z.object({ chatId: z.string() }))
+      .joiner(({ input }) => ({ chatId: input.chatId }))
+      .space()
+    await expect(
+      space.point._executeJoiner({
+        inputSerialized: '{"chatId":',
+        identity: {},
+        connectionId: 'c1',
+        points: undefined as never,
+      }),
+    ).rejects.toThrow()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(events.map((event) => event.name)).toEqual([
+      'pointSpaceJoinServerStart',
+      'pointSpaceJoinServerSettled',
+      'pointSpaceJoinServerError',
+    ])
+    expect(events.every((event) => event.input === undefined)).toBe(true)
+    const failed = events[2]!.error as ErrorPoint0
+    expect(failed.status).toBe(400)
+    expect(failed.code).toBe(POINT0_ERROR_CODES_MAP.INPUT_PARSE_FAILED)
   })
 
   it('_executeJoiner: a throwing joiner propagates the typed error (a failed join)', async () => {

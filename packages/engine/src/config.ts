@@ -318,6 +318,22 @@ const pickSsrOptionsPartial = (ssr: boolean | SsrOptions | undefined): Partial<S
  * defaults are the values that shipped as constants.
  */
 export type EngineSocketServerOptions = {
+  /**
+   * Which origins may open a socket — the CSRF gate of the WebSocket handshake, and the one socket option that is a
+   * security boundary rather than a resource knob.
+   *
+   * A browser puts `Origin` on every handshake and then, unlike a fetch, applies NO same-origin policy to the answer:
+   * the upgrade succeeds cross-site, carrying the visitor's cookies. Without this gate any page on the internet could
+   * open a socket to your server as whoever is signed in on it — and on the cold-start upgrade-connect, where the
+   * `.connector` runs on the handshake itself, get a live connection under their identity.
+   *
+   * Default `'same-origin'`: a browser handshake whose `Origin` is not this host is refused with 403; a request with no
+   * `Origin` at all — a native app, a server, a test client — passes, since there is no site to forge from. Pass the
+   * extra origins your app is legitimately dialed from (`['capacitor://localhost', 'https://app.example.com']`); they
+   * are matched exactly, and same-origin keeps working alongside them. `'*'` accepts every origin — for a public API
+   * that authenticates with a bearer token rather than a cookie, never for a cookie-authenticated app.
+   */
+  allowedOrigins?: 'same-origin' | '*' | string[]
   /** ms a one-time connect ticket stays claimable; default `30_000` */
   ticketTtl?: number
   /** ms a stashed cold-start upgrade seed (and a bare-upgrade token) stays usable; default `30_000` */
@@ -341,6 +357,44 @@ export type EngineSocketServerOptions = {
   busTopicLinger?: number
   /** remembered envelope ids for the multi-topic bus dedup; default `2_048` */
   busDedupSize?: number
+  /**
+   * The structural caps of an incoming FRAME — how much fan-out one may ask for, and how long its ids may be. Not
+   * bytes: those are Bun's `maxPayloadLength` at the transport and the channel's `maxMessageSize` per frame. A real
+   * client lives orders of magnitude below them (its ids are uuids, it resumes the handful of connections one page
+   * holds), so they only refuse the absurd — raise one if your app genuinely addresses more.
+   */
+  maxFrameIdLength?: number
+  /** longest point name a frame may name (handler, space); default `512` */
+  maxFrameNameLength?: number
+  /** connections one `resume` frame may offer — each costs backplane lookups; default `64` */
+  maxResumeEntries?: number
+  /** rooms one `leave` frame may name; default `1024` */
+  maxLeaveRooms?: number
+  /**
+   * The frame budget of a socket that holds NO claimed connection, and the one rate bound the engine owes: before the
+   * claim there is no identity and no hook of yours to refuse anything, yet `claim`/`discard`/`resume` each cost
+   * backplane round trips. A real client spends one frame here and is past it forever. `0` switches it off.
+   */
+  unclaimedFrameMax?: number
+  /** ms of one pre-claim budget window; default `10_000` */
+  unclaimedFrameWindow?: number
+  /**
+   * The frame budget of a socket ONCE IT HOLDS a claimed connection — counted per socket, like its unclaimed twin,
+   * because the socket is the resource (one carries up to `maxConnections` connections per channel). It is the coarse
+   * backstop under everything they do — sends, joins, leaves, replies — and deliberately generous: 300 frames a second
+   * is far above a chat client and still above a cursor-sharing one, while a flood is thousands. The limits that
+   * actually shape an app live in your own `onBeforeServerReply` and `.joiner`, which know what a given message costs.
+   * `0` switches it off.
+   */
+  claimedFrameMax?: number
+  /** ms of one claimed-connection budget window; default `10_000` */
+  claimedFrameWindow?: number
+  /** parked (resumable, awaiting a resume) connections this process holds at most; default `4096` */
+  maxParkedConnections?: number
+  /** ms a process remembers what a remote collect push delivered to its connections; default `60_000` */
+  forwardAllowanceTtl?: number
+  /** remembered remote collect pushes at most — the forward-authorization map; default `4096` */
+  forwardAllowanceMax?: number
 }
 
 /** The resolved {@link EngineSocketServerOptions} — every knob present, defaults applied. */
@@ -352,6 +406,7 @@ export const resolveEngineSocketOptions = (
 ): EngineSocketServerOptionsResolved => {
   const provided = typeof socket === 'object' && socket !== null ? socket : {}
   return {
+    allowedOrigins: provided.allowedOrigins ?? 'same-origin',
     ticketTtl: provided.ticketTtl ?? 30_000,
     pendingUpgradeTtl: provided.pendingUpgradeTtl ?? 30_000,
     maxPendingUpgrades: provided.maxPendingUpgrades ?? 4096,
@@ -362,6 +417,17 @@ export const resolveEngineSocketOptions = (
     uncountableReplyCap: provided.uncountableReplyCap ?? 1024,
     busTopicLinger: provided.busTopicLinger ?? 2_000,
     busDedupSize: provided.busDedupSize ?? 2_048,
+    maxFrameIdLength: provided.maxFrameIdLength ?? 256,
+    maxFrameNameLength: provided.maxFrameNameLength ?? 512,
+    maxResumeEntries: provided.maxResumeEntries ?? 64,
+    maxLeaveRooms: provided.maxLeaveRooms ?? 1_024,
+    unclaimedFrameMax: provided.unclaimedFrameMax ?? 64,
+    unclaimedFrameWindow: provided.unclaimedFrameWindow ?? 10_000,
+    claimedFrameMax: provided.claimedFrameMax ?? 3_000,
+    claimedFrameWindow: provided.claimedFrameWindow ?? 10_000,
+    maxParkedConnections: provided.maxParkedConnections ?? 4_096,
+    forwardAllowanceTtl: provided.forwardAllowanceTtl ?? 60_000,
+    forwardAllowanceMax: provided.forwardAllowanceMax ?? 4_096,
   }
 }
 

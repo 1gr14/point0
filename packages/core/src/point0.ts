@@ -11778,7 +11778,7 @@ export class Point0<
           >
         >,
       ) => React.ReactNode
-    : never = ((props: { input?: unknown; options?: unknown; gate?: Gate; children?: React.ReactNode }) => {
+    : never = ((props: { input?: unknown; gate?: Gate; children?: React.ReactNode }) => {
     if (!_point0_env.feature.socket) {
       throw socketFeatureOffError(`Connection, point ${this.id}`)
     }
@@ -11787,13 +11787,14 @@ export class Point0<
     // terminal step holds the connection and gates it per `gate` (default errors-only — `closed` does NOT gate: it is
     // either `enabled: false` or a later kick/logout — the children are already there and see the status), and provides
     // the channel context. `mountComponent: 'children'` — once past the terminal step the children render as-is.
+    // The rest props ARE the connection options — they sit flat on the component.
     const {
       input = {},
-      options,
       gate,
       LoadingComponent,
       ErrorComponent,
       children,
+      ...options
     } = props as typeof props & {
       LoadingComponent?: LoadingComponentType<any>
       ErrorComponent?: ErrorComponentType<any, ErrorPoint0>
@@ -12015,19 +12016,20 @@ export class Point0<
           >
         >,
       ) => React.ReactNode
-    : never = ((props: { input?: unknown; options?: unknown; gate?: Gate; children?: React.ReactNode }) => {
+    : never = ((props: { input?: unknown; gate?: Gate; children?: React.ReactNode }) => {
     if (!_point0_env.feature.socket) {
       throw socketFeatureOffError(`Membership, point ${this.id}`)
     }
     // the space mirror of `<channel.Connection>` — the same mountable render, closed by the space's own
-    // `selfMembership` terminal step (join, gate per `gate` — default errors-only, provide the space context)
+    // `selfMembership` terminal step (join, gate per `gate` — default errors-only, provide the space context).
+    // The rest props ARE the membership options — they sit flat on the component.
     const {
       input = {},
-      options,
       gate,
       LoadingComponent,
       ErrorComponent,
       children,
+      ...options
     } = props as typeof props & {
       LoadingComponent?: LoadingComponentType<any>
       ErrorComponent?: ErrorComponentType<any, ErrorPoint0>
@@ -12273,7 +12275,22 @@ export class Point0<
       }
     }
     const onReplyRaw = (reply: { cid: string; data: string | undefined; room?: string | undefined }) => {
-      let data: unknown = reply.data === undefined ? undefined : transformer.parse(reply.data)
+      // the payload came off a client's socket, so it is not necessarily deserializable at all — a malformed one is a
+      // failed reply, exactly like one that fails the schema below. It must not THROW: the throw would leave the
+      // collect window's accounting half-done, and the window would then wait out its whole timeout instead of closing
+      // the moment everyone answered
+      let data: unknown
+      try {
+        data = reply.data === undefined ? undefined : transformer.parse(reply.data)
+      } catch (error) {
+        getLogFnForPoint(this)({
+          level: 'warn',
+          category: ['point0', 'socket'],
+          message: `A client reply was not deserializable and was dropped (point ${this.id}, connection ${reply.cid})`,
+          error,
+        })
+        return
+      }
       if (this._clientReplySchema) {
         const parsed = this.parseInputSafeSync(this._clientReplySchema, data as never)
         if (!parsed.success) {
@@ -13199,6 +13216,48 @@ export class Point0<
     return useBoundConnection(this as never, target as never, consultAmbient ? ambient : undefined)
   }
 
+  /**
+   * Drop this socket query's cache entry when its target is DENIED.
+   *
+   * `enabled` stops a query from fetching; it does not stop it from RENDERING what it already has. So a membership the
+   * server just refused — a room revoked mid-session, a re-join the joiner denied after the identity changed — would
+   * otherwise keep its last answer on screen forever: nothing refetches, nothing errors, the data simply stays. A deny
+   * is the one signal that says this data is no longer ours to show, and it is the one the app cannot act on itself (it
+   * has no key to remove). Everything else — a sign-out, a token swap — is the app's own boundary:
+   * `queryClient.clear()` at sign-out, as the docs' recipe has it.
+   *
+   * A dropped entry is not an error: the hook falls back to pending, and if the target ever opens again it fetches.
+   *
+   * The key to drop is the last one seen while the target was READY — the same predicate `enabled` runs on, not merely
+   * "not yet denied". A membership that is re-joining reports `joining`, and an ambient single-room query's key loses
+   * its `room` for every render that is not `joined`: a deny is always reached THROUGH those renders, so anything
+   * looser would remember the roomless key, evict an entry that never held data, and leave the denied room's answer
+   * sitting in the cache for the next identity to render. (A `handler(room)`-bound query pins its own room and never
+   * had the problem — which is exactly why it must not be the only shape that works.)
+   */
+  private _useSocketQueryDenialEviction(
+    facade: AnyClientChannelConnection | AnyClientSpaceMembership | undefined,
+    queryKey: unknown,
+    ready: boolean,
+  ): void {
+    const denied = (facade as { status?: string } | undefined)?.status === 'error'
+    const lastGoodKeyRef = React.useRef<{ key: unknown; serialized: string }>({
+      key: queryKey,
+      serialized: stringify(queryKey) ?? '',
+    })
+    if (ready) {
+      lastGoodKeyRef.current = { key: queryKey, serialized: stringify(queryKey) ?? '' }
+    }
+    // the SERIALIZED key is the dependency — the key itself is a fresh array every render, its content is the identity
+    const { serialized } = lastGoodKeyRef.current
+    React.useEffect(() => {
+      if (!denied) {
+        return
+      }
+      _ss.__POINT0_QUERY_CLIENT__.get().removeQueries({ queryKey: lastGoodKeyRef.current.key as never, exact: true })
+    }, [denied, serialized])
+  }
+
   private _useSocketQueryInner({
     facade,
     boundRoom,
@@ -13214,6 +13273,11 @@ export class Point0<
       throw socketFeatureOffError(`_useSocketQueryInner, point ${this.id}`)
     }
     const socketQueryOptions = this._getSocketQueryOptions({ facade, boundRoom, input, queryOptions })
+    this._useSocketQueryDenialEviction(
+      facade,
+      (socketQueryOptions as { queryKey: unknown }).queryKey,
+      this._connectionFacadeReady(facade, boundRoom),
+    )
     return useQuery(socketQueryOptions)
   }
 
@@ -13237,6 +13301,11 @@ export class Point0<
       input,
       infiniteQueryOptions,
     })
+    this._useSocketQueryDenialEviction(
+      facade,
+      (socketInfiniteQueryOptions as { queryKey: unknown }).queryKey,
+      this._connectionFacadeReady(facade, boundRoom),
+    )
     return useInfiniteQuery(socketInfiniteQueryOptions as never) as never
   }
 
@@ -15788,18 +15857,37 @@ export class Point0<
       throw new this._Error(`Point ${this.id} has no .serverReply`, { status: 400 })
     }
     const transformer = this._getSocketTransformer()
-    const inputRaw = inputSerialized === undefined ? {} : transformer.parse(inputSerialized)
     // the family's `input` is the RAW send input, like every other family's (the fetch/query/mutation events carry
     // what the caller passed, before any validation) — which is what lets the `Start` sit ABOVE the `.clientSend`
     // parse: a refused schema is the commonest refusal there is, and it settles the family (`Settled`/`Error`) instead
     // of dying silently before anything was ever announced
+    const meta = { point: this.id, connection: connectionId }
+    // the DESERIALIZE runs first, but a failure still OPENS the family before closing it: a payload that does not parse
+    // at all is the frame a hostile client sends, and it must not be the one frame the events never see. Its `input` is
+    // `undefined` because it genuinely is not knowable — every other path carries the raw one, as the rule above says
+    const inputRaw = (() => {
+      if (inputSerialized === undefined) {
+        return {}
+      }
+      try {
+        return transformer.parse(inputSerialized)
+      } catch (error) {
+        const unparseable = { input: undefined as unknown as InputRawUnknown, point: this, connectionId, identity }
+        const parseError = this._Error.from(error)
+        parseError.status ??= 400
+        parseError.code ??= POINT0_ERROR_CODES_MAP.INPUT_PARSE_FAILED
+        this._emit('pointHandlerServerStart', unparseable as never, meta)
+        this._emit('pointHandlerServerSettled', { ...unparseable, output: undefined, error: parseError } as never, meta)
+        this._emit('pointHandlerServerError', { ...unparseable, output: undefined, error: parseError } as never, meta)
+        throw parseError
+      }
+    })()
     const eventData = {
       input: inputRaw as InputRawUnknown,
       point: this,
       connectionId,
       identity,
     }
-    const meta = { point: this.id, connection: connectionId }
     this._emit('pointHandlerServerStart', eventData as never, meta)
     const input = (() => {
       if (!this._clientSendSchema) {
@@ -15968,9 +16056,33 @@ export class Point0<
       })
     }
     const transformer = this._getSocketTransformer()
-    const inputRaw = inputSerialized === undefined ? {} : transformer.parse(inputSerialized)
-    // the family's `input` is the RAW join input, like every other family's — so the `Start` can sit ABOVE the `.input`
-    // parse and a refused schema (the commonest refusal) closes the family instead of vanishing before it opened
+    // the family's `input` is the RAW join input, like every other family's — so the `Start` sits ABOVE the `.input`
+    // parse and a refused schema (the commonest refusal) closes the family instead of vanishing before it opened. A
+    // payload that does not DESERIALIZE has no raw input to carry, and it is the frame a hostile client sends — so it
+    // opens the family and closes it in one breath, with `input: undefined`, rather than being the one frame the
+    // events never see
+    const meta = { point: this.id, connection: connectionId }
+    const inputRaw = (() => {
+      if (inputSerialized === undefined) {
+        return {}
+      }
+      try {
+        return transformer.parse(inputSerialized)
+      } catch (error) {
+        const unparseable = { input: undefined as unknown as InputRawUnknown, point: this, connectionId, identity }
+        const parseError = this._Error.from(error)
+        parseError.status ??= 400
+        parseError.code ??= POINT0_ERROR_CODES_MAP.INPUT_PARSE_FAILED
+        this._emit('pointSpaceJoinServerStart', { ...unparseable, resumed: false } as never, meta)
+        this._emit(
+          'pointSpaceJoinServerSettled',
+          { ...unparseable, rooms: undefined, error: parseError } as never,
+          meta,
+        )
+        this._emit('pointSpaceJoinServerError', { ...unparseable, rooms: undefined, error: parseError } as never, meta)
+        throw parseError
+      }
+    })()
     const eventData = {
       input: inputRaw as InputRawUnknown,
       point: this,
@@ -15978,7 +16090,6 @@ export class Point0<
       // the server side of the universal family carries the identity — presence recipes key off it
       identity,
     }
-    const meta = { point: this.id, connection: connectionId }
     // a real joiner run, never a resume re-announce (those are emitted by the engine's unpark/restore paths)
     this._emit('pointSpaceJoinServerStart', { ...eventData, resumed: false } as never, meta)
     // the space keeps its `.input` schema(s) in the server execute actions (the joiner-side validation) — parse each,

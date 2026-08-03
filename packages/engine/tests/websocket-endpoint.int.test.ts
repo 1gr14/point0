@@ -64,8 +64,17 @@ const sendOneFrame = (
     ws.addEventListener('error', () => finish(true))
   })
 
-/** a `claim` frame padded to `bytes` — an unknown ticket, so a frame that arrives is answered with `claimErr` */
-const claimFrameOfSize = (bytes: number): Record<string, unknown> => ({ t: 'claim', ticket: 'x'.repeat(bytes) })
+/**
+ * A `claim` frame padded to `bytes` — the ticket is well-formed but unknown, so a frame that ARRIVES is answered with
+ * `claimErr`. The padding rides an unknown field, not the ticket: the wire guard bounds field lengths (an 8 KiB ticket
+ * is not a ticket and is dropped without an answer), while this file is about the TRANSPORT cap, and unknown fields
+ * pass through by design — the protocol has to survive a client one version ahead.
+ */
+const claimFrameOfSize = (bytes: number): Record<string, unknown> => ({
+  t: 'claim',
+  ticket: 'x'.repeat(32),
+  pad: 'x'.repeat(bytes),
+})
 
 /** dial the bare endpoint; resolves with whether the handshake completed (Bun's WebSocket takes custom headers) */
 const openSocket = (url: string, headers?: Record<string, string>): Promise<'open' | 'failed'> =>

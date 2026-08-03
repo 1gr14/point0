@@ -332,6 +332,19 @@ export class Fetcher<TError extends ErrorPoint0> {
     } satisfies Partial<KnownLocation>) as ExactLocation | AnyLocation
   }
 
+  /**
+   * The middleware chain a request of this scope runs — its own, or the server scope's when it declares none.
+   *
+   * The fallback has to fire on an EMPTY chain, not just a missing one: every root registers an entry, so a client root
+   * with no `.middleware()` of its own stores `[]`, and a plain `??` would read that as "covered" and run nothing. That
+   * is how a scope quietly escapes the server scope's gates — an Origin allowlist, an auth check — which the developer
+   * wrote once and reasonably believes applies to every request the server answers.
+   */
+  private middlewaresForScope(scope: PointsScope): MiddlewareFn<any>[] {
+    const own = this.server.points.middlewares.get(scope)
+    return own?.length ? own : (this.server.points.middlewares.get(this.server.scope) ?? [])
+  }
+
   prepareFetch = async ({
     originalRequest,
     bunServer,
@@ -409,10 +422,7 @@ export class Fetcher<TError extends ErrorPoint0> {
               scope,
               request,
               effects,
-              middlewares:
-                this.server.points.middlewares.get(publicdir.scope) ??
-                this.server.points.middlewares.get(this.server.scope) ??
-                [],
+              middlewares: this.middlewaresForScope(publicdir.scope),
               middlewareOptions: {
                 request,
                 set: effects.set,
@@ -459,10 +469,7 @@ export class Fetcher<TError extends ErrorPoint0> {
           scope: websocketScope,
           request,
           effects,
-          middlewares:
-            this.server.points.middlewares.get(websocketScope) ??
-            this.server.points.middlewares.get(this.server.scope) ??
-            [],
+          middlewares: this.middlewaresForScope(websocketScope),
           middlewareOptions: {
             request,
             set: effects.set,
@@ -1054,11 +1061,18 @@ export class Fetcher<TError extends ErrorPoint0> {
           // stash the seed so the upgraded socket installs it in handleOpen (same process by construction), and return
           // the marker response: status 200 + the upgrade header carrying the cid. The server top strips the marker
           // and calls bunServer.upgrade; middleware see the marker like any header and can cancel by replacing it.
-          socket.stashPendingUpgrade({
+          const stashed = socket.stashPendingUpgrade({
             cid: connection.cid,
             point: point as never,
             identitySerialized: connection.identitySerialized,
           })
+          if (!stashed) {
+            return {
+              ...partialResult,
+              response: new Response('Too many pending websocket upgrades', { status: 503 }),
+              data: undefined,
+            }
+          }
           const response = new Response(null, {
             status: 200,
             headers: { [POINT0_WEBSOCKET_UPGRADE_HEADER]: connection.cid, 'Cache-Control': 'private, no-store' },
@@ -1477,13 +1491,30 @@ export class Fetcher<TError extends ErrorPoint0> {
         return {
           request: prepareFetchResult.request,
           scope: prepareFetchResult.scope,
-          response: this.server.socket.acceptBareUpgrade(prepareFetchResult.variant.scope),
+          response: this.server.socket.acceptBareUpgrade(
+            prepareFetchResult.variant.scope,
+            prepareFetchResult.request.original,
+          ),
           variant: prepareFetchResult.variant,
           error: undefined,
         }
       }
 
       if (prepareFetchResult.variant.type === 'endpoint') {
+        // the cold-start upgrade-connect is a browser handshake like the bare endpoint's — gate it on the same origin
+        // policy, and BEFORE the connector runs: a refused handshake must not mint a connection either
+        if (
+          prepareFetchResult.variant.outputType === 'upgrade' &&
+          !this.server.socket.isUpgradeOriginAllowed(prepareFetchResult.request.original)
+        ) {
+          return {
+            request: prepareFetchResult.request,
+            scope: prepareFetchResult.scope,
+            response: new Response('Forbidden websocket origin', { status: 403 }),
+            variant: { ...prepareFetchResult.variant, data: undefined },
+            error: undefined,
+          }
+        }
         const fetchEndpointResult = await this.fetchEndpoint({
           point: prepareFetchResult.variant.point,
           location: prepareFetchResult.variant.location,

@@ -35,7 +35,7 @@ describe('cors', () => {
     } satisfies RequestInit
   }
 
-  it('accept all CORS by default', async () => {
+  it('accept all CORS by default, without credentials', async () => {
     const { fetch } = await prepare()
     const response = await fetch({
       headers: {
@@ -44,10 +44,57 @@ describe('cors', () => {
     })
     expect(response.status).toBe(200)
     expect(response.headers.get('access-control-allow-origin')).toBe('https://1gr14.dev')
-    expect(response.headers.get('access-control-allow-credentials')).toBe('true')
+    // the default reflects any origin, so it must never hand out credentials with it: that pair lets any site read
+    // authenticated responses (a socket connect ticket, account data) using the visitor's own cookies
+    expect(response.headers.get('access-control-allow-credentials')).toBeNull()
     expect(response.headers.get('access-control-allow-methods')).toBe('GET')
     expect(response.headers.get('access-control-allow-headers')).toContain('origin')
     expect(response.headers.get('access-control-expose-headers')).toContain('origin')
+  })
+
+  it('no reflected origin ever carries credentials by default, whoever asks', async () => {
+    const { fetch } = await prepare()
+    for (const origin of ['https://evil.example', 'http://localhost:5173', 'null']) {
+      const response = await fetch({ headers: { origin } })
+      expect(response.headers.get('access-control-allow-origin')).toBe(origin)
+      expect(response.headers.get('access-control-allow-credentials')).toBeNull()
+      expect(response.headers.get('vary')).toContain('Origin')
+    }
+  })
+
+  it('credentials without an explicit origin throws at construction', async () => {
+    expect(() => cors({ credentials: true })).toThrow(/credentials/)
+    expect(() => cors({ credentials: true, maxAge: 600 })).toThrow(/explicit `origin`/)
+    // the safe spellings build fine
+    expect(() => cors({ origin: true, credentials: true })).not.toThrow()
+    expect(() => cors({ origin: 'https://app.example.com', credentials: true })).not.toThrow()
+    expect(() => cors({ credentials: false })).not.toThrow()
+    expect(() => cors()).not.toThrow()
+  })
+
+  it('credentials with an explicit reflecting origin is honored', async () => {
+    const { fetch } = await prepare({
+      origin: true,
+      credentials: true,
+    })
+    const response = await fetch({
+      headers: {
+        origin: 'https://app.example.com',
+      },
+    })
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://app.example.com')
+    expect(response.headers.get('access-control-allow-credentials')).toBe('true')
+  })
+
+  it('credentials are dropped when the origin resolves to the wildcard', async () => {
+    const { fetch } = await prepare({
+      origin: true,
+      credentials: true,
+    })
+    // no `Origin` header: nothing to echo, so the header falls back to `*` — which browsers refuse alongside credentials
+    const response = await fetch()
+    expect(response.headers.get('access-control-allow-origin')).toBe('*')
+    expect(response.headers.get('access-control-allow-credentials')).toBeNull()
   })
 
   it('origin accepts string', async () => {
@@ -243,9 +290,15 @@ describe('cors', () => {
 
   it('credentials allow', async () => {
     const { fetch } = await prepare({
+      origin: 'https://1gr14.dev',
       credentials: true,
     })
-    const response = await fetch()
+    const response = await fetch({
+      headers: {
+        origin: 'https://1gr14.dev',
+      },
+    })
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://1gr14.dev')
     expect(response.headers.get('access-control-allow-credentials')).toBe('true')
   })
 

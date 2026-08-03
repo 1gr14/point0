@@ -6,52 +6,87 @@ description:
   spaces are rooms, handlers are typed messages, all declared as points.
 ---
 
-Sockets are four point types built in three levels. A **channel** is a live,
-authenticated connection: the client connects with an input, the server checks
-it and returns an **identity** for the connection. A **space** grows from a
-channel — a family of rooms of one shape; the client **joins** it and the
-server's `.joiner` decides which rooms it enters (or, with no `.joiner`, the
-server enrolls it and nobody joins from outside). Inside live the message types
-— the handlers: a **serverHandler** (client sends → `.serverReply` answers) and
-a **clientHandler** (server sends → targeted clients receive, their
-`.clientReply` optionally answers back). A handler grows from a channel (it
-addresses connections) or from a space (it addresses rooms).
+**One WebSocket per client application. Everything else is abstractions over
+that one socket.** The pieces, top to bottom:
 
-One WebSocket per client carries everything — every message arrives with its
-channel, and a room message with its space and room, so the client knows which
-connections to wake and the server knows which rooms each socket is in. The
-socket opens with the first connection and closes when the last is gone.
-Connecting is not a WebSocket frame — it's a normal HTTP request with everything
-a request has (headers, cookies, middleware); only the messages after it travel
-over the socket. Joining and leaving spaces are cheap socket frames.
+- A **[channel](#channel)** is the connection. The client **connects** through
+  the server's `.connector`, which returns the connection's **identity** —
+  stored on the server, never visible to the client, and present in every later
+  action on the channel (every handler, joiner, and selection reads it). Each
+  live connection is a `connectionId`; the connect itself is a normal HTTP
+  request (headers, cookies, [middleware](middleware) all apply) — only the
+  messages after it travel over the socket.
+- A **[space](#spaces)** grows from a channel — a family of **rooms** of one
+  shape. The client **joins** through the server's `.joiner`, which decides the
+  rooms it enters; or the server
+  **[enrolls](#enrolling-from-the-server--enroller)** connections into rooms on
+  its own, no client ask. A room is the socket's addressing unit — a pub/sub
+  topic pushes target by name.
+- A **[server handler](#server-handlers-client--server)** is a client → server
+  call: the client `sendToServer`s a typed message, the server's `.serverReply`
+  answers — and can wear a
+  [query or mutation face](#the-handler-as-a-mutation-query-or-infinite-query)
+  for the client.
+- A **[client handler](#client-handlers-server--client)** is a server → client
+  push: the server `sendToClient`s to a target (a room, a connection, a
+  selection), subscribed components receive it — and can
+  [answer back](#collecting-replies).
+- The client holds it all through
+  [hooks and components](#connections-and-memberships-on-the-client)
+  (`useConnection` / `<Connection>` / `useMembership` / `.with(channel)`), the
+  socket [reconnects](#reconnect) on its own, and a
+  [resumable](#resumable-connections) channel makes reconnects cheap. Delivery
+  is [best-effort by design](#delivery) — the truth lives in queries, pushes
+  make them live.
+- On one process everything runs in local memory. Several processes plug a
+  **[backplane](#backplane)** into the engine — Redis by URL, Postgres, a Redis
+  client you already run, or any KV + pub/sub. The server also gets
+  [admin commands and enumerations](#managing-connections) (`kick`, `refresh`,
+  who-is-connected) and [metrics](#observability).
+
+All four are [points](points): declared next to your pages, typed end to end,
+compiler-stripped per side. Here is the whole vertical in one chat feature — an
+**open** channel (guests connect too; what needs a user checks the identity
+where it runs):
 
 ```tsx
 import { root } from '@/lib/root'
-import { authorizedOnlyPlugin } from '@/lib/auth'
+import { readSession } from '@/lib/auth'
 import { z } from 'zod'
 
-// the channel: authentication. The connector returns the connection identity.
+// the channel: open to everyone. The connector returns the connection identity —
+// `userId: null` is an anonymous visitor; gating happens where the action is.
 export const appChannel = root.lets
   .channel()
-  .use(authorizedOnlyPlugin) // ctx.me — the current user
-  .connector(async ({ ctx }) => ({ userId: ctx.me.user.id, role: ctx.me.role }))
+  .connector(async ({ request }) => {
+    const me = await readSession(request)
+    return { userId: me?.userId ?? null }
+  })
   .channel()
 
-// a space of chat rooms — one room per chat, its room shape declared at the opener
+// a space of chat rooms — one room per chat, its room shape declared at the opener.
+// The joiner is the gate: not a member — throw, and the client sees the typed join error.
 export const chatSpace = appChannel.lets
   .space<{ chatId: string }>()
   .input(z.object({ chatId: z.string() }))
   .joiner(async ({ input, identity }) => {
     const ok = await isMember(identity.userId, input.chatId)
-    return ok ? { chatId: input.chatId } : undefined // undefined = joined nothing
+    if (!ok) {
+      throw new AppError('Not a member of this chat', { code: 'FORBIDDEN' })
+    }
+    return { chatId: input.chatId }
   })
   .space()
 
-// client → server — a space handler: its callbacks get the typed room
+// client → server — a space handler: its callbacks get the typed room.
+// An action that needs a user checks the identity right here.
 export const messageSendHandler = chatSpace.lets
   .serverHandler()
   .clientSend(z.object({ text: z.string().min(1) }))
   .serverReply(async ({ input, identity, room }) => {
+    if (identity.userId === null) {
+      throw new AppError('Sign in to send messages', { code: 'UNAUTHORIZED' })
+    }
     const message = await prisma.message.create({
       data: {
         text: input.text,
@@ -64,7 +99,7 @@ export const messageSendHandler = chatSpace.lets
   })
   .serverHandler()
 
-// server → client — components subscribe themselves, no reply needed
+// server → client — components subscribe themselves; receiving stays open to every member
 export const messageReceivedHandler = chatSpace.lets
   .clientHandler()
   .serverSend(messageSchema)
@@ -88,10 +123,14 @@ export const ChatPage = ({ chatId }: { chatId: string }) => {
 ```
 
 The channel connection lives once at the app root; every space rides it. That
-split is the whole design: one authenticated pipe, many cheap room memberships
-over it.
+split is the whole design: one pipe with a server-held identity, many cheap room
+memberships over it.
 
-## Declaring a channel
+## Channel
+
+A channel is the connection — everything below (spaces, handlers) rides one.
+
+### Declaring a channel
 
 Open with `.channel()`, close with `.channel(options?)`. The `.connector`
 returns the connection **identity** — the value itself, bare:
@@ -100,19 +139,28 @@ returns the connection **identity** — the value itself, bare:
 export const appChannel = root.lets
   .channel()
   .connector(async ({ request }) => {
-    if (!request.state.userId) {
-      throw new AppError('Unauthorized', { code: 'UNAUTHORIZED' })
-    }
-    return { userId: request.state.userId } // this connection's identity
+    const me = await readSession(request)
+    return { userId: me?.userId ?? null } // this connection's identity; null = a guest
   })
   .channel()
 ```
 
+**Keep the channel open.** Anonymous visitors connect too — watching is free,
+and every ACTION that needs a user is gated where it runs, on the server, where
+the identity is trusted: a [`.joiner`](#spaces) admits members into rooms and
+gives a guest nothing, an [`.enroller`](#enrolling-from-the-server--enroller)
+returns `undefined` for a guest (enrolled into no room), and a
+[`.serverReply`](#server-handlers-client--server) that mutates checks
+`identity.userId` itself. Receiving (client handlers) stays open — a guest can
+watch a public room live. Throwing in the connector rejects the whole connect —
+that is the tool for a fully closed app (an internal dashboard), not the default
+posture.
+
 See [points](points) for the `.lets` notation. A channel needs no input and no
-connector — with neither, it's a bare authenticated pipe with an empty identity.
-That identity is typed strictly empty (`{}`): reading a field off it — in a
-joiner, an enroller, a `.serverReply` — is a compile error, and its `$identity`
-matchers admit no keys (an empty matcher still means "every connection"). And
+connector — with neither, it's a bare pipe with an empty identity. That identity
+is typed strictly empty (`{}`): reading a field off it — in a joiner, an
+enroller, a `.serverReply` — is a compile error, and its `$identity` matchers
+admit no keys (an empty matcher still means "every connection"). And
 [`amendIdentity`](#patching-the-identity--amendidentity) is refused on it by
 both layers — a compile error on the call and a runtime throw underneath it: a
 connectorless channel has nothing declared to amend, so the runtime identity can
@@ -178,7 +226,7 @@ transport shell around that pipeline:
 | --------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Method and body       | GET or POST by input length; binary inputs ride the POST                                    | GET only — the input rides `?input=` under the URL-length cap; too long or binary falls back to the ticket path                                                         |
 | Custom client headers | a plain fetch — [`.fetchOptions`](stage-methods#fetchoptions) headers and credentials apply | browser JS cannot attach custom headers to a handshake (`new WebSocket(url)` exposes none) — only browser-set ones (Cookie, Origin) arrive                              |
-| CORS                  | ordinary CORS rules                                                                         | a WebSocket handshake skips CORS entirely — control `Origin` with a [middleware](#origin-allowlist-for-the-socket)                                                      |
+| CORS                  | ordinary CORS rules                                                                         | a WebSocket handshake skips CORS entirely — the engine gates it by [origin](#origins-allowed-to-open-a-socket) instead                                                  |
 | Connector errors      | the typed error arrives in `connection.error`                                               | a browser hides a failed handshake's response — the client falls back to a ticket attempt, which surfaces the same typed error (one extra round trip on the error path) |
 | Reconnects            | always this path                                                                            | never — the upgrade is a cold-start optimization only                                                                                                                   |
 
@@ -190,20 +238,30 @@ connector can rely on; turn `upgradable` on for same-origin apps on cookie auth,
 where the handshake carries everything the connector reads and the saved round
 trip is free.
 
-## The connection identity
+### The connection identity
 
 The connector returns the identity object — anything the connection needs to
 select and authorize later, established at connect time:
 
 ```tsx
-// identity from auth
-.connector(async ({ request }) => ({ userId: request.state.userId }))
+// identity from auth — null marks a guest, actions check it where they run
+export const appChannel = root.lets
+  .channel()
+  .connector(async ({ request }) => {
+    const me = await readSession(request)
+    return { userId: me?.userId ?? null }
+  })
+  .channel()
 
 // identity from the input plus a lookup
-.connector(async ({ input, ctx }) => ({
-  workspaceId: input.workspaceId,
-  role: await roleIn(ctx.me.user.id, input.workspaceId),
-}))
+export const workspaceChannel = root.lets
+  .channel()
+  .input(z.object({ workspaceId: z.string() }))
+  .connector(async ({ input, ctx }) => ({
+    workspaceId: input.workspaceId,
+    role: await roleIn(ctx.me.user.id, input.workspaceId),
+  }))
+  .channel()
 ```
 
 Identity is the connection's server-side credential. The socket carries no
@@ -219,11 +277,15 @@ from [spaces](#spaces); data a client needs lives in an ordinary [query](query)
 right next to the connection — a connect is not a query, it's a pipe.
 
 ```tsx
-.serverReply(async ({ input, identity, room, connectionId }) => {
-  identity.userId // established at connect — never leaves the server
-  room.chatId // the room this message addresses (space handlers only)
-  connectionId // this connection — target it back with { connectionId }
-})
+export const messageSendHandler = chatSpace.lets
+  .serverHandler()
+  .clientSend(z.object({ text: z.string() }))
+  .serverReply(async ({ input, identity, room, connectionId }) => {
+    identity.userId // established at connect — never leaves the server
+    room.chatId // the room this message addresses (space handlers only)
+    connectionId // this connection — target it back with { connectionId }
+  })
+  .serverHandler()
 ```
 
 On the server a connection is always the bare `connectionId` string — in
@@ -242,7 +304,10 @@ export const chatSpace = appChannel.lets
   .input(z.object({ chatId: z.string() }))
   .joiner(async ({ input, identity }) => {
     const ok = await isMember(identity.userId, input.chatId)
-    return ok ? { chatId: input.chatId } : undefined
+    if (!ok) {
+      throw new AppError('Not a member of this chat', { code: 'FORBIDDEN' })
+    }
+    return { chatId: input.chatId }
   })
   .space()
 ```
@@ -264,15 +329,47 @@ address, so `{ chatId: 'c1', extra: 1 }` is a different pub/sub topic than
 through and TypeScript stops you; map it down to the room shape instead:
 
 ```tsx
-.joiner(async ({ input }) => {
-  const chat = await db.chat.find(input.chatId) // { id, chatId, title, … }
-  return { chatId: chat.chatId } // not `chat` — the room is its keys, nothing more
-})
+export const chatSpace = appChannel.lets
+  .space<{ chatId: string }>()
+  .input(z.object({ chatId: z.string() }))
+  .joiner(async ({ input }) => {
+    const chat = await db.chat.find(input.chatId) // { id, chatId, title, … }
+    return { chatId: chat.chatId } // not `chat` — the room is its keys, nothing more
+  })
+  .space()
 ```
 
 The **input is not the room.** It is what the client passes to `join` — the
 request. The joiner turns it into rooms, and may well return something else
 entirely (`{ a, b }` in, one `{ pair: 'a+b' }` out), several rooms, or none.
+
+**A room is any object you like** — nested, arrays inside, whatever addresses
+your domain. A direct-message room is often exactly that:
+
+```tsx
+export const dmSpace = appChannel.lets
+  .space<{ members: string[] }>()
+  .input(z.object({ withUserId: z.string() }))
+  .joiner(({ input, identity }) => ({
+    members: [identity.userId, input.withUserId].sort(), // sorted: the room IS its serialization
+  }))
+  .space()
+```
+
+That shape also reads well through
+[`$room`](#sending-from-the-server--the-addressing-watershed): a matcher runs
+sift over the rooms, and sift compares an array field the way MongoDB does —
+`$room: { members: userId }` matches every DM room that CONTAINS that user,
+while `$room: { members: [a, b] }` (or `{ $eq: [a, b] }`) is exact, and `$size`
+/ `$all` / `$elemMatch` are there for the rest.
+
+Two things follow from "the room is whatever the joiner returns". Its
+serialization **is** its identity, so build it deterministically — the `.sort()`
+above is the point, not decoration. And the room shape lives in TYPES: what
+reaches it at runtime is whatever your joiner put there. A joiner that forwards
+join input untouched forwards what the wire said, with the same consequences as
+any other unvalidated input — declare the space's `.input` schema (or validate
+in the joiner) and the shape is yours again.
 
 **What a membership IS.** A membership is _information about participation_ —
 never an address. On the server it is exactly
@@ -297,6 +394,13 @@ rooms the client enters:
 - **an empty array or nothing** (`undefined`) → joins none — a clean deny;
 - **a throw** → a join error, delivered to the client on the membership as
   `status: 'error'` (exactly as a connector throw is a connect error).
+
+The gate's default is the **throw** — a client that asked for a room it may not
+have should see the typed error, not silence. The clean deny is for the shapes
+where "nothing to join" is a normal answer rather than a refusal: a batch joiner
+filtering a list down (below), an
+[`.enroller`](#enrolling-from-the-server--enroller) with nothing to enroll for a
+guest.
 
 An array on the input is normal — a live-entities space joins forty rooms in one
 frame:
@@ -497,11 +601,12 @@ channel — callbacks stack chain → closer and run in order):
 export const chatSpace = appChannel.lets
   .space<{ chatId: string }>()
   .input(z.object({ chatId: z.string() }))
-  .joiner(async ({ input, identity }) =>
-    (await isMember(identity.userId, input.chatId))
-      ? { chatId: input.chatId }
-      : undefined,
-  )
+  .joiner(async ({ input, identity }) => {
+    if (!(await isMember(identity.userId, input.chatId))) {
+      throw new AppError('Not a member of this chat', { code: 'FORBIDDEN' })
+    }
+    return { chatId: input.chatId }
+  })
   .space({
     server: {
       // the guard BEFORE the join — throw and the client's join fails, the joiner never runs
@@ -896,24 +1001,73 @@ stream-with-history shape that survives a gap.
 ### Guards and audit
 
 Messages travel the socket, so request-time [middleware](middleware) and
-[plugins](plugin) never see them — they ran once, at connect. What runs **per
-message** are the handler's server-side callbacks:
+[plugins](plugin) never see them — they ran once, at connect.
+
+Before anything of yours runs, the server checks the **frame**. The client SDK
+is a convenience, not the gate: a hand-built WebSocket message enters through
+the same door and answers the same questions.
+
+- It must be a frame at all. Every field is checked against the shape its kind
+  declares — a connection id that is an object, a handler name that is a number,
+  a payload that is not a string: the frame never happened, and nothing of yours
+  is called. (Unknown frame kinds and unknown extra fields pass through: a
+  client one version ahead must not be broken by a server one version behind.)
+- The frame's connection id must be **this socket's** — no answering as another
+  connection.
+- The handler must belong to **this connection's channel** — a handler of
+  another channel is "not found", because its
+  [`.connector`](#the-connection-identity) never gated this identity.
+- The message must fit the channel's `maxMessageSize`.
+- A space handler's frame must name a room **this connection holds** — a room it
+  got from a [`.joiner`](#joining-from-the-client) or an
+  [`.enroller`](#enrolling-from-the-server--enroller). A frame naming any other
+  room, or naming none at all, is refused with `POINT0_SOCKET_NOT_IN_ROOM`
+  before the reply runs. **Membership is what a `room` argument means** — by the
+  time your `.serverReply` reads it, the sender is provably in it.
+
+**Past that gate, what a schema does not describe, nobody validated.** A
+`.clientSend` schema validates a send's input, a space's `.input` validates a
+join's, a `.clientReply` schema validates a collected answer — declare them and
+the callback gets a parsed, typed value. Omit one and the callback gets what the
+wire said: with the default transformer whatever `JSON.parse` produced (an
+object where you expected a string, an operator-shaped `{ $ne: null }`), and
+with superjson also a `Date`, a `Map`, a `RegExp`. That is the same rule the
+rest of point0 lives by, and the same place it bites hardest — a `.joiner`
+handing an unvalidated `input.chatId` to a query builder is the one to look at
+twice.
+
+**Rate is split, and the split is deliberate.** The engine charges every socket
+a frame budget — a tight one before the claim (`unclaimedFrameMax`, where no
+identity and no hook of yours exists yet) and a generous one after it
+(`claimedFrameMax`, a coarse backstop; both in the
+[socket options](../engine/engine-config#socket)). What it deliberately does not
+do is judge a message: only your code knows that this send is a chat message
+worth five a second and that join is a database lookup worth one. Those limits
+belong in `onBeforeServerReply` and in the `.joiner`, which see the identity,
+the input and the room.
+
+What runs **per message** on top of that are the handler's server-side
+callbacks:
 
 ```tsx
-.serverHandler({
-  server: {
-    // the guard BEFORE the reply — throw and the client's send rejects, the reply never runs
-    onBeforeServerReply: async ({ identity, connectionId }) => {
-      if (await rateLimiter.exceeded(connectionId)) {
-        throw new AppError('Slow down', { code: 'RATE_LIMITED' })
-      }
+export const messageSendHandler = chatSpace.lets
+  .serverHandler()
+  .clientSend(z.object({ text: z.string().min(1) }))
+  .serverReply(async ({ input, room }) => await create(input.text, room.chatId))
+  .serverHandler({
+    server: {
+      // the guard BEFORE the reply — throw and the client's send rejects, the reply never runs
+      onBeforeServerReply: async ({ identity, connectionId }) => {
+        if (await rateLimiter.exceeded(connectionId)) {
+          throw new AppError('Slow down', { code: 'RATE_LIMITED' })
+        }
+      },
+      // after the reply settles — audit, metrics; `output` XOR `error`, its own throw only logs
+      onAfterServerReply: ({ input, identity, output, error }) => {
+        audit.log('message-send', { input, me: identity.userId, ok: !error })
+      },
     },
-    // after the reply settles — audit, metrics; `output` XOR `error`, its own throw only logs
-    onAfterServerReply: ({ input, identity, output, error }) => {
-      audit.log('message-send', { input, me: identity.userId, ok: !error })
-    },
-  },
-})
+  })
 ```
 
 Both receive `{ input, identity, connectionId, messageId, point }` — plus `room`
@@ -1011,16 +1165,30 @@ void messageReceivedHandler.sendToClient(message, {
   address, the hot path. The **bare space send** is space-wide — one publish on
   the space-wide topic reaches every member of the space; also a hot pub/sub
   path, not a scan.
-- **`$room`** — a sift selection over the space's rooms (subset semantics for a
-  flat object: `$room: { workspaceId: '7' }` matches every room of workspace 7,
-  whatever its other fields). An explicit **scan** — every process filters its
-  local room index — costing what `$identity` costs; the `$` is the price tag.
+- **`$room`** — a sift selection over the space's rooms (subset semantics:
+  `$room: { workspaceId: '7' }` matches every room of workspace 7, whatever its
+  other fields; an array field matches by containment, as MongoDB does). An
+  explicit **scan** — every process filters its local room index — costing what
+  `$identity` costs; the `$` is the price tag.
 - **`connectionId`** — exact connection id(s). AND-combined with `room`: the
   connection must be in the room.
 - **`$identity`** — a sift selection over the connection identities — a scan,
   for the rare admin fan-out, not the hot path.
 - **`except`** — connection id(s), or (on a space handler) room snapshot(s) of
-  the same space, that the push must not reach.
+  the same space, to leave out. The two kinds are not the same promise, and the
+  difference is worth knowing:
+  - **by connection id** — echo suppression, performed by the receiving client.
+    The frame still travels the topic and the excluded ids ride visibly on it;
+    the client drops it. That is the right tool for its one job — not echoing a
+    message back to the connection that just sent it — and it keeps the push on
+    the native fan-out. It is **not** a way to hide content: the excluded
+    connection authored the payload anyway, and a client that does not run our
+    SDK does not drop anything.
+  - **by room snapshot** — an audience carve-out, enforced by the **server**. A
+    connection holding an excluded room is filtered out before anything is
+    written to its socket, so the frame never reaches it. It leaves the topic
+    path to do that, which is a fair trade for an exclusion that names other
+    people.
 
 The `$`-rule is uniform wherever a target is taken — pushes, `kick`,
 `amendIdentity`, the enumerations: a bare key is an exact address (the hot
@@ -1147,6 +1315,473 @@ the server answers with a stream. A clientHandler's pushes have no request, so
 there is no `.subscription()` on socket points; the iterator and the listeners
 are the whole consuming surface.
 
+## Connections and memberships on the client
+
+A connection is query-shaped — a connect is a request with an answer:
+
+```tsx
+const connection = appChannel.useConnection()
+connection.status // 'connecting' | 'open' | 'error' | 'closed'
+connection.error // typed, when the connector threw
+connection.isLoading // status === 'connecting'
+connection.input // what this connection connected with
+connection.id // the connection id (undefined until the connect response arrives)
+connection.connectionIndex // successful connects so far — > 1 means it reconnected
+connection.disconnect() // release this hold
+```
+
+There is no `connection.data` and no `connection.room` — the connector returns
+identity (server-side only), rooms come from memberships. Hooks are not the only
+way in — the same surface exists imperatively, outside React:
+
+```tsx
+const connection = appChannel.connect() // the same facade, held until you release it
+const membership = chatSpace.join({ chatId }) // its space twin
+// … later
+membership.leave()
+connection.disconnect()
+```
+
+Holds are counted wherever they come from: every `useConnection` /
+`<Connection>` / `connect()` with an equal input shares one connection; the real
+connection closes when the last hold is gone, after `linger`. Memberships hold
+the same way. On a no-input channel or space, `undefined` and `{}` are the same
+input — pass either (or nothing), everything normalizes to `{}` and shares one
+hold.
+
+```tsx
+<appChannel.Connection>
+  <Router />{' '}
+  {/* the app runs inside; every space membership rides this connection */}
+</appChannel.Connection>
+```
+
+`<Connection>` renders through the same mountable interpreter as `Layout` /
+`Provider`: the chain's mount actions run, so the inherited `.with(...)`
+wrappers from root/base wrap the children, and the nearest `.loading()` up the
+channel's chain renders while connecting (during [SSR](ssr) too — nothing
+connects there), a failed connect renders the nearest `.error()`, and once open
+the children render. `<space.Membership>` does the same for a join — but a space
+opened from its channel inherits only the meta subset, so root/base `.with(...)`
+injections reach `<Connection>`, not `<Membership>` (`.wrapper()` elements apply
+to both). The **`gate`** prop
+(`boolean | { loading?: boolean; error?: boolean }`) controls the gating: by
+default only errors gate (`{ loading: false, error: true }`), so the children
+render while connecting (progressive enhancement) but a failed connect renders
+the nearest `.error()`. Pass `gate={false}` to opt out entirely — the children
+render immediately through everything and the handlers inside wait on their own;
+`gate` / `gate={true}` waits on the connect too. The object form overrides only
+the named aspects — an unnamed key keeps its default, so
+`gate={{ loading: true }}` waits on the connect AND keeps surfacing errors;
+hiding errors takes an explicit `error: false`.
+
+Both take the same options as `useConnection` / `useMembership` (`reconnect`,
+the lifecycle callbacks, `enabled`, …) — flat on the props, applied to the hold
+this mount opens. And both take **`LoadingComponent`** / **`ErrorComponent`** —
+on-the-spot overrides of the gate's loading/error render for THAT mount: passed
+here they win over the nearest `.loading()` / `.error()` up the chain.
+
+```tsx
+<appChannel.Connection
+  reconnect={{ retries: 3 }}
+  LoadingComponent={Spinner}
+  ErrorComponent={ConnectFailed}
+>
+  <Router />
+</appChannel.Connection>
+```
+
+The WebSocket itself is lazy; the socket floor of the client surface lives in
+`@point0/core/socket`:
+
+- `getSocket()` — a read-only snapshot of the whole vertical:
+  `{ status, connections, memberships }` (the transport
+  `'idle' | 'connecting' | 'open' | 'closed'` plus every live connection and
+  membership facade). The seed of any monitoring/devtools view.
+- `useSocket({ hold? })` — the same shape as a live React value, re-rendering on
+  every socket, connection, or membership move. `hold: true` also keeps the
+  socket open while mounted; default `false` — a bare `useSocket()` only reads.
+- `<Socket>` — the keeper component: holds the socket open while mounted
+  (instant first message), `hold` defaults to `true` here (holding is its whole
+  job; `hold: false` releases). A keeper, not a provider: it provides no context
+  and gates nothing, so its position in the tree carries no meaning.
+
+One vocabulary across the vertical: hooks and components HOLD sockets,
+connections, and memberships — the last hold gone releases the thing after its
+linger.
+
+During [SSR](ssr) nothing connects — `useConnection` / `useMembership` report
+the in-flight status on the server and do the real work after mount.
+
+### On pages and components — `.with(channel)` and `.with(space)`
+
+A page, layout, or component can hold a connection or a membership
+declaratively, the way it holds a [query](with):
+
+```tsx
+export const ChatPage = root.lets
+  .page('chatPage', '/chats/:chatId')
+  .with(appChannel) // the connection lands in `connections`
+  .with(chatSpace, ({ params }) => ({ chatId: params.chatId })) // the membership lands in `memberships`
+  .page(({ connections, memberships }) => {
+    const [connection] = connections
+    const [membership] = memberships // typed: rooms, status, …
+    return <Chat rooms={membership.rooms} />
+  })
+```
+
+`.with(channel, input?, opts?, gate?)` holds a connection for the mountable and
+lands it in **`connections`** next to `queries`;
+`.with(space, input, opts?, gate?)` holds a membership and lands it in
+**`memberships`** (it needs the space's channel connection held in the same
+chain — a `.with(channel)` earlier, or an ambient one). By default only errors
+gate (`{ loading: false, error: true }`) — a socket is progressive enhancement,
+so the page shows while it connects, but a failed connect renders the HOSTING
+point's own `.error()`. Pass a trailing `gate` / `gate: true` — the same
+position a query injection's `resolve` gates with — to wait on
+connecting/joining too: the host's own `.loading()` / `.error()` render (during
+SSR too). The object form overrides only the named aspects (an unnamed key keeps
+its default); `gate: false` renders through everything. Whatever the gate, the
+injected facade type stays indeterminate — a connection carries no data and its
+status can flip on a reconnect at any moment, so `gate` gates the render, never
+the type. Both flow into with-fns and `.mapper()` like queries.
+
+`.with(...)` is available on channel and space chains themselves too, not only
+on mountables — a channel or a space takes chain wrappers the way every other
+point does, and they compose in the usual order.
+
+Outside hooks, `getConnection(input?)` /
+`getMembership(membershipInput, channelInput?)` look the live one up — no hold,
+no connect. Both throw when nothing matches; the `*OrUndefined` twins probe. On
+the server they throw (strict) or return `undefined` (probing) — nothing is ever
+connected there.
+
+### Client helpers
+
+Two module-level helpers from `@point0/core/socket` reset every connection at
+once — the client side of a login/logout:
+
+```tsx
+import { reconnectAll, disconnectAll } from '@point0/core/socket'
+
+onLogin(() => reconnectAll()) // re-run every connect (identities rebuilt), re-join spaces, revive kicked-but-held ones
+onLogout(() => {
+  disconnectAll() // close everything now — the connectors re-judge whatever comes back
+  queryClient.clear() // and the cache goes with the session, see below
+})
+```
+
+**Neither helper touches the query cache — clear it yourself at the auth
+boundary.** Query keys address a point and its input; they carry no identity, on
+the socket transport or the HTTP one. So a session change without
+`queryClient.clear()` renders the previous identity's cached answers to the next
+one. The framework cannot tell "a different person" from "the same person with a
+fresh token" from "the network came back" — your auth boundary can, and it is
+the one place that knows. (One denial the framework does handle by itself: a
+socket query whose membership the server **refuses** drops its cache entry
+instead of showing the last answer forever.)
+
+`reconnectAll()` is the client counterpart of the server's `refresh`; it also
+clears every `preventRetry` "sit out" mark — an explicit re-evaluation.
+`disconnectAll()` closes everything immediately; connections held by hooks and
+components then re-establish on their own (their nature is "stay connected while
+mounted"), which is exactly right on a logout — the connectors re-run against
+the cleared session and answer with the typed deny (ideally `preventRetry`), so
+the UI lands in the honest `error` state. Imperative `connect()` holders stay
+closed until their owner acts.
+
+## Reconnect
+
+The socket reconnects on its own — the first retry immediately, then with
+backoff (the `reconnect` channel option — [the table](#options)). A drop nobody
+reported counts as one too: the client measures the socket against its own
+`ping`, and two pings answered by nothing at all — no pong, no push, no reply —
+plus more than two intervals of silence is a half-open connection (a NAT
+timeout, a machine that slept), so the client closes it locally and reconnects
+instead of writing pushes into a dead pipe. That is the client's half of the
+same contract the engine's 120 s `idleTimeout` keeps on the server side;
+`ping: 0` switches off the client's half — the pings and the deadline they arm
+(the server's `idleTimeout` stands, so a silent client is still dropped there).
+
+Every held connection re-runs its connect (the connector re-applies the check,
+the identity is rebuilt), and every held membership re-joins on the fresh
+connection — the client remembers its inputs. A connect the connector **denies**
+(a typed error) goes `error` and stops retrying — and a deny thrown with
+[`preventRetry`](error-handling#preventretry) additionally sits the connection
+out of future reconnect cycles until `reconnectAll()` or a remount; the same
+flag on a joiner deny stops the join from replaying. A client `.sendToServer`
+during the gap waits in a queue up to the handler's `timeout` (default 5000 ms);
+handlers that shouldn't wait (typing pings) opt out with `queue: false`. The
+queue never outlives an answer: a connect or join DENIED by the server fails the
+sends waiting on it immediately with that typed error — only a transport failure
+(which the reconnect policy keeps retrying) leaves them queued until their
+window runs out.
+
+Pushes the server sent during the gap are gone on this path — there is no
+server-side buffer here (the contract is [Delivery](#delivery) below; a
+[resumable](#resumable-connections) channel adds an opt-in one). Catching up is
+a refetch, and the lifecycle callbacks are where it lives. Both levels have a
+full set, point-level or per call: a connection takes `onConnect` /
+`onDisconnect` / `onError`, a membership takes `onEnter` / `onLeave` (an
+[enrolled](#enrolling-from-the-server--enroller) membership is outside this: no
+`onEnter` fires for it, and only an explicit `leave()` fires its `onLeave`).
+`onConnect` and `onEnter` fire on **every** successful connect/join — the first
+and the replays alike — and each callback receives the facade plus three facts
+about the entry: the counter (`connectionIndex` / `membershipIndex` — how many
+successful connects/joins came BEFORE this one), `resumed` (this entry rode the
+[resume path](#resumable-connections) — the connector/joiners were skipped;
+always `false` on a non-resumable channel), and `gapless` — **provably nothing
+was missed**: `true` on the first entry and on a resume whose buffers covered
+the whole gap, `false` on every other re-entry. Each callback's `gapless` speaks
+for exactly the data that reaches IT: `onEnter`'s verdict covers that
+membership's rooms (and its space-wide pushes), `onConnect`'s the channel-wide
+and connection-addressed pushes — so a gap in one busy chat never forces the
+quiet ones (or the global data) to refetch. Each fact answers its own question:
+"did I miss anything HERE?" → `gapless`; "did the connector re-run?" →
+`resumed`; "is this the first time?" → the index. The catch-up is therefore ONE
+condition, on both levels:
+
+```tsx
+chatSpace.useMembership(
+  { chatId },
+  {
+    onEnter: ({ gapless }) => {
+      if (!gapless) void chatMessagesQuery.invalidateQuery({ chatId })
+    },
+  },
+)
+// channel-wide catch-up rides the connection instead:
+appChannel.useConnection(undefined, {
+  onConnect: ({ gapless }) => {
+    if (!gapless) void notificationsQuery.invalidateQuery()
+  },
+})
+```
+
+On a plain channel `gapless` is simply `index === 0` — the condition reads "is
+this a re-entry?" there — and on a resumable channel it stops refetching exactly
+when the buffer proves the refetch redundant.
+
+## Resumable connections
+
+`resumable: true` on the channel makes a reconnect CHEAP: instead of re-running
+the connect request (connector), the joins (joiners) and the enrollments
+(enrollers), the client presents a per-connection **resume key** and the server
+restores the connection — identity, rooms, subscriptions — from what it already
+knows. A redeploy then costs the server a couple of KV reads per client instead
+of a thundering herd of full connects:
+
+```tsx
+export const appChannel = root.lets
+  .channel()
+  .connector(async ({ request }) => {
+    const me = await readSession(request)
+    return { userId: me?.userId ?? null }
+  })
+  .channel({
+    resumable: true,
+    server: { connectionTtl: 300_000 }, // the restore window IS the record's life
+  })
+```
+
+Nothing changes in the client API — everything is automatic. The key arrives
+once with the connect confirmation and lives in the tab's memory (never in
+`localStorage` — a page reload is an honest full connect); the connection record
+every ping already renews becomes the **passport**: it carries the per-space
+rooms and the SHA-256 of the key (never the key itself — a leaked backplane
+mints no working credentials). The restore window is `connectionTtl` — there is
+no second knob: a live connection renews the record anyway, and a dead one
+leaves exactly the record behind.
+
+What a resume restores and what it never bypasses:
+
+- **`connectionId` survives the drop** — addressed pushes keep their addressee
+  across a blip (a full reconnect mints a new cid).
+- **Enrolled memberships** restore with the passport like joined rooms — the
+  enroller does not re-run.
+- A server **`refresh` bypasses resume** — it exists to re-run the connectors,
+  and it voids the key; the fresh connect mints a new one. A **kick** and a
+  voluntary close delete the record, so the later resume is refused and the full
+  connect puts the connector back in charge — **revocation is never resumable**.
+  A refused resume falls back to the ordinary full connect of that one
+  connection, automatically.
+- A space can opt OUT with `resumable: false` (a top-level space option): its
+  rooms stay out of the passport and out of the restore — the client re-joins
+  them itself from its own state (the joiner re-judges). For spaces whose rooms
+  change many times a second (live-query-style rooms derived from client state),
+  the passport write-through would hammer the backplane for rooms the client
+  re-derives anyway.
+
+**The buffer.** Restoring the connection does not by itself restore the frames
+pushed into the gap. A clientHandler opts its pushes in with its own top-level
+`resumable` (`true` = the default ceiling of 128, a number = up to that many of
+its frames buffered per stream); the object form adds the replay POLICY next to
+the ceiling:
+
+```tsx
+export const messageReceivedHandler = chatSpace.lets
+  .clientHandler()
+  .serverSend(messageSchema)
+  .clientHandler({ resumable: 128 })
+
+// deltas are only valuable as a COMPLETE sequence — withhold the partial tail of a gappy recovery
+export const docPatchHandler = docSpace.lets
+  .clientHandler()
+  .serverSend(patchSchema)
+  .clientHandler({ resumable: { buffer: 256, replay: 'gapless' } })
+```
+
+`replay: 'gapless'` (default `'always'`) makes the server SKIP this handler's
+frames when replaying a stream whose recovery is not provably gapless: the
+client sees the honest `gapless: false` in `onEnter`/`onConnect` and refetches,
+without a partial tail arriving first. The withheld frames are not thrown away —
+they stay in the stream's log, and a later resume that IS provably clean from
+the client's cursor delivers them in full. Channel-wide, the policy is one chain
+line: `.clientHandlerOptions({ resumable: { replay: 'gapless' } })`.
+
+For a per-listener decision instead of a per-handler declaration, every
+delivered message carries `replayed` in its props — `false` on a live push,
+`{ gapless }` on a replayed one (its OWN stream's verdict):
+
+```tsx
+messageReceivedHandler(chatMembership).onMessageFromServer(
+  ({ message, replayed }) => {
+    if (replayed && !replayed.gapless) return // the refetch below covers it
+    appendMessage(message) // dedup by id — a replay may overlap the refetch
+  },
+)
+```
+
+The buffers live on **topic streams** — one per room, one per space, one
+channel-wide, plus a personal stream for connection-addressed pushes: one copy
+of every frame however many members subscribe, and every frame numbered per
+stream. On a resume the client presents its per-stream cursors and the server
+replays everything after them — all the streams merged back into ONE tail in the
+original delivery order, through the ordinary dispatch. `gapless` is then a
+**proof, not a guess**, and a PER-STREAM one: a stream's verdict is `true` only
+when its log covered that stream's whole gap and no non-opted handler pushed
+past the cursor — which is what makes the per-level verdicts above precise
+instead of one smeared bit. The buffers live in process memory: a same-process
+blip replays (`gapless: true`), a redeploy resumes without them
+(`gapless: false` — the one-condition catch-up above refetches), which is
+exactly why the truth stays in queries. The ceilings are the channel's
+`server.resume` group — `streamMaxFrames` (1024) and `streamMaxBytes` (4 MiB)
+per stream, a space overriding them for its own streams — and an overflow evicts
+oldest-first while honestly flipping the affected stream's `gapless`.
+
+When the socket of a buffering connection dies, the server **parks** it for the
+`server.resume.parkWindow` (default 30 s): publicly the connection is dead at
+once — the leave and close events fire, presence counts drop, enumerations skip
+it — but its streams stay addressed, so every push that concerns it — its rooms,
+its cid, a matching `$identity`/`$room` selection — keeps landing in them, and a
+client that returns within the window misses nothing. The park itself buffers
+nothing (the streams are the buffer — a parked member costs a room push zero
+extra work). Past the window the connection leaves the streams; the record lives
+on to its own TTL, so a later resume still works, just without the replay. A
+kick reaches into the park too: `channel.kick` sweeps matching parked
+connections and deletes their records, and a
+[`space.kick`](#kicking-from-rooms--spacekick) removes the kicked rooms from
+parked connections and their passports — the returning client receives the
+forced leave right after the resume.
+
+One price, deliberate: the identity a resume restores is as old as the record —
+the freeze is bounded by `connectionTtl`, and the admin answer is `kick`
+(instant) or `refresh` (soft), both of which force the full path. Delivery costs
+nothing extra: room, space-wide and channel-wide pushes ride the same
+one-publish fan-out as a plain channel's, buffered once per stream — however
+many members, whatever their parked state. The config cannot lie about itself: a
+buffering handler on a non-resumable channel, or on a handler of a
+`resumable: false` space, fails at the closer — as do `resumable: false` on a
+space of a non-resumable channel (nothing to opt out of) and `.enroller` on an
+opted-out space (a resume would silently drop the enrollments, which only re-run
+on a full connect).
+
+Security, in three facts: the KV stores only the key's hash (compared in
+constant time), a wrong key and an unknown cid are refused identically (no
+oracle), and a resume against a LIVE connection is the **takeover** — the main
+scenario, not an edge: the client notices a dead network first (its ping
+deadline beats the server's `idleTimeout`), dials anew, and the server moves the
+connection to the new socket, closing the zombie one. Exporting the key to
+another tab is the documented "don't": two tabs with one cid steal the
+connection from each other, last wins.
+
+## Delivery
+
+A push is **best-effort, at-most-once**: point0 writes one frame into a live
+socket and moves on. There are no acknowledgements and no retries. If the socket
+is gone at that instant — a reconnect gap, a redeploy, a closed tab — the frame
+is dropped, and no later reconnect replays it. The one bounded exception is
+opt-in: a [resumable](#resumable-connections) channel's opted-in handlers keep
+short in-memory stream logs for a resume to drain — and even there the per-level
+`gapless` flags tell the client honestly whether the logs covered its gap, so
+the refetch below stays the ground truth.
+
+What does not happen is a live connection quietly missing pushes. A client too
+slow to read what the server writes loses its **socket**, not its frames — see
+[outbound backpressure](engine-config#outbound-backpressure) — so a gap always
+surfaces as a disconnect, which is what the reconnect catch-up below is for.
+
+That is deliberate, because **the truth lives in queries, not in pushes**. A
+push is a _signal_ — "something moved, look again" — and never carries the only
+copy of a piece of data. The durable copy is in the database, read through a
+[query](query); the push just tells the client the query is stale. So catching
+up after any gap is a [catch-up refetch](#reconnect), not a frame replay — which
+is exactly why a dropped push costs nothing.
+
+**Stream with history.** When you want a client to render a stream and survive
+reconnects without losing entries, keep the stream in the database with a cursor
+and let pushes advance the tail. The client refetches from its last cursor on
+mount and on reconnect; each push carries the new tail (or just a "refetch"
+nudge). This is a few lines of your own code, not framework configuration:
+
+```tsx
+// events persist with a monotonic cursor; the query reads "everything after `cursor`"
+export const feedSinceHandler = feedSpace.lets
+  .serverHandler()
+  .clientSend(z.object({ after: z.string() }))
+  .serverReply(async ({ input, room }) => ({
+    events: await db.event.findMany({
+      where: { room: room.feedId, id: { gt: input.after } },
+    }),
+  }))
+  .query()
+  .serverHandler()
+
+// a bare trigger — no payload; the server fires it on each new event
+export const feedBumpedHandler = feedSpace.lets.clientHandler().clientHandler()
+
+// a push signals the new tail; the client refetches from the cursor it holds
+export const FeedView = ({
+  feedId,
+  cursor,
+}: {
+  feedId: string
+  cursor: string
+}) => {
+  const { data } = feedSinceHandler.useSocketQuery({ after: cursor })
+  feedBumpedHandler.useOnMessageFromServer(() =>
+    feedSinceHandler.invalidateSocketQuery(true),
+  )
+  return <Feed events={data?.events ?? []} />
+}
+```
+
+The socket lost a push mid-gap? The refetch from `cursor` returns every event
+the database has, dropped frames included. History is the query's job; the push
+only shortens the latency.
+
+**Redeploys** need no special handling for the same reason. On a rolling deploy
+the sockets drop; each client reconnects with backoff and re-runs its connect
+request, so the connector re-runs — a full **re-authentication** — and its
+memberships replay their joins while enrollers re-enroll on the fresh
+connection. Work in flight fails cleanly: an in-flight `sendToServer` fails by
+its own typed send timeout, and every connection / ticket record left in the
+[socket backplane](#backplane) expires on its TTL. Nothing leaks across the
+restart, and the client is whole again after one reconnect. A
+[resumable](#resumable-connections) channel makes that reconnect cheap at scale:
+the fresh process restores each client from its record instead of running the
+whole connect cascade — same outcome, a fraction of the load.
+
 ## Managing connections
 
 A **channel** exposes `kick`, `refresh`, `amendIdentity`, and the
@@ -1177,9 +1812,12 @@ and only the server floor takes targets:
 - **`$room`** (space only) — the same sift machinery over the space's rooms. A
   flat `$room: { chatId: '5' }` reads as **subset semantics**: it matches every
   room whose `chatId` is `'5'`, whatever its other fields — deliberately, this
-  is what a selection means. A snapshot in `room` is exact equality of the whole
-  object. An exact address and a selection are different operations, which is
-  why they are different keys.
+  is what a selection means. Where the room's field is an **array**, the same
+  key matches by containment, as MongoDB does — `$room: { members: userId }`
+  selects every direct-message room that user is in, and `$eq` / `$all` /
+  `$size` / `$elemMatch` cover the rest. A snapshot in `room` is exact equality
+  of the whole object. An exact address and a selection are different
+  operations, which is why they are different keys.
 
 ```tsx
 // close a user's connections entirely (a role revoked, an admin logout) — a `closed` frame
@@ -1391,7 +2029,7 @@ export const seatSpace = appChannel.lets
       room: { eventId: input.eventId },
     })
     if (seated >= 100) {
-      return undefined // about full — a clean deny
+      throw new AppError('The event is about full', { code: 'FULL' })
     }
     return { eventId: input.eventId }
   })
@@ -1399,8 +2037,8 @@ export const seatSpace = appChannel.lets
 ```
 
 **Keep the self-reference out of the returned expression itself.** Above it
-decides in a guard and the returns are plain room literals — that compiles. Fold
-it into the return instead (`return seated < 100 ? { eventId } : undefined`) and
+decides in a guard and the return is a plain room literal — that compiles. Fold
+it into the return instead (`return seated < 100 ? { eventId } : reject()`) and
 you are back to the ordinary circularity every `const` has: computing the
 callback's return type needs `seatSpace`, whose type is still being computed
 (`TS7024`). That one is not specific to points — it is the same reason a plain
@@ -1414,7 +2052,7 @@ is the wrong tool.
 
 A hard limit — seat 101 must not exist — is a reservation in your **own
 database**, made inside the joiner, where a transaction or a unique index can
-refuse the extra insert. The joiner denies when the reservation fails, and a
+refuse the extra insert. The joiner throws when the reservation fails, and a
 server event frees the seat on every kind of leave:
 
 ```tsx
@@ -1438,7 +2076,7 @@ export const ticketSpace = appChannel.lets
         { isolationLevel: 'Serializable' },
       )
     } catch {
-      return undefined // full, or lost the race — a clean deny either way
+      throw new AppError('The event is full', { code: 'FULL' })
     }
     return { eventId: input.eventId }
   })
@@ -1458,17 +2096,17 @@ export const ticketSpace = appChannel.lets
 ```
 
 The count now lives where it can refuse: the transaction serializes the racers,
-so the second one sees 100 and denies (a unique index on a seat number is the
-same door in a single insert). `pointSpaceLeaveServer` fires for every way out —
-the client's `leave()`, a `space.kick`, a dead socket — so a reservation never
-outlives its membership.
+so the second one sees 100 and is refused (a unique index on a seat number is
+the same door in a single insert). `pointSpaceLeaveServer` fires for every way
+out — the client's `leave()`, a `space.kick`, a dead socket — so a reservation
+never outlives its membership.
 
 The identity has no opener generic (a channel has one producer, its
 `.connector`, and no self-reference problem), so `.connector<TIdentity>()` keeps
 its optional explicit type argument for the same reason: reach for it when the
 connector touches its own channel's `connections.*`.
 
-### Where it's stored — the engine `server.backplane`
+## Backplane
 
 The connection identity is stored per connection (as
 `{ scope, channel, identity }`), alongside the one-time connect tickets — and
@@ -1484,10 +2122,12 @@ connection for the KV and the publishes, a duplicate in subscriber mode for the
 bus:
 
 ```ts
-server: {
-  socket: true,
-  backplane: process.env.REDIS_URL, // 'redis://localhost:6379'
-}
+Engine.create({
+  server: {
+    socket: true,
+    backplane: process.env.REDIS_URL, // 'redis://localhost:6379'
+  },
+})
 ```
 
 Next rung: the [ready-made adapters](#ready-made-adapters) below, for Postgres
@@ -1508,10 +2148,12 @@ connection has no business starting; the factory runs only on server start:
 // Postgres — the stack that already has a database and no Redis. bun add postgres
 import { postgresBackplane } from '@point0/engine/backplane/postgres'
 
-server: {
-  socket: true,
-  backplane: async () => postgresBackplane((await import('@/lib/sql')).sql),
-}
+Engine.create({
+  server: {
+    socket: true,
+    backplane: async () => postgresBackplane((await import('@/lib/sql')).sql),
+  },
+})
 ```
 
 | Adapter                               | For                                                                                                       | Install    |
@@ -1530,8 +2172,11 @@ Postgres limits are absorbed for you: channel names (identifiers, capped at 63
 bytes and silently truncated — long room topics would fold onto each other) are
 hashed to `p0_<sha256-prefix>` on both sides, and a message over the ~8 KB
 `NOTIFY` cap is spilled through a payload table and fetched on delivery, in
-order. Both tables are created on first use; pass `createTables: false` and run
-the SQL yourself when the app's DB role cannot create tables:
+order. Both tables are created on first use. Pass `schema: 'point0'` to put them
+in their own schema (created on first use too, pg-boss style) — do that when a
+migration tool diffs the app schema: Prisma's `migrate` reads foreign tables
+next to its own as drift. Pass `createTables: false` and run the SQL yourself
+when the app's DB role cannot create tables:
 
 ```sql
 CREATE UNLOGGED TABLE IF NOT EXISTS point0_backplane_kv (
@@ -1544,6 +2189,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS point0_backplane_payload (
   message text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+-- with `schema` set: CREATE SCHEMA IF NOT EXISTS <schema>; and the tables live as <schema>.<name>
 ```
 
 The one requirement: a **direct connection**. `LISTEN` does not work through a
@@ -1571,10 +2217,13 @@ your `backplane` factory changes when you upgrade the client.
 ```ts
 import { ioredisBackplane } from '@point0/engine/backplane/ioredis'
 
-server: {
-  socket: true,
-  backplane: async () => ioredisBackplane((await import('@/lib/redis')).redis),
-}
+Engine.create({
+  server: {
+    socket: true,
+    backplane: async () =>
+      ioredisBackplane((await import('@/lib/redis')).redis),
+  },
+})
 ```
 
 Every adapter follows one **ownership rule**: on engine dispose it closes what
@@ -1586,10 +2235,12 @@ closes it too:
 ```ts
 import { bunRedisBackplane } from '@point0/engine/backplane/bun-redis'
 
-server: {
-  socket: true,
-  backplane: () => bunRedisBackplane(new Bun.RedisClient(url, { tls: { … } }), { closeClient: true }),
-}
+Engine.create({
+  server: {
+    socket: true,
+    backplane: () => bunRedisBackplane(new Bun.RedisClient(url, { tls: { … } }), { closeClient: true }),
+  },
+})
 ```
 
 ### The contract
@@ -1606,25 +2257,28 @@ processes: the stored records, room and channel pushes, collected replies, the
 
 ```ts
 // engine config — the backplane is a Redis-shaped KV + channel pub/sub
-server: {
-  backplane: {
-    get: (key) => redis.get(key),
-    set: async (key, value, ttlMs) => {
-      if (ttlMs === undefined) await redis.set(key, value)
-      else await redis.set(key, value, { PX: ttlMs })
+Engine.create({
+  server: {
+    socket: true,
+    backplane: {
+      get: (key) => redis.get(key),
+      set: async (key, value, ttlMs) => {
+        if (ttlMs === undefined) await redis.set(key, value)
+        else await redis.set(key, value, { PX: ttlMs })
+      },
+      delete: async (key) => {
+        await redis.del(key)
+      },
+      // the channel name arrives ready-made — just route it; point0 owns `point0:*`
+      publish: (channel, message) => sub.publisher.publish(channel, message),
+      subscribe: (channel, onMessage) => {
+        void sub.subscriber.subscribe(channel, onMessage)
+      },
+      // optional sixth — read-and-delete in one atomic step (Redis GETDEL)
+      getDelete: (key) => redis.getDel(key),
     },
-    delete: async (key) => {
-      await redis.del(key)
-    },
-    // the channel name arrives ready-made — just route it; point0 owns `point0:*`
-    publish: (channel, message) => sub.publisher.publish(channel, message),
-    subscribe: (channel, onMessage) => {
-      void sub.subscriber.subscribe(channel, onMessage)
-    },
-    // optional sixth — read-and-delete in one atomic step (Redis GETDEL)
-    getDelete: (key) => redis.getDel(key),
   },
-}
+})
 ```
 
 The bus is **sharded by topic** — traffic goes where it is needed instead of
@@ -1688,449 +2342,6 @@ broadcast fits these functions — the ready-made
 [postgres adapter](#ready-made-adapters) is exactly that shape (an unlogged KV
 table + `LISTEN`/`NOTIFY`, with a `DELETE … RETURNING` for the sixth), no Redis
 needed.
-
-## Connections and memberships on the client
-
-A connection is query-shaped — a connect is a request with an answer:
-
-```tsx
-const connection = appChannel.useConnection()
-connection.status // 'connecting' | 'open' | 'error' | 'closed'
-connection.error // typed, when the connector threw
-connection.isLoading // status === 'connecting'
-connection.input // what this connection connected with
-connection.id // the connection id (undefined until the connect response arrives)
-connection.connectionIndex // successful connects so far — > 1 means it reconnected
-connection.disconnect() // release this hold
-```
-
-There is no `connection.data` and no `connection.room` — the connector returns
-identity (server-side only), rooms come from memberships. Hooks are not the only
-way in — the same surface exists imperatively (`connect` / `join`), and holds
-are counted wherever they come from: every `useConnection` / `<Connection>` /
-`connect()` with an equal input shares one connection; the real connection
-closes when the last hold is gone, after `linger`. Memberships hold the same
-way. On a no-input channel or space, `undefined` and `{}` are the same input —
-pass either (or nothing), everything normalizes to `{}` and shares one hold.
-
-```tsx
-<appChannel.Connection>
-  <Router />{' '}
-  {/* the app runs inside; every space membership rides this connection */}
-</appChannel.Connection>
-```
-
-`<Connection>` renders through the same mountable interpreter as `Layout` /
-`Provider`: the chain's mount actions run, so the inherited `.with(...)`
-wrappers from root/base wrap the children, and the nearest `.loading()` up the
-channel's chain renders while connecting (during [SSR](ssr) too — nothing
-connects there), a failed connect renders the nearest `.error()`, and once open
-the children render. `<space.Membership>` does the same for a join — but a space
-opened from its channel inherits only the meta subset, so root/base `.with(...)`
-injections reach `<Connection>`, not `<Membership>` (`.wrapper()` elements apply
-to both). The **`gate`** prop
-(`boolean | { loading?: boolean; error?: boolean }`) controls the gating: by
-default only errors gate (`{ loading: false, error: true }`), so the children
-render while connecting (progressive enhancement) but a failed connect renders
-the nearest `.error()`. Pass `gate={false}` to opt out entirely — the children
-render immediately through everything and the handlers inside wait on their own;
-`gate` / `gate={true}` waits on the connect too. The object form overrides only
-the named aspects — an unnamed key keeps its default, so
-`gate={{ loading: true }}` waits on the connect AND keeps surfacing errors;
-hiding errors takes an explicit `error: false`.
-
-Both take an **`options`** prop — the same options as `useConnection` /
-`useMembership` (`reconnect`, the lifecycle callbacks, `enabled`, …) — applied
-to the hold this mount opens. And both take **`LoadingComponent`** /
-**`ErrorComponent`** — on-the-spot overrides of the gate's loading/error render
-for THAT mount: passed here they win over the nearest `.loading()` / `.error()`
-up the chain.
-
-```tsx
-<appChannel.Connection
-  options={{ reconnect: { retries: 3 } }}
-  LoadingComponent={Spinner}
-  ErrorComponent={ConnectFailed}
->
-  <Router />
-</appChannel.Connection>
-```
-
-The WebSocket itself is lazy; the socket floor of the client surface lives in
-`@point0/core/socket`:
-
-- `getSocket()` — a read-only snapshot of the whole vertical:
-  `{ status, connections, memberships }` (the transport
-  `'idle' | 'connecting' | 'open' | 'closed'` plus every live connection and
-  membership facade). The seed of any monitoring/devtools view.
-- `useSocket({ hold? })` — the same shape as a live React value, re-rendering on
-  every socket, connection, or membership move. `hold: true` also keeps the
-  socket open while mounted; default `false` — a bare `useSocket()` only reads.
-- `<Socket>` — the keeper component: holds the socket open while mounted
-  (instant first message), `hold` defaults to `true` here (holding is its whole
-  job; `hold: false` releases). A keeper, not a provider: it provides no context
-  and gates nothing, so its position in the tree carries no meaning.
-
-One vocabulary across the vertical: hooks and components HOLD sockets,
-connections, and memberships — the last hold gone releases the thing after its
-linger.
-
-During [SSR](ssr) nothing connects — `useConnection` / `useMembership` report
-the in-flight status on the server and do the real work after mount.
-
-### On pages and components — `.with(channel)` and `.with(space)`
-
-A page, layout, or component can hold a connection or a membership
-declaratively, the way it holds a [query](with):
-
-```tsx
-export const ChatPage = root.lets
-  .page('chatPage', '/chats/:chatId')
-  .with(appChannel) // the connection lands in `connections`
-  .with(chatSpace, ({ params }) => ({ chatId: params.chatId })) // the membership lands in `memberships`
-  .page(({ connections, memberships }) => {
-    const [connection] = connections
-    const [membership] = memberships // typed: rooms, status, …
-    return <Chat rooms={membership.rooms} />
-  })
-```
-
-`.with(channel, input?, opts?, gate?)` holds a connection for the mountable and
-lands it in **`connections`** next to `queries`;
-`.with(space, input, opts?, gate?)` holds a membership and lands it in
-**`memberships`** (it needs the space's channel connection held in the same
-chain — a `.with(channel)` earlier, or an ambient one). By default only errors
-gate (`{ loading: false, error: true }`) — a socket is progressive enhancement,
-so the page shows while it connects, but a failed connect renders the HOSTING
-point's own `.error()`. Pass a trailing `gate` / `gate: true` — the same
-position a query injection's `resolve` gates with — to wait on
-connecting/joining too: the host's own `.loading()` / `.error()` render (during
-SSR too). The object form overrides only the named aspects (an unnamed key keeps
-its default); `gate: false` renders through everything. Whatever the gate, the
-injected facade type stays indeterminate — a connection carries no data and its
-status can flip on a reconnect at any moment, so `gate` gates the render, never
-the type. Both flow into with-fns and `.mapper()` like queries.
-
-`.with(...)` is available on channel and space chains themselves too, not only
-on mountables — a channel or a space takes chain wrappers the way every other
-point does, and they compose in the usual order.
-
-Outside hooks, `getConnection(input?)` /
-`getMembership(membershipInput, channelInput?)` look the live one up — no hold,
-no connect. Both throw when nothing matches; the `*OrUndefined` twins probe. On
-the server they throw (strict) or return `undefined` (probing) — nothing is ever
-connected there.
-
-### Client helpers
-
-Two module-level helpers from `@point0/core/socket` reset every connection at
-once — the client side of a login/logout:
-
-```tsx
-import { reconnectAll, disconnectAll } from '@point0/core/socket'
-
-onLogin(() => reconnectAll()) // re-run every connect (identities rebuilt), re-join spaces, revive kicked-but-held ones
-onLogout(() => disconnectAll()) // close everything now — the connectors re-judge whatever comes back
-```
-
-`reconnectAll()` is the client counterpart of the server's `refresh`; it also
-clears every `preventRetry` "sit out" mark — an explicit re-evaluation.
-`disconnectAll()` closes everything immediately; connections held by hooks and
-components then re-establish on their own (their nature is "stay connected while
-mounted"), which is exactly right on a logout — the connectors re-run against
-the cleared session and answer with the typed deny (ideally `preventRetry`), so
-the UI lands in the honest `error` state. Imperative `connect()` holders stay
-closed until their owner acts.
-
-### Reconnect
-
-The socket reconnects on its own — the first retry immediately, then with
-backoff (`reconnect` options above). A drop nobody reported counts as one too:
-the client measures the socket against its own `ping`, and two pings answered by
-nothing at all — no pong, no push, no reply — plus more than two intervals of
-silence is a half-open connection (a NAT timeout, a machine that slept), so the
-client closes it locally and reconnects instead of writing pushes into a dead
-pipe. That is the client's half of the same contract the engine's 120 s
-`idleTimeout` keeps on the server side; `ping: 0` switches off the client's half
-— the pings and the deadline they arm (the server's `idleTimeout` stands, so a
-silent client is still dropped there).
-
-Every held connection re-runs its connect (the connector re-applies the check,
-the identity is rebuilt), and every held membership re-joins on the fresh
-connection — the client remembers its inputs. A connect the connector **denies**
-(a typed error) goes `error` and stops retrying — and a deny thrown with
-[`preventRetry`](error-handling#preventretry) additionally sits the connection
-out of future reconnect cycles until `reconnectAll()` or a remount; the same
-flag on a joiner deny stops the join from replaying. A client `.sendToServer`
-during the gap waits in a queue up to the handler's `timeout` (default 5000 ms);
-handlers that shouldn't wait (typing pings) opt out with `queue: false`. The
-queue never outlives an answer: a connect or join DENIED by the server fails the
-sends waiting on it immediately with that typed error — only a transport failure
-(which the reconnect policy keeps retrying) leaves them queued until their
-window runs out.
-
-Pushes the server sent during the gap are gone on this path — there is no
-server-side buffer here (the contract is [Delivery](#delivery) below; a
-[resumable](#resumable-connections) channel adds an opt-in one). Catching up is
-a refetch, and the lifecycle callbacks are where it lives. Both levels have a
-full set, point-level or per call: a connection takes `onConnect` /
-`onDisconnect` / `onError`, a membership takes `onEnter` / `onLeave` (an
-[enrolled](#enrolling-from-the-server--enroller) membership is outside this: no
-`onEnter` fires for it, and only an explicit `leave()` fires its `onLeave`).
-`onConnect` and `onEnter` fire on **every** successful connect/join — the first
-and the replays alike — and each callback receives the facade plus three facts
-about the entry: the counter (`connectionIndex` / `membershipIndex` — how many
-successful connects/joins came BEFORE this one), `resumed` (this entry rode the
-[resume path](#resumable-connections) — the connector/joiners were skipped;
-always `false` on a non-resumable channel), and `gapless` — **provably nothing
-was missed**: `true` on the first entry and on a resume whose buffers covered
-the whole gap, `false` on every other re-entry. Each callback's `gapless` speaks
-for exactly the data that reaches IT: `onEnter`'s verdict covers that
-membership's rooms (and its space-wide pushes), `onConnect`'s the channel-wide
-and connection-addressed pushes — so a gap in one busy chat never forces the
-quiet ones (or the global data) to refetch. Each fact answers its own question:
-"did I miss anything HERE?" → `gapless`; "did the connector re-run?" →
-`resumed`; "is this the first time?" → the index. The catch-up is therefore ONE
-condition, on both levels:
-
-```tsx
-chatSpace.useMembership(
-  { chatId },
-  {
-    onEnter: ({ gapless }) => {
-      if (!gapless) void chatMessagesQuery.invalidateQuery({ chatId })
-    },
-  },
-)
-// channel-wide catch-up rides the connection instead:
-appChannel.useConnection(undefined, {
-  onConnect: ({ gapless }) => {
-    if (!gapless) void notificationsQuery.invalidateQuery()
-  },
-})
-```
-
-On a plain channel `gapless` is simply `index === 0` — the condition reads "is
-this a re-entry?" there — and on a resumable channel it stops refetching exactly
-when the buffer proves the refetch redundant.
-
-### Resumable connections
-
-`resumable: true` on the channel makes a reconnect CHEAP: instead of re-running
-the connect request (connector), the joins (joiners) and the enrollments
-(enrollers), the client presents a per-connection **resume key** and the server
-restores the connection — identity, rooms, subscriptions — from what it already
-knows. A redeploy then costs the server a couple of KV reads per client instead
-of a thundering herd of full connects:
-
-```tsx
-export const appChannel = root.lets
-  .channel()
-  .input(z.object({ deviceId: z.string() }))
-  .connector(async ({ ctx }) => ({ userId: ctx.me.user.id }))
-  .channel({
-    resumable: true,
-    server: { connectionTtl: 300_000 }, // the restore window IS the record's life
-  })
-```
-
-Nothing changes in the client API — everything is automatic. The key arrives
-once with the connect confirmation and lives in the tab's memory (never in
-`localStorage` — a page reload is an honest full connect); the connection record
-every ping already renews becomes the **passport**: it carries the per-space
-rooms and the SHA-256 of the key (never the key itself — a leaked backplane
-mints no working credentials). The restore window is `connectionTtl` — there is
-no second knob: a live connection renews the record anyway, and a dead one
-leaves exactly the record behind.
-
-What a resume restores and what it never bypasses:
-
-- **`connectionId` survives the drop** — addressed pushes keep their addressee
-  across a blip (a full reconnect mints a new cid).
-- **Enrolled memberships** restore with the passport like joined rooms — the
-  enroller does not re-run.
-- A server **`refresh` bypasses resume** — it exists to re-run the connectors,
-  and it voids the key; the fresh connect mints a new one. A **kick** and a
-  voluntary close delete the record, so the later resume is refused and the full
-  connect puts the connector back in charge — **revocation is never resumable**.
-  A refused resume falls back to the ordinary full connect of that one
-  connection, automatically.
-- A space can opt OUT with `resumable: false` (a top-level space option): its
-  rooms stay out of the passport and out of the restore — the client re-joins
-  them itself from its own state (the joiner re-judges). For spaces whose rooms
-  change many times a second (live-query-style rooms derived from client state),
-  the passport write-through would hammer the backplane for rooms the client
-  re-derives anyway.
-
-**The buffer.** Restoring the connection does not by itself restore the frames
-pushed into the gap. A clientHandler opts its pushes in with its own top-level
-`resumable` (`true` = the default ceiling of 128, a number = up to that many of
-its frames buffered per stream); the object form adds the replay POLICY next to
-the ceiling:
-
-```tsx
-export const messageReceivedHandler = chatSpace.lets
-  .clientHandler()
-  .serverSend(messageSchema)
-  .clientHandler({ resumable: 128 })
-
-// deltas are only valuable as a COMPLETE sequence — withhold the partial tail of a gappy recovery
-export const docPatchHandler = docSpace.lets
-  .clientHandler()
-  .serverSend(patchSchema)
-  .clientHandler({ resumable: { buffer: 256, replay: 'gapless' } })
-```
-
-`replay: 'gapless'` (default `'always'`) makes the server SKIP this handler's
-frames when replaying a stream whose recovery is not provably gapless: the
-client sees the honest `gapless: false` in `onEnter`/`onConnect` and refetches,
-without a partial tail arriving first. The withheld frames are not thrown away —
-they stay in the stream's log, and a later resume that IS provably clean from
-the client's cursor delivers them in full. Channel-wide, the policy is one chain
-line: `.clientHandlerOptions({ resumable: { replay: 'gapless' } })`.
-
-For a per-listener decision instead of a per-handler declaration, every
-delivered message carries `replayed` in its props — `false` on a live push,
-`{ gapless }` on a replayed one (its OWN stream's verdict):
-
-```tsx
-messageReceivedHandler(chatMembership).onMessageFromServer(
-  ({ message, replayed }) => {
-    if (replayed && !replayed.gapless) return // the refetch below covers it
-    appendMessage(message) // dedup by id — a replay may overlap the refetch
-  },
-)
-```
-
-The buffers live on **topic streams** — one per room, one per space, one
-channel-wide, plus a personal stream for connection-addressed pushes: one copy
-of every frame however many members subscribe, and every frame numbered per
-stream. On a resume the client presents its per-stream cursors and the server
-replays everything after them — all the streams merged back into ONE tail in the
-original delivery order, through the ordinary dispatch. `gapless` is then a
-**proof, not a guess**, and a PER-STREAM one: a stream's verdict is `true` only
-when its log covered that stream's whole gap and no non-opted handler pushed
-past the cursor — which is what makes the per-level verdicts above precise
-instead of one smeared bit. The buffers live in process memory: a same-process
-blip replays (`gapless: true`), a redeploy resumes without them
-(`gapless: false` — the one-condition catch-up above refetches), which is
-exactly why the truth stays in queries. The ceilings are the channel's
-`server.resume` group — `streamMaxFrames` (1024) and `streamMaxBytes` (4 MiB)
-per stream, a space overriding them for its own streams — and an overflow evicts
-oldest-first while honestly flipping the affected stream's `gapless`.
-
-When the socket of a buffering connection dies, the server **parks** it for the
-`server.resume.parkWindow` (default 30 s): publicly the connection is dead at
-once — the leave and close events fire, presence counts drop, enumerations skip
-it — but its streams stay addressed, so every push that concerns it — its rooms,
-its cid, a matching `$identity`/`$room` selection — keeps landing in them, and a
-client that returns within the window misses nothing. The park itself buffers
-nothing (the streams are the buffer — a parked member costs a room push zero
-extra work). Past the window the connection leaves the streams; the record lives
-on to its own TTL, so a later resume still works, just without the replay. A
-kick reaches into the park too: `channel.kick` sweeps matching parked
-connections and deletes their records, and a
-[`space.kick`](#kicking-from-rooms--spacekick) removes the kicked rooms from
-parked connections and their passports — the returning client receives the
-forced leave right after the resume.
-
-One price, deliberate: the identity a resume restores is as old as the record —
-the freeze is bounded by `connectionTtl`, and the admin answer is `kick`
-(instant) or `refresh` (soft), both of which force the full path. Delivery costs
-nothing extra: room, space-wide and channel-wide pushes ride the same
-one-publish fan-out as a plain channel's, buffered once per stream — however
-many members, whatever their parked state. The config cannot lie about itself: a
-buffering handler on a non-resumable channel, or on a handler of a
-`resumable: false` space, fails at the closer — as do `resumable: false` on a
-space of a non-resumable channel (nothing to opt out of) and `.enroller` on an
-opted-out space (a resume would silently drop the enrollments, which only re-run
-on a full connect).
-
-Security, in three facts: the KV stores only the key's hash (compared in
-constant time), a wrong key and an unknown cid are refused identically (no
-oracle), and a resume against a LIVE connection is the **takeover** — the main
-scenario, not an edge: the client notices a dead network first (its ping
-deadline beats the server's `idleTimeout`), dials anew, and the server moves the
-connection to the new socket, closing the zombie one. Exporting the key to
-another tab is the documented "don't": two tabs with one cid steal the
-connection from each other, last wins.
-
-## Delivery
-
-A push is **best-effort, at-most-once**: point0 writes one frame into a live
-socket and moves on. There are no acknowledgements and no retries. If the socket
-is gone at that instant — a reconnect gap, a redeploy, a closed tab — the frame
-is dropped, and no later reconnect replays it. The one bounded exception is
-opt-in: a [resumable](#resumable-connections) channel's opted-in handlers keep
-short in-memory stream logs for a resume to drain — and even there the per-level
-`gapless` flags tell the client honestly whether the logs covered its gap, so
-the refetch below stays the ground truth.
-
-What does not happen is a live connection quietly missing pushes. A client too
-slow to read what the server writes loses its **socket**, not its frames — see
-[outbound backpressure](engine-config#outbound-backpressure) — so a gap always
-surfaces as a disconnect, which is what the reconnect catch-up below is for.
-
-That is deliberate, because **the truth lives in queries, not in pushes**. A
-push is a _signal_ — "something moved, look again" — and never carries the only
-copy of a piece of data. The durable copy is in the database, read through a
-[query](query); the push just tells the client the query is stale. So catching
-up after any gap is a [catch-up refetch](#reconnect), not a frame replay — which
-is exactly why a dropped push costs nothing.
-
-**Stream with history.** When you want a client to render a stream and survive
-reconnects without losing entries, keep the stream in the database with a cursor
-and let pushes advance the tail. The client refetches from its last cursor on
-mount and on reconnect; each push carries the new tail (or just a "refetch"
-nudge). This is a few lines of your own code, not framework configuration:
-
-```tsx
-// events persist with a monotonic cursor; the query reads "everything after `cursor`"
-export const feedSinceHandler = feedSpace.lets
-  .serverHandler()
-  .clientSend(z.object({ after: z.string() }))
-  .serverReply(async ({ input, room }) => ({
-    events: await db.event.findMany({
-      where: { room: room.feedId, id: { gt: input.after } },
-    }),
-  }))
-  .query()
-  .serverHandler()
-
-// a bare trigger — no payload; the server fires it on each new event
-export const feedBumpedHandler = feedSpace.lets.clientHandler().clientHandler()
-
-// a push signals the new tail; the client refetches from the cursor it holds
-export const FeedView = ({
-  feedId,
-  cursor,
-}: {
-  feedId: string
-  cursor: string
-}) => {
-  const { data } = feedSinceHandler.useSocketQuery({ after: cursor })
-  feedBumpedHandler.useOnMessageFromServer(() =>
-    feedSinceHandler.invalidateSocketQuery(true),
-  )
-  return <Feed events={data?.events ?? []} />
-}
-```
-
-The socket lost a push mid-gap? The refetch from `cursor` returns every event
-the database has, dropped frames included. History is the query's job; the push
-only shortens the latency.
-
-**Redeploys** need no special handling for the same reason. On a rolling deploy
-the sockets drop; each client reconnects with backoff and re-runs its connect
-request, so the connector re-runs — a full **re-authentication** — and its
-memberships replay their joins while enrollers re-enroll on the fresh
-connection. Work in flight fails cleanly: an in-flight `sendToServer` fails by
-its own typed send timeout, and every connection / ticket record left in the
-[socket backplane](#where-its-stored--the-engine-serverbackplane) expires on its
-TTL. Nothing leaks across the restart, and the client is whole again after one
-reconnect. A [resumable](#resumable-connections) channel makes that reconnect
-cheap at scale: the fresh process restores each client from its record instead
-of running the whole connect cascade — same outcome, a fraction of the load.
 
 ## Observability
 
@@ -2197,13 +2408,32 @@ subscription is down and cross-process delivery is degraded.
 
 Every socket operation emits the framework's lifecycle [events](events) —
 subscribe with `.on` / `.serverOn` / `.clientOn` on any point up the chain, the
-usual machinery. The four-phase families are **split by side** — the two sides
-are genuinely different operations with different data, not one event observed
-twice: the `Server` family fires around the server execution (the connector, the
-`.joiner`, `.serverReply`) and its data carries the connection `identity`; the
-`Client` family fires around the client operation (the connect request, the join
-frame, a clientHandler dispatch) and has no identity field at all — the identity
-never leaves the server. Besides the families, the server-only singles
+usual machinery:
+
+```tsx
+// one root subscriber sees every socket failure — connects, joins, sends, the transport itself
+export const root = Point0.lets
+  .root()
+  .on('error', ({ name, error, meta }) => reportError(error, { name, ...meta }))
+  .root()
+
+// server-side singles ride the same machinery — connect/disconnect rates in two lines
+export const appChannel = root.lets
+  .channel()
+  .connector(connector)
+  .serverOn(['pointChannelOpenServer', 'pointChannelCloseServer'], (event) => {
+    metrics.count(event.name) // event.data carries the connectionId and the identity for per-tenant splits
+  })
+  .channel()
+```
+
+The four-phase families are **split by side** — the two sides are genuinely
+different operations with different data, not one event observed twice: the
+`Server` family fires around the server execution (the connector, the `.joiner`,
+`.serverReply`) and its data carries the connection `identity`; the `Client`
+family fires around the client operation (the connect request, the join frame, a
+clientHandler dispatch) and has no identity field at all — the identity never
+leaves the server. Besides the families, the server-only singles
 (`pointChannelOpenServer` / `pointChannelCloseServer` / `pointSpaceLeaveServer`)
 carry the full `identity` too; the four-phase server events carry the bare
 `connectionId` (a connect family's `Start` has none yet — no connection exists
@@ -2401,14 +2631,22 @@ export const messageReceivedHandler = chatSpace.lets
   .serverSend(messageSchema)
   .clientHandler({
     client: {
-      onMessageFromServer: ({ message }) => {
-        chatMessagesQuery.setQueryData({ chatId: message.chatId }, (old) => ({
+      onMessageFromServer: ({ message, room }) => {
+        chatMessagesQuery.setQueryData({ chatId: room.chatId }, (old) => ({
           messages: [...(old?.messages ?? []), message],
         }))
       },
     },
   })
 ```
+
+**Key the write by the `room`, never by a field of the payload.** The room is
+the address the server delivered to — proven membership, chosen by your
+`.joiner`. The payload is content: on a chat handler it usually originated with
+whoever sent the message, so keying by `message.chatId` lets one member write
+into every other member's cache for a chat none of them are in. A module-level
+`onMessageFromServer` hears every room of the space, which is what makes the
+difference load-bearing.
 
 ### User space — hot personal pushes
 
@@ -2523,34 +2761,42 @@ export const PresenceList = ({ chatId }: { chatId: string }) => {
 Dedup when one user opens several tabs (each tab is its own connection), and
 remember a `space.kick` fires `pointSpaceLeaveServer` like any leave.
 
-### Origin allowlist for the socket
+### Origins allowed to open a socket
 
-Browsers do not apply CORS to WebSockets — any page can attempt the handshake.
-The socket upgrade rides the full fetch pipeline as the `websocket`
-[request variant](request#requestvariant), so the gate is an ordinary
-[middleware](middleware): answer anything other than the pipeline's marker
-response and the upgrade is off.
+Browsers put no CORS on a WebSocket handshake: the upgrade succeeds cross-site
+and carries the visitor's cookies. So the engine gates it, by default, and both
+shapes of upgrade go through the same gate — the bare socket endpoint and the
+cold-start [upgrade-connect](#the-two-connect-paths), the latter before its
+`.connector` runs.
+
+The default is `'same-origin'`: a handshake whose `Origin` is not this host is
+refused with 403, and a handshake with **no** `Origin` passes — that is not a
+browser (a native client, a server, a test) and there is no site to forge from.
+Name the other origins your app is legitimately dialed from:
 
 ```tsx
-export const root = Point0.lets('root', 'root')
-  .middleware(async ({ request, next }) => {
-    if (
-      request.variant.type === 'websocket' ||
-      request.variant.type === 'endpoint'
-    ) {
-      const origin = request.headers.origin
-      if (origin && !ALLOWED_ORIGINS.includes(origin)) {
-        return new Response('Origin not allowed', { status: 403 })
-      }
-    }
-    return await next()
-  })
-  .root()
+export const engine = Engine.create({
+  server: {
+    socket: {
+      allowedOrigins: ['capacitor://localhost', 'https://app.example.com'],
+    },
+  },
+})
 ```
 
-The `endpoint` arm covers the cold-start channel-endpoint upgrade (and every
-other endpoint) with the same list; scope it tighter if you only want to gate
-the socket.
+They are matched exactly, and same-origin keeps working alongside them. `'*'`
+accepts every origin — right for a public API authenticated by a bearer token,
+never for an app authenticated by a cookie.
+
+The comparison is by **host**, not by full origin, so a TLS-terminating proxy
+(the engine on http, the browser on https) does not fail it; `x-forwarded-host`
+wins when present, which a page cannot forge — the browser WebSocket API sends
+no custom headers.
+
+A [middleware](middleware) can still add its own rule on top: the upgrade rides
+the full fetch pipeline as the `websocket`
+[request variant](request#requestvariant), and answering anything other than the
+pipeline's marker response cancels it.
 
 ## The usual point machinery
 
@@ -2611,8 +2857,8 @@ the socket.
   it. Its endpoint is `GET /_point0/<scope>/websocket` (on when the engine's
   `socket` server option is), and the upgrade rides the **full fetch pipeline**
   as its own request variant — middlewares run before the handshake and can veto
-  it by answering an ordinary response (see the
-  [Origin allowlist recipe](#origin-allowlist-for-the-socket)). Frames are JSON
+  it by answering an ordinary response (see
+  [the origin gate](#origins-allowed-to-open-a-socket)). Frames are JSON
   envelopes whose payload fields went through the transformer: claim / claimed /
   claimErr (plus discard and close), join / joined / joinErr / leave / left,
   `enrolled` (a server-side `space.enroll` grew a connection's enrollment —
@@ -2625,10 +2871,9 @@ the socket.
   `<scope>:<channel>:*all*` is subscribed at connect, and the space-wide
   `<scope>:<space>:*space*` with the first membership of a space on the socket
   (released with the last) — a bare space send publishes there. Within a process
-  Bun fans a push out; across processes it rides the
-  [backplane](#where-its-stored--the-engine-serverbackplane) broadcast channel.
-  A room push is one frame per socket carrying the space and the serialized
-  room; a channel push carries the cid or nothing (all).
+  Bun fans a push out; across processes it rides the [backplane](#backplane)
+  broadcast channel. A room push is one frame per socket carrying the space and
+  the serialized room; a channel push carries the cid or nothing (all).
 - **The server stores connection + rooms — nothing else.** The join input never
   outlives the `.joiner` call: it goes in, rooms come out, it is forgotten (the
   client keys its hooks by input, like query keys — a purely client-side
@@ -2663,7 +2908,7 @@ the socket.
 
 Not shipped yet (planned): durable message history (the
 [resume](#resumable-connections) stream logs are in-memory and bounded — past
-them, catching up is the refetch), AsyncAPI, binary payloads, rate limiting.
+them, catching up is the refetch), AsyncAPI, binary payloads.
 
 ## Reference
 
@@ -2776,14 +3021,14 @@ Per-send targeting (the `target` argument — `room` / `connectionId` /
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | channel        | `useConnection(input?, options?)` / `connect(input?, options?)`                                                                                                                                                               | the connection facade                                                                                    |
 | channel        | `getConnection(input?)` / `getConnectionOrUndefined(input?)` — client side                                                                                                                                                    | the live connection, no hold                                                                             |
-| channel        | `<Connection input options gate LoadingComponent ErrorComponent>` / `.lets`                                                                                                                                                   | holds a connection / grows spaces and handlers                                                           |
+| channel        | `<Connection input gate LoadingComponent ErrorComponent ...options>` / `.lets`                                                                                                                                                | holds a connection / grows spaces and handlers                                                           |
 | channel        | `kick(target?)` / `refresh(target?)` / `amendIdentity(target, patch)` — server                                                                                                                                                | `Promise<void>` each                                                                                     |
 | channel        | `connections.server.count/.list/.forEach(target?, options?)` — server, the cluster                                                                                                                                            | `number` / `Array<{ connectionId, identity, spaces }>` / stream                                          |
 | channel        | `connections.server.local.count/.list(target?)` — server, synchronous, this process                                                                                                                                           | `number` / `Array<{ connectionId, identity, spaces }>`                                                   |
 | channel        | `connections.client.count/.list()` — client, synchronous, this tab                                                                                                                                                            | `number` / `ClientChannelConnection[]` — the live facades                                                |
 | space          | `useMembership(input, options?)` / `join(input, options?, channelInput?)`                                                                                                                                                     | the membership facade                                                                                    |
 | space          | `getMembership(membershipInput, channelInput?)` / `getMembershipOrUndefined(...)`                                                                                                                                             | the live membership, no hold                                                                             |
-| space          | `<Membership input options gate LoadingComponent ErrorComponent>` / `.lets`                                                                                                                                                   | holds a membership / grows handlers                                                                      |
+| space          | `<Membership input gate LoadingComponent ErrorComponent ...options>` / `.lets`                                                                                                                                                | holds a membership / grows handlers                                                                      |
 | space          | `kick(target?)` — server                                                                                                                                                                                                      | `Promise<void>` — a forced leave of the matching rooms                                                   |
 | space          | `memberships.server.count/.list/.forEach(target?, options?)` — server, the cluster                                                                                                                                            | `number` / `Array<{ connectionId, identity, rooms }>` / stream                                           |
 | space          | `memberships.server.local.count/.list/.rooms(target?)` — server, synchronous, this process                                                                                                                                    | `number` / `Array<{ connectionId, identity, rooms }>` / `Room[]`                                         |

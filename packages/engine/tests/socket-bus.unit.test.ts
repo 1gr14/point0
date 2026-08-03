@@ -407,7 +407,7 @@ describe('socket bus (two instances, one backplane)', () => {
     }
   })
 
-  it('an uncountable collect window rejects a local reply the push never addressed, and still takes the remote one', async () => {
+  it('an uncountable collect window takes only replies from connections the push actually reached, on either process', async () => {
     const backplane = createSharedBackplane()
     const { chatChannel, announceHandler } = buildChannel()
     const a = createInstance({ backplane, channel: chatChannel, points: [announceHandler] })
@@ -415,11 +415,14 @@ describe('socket bus (two instances, one backplane)', () => {
     await a.socket.start()
     await b.socket.start()
     try {
-      // TWO connections on one process — the real shape of the abuse: a client holding two channel connections over one
-      // socket, answering as the cid the push did not address
+      // TWO connections per process — the real shape of the abuse: a client holding two channel connections over one
+      // socket, answering as the cid the push did not address. Each process knows exactly what IT delivered, and that
+      // is the whole authorization: the initiator checks its own connections, the forwarder checks its own before a
+      // reply is ever allowed onto the bus
       const targeted = await openConnection(a, chatChannel.point, { identity: { me: 'user-a1' } })
       const bystander = await openConnection(a, chatChannel.point, { identity: { me: 'user-a2' } })
-      const remote = await openConnection(b, chatChannel.point, { identity: { me: 'user-b' } })
+      const remote = await openConnection(b, chatChannel.point, { identity: { me: 'user-a1' } })
+      const remoteBystander = await openConnection(b, chatChannel.point, { identity: { me: 'user-b' } })
 
       const replies: Array<{ cid: string; data: string | undefined }> = []
       let done = false
@@ -460,8 +463,15 @@ describe('socket bus (two instances, one backplane)', () => {
       await a.socket.handleMessage(targeted.socket as never, reply(targeted.cid, 'targeted'))
       // the other LOCAL connection forges a reply for the same mid — it received no frame, so it is dropped outright
       await a.socket.handleMessage(bystander.socket as never, reply(bystander.cid, 'forged'))
-      // a remote process's connection answers: unknowable from here, so the coarse per-cid cap lets it through
+      // the remote process delivered the push to ITS matching connection, so its answer is forwarded and lands
+      await waitFor(
+        () => remote.socket.frames.some((frame) => frame.t === 'msg' && frame.handler === 'announceHandler'),
+        'the remote matching connection to receive the push',
+      )
       await b.socket.handleMessage(remote.socket as never, reply(remote.cid, 'remote'))
+      // a remote BYSTANDER forges the same mid: the initiator could never tell, but the process holding that
+      // connection can — it sent it no frame of this push, so the reply never becomes bus traffic at all
+      await b.socket.handleMessage(remoteBystander.socket as never, reply(remoteBystander.cid, 'remote-forged'))
       const dropLogged = (): boolean =>
         a.logs.some((entry) =>
           String((entry as { message?: string }).message ?? '').includes(
@@ -472,6 +482,13 @@ describe('socket bus (two instances, one backplane)', () => {
 
       expect(replies.map((item) => item.cid).sort()).toEqual([targeted.cid, remote.cid].sort())
       expect(replies.map((item) => JSON.parse(item.data as string).answer).sort()).toEqual(['remote', 'targeted'])
+      // the remote forgery never reached the bus, so it could never reach the window
+      expect(
+        backplane.published.filter((record) => {
+          const envelope = envelopeOf(record) as { kind: string; cid?: string }
+          return envelope.kind === 'reply' && envelope.cid === remoteBystander.cid
+        }),
+      ).toHaveLength(0)
       // the drop is logged…
       expect(dropLogged()).toBe(true)
       // …and it never advanced the window: the forged reply cannot close it early on the honest repliers
@@ -847,6 +864,107 @@ describe('socket bus (two instances, one backplane)', () => {
           ),
         'the push narrowed by the patched identity to reach the remote connection',
       )
+    } finally {
+      a.socket.dispose()
+      b.socket.dispose()
+    }
+  })
+
+  it('a malformed bus envelope is dropped on SHAPE — nothing it asked for happens, and the bus keeps working', async () => {
+    // WOULD BREAK: the bus is not a client, but it IS a shape boundary. These envelopes kick connections, rewrite
+    // stored identities and grant rooms, and they arrive from whatever else shares the Redis — an older point0
+    // mid-deploy, a neighbouring app, a fuzzed key. Read field by field, a `connectionId` that is a STRING is a
+    // substring test where a cid list belongs, a `rooms` string is enrolled character by character, and an object
+    // `matcher` throws inside the subscriber. `parseBusEnvelope` refuses all of them BEFORE the first field is used.
+    const backplane = createSharedBackplane()
+    const { chatChannel, chatSpace, pingHandler } = buildChannel()
+    const a = createInstance({ backplane, channel: chatChannel, points: [chatSpace, pingHandler] })
+    const b = createInstance({ backplane, channel: chatChannel, points: [chatSpace, pingHandler] })
+    await a.socket.start()
+    await b.socket.start()
+    try {
+      const memberB = await openConnection(b, chatChannel.point, { identity: { me: 'user-b' } })
+      const roomSerialized = JSON.stringify({ chatId: 'shape' })
+      await join(b, memberB.socket, memberB.cid, 'chatSpace', { chatId: 'shape' })
+      const framesBefore = memberB.socket.frames.length
+      const selector = { scope: 'root', channel: 'chatChannel' }
+      const spaceSelector = { ...selector, space: 'chatSpace' }
+      const hostile = [
+        // not an envelope at all — the shapes `JSON.parse` hands back that have no `.kind` to read
+        'null',
+        '[]',
+        '"kick"',
+        '123',
+        '{',
+        JSON.stringify([{ v: 1, kind: 'kick', pid: 'other', selector }]),
+        // the version and origin gates: a rolling deploy's other half, and an envelope with no pid to filter on
+        JSON.stringify({ v: 2, kind: 'kick', pid: 'other', selector }),
+        JSON.stringify({ v: 1, kind: 'kick', pid: 123, selector }),
+        JSON.stringify({ v: 1, kind: 'kick', selector }),
+        // a kind this version does not speak — a neighbouring app on the same Redis
+        JSON.stringify({ v: 1, kind: 'evict', pid: 'other', selector }),
+        // the SELECTOR, addressing half of every command: an array, a missing channel…
+        JSON.stringify({ v: 1, kind: 'kick', pid: 'other', selector: ['root', 'chatChannel'] }),
+        JSON.stringify({ v: 1, kind: 'kick', pid: 'other', selector: { scope: 'root' } }),
+        // …the exact-address lists as scalars (a cid list that is one string, a rooms list that is one string)…
+        JSON.stringify({ v: 1, kind: 'kick', pid: 'other', selector: { ...selector, connectionId: memberB.cid } }),
+        JSON.stringify({ v: 1, kind: 'kick', pid: 'other', selector: { ...spaceSelector, rooms: roomSerialized } }),
+        // …and the matchers as objects, where a SERIALIZED matcher belongs
+        JSON.stringify({ v: 1, kind: 'kick', pid: 'other', selector: { ...selector, matcher: { me: 'user-b' } } }),
+        // an enrollment is a room GRANT — its rooms must be a list of serialized rooms or it grants nothing
+        JSON.stringify({ v: 1, kind: 'enroll', pid: 'other', selector: spaceSelector, rooms: roomSerialized }),
+        JSON.stringify({ v: 1, kind: 'enroll', pid: 'other', selector: spaceSelector, rooms: [{ chatId: 'ghost' }] }),
+        JSON.stringify({ v: 1, kind: 'enroll', pid: 'other', selector: spaceSelector }),
+        // an amend patch is merged into a stored identity — an object one is not the serialization it claims to be
+        JSON.stringify({ v: 1, kind: 'amend', pid: 'other', selector, patch: { plan: 'pro' } }),
+        JSON.stringify({ v: 1, kind: 'amend', pid: 'other', selector }),
+        JSON.stringify({ v: 1, kind: 'refresh', pid: 'other' }),
+      ]
+      for (const message of hostile) {
+        await backplane.publish(SHARED_CHANNEL, message)
+      }
+      await sleep(50)
+      // not one of them reached the connection: no `closed`, no forced `left`, no `enrolled`, no `refresh`
+      expect(memberB.socket.frames).toHaveLength(framesBefore)
+      // the membership the space-shaped ones addressed is untouched, and so is the stored identity the amends aimed at
+      const listedAfter = await a.socket.adapter.list({ channel: chatChannel.point as never, timeoutMs: 200 })
+      expect(listedAfter.map((snapshot) => snapshot.cid)).toEqual([memberB.cid])
+      expect(JSON.parse(listedAfter[0]!.identity)).toEqual({ me: 'user-b' })
+      expect(listedAfter[0]!.spaces).toEqual({ chatSpace: [roomSerialized] })
+      // they were refused on shape, not thrown and swallowed by the handler's net: nothing was logged as a failure
+      const failures = [...a.logs, ...b.logs].filter((entry) => (entry as { level?: string }).level === 'error')
+      expect(failures).toEqual([])
+      // …and the bus is not poisoned. The controls are the SAME commands with the SAME addresses, correctly shaped —
+      // published the same way, on the same channel: the only thing that refused the ones above was their shape
+      await backplane.publish(
+        SHARED_CHANNEL,
+        JSON.stringify({
+          v: 1,
+          kind: 'enroll',
+          pid: 'other',
+          selector: spaceSelector,
+          rooms: [JSON.stringify({ chatId: 'granted' })],
+        }),
+      )
+      await waitFor(
+        () => memberB.socket.frames.some((frame) => frame.t === 'enrolled'),
+        'the well-formed enroll over the same bus',
+      )
+      await backplane.publish(
+        SHARED_CHANNEL,
+        JSON.stringify({
+          v: 1,
+          kind: 'kick',
+          pid: 'other',
+          selector: { ...selector, connectionId: [memberB.cid] },
+          reason: 'well-formed',
+        }),
+      )
+      await waitFor(
+        () => memberB.socket.frames.some((frame) => frame.t === 'closed'),
+        'the well-formed kick over the same bus',
+      )
+      expect(memberB.socket.frames.find((frame) => frame.t === 'closed')?.reason).toBe('well-formed')
     } finally {
       a.socket.dispose()
       b.socket.dispose()

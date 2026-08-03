@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'bun:test'
 import type { ErrorPoint0 } from '@point0/core'
 import { Point0 } from '@point0/core'
+import { resolveEngineSocketOptions } from '../src/config.js'
 import { EngineSocket } from '../src/socket.js'
 
 type LogEntry = { level: string; message: string }
@@ -39,6 +40,7 @@ const createInstance = (): {
     clients: [],
     backplaneProvided: null,
     socketEnabled: true,
+    socketOptions: resolveEngineSocketOptions(true),
     log: (entry: LogEntry) => {
       logs.push(entry)
     },
