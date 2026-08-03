@@ -92,6 +92,16 @@ Everything else in this release:
   `pointHandlerServerLateError`, and the `POINT0_SERIALIZE_FAILED` error.
 - `postgresBackplane` takes a `schema` option, so its tables live outside
   `public` and `prisma migrate` stops reading them as drift.
+- Expo/Metro works at all now: `@point0/compiler/plugin/babel` declared only an
+  `import` condition, and Babel resolves its plugins through CJS `require`, so
+  the documented `babel.config.js` died at "Failed to construct transformer"
+  before bundling a single module. The subpath is requireable, and the example
+  bundles for iOS on SDK 57.
+- A page chunk that fails to load before hydration is logged with its reason
+  instead of being swallowed. On Bun's dev runtime it was the only report there
+  would ever be: a module that throws while evaluating is cached, so the next
+  import of it resolves to `null` and a denied server-only import surfaced as
+  "Cannot read properties of null".
 - Dependencies: redis/ioredis v5 or v6, Playwright 1.62.1, `@types/node` 26,
   `@scalar/types` 0.17 (the openapi peer is `^0.17.0`), Expo SDK 57, Prettier
   3.9.

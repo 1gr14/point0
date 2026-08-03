@@ -69,7 +69,20 @@ export function mount(
   // bounds a hung fetch. A client-only mount skips the wait: with no server HTML the fallback IS the first paint.
   const currentPageReady = willHydrate
     ? Promise.race([
-        clientPoints.loadPageByHref(window.location.pathname + window.location.search).catch(() => undefined),
+        clientPoints.loadPageByHref(window.location.pathname + window.location.search).catch((error: unknown) => {
+          // Falling through must not mean falling silent. This is the FIRST import of that chunk, and on Bun's dev
+          // runtime it is the only one that carries a reason: a module that throws while evaluating is cached, so
+          // React's own import of it resolves to `null` and dies as a shapeless "reading 'page' of null". Swallow
+          // this error and a denied server-only import — or a chunk gone missing after a redeploy — becomes
+          // undiagnosable. The reason rides in the message because a console line is what gets copied out.
+          const reason = error instanceof Error && error.cause instanceof Error ? error.cause.message : undefined
+          log({
+            level: 'error',
+            category: ['ssr'],
+            message: `The current page's chunk failed to load before hydration${reason ? `: ${reason}` : ''}`,
+            error,
+          })
+        }),
         new Promise((resolve) => setTimeout(resolve, pageChunkHydrationTimeoutMs)),
       ])
     : undefined

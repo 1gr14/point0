@@ -59,7 +59,8 @@
     },
     "./plugin/babel": {
       "types": "./dist/plugin/babel.d.ts",
-      "import": "./dist/plugin/babel.js"
+      "import": "./dist/plugin/babel.js",
+      "require": "./dist/plugin/babel.js"
     }
   },
   "files": [
