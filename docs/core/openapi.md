@@ -95,13 +95,25 @@ By default **only actions** appear in the spec. That is rarely what you want, so
 every example passes `filter: 'all'`:
 
 ```tsx
-openapi({ route: '/openapi.json', filter: 'all' }) // every endpoint point
-openapi({ route: '/openapi.json' }) // default: actions only
-openapi({ route: '/openapi.json', filter: 'action' }) // same as default, explicit
-openapi({
-  route: '/openapi.json',
-  filter: (point) => point.tags.includes('public'), // a custom predicate
-})
+export const root = Point0.lets
+  .root()
+  .middleware(openapi({ route: '/openapi.json', filter: 'all' })) // every endpoint
+  .root()
+```
+
+Leave `filter` out — or pass `'action'`, which says the same explicitly — and
+only actions are included. A predicate decides per point:
+
+```tsx
+export const root = Point0.lets
+  .root()
+  .middleware(
+    openapi({
+      route: '/openapi.json',
+      filter: (point) => point.tags.includes('public'), // a custom predicate
+    }),
+  )
+  .root()
 ```
 
 The predicate receives each ready point and runs _after_ the endpoint check, so
@@ -156,7 +168,9 @@ template keeps only the param names, and a param restricted to a set of values
 carries that set as a JSON Schema `enum`.
 
 ```tsx
-root.lets.action('GET', '/api/posts/:kind(new|top)/:id')
+export const postAction = root.lets
+  .action('GET', '/api/posts/:kind(new|top)/:id')
+  .action(/* ... */)
 // path: /api/posts/{kind}/{id}
 // kind: { type: 'string', enum: ['new', 'top'] }
 // id:   { anyOf: [{ type: 'string' }, { type: 'number' }] }
@@ -167,7 +181,10 @@ file or blob field, the content type switches to `multipart/form-data` and the
 JSON variant is dropped:
 
 ```tsx
-.body(z.object({ avatar: z.file() }))
+export const avatarUploadAction = root.lets
+  .action('POST', '/api/avatar')
+  .body(z.object({ avatar: z.file() }))
+  .action(/* ... */)
 // → requestBody content is multipart/form-data;
 //   avatar serializes to { type: 'string', format: 'binary', ... }
 ```
@@ -210,10 +227,15 @@ A plain schema is wrapped as a `200` JSON response. To document several
 statuses, pass a map keyed by status code:
 
 ```tsx
-.response({
-  200: z.object({ idea: ideaSchema }), // → description: 'Successful response'
-  404: z.object({ message: z.string() }), // → description: 'Error response' (4xx)
-})
+export const ideaQuery = root.lets
+  .query()
+  .input(z.object({ id: z.number() }))
+  .response({
+    200: z.object({ idea: ideaSchema }), // → description: 'Successful response'
+    404: z.object({ message: z.string() }), // → description: 'Error response' (4xx)
+  })
+  .loader(/* ... */)
+  .query()
 ```
 
 A 4xx status gets the description `'Error response'`; anything else gets
@@ -221,12 +243,19 @@ A 4xx status gets the description `'Error response'`; anything else gets
 or examples — pass an already-normalized response object:
 
 ```tsx
-.response({
-  200: {
-    description: 'The idea',
-    content: { 'application/json': { schema: z.object({ idea: ideaSchema }) } },
-  },
-})
+export const ideaQuery = root.lets
+  .query()
+  .input(z.object({ id: z.number() }))
+  .response({
+    200: {
+      description: 'The idea',
+      content: {
+        'application/json': { schema: z.object({ idea: ideaSchema }) },
+      },
+    },
+  })
+  .loader(/* ... */)
+  .query()
 ```
 
 `.response()` is available on the endpoint points — queries, mutations, and
@@ -262,8 +291,11 @@ Call `.openapi()` more than once and the objects merge — last call wins per ke
 **except `tags`, which are unioned and de-duplicated** across calls:
 
 ```tsx
-.openapi({ tags: ['ideas'], summary: 'A' })
-.openapi({ tags: ['public'], summary: 'B' })
+export const ideaUpdateAction = root.lets
+  .action('PUT', '/api/ideas/:id')
+  .openapi({ tags: ['ideas'], summary: 'A' })
+  .openapi({ tags: ['public'], summary: 'B' })
+  .action(/* ... */)
 // → summary: 'B', tags: ['ideas', 'public']
 ```
 
@@ -301,11 +333,16 @@ schemas collapse to the same `$ref`.
 or an object — UI options plus a `route`:
 
 ```tsx
-openapi({
-  route: '/openapi.json',
-  scalar: '/scalar', // string form
-  swagger: { route: '/swagger', showExtensions: true }, // object form + options
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    openapi({
+      route: '/openapi.json',
+      scalar: '/scalar', // string form
+      swagger: { route: '/swagger', showExtensions: true }, // object form + options
+    }),
+  )
+  .root()
 ```
 
 Each UI defaults its spec `url` to the `route` you set for the JSON spec, so you
@@ -322,13 +359,18 @@ front of your spec. The canonical guard is [`@point0/basic-auth`](basic-auth):
 ```tsx
 import { basicAuth } from '@point0/basic-auth'
 
-openapi({
-  route: '/openapi.json',
-  scalar: '/scalar',
-  swagger: '/swagger',
-  filter: 'all',
-  before: basicAuth({ users: serverEnv.OPENAPI_CREDENTIALS }), // env-driven in prod
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    openapi({
+      route: '/openapi.json',
+      scalar: '/scalar',
+      swagger: '/swagger',
+      filter: 'all',
+      before: basicAuth({ users: serverEnv.OPENAPI_CREDENTIALS }), // env-driven
+    }),
+  )
+  .root()
 ```
 
 Without credentials the doc routes return `401` with a `WWW-Authenticate`
@@ -340,11 +382,14 @@ The generated spec is **cached by default**, keyed by the JSON route. Tune it
 with `cache`:
 
 ```tsx
-openapi({ route: '/openapi.json' }) // default: cached under '/openapi.json'
-openapi({ route: '/openapi.json', cache: false }) // never cache — rebuild every hit
-openapi({ route: '/openapi.json', cache: 'specs' }) // cache under a custom key
-openapi({ route: '/openapi.json', cache: true }) // explicit: cache under the json route
+export const root = Point0.lets
+  .root()
+  .middleware(openapi({ route: '/openapi.json', cache: false })) // rebuild every hit
+  .root()
 ```
+
+Left out, `cache` caches the spec under the JSON route; `true` says that
+explicitly, and a string (`cache: 'specs'`) caches it under a key you choose.
 
 Schema changes made at runtime won't show up until the process restarts — pass
 `cache: false` for a fresh spec on every request (e.g. while iterating).
@@ -355,13 +400,18 @@ Schema changes made at runtime won't show up until the process restarts — pass
 are merged into the output, with your values overriding the generated ones:
 
 ```tsx
-openapi({
-  route: '/openapi.json',
-  filter: 'all',
-  openapi: '3.0.0', // spec version; default '3.0.0'. Use '3.1.x' for OpenAPI 3.1 types
-  info: { title: 'My API', version: '1.0.0' },
-  servers: [{ url: 'https://api.example.com' }],
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    openapi({
+      route: '/openapi.json',
+      filter: 'all',
+      openapi: '3.0.0', // spec version; '3.1.x' switches to OpenAPI 3.1 types
+      info: { title: 'My API', version: '1.0.0' },
+      servers: [{ url: 'https://api.example.com' }],
+    }),
+  )
+  .root()
 ```
 
 The `openapi` version string is a type discriminator: a `'3.1...'` value

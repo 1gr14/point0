@@ -179,10 +179,13 @@ So that `import x from './x.png'` is typed (like `vite/client`), the
 import. Wire it once in the engine's `generate` config:
 
 ```tsx
-generate: {
-  meta: './generated/point0/meta.ts',
-  assetsTypes: './generated/point0/assets.d.ts',
-}
+export const engine = Engine.create({
+  // ...
+  generate: {
+    meta: './generated/point0/meta.ts',
+    assetsTypes: './generated/point0/assets.d.ts',
+  },
+})
 ```
 
 `point0 generate` ([CLI](cli)) writes the file; it's gitignored and regenerated,
@@ -237,7 +240,7 @@ Assets ride along with the [compiler](compiler). With the compiler on and no
 omit it entirely. Configure it under `assets`:
 
 ```tsx
-Engine.create({
+export const engine = Engine.create({
   // ...
   assets: {
     enabled: true,

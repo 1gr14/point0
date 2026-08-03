@@ -62,9 +62,13 @@ The mapper is one synchronous function. It gets a single object and returns a
 plain object — the new `data`:
 
 ```tsx
-.mapper(({ data, queries, props, location }) => {
-  return { /* the new data */ }
-})
+export const ideaListPage = root.lets
+  .page('/ideas')
+  .with(ideasQuery)
+  .mapper(({ data, queries, props, location }) => {
+    return {/* the new data */}
+  })
+  .page(({ data }) => <IdeaList {...data} />)
 ```
 
 | Key        | What                                                                                                    |
@@ -98,23 +102,28 @@ safety net.
 Without a mapper, `data` is a shorthand for the first query's data:
 
 ```tsx
-.with(ideaQuery, ({ params }) => ({ id: Number(params.id) }))
-.page(({ data, queries }) => {
-  // data === queries[0].data
-})
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .with(ideaQuery, ({ params }) => ({ id: Number(params.id) }))
+  .page(({ data, queries }) => {
+    // data === queries[0].data
+    return <Idea idea={data.idea} />
+  })
 ```
 
 A mapper replaces it. After `.mapper`, `data` is the mapper's return value,
 while `queries` still hold the raw per-query results:
 
 ```tsx
-.with(ideaQuery, ({ params }) => ({ id: Number(params.id) }))      // queries[0]
-.with(commentsQuery, ({ params }) => ({ ideaId: Number(params.id) })) // queries[1]
-.mapper(({ queries: [idea, comments] }) => ({
-  idea: idea.data.idea,
-  comments: comments.data.comments,
-}))
-.page(({ data }) => <Idea idea={data.idea} comments={data.comments} />)
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .with(ideaQuery, ({ params }) => ({ id: Number(params.id) })) // queries[0]
+  .with(commentsQuery, ({ params }) => ({ ideaId: Number(params.id) })) // queries[1]
+  .mapper(({ queries: [idea, comments] }) => ({
+    idea: idea.data.idea,
+    comments: comments.data.comments,
+  }))
+  .page(({ data }) => <Idea idea={data.idea} comments={data.comments} />)
 // data is the mapper's shape; queries[0]/queries[1] still hold the raw results
 ```
 
@@ -163,13 +172,16 @@ own loader into its **self query**. After a `.loader`, that loader's output
 becomes `queries[0]` and is what `data` shadows by default:
 
 ```tsx
-.loader(() => ({ z: 3 }))              // becomes the self query → queries[0]
-.with(query, ({ location }) => ({ y: +location.params.y })) // → queries[1]
-.mapper(({ data, queries, location }) => ({
-  x: queries[1].data.x,        // the injected query
-  y: location.params.y,        // route param
-  z: data.z,                   // the page's own loader output, via shadowed data
-}))
+export const xyzPage = root.lets
+  .page('/xyz/:y')
+  .loader(() => ({ z: 3 })) // becomes the self query → queries[0]
+  .with(query, ({ location }) => ({ y: +location.params.y })) // → queries[1]
+  .mapper(({ data, queries, location }) => ({
+    x: queries[1].data.x, // the injected query
+    y: location.params.y, // route param
+    z: data.z, // the page's own loader output, via shadowed data
+  }))
+  .page(({ data: { x, y, z } }) => <Xyz x={x} y={y} z={z} />)
 ```
 
 So a page with a loader and extra `.with` queries reads its own data through

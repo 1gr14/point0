@@ -57,10 +57,13 @@ the framework already knows which of its files are immutable.
 auth action's or a download's `no-store` survives untouched:
 
 ```tsx
-.loader(({ set }) => {
-  set.headers('Cache-Control', 'no-store') // ← cacheControl() will not touch this response
-  // ...
-})
+export const invoicePdfQuery = root.lets
+  .query()
+  .loader(({ set }) => {
+    set.headers('Cache-Control', 'no-store') // ← cacheControl() will not touch it
+    // ...
+  })
+  .query()
 ```
 
 ## Tuning the slots
@@ -71,10 +74,15 @@ you **leave the slot out**; passing the slot — even as `undefined` — means
 you're taking control:
 
 ```tsx
-cacheControl({
-  page: 'public, max-age=60', // a fully public site may let its HTML be cached
-  publicdir: undefined, //       skip static files — don't set any Cache-Control
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    cacheControl({
+      page: 'public, max-age=60', // a fully public site may let its HTML be cached
+      publicdir: undefined, //       skip static files — set no Cache-Control
+    }),
+  )
+  .root()
 ```
 
 Deleting a header (`false`) is not a slot value — that's an
@@ -91,12 +99,17 @@ default — to keep the default from a callback, return it explicitly:
 ```tsx
 import { cacheControl, cacheControlValues } from '@point0/cache-control'
 
-cacheControl({
-  publicdir: ({ request }) =>
-    request.location.pathname.endsWith('.pdf')
-      ? 'public, max-age=604800' //         PDFs are versioned by hand — cache a week
-      : cacheControlValues.revalidate, //   everything else: keep the default explicitly
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    cacheControl({
+      publicdir: ({ request }) =>
+        request.location.pathname.endsWith('.pdf')
+          ? 'public, max-age=604800' //       PDFs are versioned by hand — cache a week
+          : cacheControlValues.revalidate, // everything else: keep the default
+    }),
+  )
+  .root()
 ```
 
 `cacheControlValues` exports the three default strings (`immutable`,
@@ -111,10 +124,16 @@ The slots only cover the five variants above, and they always defer to a
 `undefined` (fall through to the normal per-variant procedure).
 
 ```tsx
-cacheControl({
-  // maintenance window: force no-store on everything, even responses that set their own header
-  override: () => 'no-store',
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    cacheControl({
+      // maintenance window: force no-store on everything,
+      // even responses that set their own header
+      override: () => 'no-store',
+    }),
+  )
+  .root()
 ```
 
 Two things only `override` can do: reach variants without a slot (`middleware`,
@@ -123,13 +142,18 @@ existing-header rule, an override that wants to _respect_ an app-set header
 checks `result.response.headers` itself:
 
 ```tsx
-cacheControl({
-  override: ({ response, request }) =>
-    request.location.pathname.startsWith('/downloads/') &&
-    !response.headers.has('cache-control')
-      ? 'private, max-age=0'
-      : undefined, // everything else: normal procedure
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    cacheControl({
+      override: ({ response, request }) =>
+        request.location.pathname.startsWith('/downloads/') &&
+        !response.headers.has('cache-control')
+          ? 'private, max-age=0'
+          : undefined, // everything else: normal procedure
+    }),
+  )
+  .root()
 ```
 
 ## Pairing with compress
@@ -139,8 +163,11 @@ cacheControl({
 `Cache-Control` rides along:
 
 ```tsx
-.middleware(compress())
-.middleware(cacheControl())
+export const root = Point0.lets
+  .root()
+  .middleware(compress())
+  .middleware(cacheControl())
+  .root()
 ```
 
 ## Reference

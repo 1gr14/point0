@@ -44,7 +44,7 @@ The engine side is one option — `server: { socket: true }` in `src/engine.ts` 
 which also turns the socket **feature** on for the client bundle. There is no
 backplane configured: a single process needs none (add
 `backplane: process.env.REDIS_URL` when you run several — see
-[the backplane](socket#where-its-stored--the-engine-serverbackplane)).
+[the backplane](socket#backplane)).
 
 Sign-in is deliberately primitive — a nickname cookie, no passwords
 (`src/lib/auth.tsx`): the point is what happens at connect time, not the auth

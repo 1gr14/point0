@@ -151,12 +151,15 @@ you — JSON by default, or multipart form data when the `Content-Type` is
 
 ```ts
 // POST /api/raw-body/store  with  {"b":777}
-.body(z.object({ b: z.number() }))
-.loader(({ request, body }) => {
-  body // => { b: 777 }       (parsed)
-  request.rawBody // => '{"b":777}'  (original text)
-  request.original.bodyUsed // => true  (framework consumed it)
-})
+export const storeRawBodyAction = root.lets
+  .action('POST', '/api/raw-body/store')
+  .body(z.object({ b: z.number() }))
+  .loader(({ request, body }) => {
+    body // => { b: 777 }       (parsed)
+    request.rawBody // => '{"b":777}'  (original text)
+    request.original.bodyUsed // => true  (framework consumed it)
+  })
+  .action()
 ```
 
 With **no** `.body` schema, point0 doesn't touch the body — `request.original`
@@ -214,16 +217,22 @@ A bare `.action()` with no prior loader is an error.
 **What the loader may return**:
 
 ```ts
-.action(({ body }) => {
-  // plain data → serialized as JSON
-  return { received: true }
+export const echoAction = root.lets
+  .action('POST', '/api/echo')
+  .body(z.object({ msg: z.string() }))
+  .action(({ body }) => {
+    // plain data → serialized as JSON
+    return { received: true }
 
-  // a native Response → returned as-is (text, bytes, custom Content-Type)
-  return new Response('OK', { status: 200, headers: { 'content-type': 'text/plain' } })
+    // a native Response → returned as-is (text, bytes, custom Content-Type)
+    return new Response('OK', {
+      status: 200,
+      headers: { 'content-type': 'text/plain' },
+    })
 
-  // [status, data] → sets the HTTP status
-  return [201, { id }]
-})
+    // [status, data] → sets the HTTP status
+    return [201, { id }]
+  })
 ```
 
 Returning a plain object serializes it to JSON (with your
@@ -256,11 +265,15 @@ The loader's `set` helper writes response status, headers, and cookies — it
 applies to a plain return and to a manually returned `Response` alike:
 
 ```ts
-.action(({ set, body }) => {
-  set.status(201)
-  set.cookies('session', token, { httpOnly: true })
-  return { id }
-})
+export const signInAction = root.lets
+  .action('POST', '/api/sign-in')
+  .body(z.object({ email: z.string(), password: z.string() }))
+  .action(async ({ set, body }) => {
+    const { id, token } = await signIn(body)
+    set.status(201)
+    set.cookies('session', token, { httpOnly: true })
+    return { id }
+  })
 ```
 
 `set` is the same response-effects helper documented for [mutations](mutation)

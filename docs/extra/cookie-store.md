@@ -86,7 +86,7 @@ The options object is the cookie attributes plus three CookieStore-specific
 keys:
 
 ```tsx
-CookieStore.define<string>({
+export const sessionCookie = CookieStore.define<string>({
   name: 'session', // the cookie name (required in object form)
   path: '/', // standard cookie attributes…
   domain: 'app.example.com',
@@ -186,10 +186,13 @@ always do cookies by hand:
 
 ```tsx
 // raw: the response helper + the request bag
-.loader(async ({ set, request }) => {
-  set.cookies('nick', 'alice') // write a Set-Cookie header
-  const nick = request.cookies.nick // read the incoming cookie
-})
+export const nickPage = root.lets
+  .page('/nick')
+  .loader(async ({ set, request }) => {
+    set.cookies('nick', 'alice') // write a Set-Cookie header
+    const nick = request.cookies.nick // read the incoming cookie
+  })
+  .page(/* ... */)
 ```
 
 `CookieStore` replaces that with a defined key that carries its own name,
@@ -273,16 +276,26 @@ are stored, with three modes plus a custom transformer:
 ```tsx
 // 'auto' (the default): strings stored as-is; non-strings are JSON-stringified,
 // and parsing failures fall back to the raw string
-CookieStore.define({ name: 'data' }) // .set({ role: 'admin' }) → '{"role":"admin"}'
+export const dataCookie = CookieStore.define({ name: 'data' })
+// dataCookie.set({ role: 'admin' }) → '{"role":"admin"}'
 
 // false: never transform — set() is String(value), get() is the raw string
-CookieStore.define({ name: 'flag', transformer: false })
+export const flagCookie = CookieStore.define({
+  name: 'flag',
+  transformer: false,
+})
 
 // true: always run the configured transformer
-CookieStore.define<{ role: string }>({ name: 'data', transformer: true })
+export const roleCookie = CookieStore.define<{ role: string }>({
+  name: 'role',
+  transformer: true,
+})
 
 // a DataTransformer object (e.g. superjson) — preserves Date, Map, etc.
-CookieStore.define<Profile>({ name: 'profile', transformer: superjson })
+export const profileCookie = CookieStore.define<Profile>({
+  name: 'profile',
+  transformer: superjson,
+})
 ```
 
 The default `'auto'` covers primitives and plain JSON. For richer values (a
@@ -300,10 +313,15 @@ cookie uses the identity transformer and round-trips as a plain string.
 getter/setter — for a native or React Native cookie store, for example:
 
 ```tsx
-CookieStore.plugin({
-  clientCookieGetter: nativeCookieGetter,
-  clientCookieSetter: nativeCookieSetter,
-})
+export const root = Point0.lets
+  .root()
+  .use(
+    CookieStore.plugin({
+      clientCookieGetter: nativeCookieGetter,
+      clientCookieSetter: nativeCookieSetter,
+    }),
+  )
+  .root()
 ```
 
 Point0 ships only the `document.cookie` pair — a native adapter is yours to

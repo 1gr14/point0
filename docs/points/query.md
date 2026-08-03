@@ -78,7 +78,11 @@ full cache and method surface.
 arktype, typebox, and others — or a custom validate function:
 
 ```tsx
-.input(z.object({ id: z.number(), withAuthor: z.boolean().optional() }))
+export const ideaQuery = root.lets
+  .query()
+  .input(z.object({ id: z.number(), withAuthor: z.boolean().optional() }))
+  .loader(async ({ input }) => ({ idea: await findIdea(input) }))
+  .query()
 ```
 
 Input schemas **merge down the chain**: a parent (a [base](base) or
@@ -102,10 +106,16 @@ from either bundle — kept in both (isomorphic).
 `.loader` runs on the server and returns the data:
 
 ```tsx
-.loader(async ({ input, ctx, request, set }) => {
-  const idea = await prisma.idea.findUniqueOrThrow({ where: { id: input.id } })
-  return { idea }
-})
+export const ideaQuery = root.lets
+  .query()
+  .input(z.object({ id: z.number() }))
+  .loader(async ({ input, ctx, request, set }) => {
+    const idea = await prisma.idea.findUniqueOrThrow({
+      where: { id: input.id },
+    })
+    return { idea }
+  })
+  .query()
 ```
 
 The callback receives the parsed `input`, any `ctx` from `.ctx`/plugins, the

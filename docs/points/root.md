@@ -72,7 +72,11 @@ everything else is for the points below it.
 there's no browser `location`:
 
 ```tsx
-.serverUrl('https://app.example.com')
+export const root = Point0.lets
+  .root()
+  .serverUrl('https://app.example.com')
+  .root()
+
 // action.route.abs() // => "https://app.example.com/api/..."
 ```
 
@@ -85,8 +89,11 @@ layout routes resolve against `clientUrl`; **action (API) routes always use
 `serverUrl`**, because the API lives on the server:
 
 ```tsx
-.serverUrl(sharedEnv.SERVER_URL) // API origin
-.clientUrl(sharedEnv.CLIENT_URL) // page origin
+export const root = Point0.lets
+  .root()
+  .serverUrl(sharedEnv.SERVER_URL) // API origin
+  .clientUrl(sharedEnv.CLIENT_URL) // page origin
+  .root()
 ```
 
 The split is by route kind, not by runtime side — so server-rendered and
@@ -105,7 +112,10 @@ and the data loaders return.
 ```tsx
 import superjson from 'superjson'
 
-.transformer(superjson) // Date, Map, Set, BigInt survive the round-trip
+export const root = Point0.lets
+  .root()
+  .transformer(superjson) // Date, Map, Set, BigInt survive the round-trip
+  .root()
 ```
 
 The transformer needs `{ serialize, deserialize }`. Without one, the default is
@@ -124,7 +134,7 @@ validation already works through Standard Schema:
 ```tsx
 import { zodSchemaHelper } from '@point0/core/schema/zod'
 
-.schemaHelper(zodSchemaHelper())
+export const root = Point0.lets.root().schemaHelper(zodSchemaHelper()).root()
 ```
 
 Helpers ship as subpath exports: `@point0/core/schema/zod`, `/valibot`, `/yup`,
@@ -145,7 +155,7 @@ re-types errors everywhere below: after it, `.error(({ error }) => …)`,
 ```tsx
 import { AppError } from '@/lib/error' // your own error class
 
-.errorClass(AppError)
+export const root = Point0.lets.root().errorClass(AppError).root()
 ```
 
 Without `.errorClass` the default is `ErrorPoint0`. You can replace it with any
@@ -160,12 +170,20 @@ raised, serialized, and rendered on both sides).
 
 ## Prefetch policies
 
-The root sets how pages are prefetched. Three setters:
+The root sets how pages are prefetched. Two triggers, and a shorthand that sets
+both:
 
 ```tsx
-.prefetchPageOnNavigate('serverAndClientQuery') // when a navigation starts
-.prefetchPageOnLinkHover('serverQuery', 200) // on link hover, after 200ms
-.prefetchPagePolicy('serverAndClientQuery') // sets both at once
+export const root = Point0.lets
+  .root()
+  .prefetchPageOnNavigate('serverAndClientQuery') // when a navigation starts
+  .prefetchPageOnLinkHover('serverQuery', 200) // on link hover, after 200ms
+  .root()
+
+export const adminRoot = Point0.lets
+  .root()
+  .prefetchPagePolicy('serverAndClientQuery') // sets both triggers at once
+  .root()
 ```
 
 The policy is one of `'serverQuery'`, `'clientQuery'`, `'serverAndClientQuery'`,
@@ -189,11 +207,14 @@ root. It accumulates across calls and can be overridden at query creation and at
 each call site:
 
 ```tsx
-.queryOptions({
-  retry: false,
-  refetchOnWindowFocus: false,
-  staleTime: 60_000,
-})
+export const root = Point0.lets
+  .root()
+  .queryOptions({
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+  })
+  .root()
 ```
 
 There are type-specific siblings too — `.pageQueryOptions`,
@@ -216,9 +237,12 @@ narrow to one side. The `'error'` shorthand subscribes to every error event —
 this is where app-wide error logging goes:
 
 ```tsx
-.on('error', ({ side, name, error, meta }) => {
-  console.error({ ...meta, side, name, error })
-})
+export const root = Point0.lets
+  .root()
+  .on('error', ({ side, name, error, meta }) => {
+    console.error({ ...meta, side, name, error })
+  })
+  .root()
 ```
 
 Each callback gets `{ side, name, data, error, meta }`. `error` is set on error
@@ -239,8 +263,11 @@ it that renders UI. On a root, `.loading` and `.error` each set the fallback for
 pages, layouts, and components at once:
 
 ```tsx
-.loading(() => <Spinner />)
-.error(({ error }) => <ErrorScreen error={error} />)
+export const root = Point0.lets
+  .root()
+  .loading(() => <Spinner />)
+  .error(({ error }) => <ErrorScreen error={error} />)
+  .root()
 ```
 
 The error component receives the (possibly custom) error instance, so with
@@ -250,8 +277,11 @@ siblings — `.pageLoading` / `.pageError`, `.layoutLoading` / `.layoutError`,
 `.componentError` to give in-component errors a different look from page errors:
 
 ```tsx
-.error(({ error }) => <ErrorPageComponent error={error} />)
-.componentError(({ error }) => <ErrorComponent error={error} />)
+export const root = Point0.lets
+  .root()
+  .error(({ error }) => <ErrorPageComponent error={error} />)
+  .componentError(({ error }) => <ErrorComponent error={error} />)
+  .root()
 ```
 
 Any point below can override these. Full rules in
@@ -278,12 +308,15 @@ point's own `.head`, the global head runs on every page state and reads
 drive the `<title>` from the app's loading/error state:
 
 ```tsx
-.head('global', ({ loading, error }) => ({
-  ...(loading ? { title: 'Loading...' } : {}),
-  ...(error ? { title: error.message } : {}),
-  titleTemplate: '%s | IdeaNick',
-  htmlAttrs: { lang: 'en' },
-}))
+export const root = Point0.lets
+  .root()
+  .head('global', ({ loading, error }) => ({
+    ...(loading ? { title: 'Loading...' } : {}),
+    ...(error ? { title: error.message } : {}),
+    titleTemplate: '%s | IdeaNick',
+    htmlAttrs: { lang: 'en' },
+  }))
+  .root()
 ```
 
 The return is an [unhead](head) object (or a bare string treated as the title).
@@ -303,8 +336,15 @@ pages or queries. This is rarely needed for your own code, but it's how
 third-party handlers — better-auth, an OpenAPI doc server — plug in:
 
 ```tsx
-.middleware(openapi({ route: '/openapi.json', scalar: '/scalar', filter: 'all' }))
-.middleware('/api/auth/*', async ({ request }) => authServer.handler(request.original))
+export const root = Point0.lets
+  .root()
+  .middleware(
+    openapi({ route: '/openapi.json', scalar: '/scalar', filter: 'all' }),
+  )
+  .middleware('/api/auth/*', async ({ request }) =>
+    authServer.handler(request.original),
+  )
+  .root()
 ```
 
 Three forms: global (runs for all requests), route-scoped (a string or route),

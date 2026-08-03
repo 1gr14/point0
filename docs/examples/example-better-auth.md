@@ -21,7 +21,14 @@ run server-side only, so the handler body never reaches the browser bundle:
 
 ```tsx
 // examples/better-auth/src/lib/root.tsx
-.middleware('/api/auth/*', async ({ request }) => await authServer.handler(request.original))
+export const root = Point0.lets
+  .root()
+  // ...
+  .middleware(
+    '/api/auth/*',
+    async ({ request }) => await authServer.handler(request.original),
+  )
+  .root()
 ```
 
 That one mount hands every `/api/auth/*` request to Better Auth's handler, so

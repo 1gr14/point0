@@ -29,11 +29,13 @@ A loading component receives only its render position; an error component also
 receives the error:
 
 ```tsx
-.loading(({ type }) => <Spinner />)
-// type is 'page' | 'component' | 'layout' — where this loading renders
-
-.error(({ type, error }) => <ErrorScreen error={error} />)
-// error is an ErrorPoint0 (or any error class you configured), never a raw Error
+export const root = Point0.lets
+  .root()
+  .loading(({ type }) => <Spinner />)
+  // type is 'page' | 'component' | 'layout' — where this loading renders
+  .error(({ type, error }) => <ErrorScreen error={error} />)
+  // error is an ErrorPoint0 (or any error class you configured), never a raw Error
+  .root()
 ```
 
 `type` lets one component branch on where it sits — a full-page spinner for
@@ -267,11 +269,14 @@ the reserved values from a [`.with`](with) function to render the same
 components:
 
 ```tsx
-.with(() => {
-  const ready = useSomethingReady()
-  if (!ready) return 'loading' // → renders the active loading component
-  if (broke) return new ErrorPoint0('Failed', { status: 500 }) // → error component
-})
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .with(() => {
+    const ready = useSomethingReady()
+    if (!ready) return 'loading' // → renders the active loading component
+    if (broke) return new ErrorPoint0('Failed', { status: 500 }) // → error component
+  })
+  .page(() => <Idea />)
 ```
 
 `.with` also hands you `LoadingComponent` and `ErrorComponent` as props, so you

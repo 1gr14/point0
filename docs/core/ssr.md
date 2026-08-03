@@ -458,9 +458,11 @@ not counted: there is always exactly one. Once the budget is spent, the loop
 discovered and stable).
 
 ```ts
-ssr: {
-  allowedDiscoveryRenders: 1
-} // a single discovery render, no stabilization re-renders
+export const engine = Engine.create({
+  ssr: {
+    allowedDiscoveryRenders: 1, // one discovery render, no stabilization re-renders
+  },
+})
 ```
 
 Spending the budget doesn't lose data — it changes **how** it arrives. The
@@ -613,8 +615,12 @@ export const root = Point0.lets
 The two ends of the trade-off, spelled out:
 
 ```tsx
-// CHEAP: no server render. Looks at the page/layout loaders and calls them from the client.
-.prefetchPageOnLinkHover('serverAndClientQuery')
+// CHEAP: no server render. Looks at the page/layout loaders and calls them
+// from the client.
+export const root = Point0.lets
+  .root()
+  .prefetchPageOnLinkHover('serverAndClientQuery')
+  .root()
 ```
 
 `serverAndClientQuery` renders nothing, so it only sees queries declared
@@ -624,8 +630,12 @@ found only by rendering — it isn't discovered and shows its loading state afte
 navigation. Close the gap with `.onPrefetchPage`.
 
 ```tsx
-// EXPENSIVE: full in-memory SSR render of the target page, just to collect its cache.
-.prefetchPageOnNavigate('pageDehydratedStateAndClientQuery')
+// EXPENSIVE: full in-memory SSR render of the target page, just to collect
+// its cache.
+export const root = Point0.lets
+  .root()
+  .prefetchPageOnNavigate('pageDehydratedStateAndClientQuery')
+  .root()
 ```
 
 `pageDehydratedState*` **renders the page in memory** on the server and returns
@@ -636,7 +646,10 @@ components — but you pay a full server render per prefetch.
 These two **require SSR**. With `ssr: false` they throw:
 
 ```tsx
-.prefetchPagePolicy('pageDehydratedState')
+export const root = Point0.lets
+  .root()
+  .prefetchPagePolicy('pageDehydratedState')
+  .root()
 // throws "Query client dehydrated state can be prefetched only when ssr is enabled..."
 ```
 
@@ -756,19 +769,15 @@ type SsrOptions = {
   prefetchLoadersBeforePageRender?: boolean // also prefetch loaders before first render; default false
 }
 
-// engine config accepts: boolean | SsrOptions
-ssr: true // on, all loop defaults
-ssr: false // off — bare index.html, client-side fetch
-// (omitting `ssr` entirely)             // off — same as `ssr: false`
-ssr: {
-  enabled: false
-} // off (object form, explicitly disabled)
-ssr: {
-  allowedDiscoveryRenders: 1
-} // on, one discovery render, no stabilization re-renders
-ssr: {
-  allowedDiscoveryRenders: 0
-} // on, skip discovery — earliest shell, everything streams
+// the engine config accepts: boolean | SsrOptions
+Engine.create({ ssr: true }) // on, all loop defaults
+Engine.create({ ssr: false }) // off — bare index.html, client-side fetch
+// omitting `ssr` entirely   — off, same as `ssr: false`
+Engine.create({ ssr: { enabled: false } }) // off (object form, explicitly disabled)
+// on, one discovery render, no stabilization re-renders:
+Engine.create({ ssr: { allowedDiscoveryRenders: 1 } })
+// on, skip discovery — earliest shell, everything streams:
+Engine.create({ ssr: { allowedDiscoveryRenders: 0 } })
 ```
 
 SSR is **off** unless you turn it on — omitting `ssr` resolves the same as

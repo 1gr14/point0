@@ -102,7 +102,10 @@ The argument must be a finalized plugin. Pass anything else and you get a type
 error; bypass the type with `as any` and it throws at startup:
 
 ```tsx
-.use(somePage) // throws: .use() expects a plugin created via .plugin(), but received a point of type "page" (...). Used on point <consumer>.
+export const profilePage = generalLayout.lets
+  .page('/profile')
+  .use(somePage) // throws: .use() expects a plugin created via .plugin(), but received a point of type "page" (...). Used on point <consumer>.
+  .page(() => <Profile />)
 ```
 
 ## What `.use()` merges

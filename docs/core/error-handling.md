@@ -328,10 +328,14 @@ own `.error` overrides that inherited `.pageError`.
 that fires even on a loader-less page:
 
 ```tsx
-.with(({ props: { me } }) => {
-  if (!me) return new AppError('Sign in to continue', { code: 'UNAUTHORIZED' })
-  return { me }
-})
+export const authorizedOnlyPlugin = Point0.lets
+  .plugin()
+  .with(({ props: { me } }) => {
+    if (!me)
+      return new AppError('Sign in to continue', { code: 'UNAUTHORIZED' })
+    return { me }
+  })
+  .plugin()
 ```
 
 When you set no custom error component, Point0 renders a built-in fallback that
@@ -397,16 +401,23 @@ return or throw the task from a [`.ctx`](ctx), [`.with`](with), or
 import { redirect } from '@/lib/navigation' // from createNavigation(...)
 
 // in a .with gate — return the task, it's treated as a navigation directive
-.with(({ props: { me } }) => {
-  if (!me) return redirect('signIn')
-  return { me }
-})
+export const redirectUnauthorizedPlugin = Point0.lets
+  .plugin()
+  .with(({ props: { me } }) => {
+    if (!me) return redirect('signIn')
+    return { me }
+  })
+  .plugin()
 
 // in a mutation loader — throw it to short-circuit after the write
-.loader(async ({ input }) => {
-  const idea = await createIdea(input)
-  throw redirect('ideaView', { id: idea.id })
-})
+export const ideaCreateMutation = root.lets
+  .mutation()
+  .input(z.object({ title: z.string().min(1) }))
+  .loader(async ({ input }) => {
+    const idea = await createIdea(input)
+    throw redirect('ideaView', { id: idea.id })
+  })
+  .mutation()
 ```
 
 The two transports differ by where the navigation happens:

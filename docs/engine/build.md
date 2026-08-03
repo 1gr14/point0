@@ -53,12 +53,23 @@ lives in the engine config:
 
 ```ts
 // examples/basic/src/engine.ts
-generate: { meta: './generated/point0/meta.ts', assetsTypes: './generated/point0/assets.d.ts' },
-server: { generate: { points: './generated/point0/points.server.ts' } },
-client: { generate: {
-  points: './generated/point0/points.client.ts',
-  routes: { outfile: './generated/point0/routes.ts', origin: 'process.env.CLIENT_URL' },
-} },
+export const engine = Engine.create({
+  file: import.meta.url,
+  generate: {
+    meta: './generated/point0/meta.ts',
+    assetsTypes: './generated/point0/assets.d.ts',
+  },
+  server: { generate: { points: './generated/point0/points.server.ts' } },
+  client: {
+    generate: {
+      points: './generated/point0/points.client.ts',
+      routes: {
+        outfile: './generated/point0/routes.ts',
+        origin: 'process.env.CLIENT_URL',
+      },
+    },
+  },
+})
 ```
 
 You can run codegen on its own with `point0 generate` — full details on
@@ -209,8 +220,12 @@ export const engine = Engine.create({
 
 ```json
 // examples/basic/package.json
-"build": "point0 build",
-"start": "bun run ./dist/server/index.server.js"
+{
+  "scripts": {
+    "build": "point0 build",
+    "start": "bun run ./dist/server/index.server.js"
+  }
+}
 ```
 
 The built server serves `dist/client` at `/`, so the HTML shell, the JS chunks,

@@ -30,9 +30,18 @@ Three methods, all on **every point type**, all chainable (they return the same
 point):
 
 ```tsx
-.on('pointQuerySuccess', (e) => { /* kept in both bundles */ })
-.serverOn('engineFetchError', (e) => { /* cut from the client bundle */ })
-.clientOn('pointMutationSuccess', (e) => { /* cut from the server bundle */ })
+export const root = Point0.lets
+  .root()
+  .on('pointQuerySuccess', (e) => {
+    /* kept in both bundles */
+  })
+  .serverOn('engineFetchError', (e) => {
+    /* cut from the client bundle */
+  })
+  .clientOn('pointMutationSuccess', (e) => {
+    /* cut from the server bundle */
+  })
+  .root()
 ```
 
 - **`.on`** — not cut from either bundle: kept in both (isomorphic), so it fires
@@ -54,9 +63,18 @@ it covers everything beneath.
 ### By name, by list, or everything
 
 ```tsx
-.on('pointQueryStart', (e) => { /* one event */ })
-.on(['pointQuerySuccess', 'pointMutationSuccess'], (e) => { /* several */ })
-.on('*', (e) => { /* every event */ })
+export const root = Point0.lets
+  .root()
+  .on('pointQueryStart', (e) => {
+    /* one event */
+  })
+  .on(['pointQuerySuccess', 'pointMutationSuccess'], (e) => {
+    /* several */
+  })
+  .on('*', (e) => {
+    /* every event */
+  })
+  .root()
 ```
 
 With `'*'` the callback receives the full event union; with a single name it's
@@ -155,7 +173,10 @@ SSR, but it's the same code). Only `engineFetch*` — the HTTP layer — reports
 `side: 'server'`. During one SSR page load you'll see both:
 
 ```tsx
-.on('*', (e) => order.push([e.name, e.side]))
+export const root = Point0.lets
+  .root()
+  .on('*', (e) => order.push([e.name, e.side]))
+  .root()
 // pointQueryStart        client
 // pointFetchServerStart  client
 // engineFetchStart       server   ← the actual HTTP request
@@ -173,9 +194,46 @@ SSR, but it's the same code). Only `engineFetch*` — the HTTP layer — reports
 error event:
 
 ```tsx
-.on('error', (e) => { /* … */ })
-// equivalent to:
-.on(['pointMutationError', 'pointQueryError', 'pointInfiniteQueryError', 'pointChannelConnectServerError', 'pointChannelConnectClientError', 'pointChannelClaimServerError', 'pointHandlerServerError', 'pointHandlerServerLateError', 'pointHandlerClientError', 'pointHandlerSendClientError', 'pointHandlerSendServerError', 'pointSpaceJoinServerError', 'pointSpaceJoinClientError', 'pointSubscriptionServerError', 'pointSubscriptionClientError', 'socketServerSendRefused', 'socketClientError', 'engineFetchError', 'rscError'], (e) => { /* … */ })
+export const root = Point0.lets
+  .root()
+  .on('error', (e) => {
+    /* … */
+  })
+  .root()
+```
+
+Spelled out, that one call is:
+
+```tsx
+export const root = Point0.lets
+  .root()
+  .on(
+    [
+      'pointMutationError',
+      'pointQueryError',
+      'pointInfiniteQueryError',
+      'pointChannelConnectServerError',
+      'pointChannelConnectClientError',
+      'pointChannelClaimServerError',
+      'pointHandlerServerError',
+      'pointHandlerServerLateError',
+      'pointHandlerClientError',
+      'pointHandlerSendClientError',
+      'pointHandlerSendServerError',
+      'pointSpaceJoinServerError',
+      'pointSpaceJoinClientError',
+      'pointSubscriptionServerError',
+      'pointSubscriptionClientError',
+      'socketServerSendRefused',
+      'socketClientError',
+      'engineFetchError',
+      'rscError',
+    ],
+    (e) => {
+      /* … */
+    },
+  )
+  .root()
 ```
 
 Inside the callback, `error` is narrowed to a non-`undefined` error instance.
@@ -202,13 +260,17 @@ not to await.
 Every callback receives one object with the same five fields:
 
 ```tsx
-.on('pointQueryError', ({ side, name, data, error, meta }) => {
-  side  // => 'client' | 'server' — where the emitting code ran
-  name  // => 'pointQueryError'
-  data  // the raw payload — rich, but heavy to log
-  error // the typed error instance (your error class — ErrorPoint0 by default; undefined on non-error events)
-  meta  // a slim, log-friendly projection of data
-})
+export const root = Point0.lets
+  .root()
+  .on('pointQueryError', ({ side, name, data, error, meta }) => {
+    side // => 'client' | 'server' — where the emitting code ran
+    name // => 'pointQueryError'
+    data // the raw payload — rich, but heavy to log
+    error // the typed error instance (your error class — ErrorPoint0 by default;
+    //       undefined on non-error events)
+    meta // a slim, log-friendly projection of data
+  })
+  .root()
 ```
 
 - **`side`** — `'client'` or `'server'`, set at emit time (see
@@ -228,10 +290,14 @@ Every callback receives one object with the same five fields:
 `data`, meant to go straight into a logger:
 
 ```tsx
-.on('pointQueryStart', ({ meta }) => {
-  meta.point // => 'root:page:home' — the point's id (<scope>:<type>:<name>), not the object
-  meta.input // => { id: 123 }      — the input, sanitized (see below)
-})
+export const root = Point0.lets
+  .root()
+  .on('pointQueryStart', ({ meta }) => {
+    // the point's id (<scope>:<type>:<name>), not the object
+    meta.point // => 'root:page:home'
+    meta.input // => { id: 123 } — the input, sanitized (see below)
+  })
+  .root()
 ```
 
 `data` carries heavy objects (responses, requests, query results) that you don't
@@ -246,9 +312,12 @@ event, `meta.result` and `meta.response` are dropped; for the SSR case, a
 typical error log spreads `meta` and adds the parts it needs:
 
 ```tsx
-.on('error', ({ side, name, error, meta }) => {
-  console.error({ ...meta, side, name, error })
-})
+export const root = Point0.lets
+  .root()
+  .on('error', ({ side, name, error, meta }) => {
+    console.error({ ...meta, side, name, error })
+  })
+  .root()
 ```
 
 ### Binaries in the input are sanitized
@@ -276,12 +345,15 @@ re-emitted as an `emitError` event, carrying the original event and the thrown
 error — so you can observe your own handler failures:
 
 ```tsx
-.on('emitError', ({ error, data, meta }) => {
-  // error      — what your handler threw (coerced to the error class)
-  // data.event — the full original event that was being handled
-  // meta.event — its slim { name, meta } projection
-  console.error('event handler failed', data.event.name, error)
-})
+export const root = Point0.lets
+  .root()
+  .on('emitError', ({ error, data, meta }) => {
+    // error      — what your handler threw (coerced to the error class)
+    // data.event — the full original event that was being handled
+    // meta.event — its slim { name, meta } projection
+    console.error('event handler failed', data.event.name, error)
+  })
+  .root()
 ```
 
 A throw **inside** an `emitError` handler is swallowed silently — there's no

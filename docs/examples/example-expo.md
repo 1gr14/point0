@@ -48,7 +48,15 @@ Metro bundles:
 
 ```js
 // examples/expo/babel.config.js
-plugins: [['@point0/compiler/plugin/babel', { side: 'client', scope: 'root' }]]
+module.exports = function (api) {
+  api.cache(true)
+  return {
+    presets: ['babel-preset-expo'],
+    plugins: [
+      ['@point0/compiler/plugin/babel', { side: 'client', scope: 'root' }],
+    ],
+  }
+}
 ```
 
 The `scope` here must match the rest of the app: the server is `scope: 'root'`

@@ -25,7 +25,11 @@ the client, and trace why one file imports another. It reads a generated
 
 ```jsonc
 // package.json — the script the config above runs
-"mcp:project": "point0-project-mcp --meta ./src/generated/point0/meta.ts",
+{
+  "scripts": {
+    "mcp:project": "point0-project-mcp --meta ./src/generated/point0/meta.ts",
+  },
+}
 ```
 
 `create-point0-app` writes both files for you, so a fresh app has the project

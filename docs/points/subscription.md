@@ -253,11 +253,20 @@ A **completed** stream (the generator returned) and a **typed error** (the
 loader threw, the input failed validation) are answers — they never restart.
 
 ```tsx
-.subscription({ reconnect: true }) // the default — same as omitting it
-.subscription({ reconnect: { immediately: false, delay: 1000 } }) // never retry instantly
-.subscription({ reconnect: { backoff: 1 } }) // constant 300ms waits, no exponent
-.subscription({ reconnect: { retries: 3 } }) // give up after 3 attempts
-.subscription({ reconnect: false }) // a break surfaces as a typed error
+export const newPostsSubscription = root.lets
+  .subscription()
+  .loader(async function* ({ signal }) {
+    for await (const [post] of on(postsEmitter, 'add', { signal })) {
+      yield { post }
+    }
+  })
+  .subscription({ reconnect: { immediately: false, delay: 1000 } }) // never retry instantly
+
+// the other forms the closer takes:
+// { reconnect: true }                  the default — same as omitting it
+// { reconnect: { backoff: 1 } }        constant 300ms waits, no exponent
+// { reconnect: { retries: 3 } }        give up after 3 attempts
+// { reconnect: false }                 a break surfaces as a typed error
 ```
 
 The policy lives on the closing `.subscription({...})` and every

@@ -76,9 +76,14 @@ other point ([page](page), [layout](layout), [component](component),
 the engine:
 
 ```ts
-// engine.ts → server
-points: async () => await import('./generated/point0/points.server'),
-generate: { points: './generated/point0/points.server.ts' },
+// engine.ts
+Engine.create({
+  file: import.meta.url,
+  server: {
+    points: async () => await import('./generated/point0/points.server'),
+    generate: { points: './generated/point0/points.server.ts' },
+  },
+})
 ```
 
 **SSR changes the contents.** With `ssr: true` every page comes to the server
@@ -125,8 +130,15 @@ Set `lazy: false` and the client file becomes the same static-import shape as
 the server one — every point in a single bundle, no per-page chunks:
 
 ```ts
-// engine.ts → client
-generate: { points: { outfile: './generated/point0/points.client.ts', lazy: false } },
+// engine.ts
+Engine.create({
+  file: import.meta.url,
+  client: {
+    generate: {
+      points: { outfile: './generated/point0/points.client.ts', lazy: false },
+    },
+  },
+})
 ```
 
 There is no per-page `.lazy()` method; lazy vs static is a whole-file switch in
@@ -156,7 +168,18 @@ along on the table — a raw expression when it starts with `process.env.` /
 `import.meta.env.` / a backtick, otherwise a quoted string:
 
 ```ts
-generate: { routes: { outfile: './generated/point0/routes.ts', origin: 'process.env.CLIENT_URL' } }
+// engine.ts
+Engine.create({
+  file: import.meta.url,
+  client: {
+    generate: {
+      routes: {
+        outfile: './generated/point0/routes.ts',
+        origin: 'process.env.CLIENT_URL',
+      },
+    },
+  },
+})
 // => Routes.create({ mypage: '/news' }, { origin: process.env.CLIENT_URL })
 ```
 
@@ -223,9 +246,11 @@ Ambient declarations that type imported static assets, so
 `?react` forms type correctly:
 
 ```ts
-generate: {
-  assetsTypes: './generated/point0/assets.d.ts'
-}
+// engine.ts
+Engine.create({
+  file: import.meta.url,
+  generate: { assetsTypes: './generated/point0/assets.d.ts' },
+})
 ```
 
 ```ts
@@ -250,7 +275,16 @@ The extension list and the bare-import type both default from the general
 source of truth — and you can override them per output:
 
 ```ts
-generate: { assetsTypes: { outfile: './generated/point0/assets.d.ts', extensions: ['png', 'svg', 'pdf'] } }
+// engine.ts
+Engine.create({
+  file: import.meta.url,
+  generate: {
+    assetsTypes: {
+      outfile: './generated/point0/assets.d.ts',
+      extensions: ['png', 'svg', 'pdf'],
+    },
+  },
+})
 ```
 
 Reference the file from your `tsconfig` `types` or `include`, or with a
@@ -403,17 +437,20 @@ otherwise), `tags`, `description`, `ssr`, `layouts`, `parents`, `valid` (always
 path).
 
 ```ts
-// engine.ts → generate
-generate: {
-  custom: [
-    {
-      what: 'customFile',
-      outfile: './generated/point0/point-ids.ts',
-      handler: ({ points }) =>
-        `export const pointIds = ${JSON.stringify(points.map((p) => p.id))}`,
-    },
-  ],
-},
+// engine.ts
+Engine.create({
+  file: import.meta.url,
+  generate: {
+    custom: [
+      {
+        what: 'customFile',
+        outfile: './generated/point0/point-ids.ts',
+        handler: ({ points }) =>
+          `export const pointIds = ${JSON.stringify(points.map((p) => p.id))}`,
+      },
+    ],
+  },
+})
 ```
 
 Supply them either as the full raw array form
@@ -439,23 +476,28 @@ Push `importLines` into the file, then reference each point through its
 `renamedExportName`:
 
 ```ts
-// engine.ts → generate
-generate: {
-  custom: [
-    {
-      what: 'customFile',
-      outfile: './generated/point0/my-points.ts',
-      handler: ({ points, emitPointsImports }) => {
-        const { importLines, importedPoints } = emitPointsImports({ points })
-        const lines = [...importLines]
-        for (const { point, renamedExportName } of importedPoints) {
-          lines.push(`export const ${point.name}_${point.type} = ${renamedExportName}`)
-        }
-        return lines.join('\n') + '\n'
+// engine.ts
+Engine.create({
+  file: import.meta.url,
+  generate: {
+    custom: [
+      {
+        what: 'customFile',
+        outfile: './generated/point0/my-points.ts',
+        handler: ({ points, emitPointsImports }) => {
+          const { importLines, importedPoints } = emitPointsImports({ points })
+          const lines = [...importLines]
+          for (const { point, renamedExportName } of importedPoints) {
+            lines.push(
+              `export const ${point.name}_${point.type} = ${renamedExportName}`,
+            )
+          }
+          return lines.join('\n') + '\n'
+        },
       },
-    },
-  ],
-},
+    ],
+  },
+})
 ```
 
 Under `customControlled` the handler also passes the target `outfile` to

@@ -70,21 +70,26 @@ The server loader gets one object. Every key below is always present except the
 parsed inputs, which appear only when you declared their schema:
 
 ```tsx
-.loader(async ({ input, params, search, body, ctx, request, set, data, points }) => {
-  // ...
-})
+export const ideaUpdateAction = root.lets
+  .action('POST', '/api/ideas/:id')
+  .params(z.object({ id: z.string() }))
+  .search(z.object({ draft: z.coerce.boolean().optional() }))
+  .body(z.object({ title: z.string() }))
+  .loader(async ({ params, search, body, ctx, request, set, data, points }) => {
+    // ...
+  })
+  .action()
 ```
 
 ```tsx
-export const ideaNewsQuery = root.lets
-  .query()
-  .params(z.object({ id: z.string() }))
+export const ideaNewsPage = root.lets
+  .page('/ideas/:id/news')
   .search(z.object({ page: z.coerce.number().default(0) }))
   .loader(async ({ params, search }) => {
-    // params and search are parsed and typed — present because their schemas exist
+    // params and search are parsed and typed — params from the route, search because its schema exists
     return { news: await loadNews(params.id, search.page) }
   })
-  .query()
+  .page(({ data }) => <News news={data.news} />)
 ```
 
 - **`input` / `params` / `search` / `body` / `headers` / `cookies`** — the
@@ -111,10 +116,14 @@ export const ideaNewsQuery = root.lets
   `points.findEndpoint`, `points.collection`).
 
 ```tsx
-.loader(async ({ ctx, set }) => {
-  set.cookies('seen', '1') // attach a Set-Cookie to the response
-  return { userId: ctx.me.user.id } // ctx populated by an upstream plugin
-})
+export const meQuery = root.lets
+  .query()
+  .use(authorizedOnlyPlugin) // puts the user in ctx
+  .loader(async ({ ctx, set }) => {
+    set.cookies('seen', '1') // attach a Set-Cookie to the response
+    return { userId: ctx.me.user.id } // ctx populated by an upstream plugin
+  })
+  .query()
 ```
 
 ## What the loader returns
@@ -122,14 +131,18 @@ export const ideaNewsQuery = root.lets
 The return value becomes `data`. Six shapes are accepted:
 
 ```tsx
-.loader(async ({ input }) => {
-  return { idea }                        // 1. plain data → becomes `data`
-  return undefined                       // 2. undefined / nothing → empty data {}
-  return [404, { idea }]                 // 3. [status, data] → also sets the HTTP status
-  return redirect('home')                // 4. a redirect → redirects
-  throw new AppError('Not found')        // 5. an Error (thrown or returned) → error state
-  return <Hello />                       // 6. a React element → element as data (RSC)
-})
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .params(z.object({ id: z.string() }))
+  .loader(async ({ params }) => {
+    return { idea } // 1. plain data → becomes `data`
+    return undefined // 2. undefined / nothing → empty data {}
+    return [404, { idea }] // 3. [status, data] → also sets the HTTP status
+    return redirect('home') // 4. a redirect → redirects
+    throw new AppError('Not found') // 5. an Error (thrown or returned) → error state
+    return <Hello /> // 6. a React element → element as data (RSC)
+  })
+  .page(({ data }) => <Idea idea={data.idea} />)
 ```
 
 - **Plain data** — a plain object (`Record<string, unknown>`). Arrays, strings,
@@ -182,7 +195,10 @@ response carries no data"). On a page, query, layout, component, or provider,
 returning a `Response` is a type error:
 
 ```tsx
-.loader(() => new Response('ok'))
+export const exportMutation = root.lets
+  .mutation()
+  .loader(() => new Response('ok'))
+  .mutation()
 // ✓ on a mutation / action
 // ✗ on a page or query — "Output can not be type of \"Response\" for point of type \"page\""
 ```
@@ -215,7 +231,10 @@ Data returned by a loader round-trips through the configured
 [transformer](transformer), so non-JSON values survive the server-to-client hop:
 
 ```tsx
-.clientLoader(() => ({ date: new Date('2026-01-01') }))
+export const lastSeenQuery = root.lets
+  .query()
+  .clientLoader(() => ({ date: new Date('2026-01-01') }))
+  .query()
 // in the component, `data.date` is a real Date instance, not a string
 ```
 

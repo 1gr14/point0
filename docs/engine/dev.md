@@ -13,8 +13,10 @@ canonical [basic example](example-basic) wires it as:
 
 ```json
 // package.json
-"scripts": {
-  "dev": "point0 dev --hot"
+{
+  "scripts": {
+    "dev": "point0 dev --hot"
+  }
 }
 ```
 
@@ -124,13 +126,16 @@ The server `entry` record can declare more than one entry point — the app, a
 background worker, a one-shot sync script:
 
 ```ts
-server: {
-  entry: {
-    main: './index.server.ts',
-    worker: './worker.server.ts',
-    sync: './sync.server.ts',
+Engine.create({
+  file: import.meta.url,
+  server: {
+    entry: {
+      main: './index.server.ts',
+      worker: './worker.server.ts',
+      sync: './sync.server.ts',
+    },
   },
-}
+})
 ```
 
 [`point0 build`](build) always builds **all** of them. `point0 dev` starts
@@ -151,10 +156,13 @@ To fix a selection in the config instead of typing it every time, use
 `devEntries` on the server side:
 
 ```ts
-server: {
-  entry: { main: './index.server.ts', worker: './worker.server.ts' },
-  devEntries: ['main', 'worker'], // or '*', or a single string
-}
+Engine.create({
+  file: import.meta.url,
+  server: {
+    entry: { main: './index.server.ts', worker: './worker.server.ts' },
+    devEntries: ['main', 'worker'], // or '*', or a single string
+  },
+})
 ```
 
 The ladder is: `--entry` (or `engine.dev({ entries })`) → `devEntries` → the
@@ -277,10 +285,13 @@ queues, the DB client) needs a full restart. point0 classifies **default-hot**:
      ```
   2. A config glob on the server importer:
      ```ts
-     // engine.ts (server config)
-     importer: {
-       cold: ['**/prisma.*']
-     } // matched against the file's own path
+     // engine.ts
+     Engine.create({
+       file: import.meta.url,
+       server: {
+         importer: { cold: ['**/prisma.*'] }, // matched against the file's own path
+       },
+     })
      ```
   3. **Auto** — a file the store provably can't flatten (a location-relative
      `import.meta`, or an un-rewritable relative import like a generated
@@ -355,8 +366,17 @@ point0 fixes this in the compiler. It appends a decoy component-shaped function
 to the final point in the chain:
 
 ```ts
-// what the compiler appends to the last point in a file
-._tail(function X() { return null })
+// you write
+export const ideaQuery = root.lets.query().loader(/* ... */).query()
+
+// the compiler appends a decoy to the last point in the file
+export const ideaQuery = root.lets
+  .query()
+  .loader(/* ... */)
+  .query()
+  ._tail(function X() {
+    return null
+  })
 ```
 
 That statically-declared, capitalized `function X` is all the bundler's static

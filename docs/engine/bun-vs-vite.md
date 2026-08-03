@@ -104,9 +104,12 @@ Under Bun, bundler plugins are **Bun plugins** passed as string names (the
 native dev server resolves them by name in a generated `bunfig.toml`):
 
 ```ts
-client: {
-  bunPlugins: ['bun-plugin-tailwind'], // for the native dev server, only string entries work (object/function plugins are accepted by the type but error in dev — see Gotchas)
-}
+Engine.create({
+  file: import.meta.url,
+  client: {
+    bunPlugins: ['bun-plugin-tailwind'], // for the native dev server, only string entries work (object/function plugins are accepted by the type but error in dev — see Gotchas)
+  },
+})
 ```
 
 Under Vite, they are **Vite plugins** inside the `viteConfig` callback. The
@@ -114,16 +117,21 @@ callback receives `plugins` — Point0's own compiler Vite plugin is already in
 that array — and you spread it in wherever you want, then add your own:
 
 ```ts
-viteConfig: ({ plugins, side }) => ({
-  resolve: { tsconfigPaths: true },
-  plugins: [
-    ...plugins, // point0 compiler vite plugin is already here
-    react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
-    tailwindcss(),
-    side === 'client'
-      ? analyzer({ analyzerMode: 'static', openAnalyzer: false })
-      : null,
-  ],
+Engine.create({
+  file: import.meta.url,
+  client: {
+    viteConfig: ({ plugins, side }) => ({
+      resolve: { tsconfigPaths: true },
+      plugins: [
+        ...plugins, // point0 compiler vite plugin is already here
+        react({ include: /\.(jsx|js|mdx|md|tsx|ts)$/ }),
+        tailwindcss(),
+        side === 'client'
+          ? analyzer({ analyzerMode: 'static', openAnalyzer: false })
+          : null,
+      ],
+    }),
+  },
 })
 ```
 

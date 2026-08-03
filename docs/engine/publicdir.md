@@ -14,17 +14,22 @@ at `/`.
 
 ```ts
 // examples/basic/src/engine.ts — on the client side
-publicdir: {
-  source: [
-    '../public', // every file under public/ → served at /
-    {
-      // virtual files: the function's return value is the file body
-      '.well-known/appspecific/com.chrome.devtools.json': () => '{}',
-      'robots.txt': () => 'User-agent: *\nDisallow: /',
+export const engine = Engine.create({
+  file: import.meta.url,
+  client: {
+    publicdir: {
+      source: [
+        '../public', // every file under public/ → served at /
+        {
+          // virtual files: the function's return value is the file body
+          '.well-known/appspecific/com.chrome.devtools.json': () => '{}',
+          'robots.txt': () => 'User-agent: *\nDisallow: /',
+        },
+      ],
+      outdir: '../dist/client',
     },
-  ],
-  outdir: '../dist/client',
-},
+  },
+})
 ```
 
 With this, `public/favicon.ico` is served at `/favicon.ico`, and `/robots.txt`
@@ -38,10 +43,15 @@ Most apps just point `source` at one directory and copy it into the client
 build:
 
 ```ts
-publicdir: {
-  source: '../public', // mounts public/ at /
-  outdir: '../dist/client',
-},
+Engine.create({
+  file: import.meta.url,
+  client: {
+    publicdir: {
+      source: '../public', // mounts public/ at /
+      outdir: '../dist/client',
+    },
+  },
+})
 ```
 
 A bare string mounts that directory at `/`. Relative paths resolve against the
@@ -55,6 +65,7 @@ engine's `cwd`.
 
 ```ts
 Engine.create({
+  file: import.meta.url,
   server: {
     /* ... */
     publicdir: { source: '../public-server', outdir: '../dist/server/public' },
@@ -77,12 +88,20 @@ a directory mounted at `/`. An **object** maps route paths to directories or
 functions. An **array** combines both, plus `[routePath, value]` tuples:
 
 ```ts
-source: [
-  '../public', //                         directory → mounted at /
-  { '/assets': '../other/dir/assets' }, // a directory elsewhere → mounted at /assets
-  ['/static', '../shared/static'], //      tuple form, same effect
-  { 'robots.txt': () => 'User-agent: *' }, // function → one virtual file
-]
+Engine.create({
+  file: import.meta.url,
+  client: {
+    publicdir: {
+      source: [
+        '../public', // directory → mounted at /
+        { '/assets': '../other/dir/assets' }, // a directory elsewhere → mounted at /assets
+        ['/static', '../shared/static'], // tuple form, same effect
+        { 'robots.txt': () => 'User-agent: *' }, // function → one virtual file
+      ],
+      outdir: '../dist/client',
+    },
+  },
+})
 ```
 
 The **value** behind a route is one of two things:
@@ -95,10 +114,18 @@ The **value** behind a route is one of two things:
   or async both work:
 
 ```ts
-source: {
-  'robots.txt': () => 'User-agent: *\nDisallow: /',
-  'config.json': async () => JSON.stringify(await loadConfig()),
-}
+Engine.create({
+  file: import.meta.url,
+  client: {
+    publicdir: {
+      source: {
+        'robots.txt': () => 'User-agent: *\nDisallow: /',
+        'config.json': async () => JSON.stringify(await loadConfig()),
+      },
+      outdir: '../dist/client',
+    },
+  },
+})
 ```
 
 Route paths are normalized: a leading slash is added, a trailing slash stripped,
@@ -119,10 +146,15 @@ same `/robots.txt`.
 ## `outdir` — required, or nothing serves
 
 ```ts
-publicdir: {
-  source: '../public',
-  outdir: '../dist/client', // copy target at build time
-},
+Engine.create({
+  file: import.meta.url,
+  client: {
+    publicdir: {
+      source: '../public',
+      outdir: '../dist/client', // copy target at build time
+    },
+  },
+})
 ```
 
 `outdir` is the directory the publicdir's files are **copied into at build
@@ -146,11 +178,16 @@ Served real files are cached in memory keyed by absolute path (an LRU); each
 entry holds the file's bytes and content type. `cacheLimit` bounds it:
 
 ```ts
-publicdir: {
-  source: '../public',
-  outdir: '../dist/client',
-  cacheLimit: 64 * 1024 * 1024, // 64 MB; or `false`/`0` to disable; `true`/omit = auto
-},
+Engine.create({
+  file: import.meta.url,
+  client: {
+    publicdir: {
+      source: '../public',
+      outdir: '../dist/client',
+      cacheLimit: 64 * 1024 * 1024, // 64 MB; or `false`/`0` to disable; `true`/omit = auto
+    },
+  },
+})
 ```
 
 | `cacheLimit`     | Effect                                           |
@@ -177,7 +214,12 @@ and caches forever; a stable-name file is `publicdir` and gets a short
 revalidate. Both values are configurable per variant:
 
 ```ts
-.middleware(cacheControl({ publicdir: 'public, max-age=86400' }))
+import { cacheControl } from '@point0/cache-control'
+
+export const root = Point0.lets
+  .root()
+  .middleware(cacheControl({ publicdir: 'public, max-age=86400' }))
+  .root()
 ```
 
 ## How it differs from imported assets
@@ -249,10 +291,13 @@ A **server** publicdir always serves. A **client** publicdir inherits the
 client's `serving` option (default `true`):
 
 ```ts
-client: {
-  serving: 'app.example.com', // this client's publicdir only serves on this host
-  publicdir: { source: '../public', outdir: '../dist/client' },
-}
+Engine.create({
+  file: import.meta.url,
+  client: {
+    serving: 'app.example.com', // this client's publicdir only serves on this host
+    publicdir: { source: '../public', outdir: '../dist/client' },
+  },
+})
 ```
 
 `serving` is `true` (always) / `false` (never) / a host string (serve only when
@@ -266,7 +311,11 @@ server directly:
 
 ```jsonc
 // examples/basic/package.json
-"start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js"
+{
+  "scripts": {
+    "start": "cross-env NODE_ENV=production bun run ./dist/server/index.server.js",
+  },
+}
 ```
 
 When the engine config is re-imported after a build, the publicdir `source` is

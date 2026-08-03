@@ -73,21 +73,30 @@ value:
 
 ```tsx
 // depth 0 (the default): an element as the whole output
-.loader(async () => <Hello />)
+export const helloPage = root.lets
+  .page('/hello')
+  .loader(async () => <Hello />)
+  .page(/* ... */)
 ```
 
 ```tsx
 // elements in first-level fields
-.rsc({ depth: 1 })
-.loader(async () => ({ hero: <Hero /> }))
+export const homePage = root.lets
+  .page('/')
+  .rsc({ depth: 1 })
+  .loader(async () => ({ hero: <Hero /> }))
+  .page(/* ... */)
 ```
 
 ```tsx
 // any depth — every object level consumes one, arrays don't consume any
-.rsc({ depth: 3 })
-.loader(async () => ({
-  blocks: { main: { hero: <Hero />, items: [<Row key="1" />] } },
-}))
+export const homePage = root.lets
+  .page('/')
+  .rsc({ depth: 3 })
+  .loader(async () => ({
+    blocks: { main: { hero: <Hero />, items: [<Row key="1" />] } },
+  }))
+  .page(/* ... */)
 ```
 
 An element deeper than the declared depth fails the loader with an error naming
@@ -347,6 +356,7 @@ reaching the point's [`.error`](loading-error) boundary, so the rest of the page
 stays untouched:
 
 ```tsx
+// the same loader field of postPage above, with a third argument
 article: defer(<Article slug={params.slug} />, <ArticleSkeleton />, <ArticleFailed />),
 ```
 
@@ -354,6 +364,7 @@ It can be a **function of the error** instead of static markup, so the fallback
 can show what actually went wrong:
 
 ```tsx
+// the same field again — the third argument as a function of the error
 article: defer(<Article slug={params.slug} />, <ArticleSkeleton />, (error) => (
   <ArticleFailed message={error.message} />
 )),
@@ -620,8 +631,10 @@ Sending plain data and composing in the render stays the default — the page
 knows what it renders, the types are plain, nothing travels but values:
 
 ```tsx
-.loader(async () => ({ stats: await getStats() }))
-.page(({ data }) => <StatsCard stats={data.stats} />)
+export const statsPage = root.lets
+  .page('/stats')
+  .loader(async () => ({ stats: await getStats() }))
+  .page(({ data }) => <StatsCard stats={data.stats} />)
 ```
 
 Returning elements buys three things this cannot do:

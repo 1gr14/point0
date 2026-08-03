@@ -146,7 +146,7 @@ You don't wire the transfer — it rides on the underlying store:
 Only `SsrStore` values cross the wire; other store policies stay local:
 
 ```ts
-SsrStore.define('desc', () => 'default')
+const $desc = SsrStore.define('desc', () => 'default')
 // ...elsewhere, a client-only store value:
 // → only `desc` is in the dehydrated payload; the client-only value is not
 ```
@@ -164,7 +164,7 @@ until the values stabilize. Two engine options bound it (under `ssr` in
 [engine config](engine-config)):
 
 ```ts
-Engine.create({
+export const engine = Engine.create({
   // ...
   ssr: {
     allowedDiscoveryRenders: Infinity, // soft budget of discovery renders (default Infinity)

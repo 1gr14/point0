@@ -259,8 +259,11 @@ fetch options apply to it (they cannot ride the opt-in upgrade handshake — see
 not cut from either bundle (the browser makes most of these calls).
 
 ```tsx
-.fetchOptions({ credentials: 'include' })
-.fetchOptions(() => ({ headers: { authorization: `Bearer ${getToken()}` } }))
+export const root = Point0.lets
+  .root()
+  .fetchOptions({ credentials: 'include' })
+  .fetchOptions(() => ({ headers: { authorization: `Bearer ${getToken()}` } }))
+  .root()
 ```
 
 ### .rsc
@@ -275,8 +278,16 @@ root/base/plugin — set an app default once). **Server-and-client** — not cut
 from either bundle (isomorphic config). Full page: [RSC](rsc).
 
 ```tsx
-.rsc({ depth: 1 })
-.loader(async () => ({ hero: <Hero />, cta: <HomeCta label="Join" /> }))
+export const homePage = root.lets
+  .page('/')
+  .rsc({ depth: 1 })
+  .loader(async () => ({ hero: <Hero />, cta: <HomeCta label="Join" /> }))
+  .page(({ data }) => (
+    <main>
+      {data.hero}
+      {data.cta}
+    </main>
+  ))
 ```
 
 ### .transformer
@@ -416,9 +427,16 @@ Choose how aggressively a page prefetches, by trigger. `.prefetchPagePolicy` is
 the convenience that sets both navigate and hover at once.
 
 ```tsx
-.prefetchPageOnNavigate('serverAndClientQuery')        // when a navigation starts
-.prefetchPageOnLinkHover('serverAndClientQuery', 200)  // on link hover; 2nd arg = delay (ms)
-.prefetchPagePolicy('serverAndClientQuery', 200)       // both triggers + hover delay
+export const root = Point0.lets
+  .root()
+  .prefetchPageOnNavigate('serverAndClientQuery') // when a navigation starts
+  .prefetchPageOnLinkHover('serverAndClientQuery', 200) // on link hover; 2nd arg = delay (ms)
+  .root()
+
+export const adminRoot = Point0.lets
+  .root()
+  .prefetchPagePolicy('serverAndClientQuery', 200) // both triggers + hover delay
+  .root()
 ```
 
 `.prefetchPageOnLinkHover`'s delay defaults to **30ms**. A per-`<Link>` or
@@ -434,7 +452,12 @@ Register a callback that runs during prefetch (accumulates across calls). On
 **root, base, page, layout** and **plugin**.
 
 ```tsx
-.onPrefetchPage(async ({ location, props }) => { /* warm something up */ })
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .onPrefetchPage(async ({ location, props }) => {
+    /* warm something up */
+  })
+  .page(/* ... */)
 ```
 
 `.onPrefetchPage` is **server-and-client** — kept in both bundles: it runs in
@@ -484,8 +507,12 @@ from the client bundle. On `.use`, a child's tags union with the parent's and
 descriptions concatenate.
 
 ```tsx
-.tag('ideas', 'public')              // variadic, de-duped, accumulates
-.description('Fetch one idea by id') // appends if called again
+export const ideaQuery = root.lets
+  .query()
+  .tag('ideas', 'public') // variadic, de-duped, accumulates
+  .description('Fetch one idea by id') // appends if called again
+  .loader(/* ... */)
+  .query()
 ```
 
 `.tag` and `.description` are point metadata — they do **not** become an OpenAPI

@@ -63,7 +63,10 @@ wouter location hook for your platform. Everything else is optional. If you omit
 `routes` and never call `ClientPoints.mount(points)` first, setup throws:
 
 ```tsx
-createNavigation({ navigate: browserNavigate, hook })
+export const { navigate, Link /* … */ } = createNavigation({
+  navigate: browserNavigate,
+  hook,
+})
 // throws "You should provide routes, or call ClientPoints.mount(points) before createNavigation"
 ```
 
@@ -297,10 +300,14 @@ export const redirectAuthorizedPlugin = Point0.lets
 **From a loader or `.ctx`** — `return` or `throw` it (both work):
 
 ```tsx
-.loader(async ({ ctx }) => {
-  if (!ctx.me) throw redirect('signIn')
-  return { idea: await findIdea() }
-})
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .use(mePlugin)
+  .loader(async ({ ctx }) => {
+    if (!ctx.me) throw redirect('signIn')
+    return { idea: await findIdea() }
+  })
+  .page(/* ... */)
 ```
 
 The same `redirect(...)` value works in all three places, so an auth plugin can
@@ -712,7 +719,7 @@ client that can't document-navigate).
 The reaction is the `stale` option of `createNavigation`:
 
 ```tsx
-createNavigation({
+export const { navigate, Link /* … */ } = createNavigation({
   routes,
   hook,
   // 'navigate' (default) — full document navigation to the same target
@@ -720,12 +727,15 @@ createNavigation({
   // 'off' — behave as if the feature didn't exist
   stale: 'navigate',
 })
+```
 
-// Or take full control — e.g. show your own "new version available" UI.
-// Return 'navigate' / 'error' to hand back to the framework, or nothing to
-// keep ownership (the framework then neither navigates nor commits the
-// failed client navigation — the user stays on the current page):
-createNavigation({
+Or take full control — e.g. show your own "new version available" UI. Return
+`'navigate'` / `'error'` to hand back to the framework, or nothing to keep
+ownership (the framework then neither navigates nor commits the failed client
+navigation — the user stays on the current page):
+
+```tsx
+export const { navigate, Link /* … */ } = createNavigation({
   routes,
   hook,
   stale: async ({ to, error, clientBuildVersion, latestBuildVersion }) => {
@@ -786,7 +796,7 @@ same-tab. Override it on a native shell (capacitor / expo) to open the system
 browser:
 
 ```tsx
-createNavigation({
+export const { navigate, Link /* … */ } = createNavigation({
   routes,
   hook,
   openExternal: (to) => Browser.open({ url: to }),

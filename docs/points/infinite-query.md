@@ -62,8 +62,17 @@ requests of the same shape stitched into a list. The chain is identical up to
 the finalizer:
 
 ```tsx
-.loader(/* ... */).query()         // finite: data is one page
-.loader(/* ... */).infiniteQuery() // infinite: data is { pages, pageParams }
+export const ideaPageQuery = root.lets
+  .query()
+  .input(z.object({ cursor: z.number().optional() }))
+  .loader(async ({ input }) => loadPage(input))
+  .query() // finite: data is one page
+
+export const ideaListQuery = root.lets
+  .infiniteQuery()
+  .input(z.object({ cursor: z.number().optional() }))
+  .loader(async ({ input }) => loadPage(input))
+  .infiniteQuery({/* ... */}) // infinite: data is { pages, pageParams }
 ```
 
 The differences, all driven by that last call:
@@ -126,7 +135,11 @@ signature, not overloads, so the error points at the real gap instead of "no
 overload matches":
 
 ```tsx
-.infiniteQuery({}) // type error: getNextPageParam / initialPageParam / pageParamFromInput missing
+export const ideaListQuery = root.lets
+  .infiniteQuery()
+  .input(z.object({ cursor: z.number().optional() }))
+  .loader(async ({ input }) => loadPage(input))
+  .infiniteQuery({}) // type error: getNextPageParam / initialPageParam / pageParamFromInput missing
 ```
 
 ### getNextPageParam
@@ -136,7 +149,15 @@ Returns the page param for the **next** page from the last loaded page. Return
 `false`.
 
 ```tsx
-getNextPageParam: (lastPage) => lastPage.nextCursor // typed as your loader's return
+export const ideaListQuery = root.lets
+  .infiniteQuery()
+  .input(z.object({ cursor: z.number().optional() }))
+  .loader(async ({ input }) => loadPage(input))
+  .infiniteQuery({
+    getNextPageParam: (lastPage) => lastPage.nextCursor, // typed as your loader's return
+    initialPageParam: undefined,
+    pageParamFromInput: 'cursor',
+  })
 ```
 
 `lastPage` is one page — the exact type your loader returns. Offset and cursor
@@ -152,8 +173,25 @@ The page param for the very first page. Use `0` for offset pagination, or
 `undefined` for cursor pagination that starts with no cursor:
 
 ```tsx
-initialPageParam: 0 // offset: start at page 0
-initialPageParam: undefined // cursor: no initial cursor
+export const ideaListQuery = root.lets
+  .infiniteQuery()
+  .input(z.object({ offset: z.number().optional() }))
+  .loader(async ({ input }) => loadPage(input))
+  .infiniteQuery({
+    getNextPageParam: (lastPage) => lastPage.nextOffset,
+    initialPageParam: 0, // offset: start at page 0
+    pageParamFromInput: 'offset',
+  })
+
+export const ideaFeedQuery = root.lets
+  .infiniteQuery()
+  .input(z.object({ cursor: z.number().optional() }))
+  .loader(async ({ input }) => loadPage(input))
+  .infiniteQuery({
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: undefined, // cursor: no initial cursor
+    pageParamFromInput: 'cursor',
+  })
 ```
 
 ### pageParamFromInput
@@ -165,17 +203,32 @@ query, so it needs to know where in that input the page param goes.
 Two forms. A string path points at the field that holds the cursor:
 
 ```tsx
-pageParamFromInput: 'cursor' // input.cursor
-pageParamFromInput: 'page' // input.page
+export const ideaListQuery = root.lets
+  .infiniteQuery()
+  .input(z.object({ cursor: z.number().optional() }))
+  .loader(async ({ input }) => loadPage(input))
+  .infiniteQuery({
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: undefined,
+    pageParamFromInput: 'cursor', // input.cursor; 'page' would point at input.page
+  })
 ```
 
 Or an explicit get/set pair for nested or computed placement:
 
 ```tsx
-pageParamFromInput: {
-  get: ({ input, get }) => get(input, 'cursor'),
-  set: ({ input, value, set }) => set(input, 'cursor', value),
-}
+export const ideaListQuery = root.lets
+  .infiniteQuery()
+  .input(z.object({ paging: z.object({ cursor: z.number().optional() }) }))
+  .loader(async ({ input }) => loadPage(input))
+  .infiniteQuery({
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: undefined,
+    pageParamFromInput: {
+      get: ({ input, get }) => get(input, 'paging.cursor'),
+      set: ({ input, value, set }) => set(input, 'paging.cursor', value),
+    },
+  })
 ```
 
 The string form supports dotted paths; `get`/`set` receive Point0's path

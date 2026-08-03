@@ -143,8 +143,10 @@ export {}
 ```
 
 ```json
-"scripts": {
-  "start": "bun run ./dist/server/sync.server.js && bun run ./dist/server/index.server.js"
+{
+  "scripts": {
+    "start": "bun run ./dist/server/sync.server.js && bun run ./dist/server/index.server.js"
+  }
 }
 ```
 

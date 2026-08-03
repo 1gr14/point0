@@ -15,13 +15,18 @@ a plain `import`, not in `ctx` — the import is stripped from the client bundle
 anyway.)
 
 ```tsx
-.ctx(async ({ request }) => {
-  return { me: await getMe({ request }) } // me is now in ctx for every loader below
-})
-.loader(async ({ ctx }) => {
-  const ideas = await prisma.idea.findMany({ where: { authorId: ctx.me?.id } })
-  return { ideas }
-})
+export const myIdeasQuery = root.lets
+  .query()
+  .ctx(async ({ request }) => {
+    return { me: await getMe({ request }) } // me is now in ctx for every loader below
+  })
+  .loader(async ({ ctx }) => {
+    const ideas = await prisma.idea.findMany({
+      where: { authorId: ctx.me?.id },
+    })
+    return { ideas }
+  })
+  .query()
 ```
 
 **Cut from the client bundle — its body and the imports it uses are removed, so
@@ -51,8 +56,12 @@ query/mutation runs in the browser with no endpoint, so — like a loader-less
 What you return is shallow-merged onto the previous context — later keys win:
 
 ```tsx
-.ctx(() => ({ x: 1 }))
-.ctx(({ ctx }) => ({ y: ctx.x + 1, x: 999 })) // reads x from the previous ctx
+export const myIdeasQuery = root.lets
+  .query()
+  .ctx(() => ({ x: 1 }))
+  .ctx(({ ctx }) => ({ y: ctx.x + 1, x: 999 })) // reads x from the previous ctx
+  .loader(/* ... */)
+  .query()
 // nextCtx = { ...prevCtx, ...returned }  =>  { x: 999, y: 2 }
 ```
 
@@ -63,10 +72,14 @@ Return `undefined` (or nothing) and the context is left untouched — useful for
 `.ctx` that only validates or redirects:
 
 ```tsx
-.ctx(({ ctx }) => {
-  if (!ctx.feature) return // no override
-  return { extra: load() }
-})
+export const myIdeasQuery = root.lets
+  .query()
+  .ctx(({ ctx }) => {
+    if (!ctx.feature) return // no override
+    return { extra: load() }
+  })
+  .loader(/* ... */)
+  .query()
 ```
 
 ## What the function receives
@@ -74,13 +87,17 @@ Return `undefined` (or nothing) and the context is left untouched — useful for
 The callback gets one object:
 
 ```tsx
-.ctx(({ ctx, request, set, points }) => {
-  // ctx     — the context accumulated so far (fully typed)
-  // request — the incoming Request0
-  // set     — response helper for headers / cookies / status
-  // points  — the server-side points collection (e.g. openapi reads it to build its schema)
-  return {}
-})
+export const myIdeasQuery = root.lets
+  .query()
+  .ctx(({ ctx, request, set, points }) => {
+    // ctx     — the context accumulated so far (fully typed)
+    // request — the incoming Request0
+    // set     — response helper for headers / cookies / status
+    // points  — the server-side points collection (e.g. openapi reads it to build its schema)
+    return {}
+  })
+  .loader(/* ... */)
+  .query()
 ```
 
 Parsed `input` / `params` / `search` / `body` / `headers` / `cookies` are also
@@ -91,8 +108,12 @@ present when the matching schema is declared **above** this `.ctx` in the chain.
 When the values don't depend on the request, pass an object directly:
 
 ```tsx
-.ctx({ tenant: 'acme' })          // same as .ctx(() => ({ tenant: 'acme' }))
-.ctx(() => ({ now: Date.now() }))  // a function for request-time values
+export const myIdeasQuery = root.lets
+  .query()
+  .ctx({ tenant: 'acme' }) // same as .ctx(() => ({ tenant: 'acme' }))
+  .ctx(() => ({ now: Date.now() })) // a function for request-time values
+  .loader(/* ... */)
+  .query()
 ```
 
 Passing a function where an object is expected is a type error
@@ -105,19 +126,30 @@ Return (or throw) a `RedirectTask` to redirect — later `.ctx` calls and the
 loader don't run:
 
 ```tsx
-.ctx(({ ctx }) => {
-  if (!ctx.me) return redirect('signIn')
-  return { me: ctx.me } // narrows me to non-null for the rest of the chain
-})
+export const myIdeasQuery = root.lets
+  .query()
+  .ctx(({ ctx }) => {
+    if (!ctx.me) return redirect('signIn')
+    return { me: ctx.me } // narrows me to non-null for the rest of the chain
+  })
+  .loader(/* ... */)
+  .query()
 ```
 
 Return (or throw) an `Error` to abort the request with that error:
 
 ```tsx
-.ctx(({ ctx }) => {
-  if (!ctx.me) throw new ErrorPoint0('Only for authorized users', { code: 'UNAUTHORIZED' })
-  return { me: ctx.me }
-})
+export const myIdeasQuery = root.lets
+  .query()
+  .ctx(({ ctx }) => {
+    if (!ctx.me)
+      throw new ErrorPoint0('Only for authorized users', {
+        code: 'UNAUTHORIZED',
+      })
+    return { me: ctx.me }
+  })
+  .loader(/* ... */)
+  .query()
 ```
 
 `ErrorPoint0` is the framework's default error class; returning it and throwing
@@ -131,11 +163,17 @@ By default a `.ctx` value is reachable only through `ctx.x`. Pass `expose` to
 also spread the key at the top level of later `.ctx` and `.loader` arguments:
 
 ```tsx
-.ctx({ x: 1 }, true)            // expose every returned key
-.loader(({ ctx, x }) => ...)   // both ctx.x and bare x are available
+export const allExposedQuery = root.lets
+  .query()
+  .ctx({ x: 1 }, true) // expose every returned key
+  .loader(({ ctx, x }) => ({ x })) // both ctx.x and bare x are available
+  .query()
 
-.ctx({ x: 1, y: 2 }, ['x'])    // expose only x
-.loader(({ x }) => ...)        // x is here; y is NOT — only ctx.y
+export const oneExposedQuery = root.lets
+  .query()
+  .ctx({ x: 1, y: 2 }, ['x']) // expose only x
+  .loader(({ x }) => ({ x })) // x is here; y is NOT — only ctx.y
+  .query()
 ```
 
 `expose: true` exposes all returned keys; a string array exposes only those.

@@ -72,9 +72,13 @@ bun run test:e2e:dev # see e2e section for the three server modes
 
 ```jsonc
 // package.json — start0
-"test:int":  "cross-env NODE_ENV=test bun test --pass-with-no-tests --preload ./src/test/setup/int.ts .int.test.",
-"test:dom":  "cross-env NODE_ENV=test bun test --pass-with-no-tests --preload ./src/test/setup/dom.ts .dom.test.",
-"test":      "bun test:unit && bun test:dom && bun test:int && bun test:e2e:build",
+{
+  "scripts": {
+    "test:int": "cross-env NODE_ENV=test bun test --pass-with-no-tests --preload ./src/test/setup/int.ts .int.test.",
+    "test:dom": "cross-env NODE_ENV=test bun test --pass-with-no-tests --preload ./src/test/setup/dom.ts .dom.test.",
+    "test": "bun test:unit && bun test:dom && bun test:int && bun test:e2e:build",
+  },
+}
 ```
 
 The trailing `.int.test.` is Bun's filename filter; `--preload` runs the setup

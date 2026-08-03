@@ -36,10 +36,13 @@ writes matter only on the server, under SSR or for an endpoint call.
 ## set.status — the HTTP status
 
 ```tsx
-.loader(({ set }) => {
-  set.status(201) // any number; no validation, no clamping
-  return { ok: true }
-})
+export const createIdeaMutation = root.lets
+  .mutation()
+  .loader(({ set }) => {
+    set.status(201) // any number; no validation, no clamping
+    return { ok: true }
+  })
+  .mutation()
 ```
 
 The status you write wins over the response's default `200`. When the status
@@ -61,14 +64,20 @@ or caller sees. The tuple's status is **erased from the data type**, so `data`
 stays `{ x: number }`, never `[number, …]`. It works the same on a mutation:
 
 ```tsx
-.loader(() => [201, { x: 1 }]).mutation()
+export const createIdeaMutation = root.lets
+  .mutation()
+  .loader(() => [201, { x: 1 }])
+  .mutation()
 // result.response?.status === 201, result.data?.x === 1
 ```
 
 If the data slot is `undefined` or `null`, the data normalizes to `{}`:
 
 ```tsx
-.loader(() => [204, undefined]) // status 204, data {}
+export const deleteIdeaMutation = root.lets
+  .mutation()
+  .loader(() => [204, undefined]) // status 204, data {}
+  .mutation()
 ```
 
 ## set.headers — response headers
@@ -157,13 +166,20 @@ state, and header keys are lowercased here too. Because every middleware,
 what an earlier one wrote:
 
 ```tsx
-// a middleware sets a header...
-.middleware(async ({ set, next }) => {
-  set.headers('y', '3')
-  return await next()
-})
-// ...and a page loader downstream reads it back
-.loader(({ set }) => ({ x: 1, y: set.inspect.headers.y, z: set.inspect.headers.z }))
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  // a middleware sets a header...
+  .middleware(async ({ set, next }) => {
+    set.headers('y', '3')
+    return await next()
+  })
+  // ...and the page loader downstream reads it back
+  .loader(({ set }) => ({
+    x: 1,
+    y: set.inspect.headers.y,
+    z: set.inspect.headers.z,
+  }))
+  .page(/* ... */)
 // renders x=1, y='3', z=undefined  (z was never set)
 ```
 
@@ -214,8 +230,14 @@ holds for a middleware: returning a `Response` short-circuits the chain, but
 effects set by earlier middlewares still land:
 
 ```tsx
-.middleware(async ({ set, next }) => { set.headers('y', '3'); return await next() })
-.middleware(() => new Response('custom response'))
+export const root = Point0.lets
+  .root()
+  .middleware(async ({ set, next }) => {
+    set.headers('y', '3')
+    return await next()
+  })
+  .middleware(() => new Response('custom response'))
+  .root()
 // final response: body 'custom response', status 200, header y === '3'
 ```
 
@@ -240,7 +262,12 @@ effects collector, so the page responds with the right code.
 **A loader (or `.ctx`) throws or returns an error with a status:**
 
 ```tsx
-.loader(() => { throw new AppError('gone', { status: 410 }) })
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .loader(() => {
+    throw new AppError('gone', { status: 410 })
+  })
+  .page(/* ... */)
 // SSR response.status === 410   (returning the error works the same)
 ```
 

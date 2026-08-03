@@ -256,11 +256,15 @@ You can also configure this in the engine, matching by import target:
 
 ```ts
 // examples/expo/src/engine.ts
-compiler: {
-  importer: {
-    mock: ['react-native', 'expo-router'], // replace with a no-op mock module
+export const engine = Engine.create({
+  file: import.meta.url,
+  server: {
+    scope: 'root',
+    importer: {
+      mock: ['react-native', 'expo-router'], // replace with a no-op mock module
+    },
   },
-}
+})
 ```
 
 - `mock` swaps the import for a recursive no-op proxy (`createMock()`) — every
@@ -345,9 +349,14 @@ to get them memoized too. The behavior keys off React Compiler's own
 `compilationMode` option, which you pass to the plugin the usual way:
 
 ```ts
-compiler: {
-  babel: [['babel-plugin-react-compiler', { compilationMode: 'infer' }]],
-}
+Engine.create({
+  file: import.meta.url,
+  client: {
+    compiler: {
+      babel: [['babel-plugin-react-compiler', { compilationMode: 'infer' }]],
+    },
+  },
+})
 ```
 
 - unset / `'infer'` / `'syntax'` → keep the plugin **and** inject `"use memo"`.

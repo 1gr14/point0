@@ -79,10 +79,13 @@ Set `.transformer(superjson)` on the root and the same loader gives the page a
 real `Date`:
 
 ```tsx
-.page(({ data }) => {
-  // runtime (with superjson): data.createdAt instanceof Date === true
-  return <time>{data.createdAt.toISOString()}</time>
-})
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .loader(() => ({ createdAt: new Date('2026-01-01') }))
+  .page(({ data }) => {
+    // runtime (with superjson): data.createdAt instanceof Date === true
+    return <time>{data.createdAt.toISOString()}</time>
+  })
 ```
 
 The same holds for request bodies. A `BigInt` in a mutation or [action](action)

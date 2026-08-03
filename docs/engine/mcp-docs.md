@@ -24,8 +24,10 @@ package and runs over stdio.
 
 ```jsonc
 // package.json — the script the config calls
-"scripts": {
-  "mcp:docs": "point0-docs-mcp"
+{
+  "scripts": {
+    "mcp:docs": "point0-docs-mcp",
+  },
 }
 ```
 

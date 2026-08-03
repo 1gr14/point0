@@ -368,43 +368,51 @@ The full model — server components, interactive islands, and streaming with
 
 ## Sockets: channels and rooms
 
-Chat, presence, live dashboards — same builder, same types. A **channel** is one
-authenticated WebSocket: its `.connector` runs like a loader and establishes who
-you are as an identity. A **space** grows rooms from that channel — the client
-joins, the server's `.joiner` decides which rooms it enters. Handlers are the
-typed messages that ride the socket: the client sends, the server pushes to a
-room, and every subscribed component wakes.
+Chat, presence, live dashboards — same builder, same types. A **channel** is the
+one WebSocket: its `.connector` runs like a loader and establishes the
+connection's server-held identity (a guest is simply `userId: null`). A
+**space** grows rooms from that channel — the client joins, the server's
+`.joiner` decides which rooms it enters. Handlers are the typed messages that
+ride the socket: the client sends, the server pushes to a room, and every
+subscribed component wakes.
 
 ```tsx
 import { root } from '@/lib/root'
-import { authorizedOnlyPlugin } from '@/lib/auth'
+import { readSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { messageSchema } from '@/lib/schemas'
 import * as z from 'zod'
 
-// the channel: one authenticated socket. The connector establishes the identity.
+// the channel: one socket, open to everyone. The connector establishes the identity —
+// `userId: null` is a guest; what needs a user is gated where it runs, server-side.
 export const appChannel = root.lets
   .channel()
-  .use(authorizedOnlyPlugin) // ctx.me — the current user
-  .connector(({ ctx }) => ({ userId: ctx.me.user.id }))
+  .connector(async ({ request }) => {
+    const me = await readSession(request)
+    return { userId: me?.userId ?? null }
+  })
   .channel()
 
-// a space of chat rooms — one room per chat; the joiner says who's let in
+// a space of chat rooms — one room per chat; the joiner is the gate
 export const chatSpace = appChannel.lets
   .space<{ chatId: string }>()
   .input(z.object({ chatId: z.string() }))
-  .joiner(async ({ input, identity }) =>
-    (await isMember(identity.userId, input.chatId))
-      ? { chatId: input.chatId }
-      : undefined,
-  )
+  .joiner(async ({ input, identity }) => {
+    if (!(await isMember(identity.userId, input.chatId))) {
+      throw new AppError('Not a member of this chat', { code: 'FORBIDDEN' })
+    }
+    return { chatId: input.chatId }
+  })
   .space()
 
-// client → server — save the message, then push it to the whole room
+// client → server — check the identity, save the message, push it to the whole room
 export const messageSend = chatSpace.lets
   .serverHandler()
   .clientSend(z.object({ text: z.string().min(1) }))
   .serverReply(async ({ input, identity, room }) => {
+    if (identity.userId === null) {
+      throw new AppError('Sign in to send messages', { code: 'UNAUTHORIZED' })
+    }
     const message = await prisma.message.create({
       data: {
         text: input.text,
@@ -424,18 +432,19 @@ export const messageAdded = chatSpace.lets
   .clientHandler()
 ```
 
-On the client, a component joins its room and the newest message just arrives —
-no polling, no refetch:
+On the client, a component joins its room and the messages just arrive — no
+polling, no refetch:
 
 ```tsx
 export const ChatRoom = ({ chatId }: { chatId: string }) => {
   const membership = chatSpace.useMembership({ chatId }) // join this chat's room
-  const { data } = messageAdded(membership).useOnMessageFromServer(() => {}, {
-    lastMessageFromServerAsData: true, // keep the latest push in `data`
+  const [messages, setMessages] = useState<Message[]>([])
+  messageAdded(membership).useOnMessageFromServer(({ message }) => {
+    setMessages((prev) => [...prev, message])
   })
   const send = (text: string) => messageSend(membership).sendToServer({ text })
   // an <appChannel.Connection> at the app root holds the one socket every room rides
-  return <Chat newest={data} onSend={send} />
+  return <Chat messages={messages} onSend={send} />
 }
 ```
 

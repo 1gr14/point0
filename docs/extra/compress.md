@@ -69,10 +69,19 @@ client accepts, the option's preference order decides — the default
 `['br', 'gzip']` prefers brotli (denser) and falls back to gzip (universal):
 
 ```tsx
-compress({ encodings: ['gzip'] }) // gzip only — e.g. to save origin CPU
-compress({ brotliQuality: 4 }) //    default 5 — the origin sweet spot
-compress({ gzipLevel: 9 }) //        default: zlib's own (6)
+export const root = Point0.lets
+  .root()
+  .middleware(
+    compress({
+      encodings: ['br', 'gzip'], // the default order — brotli, then gzip
+      brotliQuality: 4, //          default 5 — the origin sweet spot
+      gzipLevel: 9, //              default: zlib's own (6)
+    }),
+  )
+  .root()
 ```
+
+Pass `encodings: ['gzip']` to drop brotli altogether — e.g. to save origin CPU.
 
 ## Per-response control: `tune` and `tuneCompress`
 
@@ -94,13 +103,18 @@ result object the middleware got back from `next()` (`response`, `request`,
 `variant`, `scope`, `error`):
 
 ```tsx
-compress({
-  tune: (result) => {
-    if (result.variant.type === 'endpoint') return false // never compress API responses
-    if (result.variant.type === 'page') return { brotliQuality: 11 } // max density for the SSR document
-    return undefined
-  },
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    compress({
+      tune: (result) => {
+        if (result.variant.type === 'endpoint') return false // never compress API responses
+        if (result.variant.type === 'page') return { brotliQuality: 11 } // max density for the SSR document
+        return undefined
+      },
+    }),
+  )
+  .root()
 ```
 
 ### From a handler: `tuneCompress()`
@@ -113,10 +127,14 @@ value:
 ```tsx
 import { tuneCompress } from '@point0/compress'
 
-.action(async () => {
-  tuneCompress(false) // a long-lived LLM stream — nothing may sit between us and the client
-  return new Response(llmStream, { headers: { 'content-type': 'text/plain' } })
-})
+export const llmAction = root.lets
+  .action('POST', '/api/llm')
+  .action(async () => {
+    tuneCompress(false) // a long-lived LLM stream — nothing may sit between us and the client
+    return new Response(llmStream, {
+      headers: { 'content-type': 'text/plain' },
+    })
+  })
 ```
 
 `tuneCompress(false)` is the common opt-out (a stream that must not be buffered

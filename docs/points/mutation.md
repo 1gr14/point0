@@ -77,10 +77,14 @@ The [`.loader`](loader) is the function that runs when the mutation fires; its
 return value becomes the mutation's `data`:
 
 ```tsx
-.loader(async ({ input }) => {
-  const idea = await prisma.idea.create({ data: input })
-  return { idea } // => mutation.data is { idea }
-})
+export const ideaCreateMutation = root.lets
+  .mutation()
+  .input(z.object({ title: z.string().min(1) }))
+  .loader(async ({ input }) => {
+    const idea = await prisma.idea.create({ data: input })
+    return { idea } // => mutation.data is { idea }
+  })
+  .mutation()
 ```
 
 The server `.loader` is **server-only** — cut from the client bundle: its body
@@ -91,10 +95,20 @@ never both (see [one loader per point](loader#one-loader-per-point)):
 
 ```tsx
 // either: a server loader → cut from the client bundle (body + imports gone); the mutation is an HTTP endpoint
-.loader(async ({ input }) => ({ idea: await prisma.idea.create({ data: input }) }))
+export const ideaCreateMutation = root.lets
+  .mutation()
+  .input(z.object({ title: z.string().min(1) }))
+  .loader(async ({ input }) => ({
+    idea: await prisma.idea.create({ data: input }),
+  }))
+  .mutation()
 
 // or: a client loader → cut from the server bundle (body + imports gone); no server request at all
-.clientLoader(async ({ input }) => ({ ok: await callSomeBrowserApi(input) }))
+export const draftSaveMutation = root.lets
+  .mutation()
+  .clientInput(z.object({ title: z.string().min(1) }))
+  .clientLoader(async ({ input }) => ({ ok: await callSomeBrowserApi(input) }))
+  .mutation()
 ```
 
 `.clientLoader` is **client-only** — cut from the server bundle: body and its
@@ -110,7 +124,11 @@ full callback surface and how server code is removed from the client build.
 arktype, and others — or a custom validate function:
 
 ```tsx
-.input(z.object({ title: z.string().min(1), content: z.string().min(1) }))
+export const ideaCreateMutation = root.lets
+  .mutation()
+  .input(z.object({ title: z.string().min(1), content: z.string().min(1) }))
+  .loader(async ({ input }) => ({ idea: await createIdea(input) }))
+  .mutation()
 ```
 
 For a client loader, use `.clientInput` (client side) or `.sharedInput` (both

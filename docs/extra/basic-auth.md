@@ -39,15 +39,21 @@ gates every request reaching that point's scope — this is the whole-site gate
 from above:
 
 ```tsx
-// guards every request under root
-.middleware(basicAuth({ users: { admin: 'secret' } }))
+export const root = Point0.lets
+  .root()
+  // guards every request under root
+  .middleware(basicAuth({ users: { admin: 'secret' } }))
+  .root()
 ```
 
 **Guard one path.** `.middleware` also takes a route, so you can scope the gate
 to a subtree — e.g. an `/admin/*` area while the rest of the site stays open:
 
 ```tsx
-.middleware('/admin/*', basicAuth({ users: { admin: 'secret' } }))
+export const root = Point0.lets
+  .root()
+  .middleware('/admin/*', basicAuth({ users: { admin: 'secret' } }))
+  .root()
 ```
 
 **Guard the OpenAPI docs.** Pass it as the `before` option of
@@ -58,15 +64,18 @@ every shipped example uses it:
 import { openapi } from '@point0/openapi'
 
 // examples/basic/src/lib/root.tsx
-.middleware(
-  openapi({
-    route: '/openapi.json',
-    scalar: '/scalar',
-    swagger: '/swagger',
-    filter: 'all',
-    before: basicAuth({ users: { admin: 'admin' } }), // ← the gate
-  }),
-)
+export const root = Point0.lets
+  .root()
+  .middleware(
+    openapi({
+      route: '/openapi.json',
+      scalar: '/scalar',
+      swagger: '/swagger',
+      filter: 'all',
+      before: basicAuth({ users: { admin: 'admin' } }), // ← the gate
+    }),
+  )
+  .root()
 ```
 
 Now `/openapi.json`, `/scalar`, and `/swagger` prompt for a login; anything else
@@ -81,17 +90,30 @@ the compiler strips server middleware bodies out of the client bundle.
 normalized to a `{ username: password }` record:
 
 ```tsx
-basicAuth({ users: { admin: 'secret', john: 'pass123' } }) // record
-basicAuth({ users: 'admin:secret' }) //                       single "user:pass" string
-basicAuth({ users: ['admin:secret', 'john:pass123'] }) //     list of "user:pass" strings
+export const root = Point0.lets
+  .root()
+  .middleware(basicAuth({ users: { admin: 'secret', john: 'pass123' } }))
+  .root()
 ```
+
+The same pair also goes in as a single `"user:pass"` string
+(`users: 'admin:secret'`) or as a list of them
+(`users: ['admin:secret', 'john:pass123']`).
 
 Use the string form in production — keep the credentials in an env var, not in
 source. This is what `create-point0-app` scaffolds and what Start0 ships:
 
 ```tsx
 // packages/create-app/template/src/lib/root.tsx
-before: basicAuth({ users: serverEnv.OPENAPI_CREDENTIALS }) // e.g. "admin:admin"
+export const root = Point0.lets
+  .root()
+  .middleware(
+    openapi({
+      route: '/openapi.json',
+      before: basicAuth({ users: serverEnv.OPENAPI_CREDENTIALS }), // e.g. "admin:admin"
+    }),
+  )
+  .root()
 ```
 
 A `"user:pass"` string splits on the **first** `:`, so the password may itself
@@ -100,7 +122,11 @@ string with no `:`) **throws at config time** — when `basicAuth(...)` is calle
 not per request:
 
 ```tsx
-basicAuth({ users: 'admin:' }) // throws: Invalid user string format. Expected "username:password".
+export const root = Point0.lets
+  .root()
+  // throws: Invalid user string format. Expected "username:password".
+  .middleware(basicAuth({ users: 'admin:' }))
+  .root()
 ```
 
 Passwords are compared as **plaintext** with strict `===`, guarded by
@@ -115,12 +141,17 @@ entirely. It receives the parsed credentials plus the full [request](request),
 returns a boolean, and may be async:
 
 ```tsx
-basicAuth({
-  validator: async ({ username, password, request }) => {
-    const user = await db.user.findUnique({ where: { username } })
-    return !!user && (await verifyHash(password, user.passwordHash))
-  },
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    basicAuth({
+      validator: async ({ username, password, request }) => {
+        const user = await db.user.findUnique({ where: { username } })
+        return !!user && (await verifyHash(password, user.passwordHash))
+      },
+    }),
+  )
+  .root()
 ```
 
 `users` and `validator` are **mutually exclusive** — pass exactly one. The type
@@ -133,14 +164,19 @@ response is built — for logging or metrics. They may be async (and are awaited
 but can't change the response:
 
 ```tsx
-basicAuth({
-  users: { admin: 'secret' },
-  onUnauthorized: ({ ip }) => console.warn('no credentials', { ip }),
-  onWrongCredentials: ({ username, ip }) =>
-    console.warn('bad credentials', { username, ip }),
-  onLimitExceeded: ({ username, ip }) =>
-    console.error('throttled', { username, ip }),
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    basicAuth({
+      users: { admin: 'secret' },
+      onUnauthorized: ({ ip }) => console.warn('no credentials', { ip }),
+      onWrongCredentials: ({ username, ip }) =>
+        console.warn('bad credentials', { username, ip }),
+      onLimitExceeded: ({ username, ip }) =>
+        console.error('throttled', { username, ip }),
+    }),
+  )
+  .root()
 ```
 
 `onLimitExceeded` also receives `limitPerUser`, `limitPerIp`, and `staleTimeMs`.
@@ -172,7 +208,11 @@ useful for an API where you handle the `401` in your own client and don't want a
 browser prompt:
 
 ```tsx
-basicAuth({ users: { admin: 'secret' }, challenge: false }) // 401s carry no WWW-Authenticate
+export const root = Point0.lets
+  .root()
+  // 401s carry no WWW-Authenticate
+  .middleware(basicAuth({ users: { admin: 'secret' }, challenge: false }))
+  .root()
 ```
 
 The `429` never carries the challenge header, even with `challenge: true`.
@@ -185,13 +225,18 @@ with no or malformed header are _not_ counted toward the throttle. Once a client
 crosses a limit, further attempts return `429` instead of `401`:
 
 ```tsx
-basicAuth({
-  users: { admin: 'secret' },
-  limitPerUser: 100, //              max failures per username (default 100)
-  limitPerIp: 100, //                max failures per IP       (default 100)
-  staleTimeMs: 1000 * 60 * 60 * 24, // failures older than this are forgotten (default 24h)
-  memorySize: 1000, //               hard cap on remembered attempts (default 1000)
-})
+export const root = Point0.lets
+  .root()
+  .middleware(
+    basicAuth({
+      users: { admin: 'secret' },
+      limitPerUser: 100, //                 max failures per username (default 100)
+      limitPerIp: 100, //                   max failures per IP       (default 100)
+      staleTimeMs: 1000 * 60 * 60 * 24, //  failures older than this are forgotten (default 24h)
+      memorySize: 1000, //                  hard cap on remembered attempts (default 1000)
+    }),
+  )
+  .root()
 ```
 
 The limit trips when **either** the per-user **or** the per-IP count is reached

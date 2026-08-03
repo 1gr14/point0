@@ -55,23 +55,46 @@ not the only one.
 `.head` accepts a string, an object, or a function:
 
 ```tsx
-.head('Home')                                    // string → the title
-.head({ title: 'Home', description: 'Welcome' }) // object → head + SEO keys
-.head(({ data }) => ({ title: data.idea.title })) // function → returns string or object
+export const homePage = root.lets
+  .page('/')
+  .head('Home') // string → the title
+  .page(/* ... */)
+
+export const aboutPage = root.lets
+  .page('/about')
+  .head({ title: 'About', description: 'Welcome' }) // object → head + SEO keys
+  .page(/* ... */)
+
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .with(ideaQuery, ({ params }) => ({ id: Number(params.id) }))
+  .head(({ data }) => ({ title: data.idea.title })) // function → string or object
+  .page(/* ... */)
 ```
 
 A **string** is shorthand for the title:
 
 ```tsx
-.head('New Idea') // => <title>New Idea</title>
+export const newIdeaPage = root.lets
+  .page('/ideas/new')
+  .head('New Idea') // => <title>New Idea</title>
+  .page(/* ... */)
 ```
 
 A **function** receives the point's per-state context and returns a string or an
 object — the head built from loaded data, params, or search:
 
 ```tsx
-.head(({ data: { total, idea } }) => `${total} news for idea "${idea.title}"`)
-.head(({ params }) => `User #${params.sn}`)
+export const ideaNewsPage = root.lets
+  .page('/ideas/:id/news')
+  .with(ideaNewsQuery, ({ params }) => ({ id: Number(params.id) }))
+  .head(({ data: { total, idea } }) => `${total} news for idea "${idea.title}"`)
+  .page(/* ... */)
+
+export const userPage = root.lets
+  .page('/users/:sn')
+  .head(({ params }) => `User #${params.sn}`)
+  .page(/* ... */)
 ```
 
 ## The head object
@@ -80,19 +103,22 @@ The object form is everything unhead's `useHead` takes **plus** flat SEO keys at
 the same level:
 
 ```tsx
-.head({
-  // unhead head keys
-  title: 'Idea',
-  titleTemplate: '%s | IdeaNick',
-  htmlAttrs: { lang: 'en' },
-  // flat SEO keys (unhead's useSeoMeta schema)
-  description: 'A short idea',
-  ogTitle: 'Idea',
-  ogImage: { url: 'https://app.example.com/og.png', width: 1200 },
-  robots: { index: true, follow: true },
-  // special: rendered as <link rel="canonical">
-  canonical: 'https://app.example.com/ideas/1',
-})
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .head({
+    // unhead head keys
+    title: 'Idea',
+    titleTemplate: '%s | IdeaNick',
+    htmlAttrs: { lang: 'en' },
+    // flat SEO keys (unhead's useSeoMeta schema)
+    description: 'A short idea',
+    ogTitle: 'Idea',
+    ogImage: { url: 'https://app.example.com/og.png', width: 1200 },
+    robots: { index: true, follow: true },
+    // special: rendered as <link rel="canonical">
+    canonical: 'https://app.example.com/ideas/1',
+  })
+  .page(/* ... */)
 ```
 
 Point0 splits the object into two groups and feeds them to unhead's `useHead`
@@ -107,7 +133,14 @@ and `useSeoMeta`:
   appended after any `link` entries you set.
 
 ```tsx
-.head({ description: 'About us', ogTitle: 'About', canonical: 'https://app.example.com/about' })
+export const aboutPage = root.lets
+  .page('/about')
+  .head({
+    description: 'About us',
+    ogTitle: 'About',
+    canonical: 'https://app.example.com/about',
+  })
+  .page(/* ... */)
 // => <meta name="description" content="About us">
 //    <meta property="og:title" content="About">
 //    <link rel="canonical" href="https://app.example.com/about">
@@ -116,14 +149,20 @@ and `useSeoMeta`:
 Unknown keys are a type error:
 
 ```tsx
-.head({ descriptio: 'typo' }) // type error — unknown head key
+export const aboutPage = root.lets
+  .page('/about')
+  .head({ descriptio: 'typo' }) // type error — unknown head key
+  .page(/* ... */)
 ```
 
 `undefined`-valued keys are dropped, so a conditional spread is safe:
 
 ```tsx
-.head({ title: 'Home', description: hasDesc ? text : undefined })
-// description omitted when hasDesc is false — no empty <meta>
+export const homePage = root.lets
+  .page('/')
+  .head({ title: 'Home', description: hasDesc ? text : undefined })
+  // description omitted when hasDesc is false — no empty <meta>
+  .page(/* ... */)
 ```
 
 ### Flat key wins over a meta array
@@ -132,10 +171,13 @@ If a flat SEO key and a `meta: [...]` entry target the same tag, the flat key
 wins and only one tag renders:
 
 ```tsx
-.head({
-  description: 'Flat',
-  meta: [{ name: 'description', content: 'From array' }],
-})
+export const aboutPage = root.lets
+  .page('/about')
+  .head({
+    description: 'Flat',
+    meta: [{ name: 'description', content: 'From array' }],
+  })
+  .page(/* ... */)
 // => exactly one <meta name="description" content="Flat">  ("From array" is dropped)
 ```
 
@@ -147,17 +189,26 @@ supply just its `title`:
 
 ```tsx
 // on the root's global head (see below)
-.head('global', () => ({ titleTemplate: '%s | IdeaNick' }))
+export const root = Point0.lets
+  .root()
+  .head('global', () => ({ titleTemplate: '%s | IdeaNick' }))
+  .root()
 
-// a page sets only the title
-.head({ title: 'Ideas' }) // => <title>Ideas | IdeaNick</title>
+// a page below it sets only the title
+export const ideasPage = root.lets
+  .page('/ideas')
+  .head({ title: 'Ideas' }) // => <title>Ideas | IdeaNick</title>
+  .page(/* ... */)
 ```
 
 Pass `titleTemplate: null` on a page to opt out of the template — the title
 shows verbatim:
 
 ```tsx
-.head({ title: 'IdeaNick Forever!', titleTemplate: null })
+export const homePage = root.lets
+  .page('/')
+  .head({ title: 'IdeaNick Forever!', titleTemplate: null })
+  .page(/* ... */)
 // => <title>IdeaNick Forever!</title>  (no suffix)
 ```
 
@@ -186,8 +237,13 @@ The five statuses are
 A `.head` with no status defaults to `'success'`:
 
 ```tsx
-.head({ title: 'Home' })        // same as .head('success', () => ({ title: 'Home' }))
-.head('Home')                   // same — success-only
+export const homePage = root.lets
+  .page('/')
+  .head({ title: 'Home' }) // same as .head('success', () => ({ title: 'Home' }))
+  .page(/* ... */)
+
+// the string form is success-only too
+export const aboutPage = root.lets.page('/about').head('About').page(/* ... */)
 ```
 
 A success-only head still renders on a page with no loader, because a
@@ -217,12 +273,22 @@ loading→ready transition; placed before, it never sees that loader's loading:
 
 ```tsx
 // after the loader → sees loading then success
-.loader(/* ... */)
-.head('universal', ({ loading }) => ({ title: loading ? 'Loading…' : 'Ready' }))
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .loader(/* ... */)
+  .head('universal', ({ loading }) => ({
+    title: loading ? 'Loading…' : 'Ready',
+  }))
+  .page(/* ... */)
 
 // before the loader → only ever 'Ready' (this loader hasn't run yet at that point)
-.head('universal', ({ loading }) => ({ title: loading ? 'Loading…' : 'Ready' }))
-.loader(/* ... */)
+export const ideaEditPage = root.lets
+  .page('/ideas/:id/edit')
+  .head('universal', ({ loading }) => ({
+    title: loading ? 'Loading…' : 'Ready',
+  }))
+  .loader(/* ... */)
+  .page(/* ... */)
 ```
 
 **`global`** sees the **whole page's navigation state**, regardless of where in
@@ -230,11 +296,14 @@ the chain you declare it. It reacts to navigation, not to one point's data — s
 a global head before the loader _still_ shows loading:
 
 ```tsx
-.head('global', ({ loading, error, initial }) => ({
-  ...(loading ? { title: 'Loading…' } : {}),
-  ...(error ? { title: error.message } : {}),
-}))
-.loader(/* ... */) // global head still reflects the page-level loading state
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .head('global', ({ loading, error }) => ({
+    ...(loading ? { title: 'Loading…' } : {}),
+    ...(error ? { title: error.message } : {}),
+  }))
+  .loader(/* ... */) // global head still reflects the page-level loading state
+  .page(/* ... */)
 ```
 
 The global callback gets a navigation state — `status`, `loading`, `error`,
@@ -245,9 +314,12 @@ to its default `<title>`. Use a `global` head for anything that must always have
 a title:
 
 ```tsx
-.head('global', ({ initial, loading }) =>
-  initial ? 'IdeaNick' : loading ? 'Loading…' : 'IdeaNick',
-)
+export const root = Point0.lets
+  .root()
+  .head('global', ({ initial, loading }) =>
+    initial ? 'IdeaNick' : loading ? 'Loading…' : 'IdeaNick',
+  )
+  .root()
 ```
 
 > The `'global'` form takes a function or an object — not a bare string — in the
@@ -262,9 +334,12 @@ later in the chain wins** per key. A plain `.head` placed after a `universal` or
 fills the keys the later one doesn't touch:
 
 ```tsx
-.head('global', ({ loading }) => ({ title: loading ? 'Loading…' : 'Ready' }))
-.loader(/* ... */)
-.head(({ data }) => ({ title: `x=${data.x}` }))
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .head('global', ({ loading }) => ({ title: loading ? 'Loading…' : 'Ready' }))
+  .loader(/* ... */)
+  .head(({ data }) => ({ title: `x=${data.x}` }))
+  .page(/* ... */)
 // while loading → "Loading…" (from global); on success → "x=1" (the later head wins)
 ```
 
@@ -284,12 +359,15 @@ root's global head:
 
 ```tsx
 // root.tsx — applies to every page/layout below
-.head('global', ({ loading, error }) => ({
-  ...(loading ? { title: 'Loading...' } : {}),
-  ...(error ? { title: error.message } : {}),
-  titleTemplate: '%s | IdeaNick',
-  htmlAttrs: { lang: 'en' },
-}))
+export const root = Point0.lets
+  .root()
+  .head('global', ({ loading, error }) => ({
+    ...(loading ? { title: 'Loading...' } : {}),
+    ...(error ? { title: error.message } : {}),
+    titleTemplate: '%s | IdeaNick',
+    htmlAttrs: { lang: 'en' },
+  }))
+  .root()
 ```
 
 Flat SEO keys follow the same rule, and so does `canonical`: unhead treats it as

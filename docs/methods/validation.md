@@ -41,16 +41,30 @@ it makes sense for. Pick by what the point is:
 
 ```tsx
 // query / infiniteQuery / mutation / component / provider → .input
-.query().input(z.object({ id: z.number() }))
+export const ideaQuery = root.lets
+  .query()
+  .input(z.object({ id: z.number() }))
+  .loader(/* ... */)
+  .query()
 
 // page / layout → .params (route segments) and .search (query string)
-.page('/ideas/:id').params(z.object({ id: z.coerce.number() }))
-.page('/ideas').search(z.object({ page: z.coerce.number().default(0) }))
+export const ideaPage = root.lets
+  .page('/ideas/:id')
+  .params(z.object({ id: z.coerce.number() }))
+  .page(/* ... */)
+
+export const ideaListPage = root.lets
+  .page('/ideas')
+  .search(z.object({ page: z.coerce.number().default(0) }))
+  .page(/* ... */)
 
 // action → .params, .search, and .body
-.action('POST', '/api/ideas/:id')
+export const ideaUpdateAction = root.lets
+  .action('POST', '/api/ideas/:id')
   .params(z.object({ id: z.string() }))
   .body(z.object({ title: z.string() }))
+  .loader(/* ... */)
+  .action()
 ```
 
 Reaching for the wrong one is a **type error**, not a silent no-op. The
@@ -76,22 +90,36 @@ the library is interchangeable:
 
 ```tsx
 import * as v from 'valibot'
-.input(v.object({ id: v.number() })) // valibot — same as zod here
+
+export const ideaQuery = root.lets
+  .query()
+  .input(v.object({ id: v.number() })) // valibot — same as zod here
+  .loader(/* ... */)
+  .query()
 ```
 
 ```tsx
 import { type } from 'arktype'
-.input(type({ id: 'number' })) // arktype
+
+export const ideaQuery = root.lets
+  .query()
+  .input(type({ id: 'number' })) // arktype
+  .loader(/* ... */)
+  .query()
 ```
 
 Instead of a schema you can pass a **validate function** — it receives the raw
 input and returns the parsed value, throwing to reject:
 
 ```tsx
-.input((raw) => {
-  if (typeof raw.id !== 'number') throw new Error('id must be a number')
-  return { id: raw.id }
-})
+export const ideaQuery = root.lets
+  .query()
+  .input((raw) => {
+    if (typeof raw.id !== 'number') throw new Error('id must be a number')
+    return { id: raw.id }
+  })
+  .loader(/* ... */)
+  .query()
 ```
 
 A thrown error becomes one validation issue and fails the parse — on the client
@@ -165,8 +193,17 @@ unvalidated input, but it also doesn't re-validate input at render. For input
 that must be checked on the client too, use the two variants:
 
 ```tsx
-.clientInput(schema)  // validate at render / on the client — not on the server
-.sharedInput(schema)  // validate on BOTH server and client
+export const themeQuery = root.lets
+  .query()
+  .clientInput(schema) // validate at render / on the client — not on the server
+  .clientLoader(/* ... */)
+  .query()
+
+export const ideaQuery = root.lets
+  .query()
+  .sharedInput(schema) // validate on BOTH server and client
+  .loader(/* ... */)
+  .query()
 ```
 
 Use `.clientInput` / `.sharedInput` when a client-loader query (or a component)
@@ -307,11 +344,22 @@ When a child redeclares a key the parent already set, it may **narrow** the type
 compile error:
 
 ```tsx
-.base().input(z.object({ id: z.number() }))
-  .query().input(z.object({ id: z.literal(1) })) // ✓ narrows number → 1
+export const idBase = root.lets
+  .base()
+  .input(z.object({ id: z.number() }))
+  .base()
 
-.base().input(z.object({ id: z.number() }))
-  .query().input(z.object({ id: z.string() })) // type error: not assignable to the base schema
+export const narrowedQuery = idBase.lets
+  .query()
+  .input(z.object({ id: z.literal(1) })) // ✓ narrows number → 1
+  .loader(/* ... */)
+  .query()
+
+export const widenedQuery = idBase.lets
+  .query()
+  .input(z.object({ id: z.string() })) // type error: not assignable to the base schema
+  .loader(/* ... */)
+  .query()
 ```
 
 ## Security: validation runs on the server

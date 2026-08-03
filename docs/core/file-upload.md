@@ -103,11 +103,25 @@ The loader reads the file from the same place it reads the rest of the input —
 which depends on the point type:
 
 ```tsx
-// mutation: file is in input
-.loader(async ({ input }) => { input.image /* the File */ })
+// mutation: the file is in input
+export const ideaCreateMutation = root.lets
+  .mutation()
+  .input(z.object({ image: z.file() }))
+  .loader(async ({ input }) => {
+    const file = input.image // the File
+    return { size: file.size }
+  })
+  .mutation()
 
-// action: file is in body
-.loader(async ({ body }) => { body.image /* the File */ })
+// action: the file is in body
+export const uploadAction = root.lets
+  .action('POST', '/api/upload')
+  .body(z.object({ file: z.file() }))
+  .loader(async ({ body }) => {
+    const file = body.file // the File
+    return { size: file.size }
+  })
+  .action()
 ```
 
 Send files with a [mutation](mutation) (or an [action](action)), not a
@@ -157,13 +171,18 @@ encoder and decoder as a mutation file — the encoder picks them up from
 The loader gets the standard web `File` (a `Blob` subclass), so use the web API:
 
 ```tsx
-.loader(async ({ input }) => {
-  const file = input.image
-  file.name             // 'photo.png'
-  file.type             // 'image/png'
-  file.size             // bytes
-  const buf = Buffer.from(await file.arrayBuffer()) // → Buffer, store / process it
-})
+export const ideaCreateMutation = root.lets
+  .mutation()
+  .input(z.object({ image: z.file() }))
+  .loader(async ({ input }) => {
+    const file = input.image
+    file.name // 'photo.png'
+    file.type // 'image/png'
+    file.size // bytes
+    const buf = Buffer.from(await file.arrayBuffer()) // → Buffer, store / process it
+    return { size: buf.byteLength }
+  })
+  .mutation()
 ```
 
 `examples/basic` base64-encodes the buffer and stores it in the database; in a

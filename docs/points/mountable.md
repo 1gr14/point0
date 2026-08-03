@@ -123,7 +123,12 @@ The closing component receives one object. These keys are shared by all four
 mountables:
 
 ```tsx
-.component(({ data, queries, props, LoadingComponent, ErrorComponent }) => ...)
+export const IdeaCard = root.lets
+  .component()
+  .with(ideaQuery, ({ props }) => ({ id: props.id }))
+  .component(({ data, queries, props, LoadingComponent, ErrorComponent }) => (
+    <h3>{data.idea.title}</h3>
+  ))
 ```
 
 - **`data`** — the [`.mapper`](mapper) output, or the first injected query's
@@ -139,8 +144,11 @@ provider get `children`. The exact per-type bag is in the
 [reference](#reference).
 
 ```tsx
-.mapper(({ data }) => ({ ideas: data.pages.flatMap((p) => p.ideas) }))
-.component(({ data: { ideas } }) => <List items={ideas} />)
+export const IdeaList = root.lets
+  .component()
+  .with(ideasInfiniteQuery)
+  .mapper(({ data }) => ({ ideas: data.pages.flatMap((p) => p.ideas) }))
+  .component(({ data: { ideas } }) => <List items={ideas} />)
 ```
 
 A `.mapper` reshapes `data` for the component. On a [provider](provider), the
@@ -186,7 +194,13 @@ resolved `data`, `queries`, and `props`, and can short-circuit to loading/error
 before they load:
 
 ```tsx
-.with(({ children, data }) => <section data-idea={data.idea.id}>{children}</section>)
+export const IdeaCard = root.lets
+  .component()
+  .with(ideaQuery, ({ props }) => ({ id: props.id }))
+  .with(({ children, data }) => (
+    <section data-idea={data.idea.id}>{children}</section>
+  ))
+  .component(({ data: { idea } }) => <h3>{idea.title}</h3>)
 ```
 
 **`.wrapper(Component)`** wraps the whole mountable from the _outside_,
@@ -195,7 +209,13 @@ including its loading and error boundary. It gets `props` and (on page/layout)
 exist:
 
 ```tsx
-.wrapper(({ children }) => <ErrorBoundaryProvider>{children}</ErrorBoundaryProvider>)
+export const IdeaCard = root.lets
+  .component()
+  .wrapper(({ children }) => (
+    <ErrorBoundaryProvider>{children}</ErrorBoundaryProvider>
+  ))
+  .with(ideaQuery, ({ props }) => ({ id: props.id }))
+  .component(({ data: { idea } }) => <h3>{idea.title}</h3>)
 ```
 
 Multiple `.wrapper` calls nest with the first-registered outermost. Use

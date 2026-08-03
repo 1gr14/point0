@@ -24,11 +24,15 @@ code**:
 
 ```ts
 // capacitor.config.ts
+import type { CapacitorConfig } from '@capacitor/cli'
+
 const config: CapacitorConfig = {
   appId: 'dev.p0nt.examples.capacitor',
   appName: 'Point0 Capacitor Ideas',
   webDir: 'dist/client', // ← the Point0 client build is what gets shipped
 }
+
+export default config
 ```
 
 `webDir: 'dist/client'` is the load-bearing line: it must match the engine's

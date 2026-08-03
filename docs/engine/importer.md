@@ -194,15 +194,22 @@ protection lives in the build itself, not in the running app.
 normalized:
 
 ```ts
-deny: [
-  'react', // bare package → matches the package and everything under it
-  './lib/prisma.ts', // relative path → resolved against cwd
-  '/abs/path/secret.ts', // absolute path → used verbatim
-  '*.server.ts', // glob starting with * → used verbatim
-  /\.secret\./, // RegExp → matched with .test()
-  '!react-dom', // leading ! → an exclude (un-matches a broader rule)
-  './deps/package.json', // package.json → expands to a deny per dependency
-]
+Engine.create({
+  file: import.meta.url,
+  client: {
+    importer: {
+      deny: [
+        'react', // bare package → matches the package and everything under it
+        './lib/prisma.ts', // relative path → resolved against cwd
+        '/abs/path/secret.ts', // absolute path → used verbatim
+        '*.server.ts', // glob starting with * → used verbatim
+        /\.secret\./, // RegExp → matched with .test()
+        '!react-dom', // leading ! → an exclude (un-matches a broader rule)
+        './deps/package.json', // package.json → expands to a deny per dependency
+      ],
+    },
+  },
+})
 ```
 
 A few details:
@@ -222,8 +229,15 @@ A few details:
   leaf:
 
   ```ts
-  deny: ['./dir/**', '!./dir/special/**', './dir/special/keep/**']
-  //      include dir   exclude special     re-include keep   → keep is denied
+  Engine.create({
+    file: import.meta.url,
+    client: {
+      importer: {
+        // include dir → exclude special → re-include keep, so keep is denied
+        deny: ['./dir/**', '!./dir/special/**', './dir/special/keep/**'],
+      },
+    },
+  })
   ```
 
 ## Reference

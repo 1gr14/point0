@@ -218,7 +218,11 @@ bundle when `ssr:false` (or after a `.clientOnly()`).
 and error states, not just the success render:
 
 ```tsx
-.wrapper(({ children }) => <div className="card">{children}</div>)
+export const Stats = root.lets
+  .component()
+  .wrapper(({ children }) => <div className="card">{children}</div>)
+  .loader(/* ... */)
+  .component(/* ... */)
 // the spinner renders inside .card while loading; so does the final content
 ```
 
