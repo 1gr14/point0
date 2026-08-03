@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.4 — 2026-08-03
+
 Sockets were audited end to end — the wire, the connect/resume path, the
 backplane, and the client. Everything below that is marked **breaking** changes
 a default that used to be unsafe.
