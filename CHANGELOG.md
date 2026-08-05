@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.6 — 2026-08-05
+
 - **The socket layer is marked experimental in the docs.** Its design is settled
   — the API went through many passes — but the implementation under it still
   needs a refactor, so sockets are the one place in point0 where a bug or an
