@@ -8,6 +8,11 @@ description:
 example: examples/socket
 ---
 
+> **Experimental.** Sockets are the newest part of Point0 — the design is
+> settled, the implementation under it still needs a refactor, so a bug or an
+> awkward edge here says nothing about the rest of the framework. The
+> [socket page](socket) has the full note.
+
 `examples/socket` is a small app built around
 [channels, spaces & handlers](socket): four pages, each one a complete socket
 feature in a single file. The buttons above and below open the full source.

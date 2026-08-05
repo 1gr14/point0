@@ -6,6 +6,17 @@ description:
   spaces are rooms, handlers are typed messages, all declared as points.
 ---
 
+> **Experimental.** Sockets are the newest part of Point0, and the one place
+> where you can hit a bug or an awkward edge. The design is what I'm confident
+> in — it went through many passes, and the API you see here is the one I want
+> to keep. What's underneath still needs a refactor, and that's where the
+> roughness lives. The rest of the framework is a different story: pages,
+> layouts, queries, mutations, the compiler, the engine — written by hand,
+> checked in detail, and running in real projects. So if something breaks here,
+> it tells you about this feature, not about Point0. Sockets will get to the
+> same level; an [issue on GitHub](https://github.com/1gr14/point0/issues) gets
+> them there sooner.
+
 **One WebSocket per client application. Everything else is abstractions over
 that one socket.** The pieces, top to bottom:
 

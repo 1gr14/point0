@@ -5,6 +5,13 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **The socket layer is marked experimental in the docs.** Its design is settled
+  — the API went through many passes — but the implementation under it still
+  needs a refactor, so sockets are the one place in point0 where a bug or an
+  awkward edge is expected. The [socket page](docs/core/socket.md) and the
+  [socket example](docs/examples/example-socket.md) now say that plainly,
+  including what it does _not_ say about the rest of the framework.
+
 ## 0.3.5 — 2026-08-03
 
 - **A bare `useOnMessageFromServer` on a space handler could stay deaf for the
