@@ -150,7 +150,7 @@ Everything else in this release:
   mocks lacked the `socketOptions` the engine now reads, the backpressure
   fan-out flood sat entirely in Windows' auto-tuned kernel buffers, and the
   socket-browser vite variant wedges on GitHub's ubuntu runners (now sat out
-  there — `dev/backlog/socket-vite-linux-ci.md`). All fixed; CI job caps are
+  there — `dev/backlog/socket-linux-ci.md`). All fixed; CI job caps are
   also tightened so a wedged job dies in minutes, not 48. 0.3.2 is the first
   published build of everything listed under 0.3.0.
 

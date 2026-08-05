@@ -115,6 +115,38 @@ export const waitPortFree = async (port: number | number[], timeout = 1000) => {
   )
 }
 
+/**
+ * Run one teardown step against a wall clock: if it overruns, name it and move on.
+ *
+ * Teardown here is a chain of bare `await`s on things that can wedge — `page.close()`, `browser.close()`, `killPort` —
+ * and a wedge in any of them is SILENT. Bun charges the wait to the file's `afterEach`/`afterAll` budget, so a file
+ * whose assertions had all passed dies three minutes later as "a beforeEach/afterEach hook timed out", naming nothing
+ * and taking the release run with it (three in a row on `socket-browser.e2e`, dev/backlog/socket-linux-ci.md). A
+ * teardown must never be able to fail a green file, and it must never fail anonymously.
+ *
+ * The step is ABANDONED, not cancelled — nothing here can cancel a hung CDP call. That is the right trade: the process
+ * is at its end (the OS reaps what is left), CI runners are ephemeral, and the assertions already ran.
+ */
+export const teardownStep = async (label: string, step: () => Promise<unknown>, timeoutMs = 15_000): Promise<void> => {
+  const TIMED_OUT = Symbol('teardown-timed-out')
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<typeof TIMED_OUT>((resolve) => {
+    timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs)
+  })
+  // A teardown step's own rejection is not a signal (closing a browser that is already gone throws), but it must be
+  // HANDLED here: an abandoned step that rejects later would otherwise surface as an unhandled rejection long after the
+  // test moved on, in an unrelated file.
+  const settled = step().then(
+    () => undefined,
+    () => undefined,
+  )
+  const result = await Promise.race([settled, deadline])
+  if (timer) clearTimeout(timer)
+  if (result === TIMED_OUT) {
+    console.warn(`[teardown] "${label}" did not finish within ${timeoutMs}ms — abandoned, it may leak a process`)
+  }
+}
+
 export const throwOnHelperLogFnCalling = () => {
   if (process.env.THROW_ON_HELPER_LOG_FN_CALLING === 'true') {
     throw new Error('Please, remove helper log fn calling')

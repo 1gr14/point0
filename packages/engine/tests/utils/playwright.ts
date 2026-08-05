@@ -4,7 +4,7 @@ import * as nodePath from 'node:path'
 import type { FetchServerOutputType, PointName, PointsScope, ReadyPointType } from '@point0/core'
 import { type Browser, chromium, type Page } from 'playwright'
 import { HtmlView } from './html-view.js'
-import { throwOnHelperLogFnCalling } from './other.js'
+import { teardownStep, throwOnHelperLogFnCalling } from './other.js'
 
 // On Windows, Playwright can't launch a browser under Bun (`chromium.launch()`'s pipe transport hangs / `uv_spawn`
 // fails). `chrome-headless-shell` does start and Bun drives it over CDP, so on win32 we spawn the shell ourselves with a
@@ -209,19 +209,19 @@ export class PlaywrightBrowser {
   }
 
   async close(): Promise<void> {
-    try {
-      await Promise.all(
-        Array.from(this.pages).map(async (p) => {
-          await p.close()
-        }),
-      )
-      this.pages.clear()
-      await this.original.close()
-    } catch {}
+    // Every await here is bounded (see `teardownStep`): a browser that stops answering CDP must cost seconds and say so,
+    // not eat the file's whole hook budget in silence. Each page close carries its own deadline inside `page.close()`.
+    await Promise.all(
+      Array.from(this.pages).map(async (p) => {
+        await p.close()
+      }),
+    )
+    this.pages.clear()
+    await teardownStep('browser.close()', () => this.original.close())
     // win32: closing the CDP connection only disconnects — it doesn't stop the browser we spawned, so kill its process
     // tree too.
     if (this.cdpProcess) {
-      await killCdpShell(this.cdpProcess)
+      await teardownStep('killCdpShell()', () => killCdpShell(this.cdpProcess!))
       this.cdpProcess = undefined
     }
   }
@@ -693,7 +693,7 @@ export class PlaywrightPage {
   }
 
   async close(): Promise<void> {
-    await this.original.close()
+    await teardownStep('page.close()', () => this.original.close())
     this.browser.pages.delete(this)
   }
 

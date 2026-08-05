@@ -357,7 +357,7 @@ run('bun', [4350, 4369])
 // never answered and every later vite test starved into its 180 s timeout, with the dev server silent. Nowhere else
 // does it reproduce: the same file is green on windows-latest CI, on macOS, and on Linux in a container — even through
 // the exact CI path (scripts/test.ts, CI=1) throttled to 2 CPUs. Until the runner-specific cause is found
-// (dev/backlog/socket-vite-linux-ci.md), Linux CI sits the variant out; bun + bun-hot keep every scenario covered
+// (dev/backlog/socket-linux-ci.md), Linux CI sits the variant out; bun + bun-hot keep every scenario covered
 // there, and windows CI + local runs keep the vite parity honest.
 if (!(process.env.CI && process.platform === 'linux')) {
   run('vite', [4370, 4384])

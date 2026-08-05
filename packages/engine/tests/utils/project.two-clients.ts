@@ -4,7 +4,7 @@ import { mergeHeaders, type PrefetchPagePolicy } from '@point0/core'
 import type { Engine } from '../../src/engine.js'
 import type { FileGeneratorProcessResult } from '../../src/generator.js'
 import { killPort } from '../../src/port.js'
-import { getDirFilesContent, throwOnHelperLogFnCalling, waitPortFree } from './other.js'
+import { getDirFilesContent, teardownStep, throwOnHelperLogFnCalling, waitPortFree } from './other.js'
 import type { PlaywrightPage } from './playwright.js'
 import { PlaywrightBrowser } from './playwright.js'
 import { TestProcess } from './process.js'
@@ -470,11 +470,12 @@ export class TestProjectTwoClient {
     const { files, processes, ports } = options
     if (processes) {
       for (const process of this.processes) {
-        await process.killTree()
+        await teardownStep(`killTree(pid ${process.pid ?? '?'})`, () => process.killTree())
       }
     }
     if (ports) {
-      await killPort(this.ports)
+      // `killPort` shells out per port (`lsof`/`fuser`); `waitPortsFree` is already bounded and throws on its own.
+      await teardownStep(`killPort(${this.ports.join(', ')})`, () => killPort(this.ports))
       await this.waitPortsFree()
     }
     if (files) {
@@ -662,14 +663,16 @@ export class TestProjectTwoClientFactory {
     ports: boolean
     browser: boolean
   }) {
+    // Clients before servers — see the one-client factory: a tab whose dev server just died spends the close
+    // reconnecting to a dead port.
+    if (browser) {
+      await this.browser?.close()
+    }
     await Promise.all(
       this.instances.map(async (tp) => {
         await tp.cleanup({ files, processes, ports })
       }),
     )
-    if (browser) {
-      await this.browser?.close()
-    }
     if (files) {
       // Windows releases handles asynchronously after process kill — retry the dir removal.
       await nodeFs.rm(nodePath.resolve(testsGeneralTempDir, this.namespace), {
