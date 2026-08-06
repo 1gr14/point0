@@ -485,6 +485,10 @@ invariants:
 - **A hot edit never kills a live child** — an alive-but-booting child plus a
   hot-node change rebuilds the store only; the child serves the latest code once
   it's up.
+- **Watching starts before the server does.** Every entry's watcher is
+  subscribed before any server child is spawned, so by the time dev prints
+  `Server started` your saves are already being seen. The first save after
+  startup counts like any other.
 
 While the server is still booting, the watch set is **broad** (the whole app-src
 tree), because the precise import walk can't yet be trusted to include the file

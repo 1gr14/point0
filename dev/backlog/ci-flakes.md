@@ -53,6 +53,27 @@ maps each flake to its real fix, for the next triage.
   `expected X got Y` diff), it doesn't reproduce locally in isolation, and it
   clusters on loaded runners. Real regressions don't belong on this card.
 
+## The v0.3.6 pair — both were real, neither was load
+
+The 0.3.6 release run went red four times on two different files, and both
+turned out to be a product/harness hole rather than a loaded runner. Worth
+reading before blaming the next red on load.
+
+1. **`socket-browser.e2e` on ubuntu — a teardown that could hang forever.**
+   Every assertion passed; the file died three minutes later in `afterAll`.
+   Fixed by bounding each teardown step (`teardownStep`) and closing the browser
+   before killing the dev servers. Full card:
+   [socket-linux-ci.md](./socket-linux-ci.md).
+2. **`dev-entries.int` on windows — dev announced itself before it was
+   watching.** The test edits a file ~1.5 s after dev starts and waits for the
+   entry to re-run; on the runner the edit produced no event at all, and the
+   dumped dev output ended at `Server started` with 30 s of silence after it.
+   Root cause: `Server.dev` spawned the children first and subscribed the
+   watchers after — an import-graph walk per entry plus a native recursive
+   subscribe — so a save in that window was lost with no event and no error (a
+   user-facing bug, not just a test one). Children now spawn only after every
+   watcher is live.
+
 ## Triage tools
 
 - `gh workflow run test-one.yml --ref <branch> -f file=<path> -f os=<os> -f repeat=5`

@@ -1159,10 +1159,11 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         if (!childByEntry.has(entryFile)) childByEntry.set(entryFile, spawnEntry(entryFile))
       }
     }
-    // When the hot store failed its first build, hold the spawn — the watcher starts the server once a save fixes it.
-    if (storeReady) spawnAll()
-
     if (!watch) {
+      // Nothing is going to watch, so there is no window to close: start the children and be done. (When the hot store
+      // failed its first build, `storeReady` is false and the spawn is held — with no watcher nothing will fix it, but
+      // the tree stays up instead of dying on an error you can still correct.)
+      if (storeReady) spawnAll()
       return
     }
 
@@ -1384,6 +1385,16 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
         },
       })
     }
+
+    // Children start only NOW, with every watcher already subscribed. Spawning first left a window — an import-graph
+    // walk per entry plus a native recursive subscribe, seconds of it on a cold Windows runner — in which dev had
+    // already printed "Server started" (a one-shot entry could even run to completion) while nothing was watching yet.
+    // A save inside that window was lost with no event and no error, so the first save after dev came up did nothing
+    // and you had to save again. It also cost a release run (dev-entries.int on windows, dev/backlog/ci-flakes.md).
+    // The trade is deliberate: dev now reports itself up a beat later, and when it does, it is genuinely watching.
+    // (`storeReady` false = the hot store's first build failed; the spawn stays held and the watcher starts the server
+    // the moment a save fixes it.)
+    if (storeReady) spawnAll()
   }
 
   getBuildPaths(): {
