@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it } from 'bun:test'
+import { describe, expect, expectTypeOf, it, setDefaultTimeout } from 'bun:test'
 import {
   getDocOrUndefined,
   getDocOutlineOrUndefined,
@@ -8,6 +8,14 @@ import {
   type DocSearchHit,
   type DocSectionContent,
 } from '../src/index.js'
+
+/**
+ * The first search embeds a query, and embedding needs the ~23MB model on disk. On a cold machine that is a download,
+ * not a computation — the runner's 30s default made this file's outcome depend on network speed, and on a windows
+ * runner it lost. The budget is a ceiling for infrastructure, never the thing under test; what is asserted is the
+ * search result, and a warm cache gets there in under a second.
+ */
+setDefaultTimeout(120_000)
 
 describe('@point0/docs', () => {
   it('lists docs as a table of contents', () => {

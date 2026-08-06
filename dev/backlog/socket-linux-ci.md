@@ -81,6 +81,36 @@ it stays intermittent.
 That is the whole state of it: legible and no longer fatal-by-default, root
 cause still unknown.
 
+## It is upstream, and it is known (searched 2026-08-06)
+
+Playwright has both halves of this on file:
+
+- **`chrome-headless-shell` sometimes never exits after `Browser.close` over
+  CDP** —
+  [microsoft/playwright#39753](https://github.com/microsoft/playwright/issues/39753).
+  The reporters' own observation matches ours exactly: the timeout "became a lot
+  more frequent when running playwright directly on CI workers and not in a
+  docker container". GitHub's runners are bare VMs, and our container repro was
+  green.
+- **Some CDP calls carry no timeout at all** —
+  [microsoft/playwright#11776](https://github.com/microsoft/playwright/issues/11776):
+  a call "never returns / hangs forever about 30% of the time… a timeout is
+  missing there".
+
+So `teardownStep` is not a workaround around our own bug; it supplies the
+deadline the library does not. Checked and ruled out on the way: `/dev/shm`
+starvation, the usual first suspect for chromium in CI — Playwright already
+passes `--disable-dev-shm-usage` among its default switches (verified in the
+installed `playwright-core` bundle), and GitHub's runners are VMs with a
+normal-sized `/dev/shm` anyway, not 64 MB containers.
+
+What is NOT fixable on our side: a browser that stops answering mid-test. The
+in-test waits are already bounded — `waitContent` polls against its own clock
+and throws on its budget (that is why the broadcast test died at 46 s instead of
+hanging), so the file fails honestly and a rerun passes. Reducing exposure means
+reducing what the file asks of one browser, per the lesson on
+[ci-flakes.md](./ci-flakes.md): fewer live tabs, fewer launches per runner.
+
 ## Still open
 
 Why chromium stops answering on that runner. The bound turns a three-minute

@@ -66,6 +66,16 @@ jobs:
       # dist is already in place, so this install also relinks the `point0` bin.
       - name: Install dependencies
         uses: ./.github/actions/install
+      # @point0/docs embeds a query to search, so its unit test needs the ~23MB Hugging Face model — and downloaded it
+      # on EVERY test job until this cache existed (`node_modules` is not cached either, so the library's old
+      # in-node_modules location was just as cold). A 23MB download inside a 30s test budget is a coin flip on a slow
+      # runner, and it lost one on windows. Same key as build.yml, so all three lanes share one entry.
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-${{ hashFiles('packages/docs/src/embedder.ts') }}
+          restore-keys: huggingface-
       - name: Setup (codegen for examples/templates)
         run: bun run setup
       # No Playwright here — the fast lane carries no .e2e files by construction (scripts/test.ts enforces
@@ -117,6 +127,14 @@ jobs:
           path: .
       - name: Install dependencies
         uses: ./.github/actions/install
+      # Same reason as the fast lane above: the docs search test needs the embedding model, and a cold runner
+      # downloads 23MB before it can assert anything.
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-${{ hashFiles('packages/docs/src/embedder.ts') }}
+          restore-keys: huggingface-
       - name: Setup (codegen for examples/templates)
         run: bun run setup
       # Only the .e2e files drive a browser; the solo .int heavies (build/cli/mcp/…) never launch one.
