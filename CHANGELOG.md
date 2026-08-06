@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.7 — 2026-08-06
+
 - **A save made right after `point0 dev` came up is no longer lost.** Dev
   spawned its server children first and subscribed the watchers after — an
   import-graph walk per entry plus a native recursive subscribe later — so
