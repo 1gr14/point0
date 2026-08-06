@@ -1,7 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
 import { PlaywrightBrowser, PlaywrightPage } from '../playwright.js'
 
-setDefaultTimeout(10000)
+setDefaultTimeout(30000)
+
+/**
+ * The ceiling for a wait that is EXPECTED to succeed. It is not part of any assertion — the inline snapshots are — so
+ * it should be far above the page timers the tests set up (300 ms), not just above them. Tests that assert a wait
+ * REJECTS keep their own tight budgets; there the short wait is the point.
+ */
+const WAIT_CEILING_MS = 15000
 
 let browser: PlaywrightBrowser
 
@@ -441,7 +448,11 @@ describe('playwright', () => {
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
         // await page.waitContent('Initial', 1000)
-        await page.waitContent('Changed', 1000)
+        // A ceiling, not the assertion. What is under test is that the wait sits through `Initial` and returns on
+        // `Changed` — the snapshot below proves both stages. The old 1000 ms budget was three times the page's own
+        // 300 ms timer, and with all 26 tests in this file running concurrently a slow windows runner spent more than
+        // that just getting round to the poll. It failed the 0.3.6 release run on timing alone.
+        await page.waitContent('Changed', WAIT_CEILING_MS)
         expect(page.tale).toMatchInlineSnapshot(`
           "
           data:...
@@ -502,7 +513,9 @@ describe('playwright', () => {
       </html>
     `
         await page.goto(`data:text/html,${encodeURIComponent(html)}`)
-        await page.waitNoContent('Will Disappear', 300)
+        // Budget == the page's own delay is a coin flip on any machine: the element goes at 300 ms and the wait gave up
+        // at 300 ms. A ceiling instead — the snapshot is what asserts the disappearance.
+        await page.waitNoContent('Will Disappear', WAIT_CEILING_MS)
         expect(page.tale).toMatchInlineSnapshot(`
           "
           data:...
