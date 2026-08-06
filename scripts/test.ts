@@ -446,6 +446,31 @@ const runParallelPhase = async (files: readonly string[], coverage: boolean): Pr
   return outcomes
 }
 
+/**
+ * Last resort: kill the runner itself if it outlives every budget it hands out.
+ *
+ * Each file already races a wall clock, and a file that burns it is killed and reported. That guard is the one that
+ * must work — but it lives in the same process it is guarding, and on 2026-08-06 a solo file on windows ran for 21
+ * minutes with no output at all: past its own 10-minute budget, past the point where anything of ours spoke again,
+ * until GitHub cancelled the job at its 20-minute cap. A cancelled job publishes NO log for the step it cancelled, so
+ * the whole run ended with the one thing we needed to read missing.
+ *
+ * This timer is deliberately dumb — a plain wall clock over the whole process, generous enough that a healthy run never
+ * meets it — and it exits LOUDLY. Whatever wedged, the log now ends with a line naming it instead of with silence.
+ */
+const armWatchdog = (fileCount: number): void => {
+  const budget = SOLO_FILE_TIMEOUT_MS * Math.max(1, fileCount) + 5 * 60_000
+  const timer = setTimeout(() => {
+    process.stdout.write(
+      `\n[harness] WATCHDOG: the runner outlived ${formatDuration(budget)} — every per-file guard failed to fire or to return.\n` +
+        `[harness] Exiting now so this job reports something instead of being cancelled with an empty log.\n`,
+    )
+    process.exit(1)
+  }, budget)
+  // Never hold the process open on the watchdog's account: a healthy run must exit the moment its work is done.
+  timer.unref()
+}
+
 const runSolo = async (files: readonly string[], coverage: boolean): Promise<FileOutcome[]> => {
   // Solo files run STRICTLY one per process, sequentially — never a combined `bun test`. Each boots a full
   // dev/build tree (and the e2e ones a browser); sharing a process bleeds module-level state and ports, and
@@ -602,6 +627,7 @@ if (import.meta.main) {
   // A stale shard from an earlier run would silently inflate the merge, so the raw dir is rebuilt from scratch.
   if (coverage) nodeFs.rmSync(nodePath.join(ROOT, COVERAGE_RAW_DIR), { recursive: true, force: true })
 
+  armWatchdog(soloFiles.length + parallelFiles.length)
   const outcomes = [...(await runParallelPhase(parallelFiles, coverage)), ...(await runSolo(soloFiles, coverage))]
   await report(outcomes, startTime, coverage)
 }

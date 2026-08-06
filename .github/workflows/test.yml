@@ -146,5 +146,13 @@ jobs:
         run: bunx playwright install chromium
       # One file, its own runner, through the same guarded runner as everywhere else: wall-clock timeout,
       # tree-kill + browser reap on a hang, one fresh-process retry, honest failure extraction in the log.
+      #
+      # LIVE_TEST_OUTPUT because this lane is ONE file in ONE process: there is nothing to interleave, so the output
+      # can stream instead of being held back and printed at the end. Buffering cost us a diagnosis on 2026-08-06 —
+      # a windows solo job ran 21 minutes and was cancelled at the job cap, and a cancelled step publishes no log at
+      # all, so the run ended with zero bytes about the only thing that went wrong. Streaming, the log always ends at
+      # whatever it was doing. (The parallel lane keeps buffering: several files at once would be unreadable live.)
       - name: Run solo file
         run: bun scripts/test.ts --file ${{ matrix.file }}
+        env:
+          LIVE_TEST_OUTPUT: '1'
