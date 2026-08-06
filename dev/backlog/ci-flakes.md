@@ -74,6 +74,45 @@ reading before blaming the next red on load.
    user-facing bug, not just a test one). Children now spawn only after every
    watcher is live.
 
+## Two known flakes left standing (2026-08-06), and why
+
+Both are understood, neither is fixed. Written down so the next red run is
+recognised instead of re-investigated.
+
+1. **`bun install` dies on Windows runners, intermittently.** The `bun` npm
+   package is in our tree ONLY as an auto-installed peer of
+   `bun-plugin-tailwind` (examples basic / better-auth / socket + the create-app
+   template). Nothing imports it. Its postinstall provisions a ~98 MB native Bun
+   binary onto a machine already running Bun: it requires the platform optional
+   dep `@oven/bun-<platform>` and, when that misses, fetches it from the
+   registry live — and that fetch is what fails. The install action already
+   retries 3×; on 0.3.6's run the retries did not save it, and the failure
+   surfaces as `error: postinstall script from "bun" exited with 1` followed by
+   `bin executable does not exist on disk` (the package manager failing to link
+   the bins the `bun` package declares — not our `point0` bin; that one bun
+   fails silently). **Tried and rejected:** patching the plugin's manifest to
+   mark the peer `optional` — proven not to work, twice: peers are resolved from
+   the registry manifest, and a patch only ever reaches the extracted files
+   (verified in a 3-package scratch project: `bun` installs anyway).
+   `[install] peer = false` does remove it, but it is global — 8 peers are
+   auto-installed here and 7 of them are wanted (`@testing-library/dom` holds
+   the dom tests; `expo-linking`, `react-native-gesture-handler`,
+   `react-native-reanimated`, `react-native-worklets`,
+   `@react-native/metro-config` hold the expo example; plus a nested
+   `cosmiconfig`). Declaring those by hand is the hack we refused. **Left to
+   try:** upstream (`tailwindlabs/tailwindcss`, `packages/@tailwindcss-bun` —
+   the runtime should not be a required npm peer), or dropping
+   `bun-plugin-tailwind` from the examples entirely. Bun is pinned in CI now, so
+   at least the behaviour no longer changes under us.
+2. **`packages/docs/tests/search.unit.test.ts` times out on Windows** (30 s).
+   The test embeds a query, so it needs the ~23 MB Hugging Face model — and only
+   `build.yml` caches it; the test jobs download it every run and always have
+   (this predates `env.cacheDir` being pinned; `node_modules` is not cached
+   either, so the old in-`node_modules` location was just as cold). A 23 MB
+   download inside a 30 s test budget is the same shape of mistake as a wait
+   budget equal to the delay. Fix when it next bites: give the test jobs the
+   same cache step `build.yml` has, and a ceiling that is not a stopwatch.
+
 ## Triage tools
 
 - `gh workflow run test-one.yml --ref <branch> -f file=<path> -f os=<os> -f repeat=5`

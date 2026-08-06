@@ -59,6 +59,28 @@ Playwright rather than at the dev server.
   left every one of them reconnecting to a dead port, which is the worst moment
   to be closing a page.
 
+## The bound worked, the wedge did not go away (run 31071763090)
+
+The first run after the fix said exactly what it was built to say:
+
+```
+[teardown] "page.close()" did not finish within 15000ms — abandoned, it may leak a process
+[teardown] "page.close()" did not finish within 15000ms — abandoned, it may leak a process
+✗ socket browser (bun-hot) > a channel-wide broadcast reaches every connection regardless of room [46298.22ms]
+[teardown] "browser.close()" did not finish within 15000ms — abandoned, it may leak a process
+```
+
+So the browser still stops answering on that runner — but it now costs 15 s and
+names itself instead of eating a three-minute hook budget in silence, and the
+file died in 1m44 rather than 3m+. What the bound cannot do is save a TEST whose
+own page calls hang: this time the wedge landed in the test body (46 s) rather
+than in teardown, and the file went red on its own merits. Two consecutive runs
+before it (0.3.7's release, and the one before) were green on the same file, so
+it stays intermittent.
+
+That is the whole state of it: legible and no longer fatal-by-default, root
+cause still unknown.
+
 ## Still open
 
 Why chromium stops answering on that runner. The bound turns a three-minute
