@@ -5,6 +5,14 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **A save made right after `point0 dev` came up is no longer lost.** Dev
+  spawned its server children first and subscribed the watchers after — an
+  import-graph walk per entry plus a native recursive subscribe later — so
+  between `Server started` and the first live watcher there was a window with
+  nothing watching, and an edit inside it produced no event and no error. The
+  watchers are now subscribed before any child is spawned: when dev says it is
+  up, it is watching. Dev reports itself up a beat later in exchange.
+
 ## 0.3.6 — 2026-08-05
 
 - **The socket layer is marked experimental in the docs.** Its design is settled
@@ -13,13 +21,6 @@ release` promotes that section to the new version.
   awkward edge is expected. The [socket page](docs/core/socket.md) and the
   [socket example](docs/examples/example-socket.md) now say that plainly,
   including what it does _not_ say about the rest of the framework.
-- **A save made right after `point0 dev` came up is no longer lost.** Dev
-  spawned its server children first and subscribed the watchers after — an
-  import-graph walk per entry plus a native recursive subscribe later — so
-  between `Server started` and the first live watcher there was a window with
-  nothing watching, and an edit inside it produced no event and no error. The
-  watchers are now subscribed before any child is spawned: when dev says it is
-  up, it is watching. Dev reports itself up a beat later in exchange.
 
 ## 0.3.5 — 2026-08-03
 
