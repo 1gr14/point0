@@ -1,8 +1,19 @@
-import { pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers'
+import * as nodeOs from 'node:os'
+import * as nodePath from 'node:path'
+import { env, pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers'
 
 /** Small, fast sentence-embedding model. 384-dim, ~23MB, runs locally with no API key. */
 export const EMBED_MODEL = 'Xenova/all-MiniLM-L6-v2'
 export const EMBED_DIM = 384
+
+/**
+ * Where the model lands. Transformers.js defaults to `./node_modules/@huggingface/transformers/.cache/`, which is wiped
+ * by every fresh install — so a CI runner re-downloaded the model on EVERY build, and the workflow's cache of
+ * `~/.cache/huggingface` had nothing to save (`Cache not found` on every run, including the green ones). Enough builds
+ * in a day and Hugging Face answers 429, which is exactly how the 0.3.6 release run died. One home-level directory
+ * instead: survives `node_modules`, shared across projects, and the thing CI caches is now the thing that is written.
+ */
+env.cacheDir = nodePath.join(nodeOs.homedir(), '.cache', 'huggingface', 'transformers.js')
 
 let extractorPromise: Promise<FeatureExtractionPipeline> | undefined
 

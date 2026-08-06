@@ -40,12 +40,16 @@ jobs:
         uses: ./.github/actions/install
       # @point0/docs embeds its search corpus locally with a ~23MB Hugging Face model, and downloading it is
       # the ONLY step of this build that reaches the public internet. A cold runner gets 429'd often enough to
-      # kill a release that is otherwise perfect (it did, on 0.3.4). Cached here, retried in the embedder.
+      # kill a release that is otherwise perfect (it did, on 0.3.4 and again on 0.3.6). Cached here, retried in
+      # the embedder — which pins `env.cacheDir` to this exact path, because the library's own default lives
+      # under `node_modules` and left this cache with nothing to save on every run.
+      # `restore-keys` so an edit to embedder.ts re-keys the cache without re-downloading the model.
       - name: Cache the embedding model
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
           key: huggingface-${{ hashFiles('packages/docs/src/embedder.ts') }}
+          restore-keys: huggingface-
       # Every @point0/* imports its siblings from their built dist/.
       - name: Build
         run: bun run build
