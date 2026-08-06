@@ -12,8 +12,13 @@ export const EMBED_DIM = 384
  * `~/.cache/huggingface` had nothing to save (`Cache not found` on every run, including the green ones). Enough builds
  * in a day and Hugging Face answers 429, which is exactly how the 0.3.6 release run died. One home-level directory
  * instead: survives `node_modules`, shared across projects, and the thing CI caches is now the thing that is written.
+ *
+ * `POINT0_DOCS_MODEL_CACHE_DIR` overrides it. The library exposes no env var of its own, so pinning the path in code is
+ * the only way — but this module is imported by anything that uses `@point0/docs` (the docs MCP included), and a home
+ * directory is not writable everywhere a container is. The override is the way out of that.
  */
-env.cacheDir = nodePath.join(nodeOs.homedir(), '.cache', 'huggingface', 'transformers.js')
+env.cacheDir =
+  process.env.POINT0_DOCS_MODEL_CACHE_DIR ?? nodePath.join(nodeOs.homedir(), '.cache', 'huggingface', 'transformers.js')
 
 let extractorPromise: Promise<FeatureExtractionPipeline> | undefined
 

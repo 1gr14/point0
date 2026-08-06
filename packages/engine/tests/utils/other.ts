@@ -133,12 +133,15 @@ export const teardownStep = async (label: string, step: () => Promise<unknown>, 
   const deadline = new Promise<typeof TIMED_OUT>((resolve) => {
     timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs)
   })
-  // A teardown step's own rejection is not a signal (closing a browser that is already gone throws), but it must be
-  // HANDLED here: an abandoned step that rejects later would otherwise surface as an unhandled rejection long after the
-  // test moved on, in an unrelated file.
+  // A rejection must be HANDLED here — an abandoned step that rejects later would otherwise surface as an unhandled
+  // rejection long after the test moved on, in an unrelated file. But handled is not the same as hidden: a step that
+  // fails FAST (a `killTree` that cannot kill, say) used to fail the hook loudly, and swallowing it silently would
+  // trade one anonymous failure for another. It is reported and the file still passes.
   const settled = step().then(
     () => undefined,
-    () => undefined,
+    (error: unknown) => {
+      console.warn(`[teardown] "${label}" failed: ${String(error)}`)
+    },
   )
   const result = await Promise.race([settled, deadline])
   if (timer) clearTimeout(timer)

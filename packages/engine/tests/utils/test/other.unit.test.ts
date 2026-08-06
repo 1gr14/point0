@@ -31,13 +31,14 @@ describe('teardownStep', () => {
     }
   })
 
-  it('swallows the step’s own rejection — a browser that is already gone throws on close', async () => {
+  it('reports a step that fails fast, and still returns — a failed teardown never fails a green file', async () => {
     const warn = spyOn(console, 'warn').mockImplementation(() => {})
     try {
-      await teardownStep('already closed', () =>
-        Promise.reject(new Error('Target page, context or browser has been closed')),
-      )
-      expect(warn).not.toHaveBeenCalled()
+      await teardownStep('killTree(pid 42)', () => Promise.reject(new Error('kill: no such process')))
+      expect(warn).toHaveBeenCalledTimes(1)
+      const reported = String(warn.mock.calls[0]?.[0])
+      expect(reported).toContain('killTree(pid 42)')
+      expect(reported).toContain('kill: no such process')
     } finally {
       warn.mockRestore()
     }
