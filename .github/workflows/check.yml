@@ -31,7 +31,7 @@ jobs:
           node-version: 24
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.14
       # The single ubuntu-built `dist` (build.yml) — type-aware lint resolves @point0/* from it.
       - name: Download build artifact
         uses: actions/download-artifact@v8
@@ -53,7 +53,9 @@ jobs:
         run: bun run lint:check
       # Fail if a package reached the browser without a row in scripts/size.ts — i.e. if the docs now under-report
       # what a Point0 app downloads. This is `size:audit`, not `size:check`: the audit compares the module GRAPH
-      # (deterministic), while `size:check` compares minified BYTES, and `bun-version: latest` above means any Bun
-      # release could shift them and redden an unrelated PR. The numbers are refreshed with `bun run size:write`.
+      # (deterministic), while `size:check` compares minified BYTES, which shift with the bundler. Bun is pinned above
+      # rather than `latest`, so that no longer happens behind our back — but it still happens the day we bump the pin,
+      # and a byte-comparison has no business reddening an unrelated PR. The numbers are refreshed with
+      # `bun run size:write`.
       - name: Audit client bundle dependencies
         run: bun run size:audit

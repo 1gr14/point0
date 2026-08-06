@@ -49,7 +49,7 @@ jobs:
           node-version: 24
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.14
       # The tests resolve `@point0/*` to src (tsconfig paths), but `bun run setup` and the temp test projects run the
       # real `point0` bin — so the shared dist artifact is still required.
       - name: Download build artifact
@@ -91,7 +91,7 @@ jobs:
           node-version: 24
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.14
       - name: Download build artifact
         uses: actions/download-artifact@v8
         with:

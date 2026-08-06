@@ -54,7 +54,7 @@ jobs:
           fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.14
       # On a PR, the changed-file set decides whether the whole matrix can be skipped (docs-only diff).
       # `A...B` is the PR delta from the merge-base; a diff failure yields an empty list → decide runs the
       # full matrix (never skips blind).

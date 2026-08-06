@@ -25,6 +25,16 @@ bun run setup # codegen across the workspace: prisma generate + point0 generate
 - `install` is safe in a fresh tree — the apps' migrate/seed lives in their own
   `setup`, not `prepare`. If it ever stops with "Bun's postinstall script was
   not run", finish with `bun node_modules/bun/install.js`.
+- **On Windows, run `bun install` a second time after `build`** (it takes ~5s
+  and reports "no changes"), then `setup`. Bun links bins only during an
+  install, and on Windows a bin is a real `.exe` shim, so `point0` cannot be
+  linked at install time — `packages/engine/dist/cli.js` does not exist yet, and
+  `build` does not link bins. Without that second install every app fails
+  `setup` with `bun: command not found: point0`. macOS and Linux are unaffected:
+  a bin there is a symlink, which is created pointing at the not-yet-built file
+  and starts working the moment the build produces it. (Verified on Windows 11 /
+  bun 1.3.14, two fresh clones, deterministic; CI never hits it because the test
+  jobs download the built `dist` before installing.)
 - To run an example after building: `bun install` once more to relink the
   `point0` bin, then `bun run setup` inside the example for its SQLite DB.
 

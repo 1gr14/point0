@@ -111,6 +111,13 @@ locally instead of publishing untested bytes).
    [`scripts/release.ts`](../../scripts/release.ts) refuses any bump whose major
    ≠ `PINNED_MAJOR` — no command or flag can raise it. A major is cut only by a
    human hardcoding that constant. Never automatic, never accidental.
+6. **The Bun the runners use is pinned too.** Every `setup-bun` step names an
+   exact version, never `latest`. Bun is the package manager, the test runner
+   and the framework's runtime all at once, so `latest` let a release on the
+   other side of the world change how our installs resolve, how bins get linked
+   and how many bytes the bundler emits — with no commit of ours in sight, and
+   nothing in the log saying the ground had moved. Bumping it is now an edit
+   someone makes on purpose, in one place per workflow, and the diff says so.
 
 ## The test matrix
 

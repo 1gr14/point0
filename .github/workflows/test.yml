@@ -56,7 +56,7 @@ jobs:
           node-version: 24
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.14
       # The single ubuntu-built `dist` (build.yml) — every OS tests the exact bytes that ship.
       - name: Download build artifact
         uses: actions/download-artifact@v8
@@ -108,7 +108,7 @@ jobs:
           node-version: 24
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.14
       # The single ubuntu-built `dist` (build.yml) — every OS tests the exact bytes that ship.
       - name: Download build artifact
         uses: actions/download-artifact@v8
