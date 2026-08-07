@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.8 — 2026-08-07
+
 - **`dev --hot` no longer rejects TypeScript that `dev` and `build` accept.** Hot
   reload flattens your modules into a content-addressed store before running
   them, and it named every copy `.tsx` — where a leading `<` opens a JSX tag. So
