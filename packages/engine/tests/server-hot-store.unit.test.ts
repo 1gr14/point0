@@ -1,4 +1,4 @@
-import { Compiler } from '@point0/compiler'
+import { Compiler, toPosixPath } from '@point0/compiler'
 import { describe, expect, it, setDefaultTimeout } from 'bun:test'
 import {
   existsSync,
@@ -317,7 +317,9 @@ export const mark = async () =>
           aggregators: Record<string, string>
         }
         expect(Object.values(manifest.aggregators)).toEqual([names.entry])
-        expect(Object.keys(manifest.aggregators)).toEqual([entryAbs])
+        // Posix, not the native join: the store normalizes every path it keys on, so the watcher's native-separator
+        // events land in the same sets. Asserting the native form passes on macOS and fails on Windows.
+        expect(Object.keys(manifest.aggregators)).toEqual([toPosixPath(entryAbs)])
       },
     )
   })
