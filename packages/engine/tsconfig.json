@@ -4,6 +4,11 @@
     "rootDir": ".",
     "paths": {
       "@point0/core": ["../core/src/index.ts"],
+      "@point0/compiler": ["../compiler/src/index.ts"],
+      "@point0/compiler/plugin/bun": ["../compiler/src/plugin/bun.ts"],
+      "@point0/compiler/plugin/bun-static": ["../compiler/src/plugin/bun-static.ts"],
+      "@point0/compiler/plugin/vite": ["../compiler/src/plugin/vite.ts"],
+      "@point0/compiler/plugin/babel": ["../compiler/src/plugin/babel.ts"],
       "@point0/core/navigation": ["../core/src/navigation.tsx"],
       "@point0/core/cookie-store": ["../core/src/cookie-store.ts"],
       "@point0/core/socket": ["../core/src/socket.ts"],

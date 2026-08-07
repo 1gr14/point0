@@ -5,6 +5,27 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **`dev --hot` no longer rejects TypeScript that `dev` and `build` accept.** Hot
+  reload flattens your modules into a content-addressed store before running
+  them, and it named every copy `.tsx` — where a leading `<` opens a JSX tag. So
+  a plain generic arrow (`const identity = <T>(x: T): T => x`) or an
+  angle-bracket assertion (`<string>x`) in a `.ts` file failed the dev server on
+  boot, while the same file compiled fine in `dev` and `build`. A moved module
+  now keeps the loader its own extension would give it, so all three modes accept
+  and reject exactly the same source.
+- **`.mts` and `.cts` files compile.** They were documented as supported and
+  matched by the compiler's filter, but the bundler was handed the plain-JS
+  loader for them, so their type annotations were a syntax error.
+- **A syntax error reads as a syntax error.** A file whose parse failed was
+  replaced with an EMPTY module, so a typo surfaced as "does not provide an
+  export" from somewhere else entirely. The file is now served untransformed and
+  Bun/Vite report the real error against the real file and line.
+- **The compiler says what it could not do.** Every pass — point collection, the
+  guarded-expression optimizer, your babel plugins — recorded what it survived
+  into a list nothing ever read, so a failed plugin or an unresolved point
+  produced a quietly wrong bundle and no message. Those now reach the log, named
+  by file.
+
 ## 0.3.7 — 2026-08-06
 
 - **A save made right after `point0 dev` came up is no longer lost.** Dev
