@@ -2,6 +2,7 @@ import { transformFromAstSync, type PluginItem } from '@babel/core'
 import type { GeneratorResult } from '@babel/generator'
 import generatorModule from '@babel/generator'
 import babel from '@babel/parser'
+import type { ParserPlugin } from '@babel/parser'
 import presetTypescriptModule from '@babel/preset-typescript'
 import type traverseType from '@babel/traverse'
 import type { NodePath } from '@babel/traverse'
@@ -58,6 +59,27 @@ const minifyDeadCodeElimination = ((minifyDeadCodeEliminationModule as any).defa
 
 const presetTypescript = ((presetTypescriptModule as any).default ??
   presetTypescriptModule) as typeof presetTypescriptModule
+
+/**
+ * The syntax plugins every parse of a compiled file uses — one list, so the primary parse, the post-user-babel re-parse
+ * and the engine's hot-store parse can never disagree about what the file is allowed to contain. Everything here is
+ * unconditional except `jsx`, which is a PROPERTY OF THE FILE, not of the compiler: see
+ * {@link CompilerFile.allowsJsxSyntax}.
+ *
+ * `typescript` IS unconditional, including for `.js`. It costs one known ambiguity: `a<b>(c)` is a pair of comparisons
+ * in JavaScript but a generic call in TypeScript, so in a `.js` file it re-emits as `a(c)`. Nobody has hit it, and
+ * gating it per file would mean two grammars for the shake/desugar passes to reason about — but if a `.js` file ever
+ * comes out wrong around `<`, this is why.
+ */
+export const parserPlugins = (path: string): ParserPlugin[] => [
+  'typescript',
+  ...(CompilerFile.allowsJsxSyntax(path) ? (['jsx'] as ParserPlugin[]) : []),
+  'decorators-legacy',
+  'classProperties',
+  'classPrivateProperties',
+  'classPrivateMethods',
+  'throwExpressions',
+]
 
 export class CompilerFile<THasContent extends boolean> {
   readonly abs: string
@@ -312,15 +334,7 @@ export class CompilerFile<THasContent extends boolean> {
         // re-parse path below deliberately OMITS both — react-compiler bails on paren nodes.)
         tokens: true,
         createParenthesizedExpressions: true,
-        plugins: [
-          'typescript',
-          'jsx',
-          'decorators-legacy',
-          'classProperties',
-          'classPrivateProperties',
-          'classPrivateMethods',
-          'throwExpressions',
-        ],
+        plugins: parserPlugins(this.abs),
       })
 
       this._parse = { ast, errors, ok: true }
@@ -348,6 +362,22 @@ export class CompilerFile<THasContent extends boolean> {
 
   static isTypescriptLikePath(path: string): boolean {
     return /\.[cm]?tsx?$/.test(path)
+  }
+
+  /**
+   * Whether `<` may open a JSX tag in this file — i.e. whether the parser gets the `jsx` plugin. `.ts`/`.mts`/`.cts`
+   * are the one family where it may not: there `<T>(x: T) => x` is a generic arrow and `<string>x` a type assertion,
+   * both of which the JSX grammar reads as an unterminated tag. Every other extension the compiler accepts (`.tsx`,
+   * `.jsx`, `.js`, `.md`/`.mdx`/`.mdc`) is parsed as the TS+JSX superset.
+   *
+   * Extension-driven on purpose: it is the same signal `tsc` and every bundler use, so a file that parses here parses
+   * there. Note this governs the PARSE only — what actually runs is decided by the loader (`plugin/bun.ts`
+   * `guessLoader`), which is stricter for `.js`.
+   *
+   * @related isTypescriptLikePath, isMdxLikePath, parserPlugins
+   */
+  static allowsJsxSyntax(path: string): boolean {
+    return !/\.[cm]?ts$/i.test(path.replace(/[?#].*$/, ''))
   }
 
   private _hasTypescriptSyntax: boolean | undefined = undefined
@@ -703,7 +733,7 @@ export class CompilerFile<THasContent extends boolean> {
       // Collect a source map for this regenerate step so toCode() can chain it (final → original).
       const preUserBabelResult = babelGenerator(this.ast, { sourceFileName: this.abs, sourceMaps: true }, this.content)
       const regeneratedCode = preUserBabelResult.code
-      // Mirror the primary parse()'s syntax plugin list so we can re-parse files that use
+      // Same syntax plugin list as the primary parse() (`parserPlugins`) so we can re-parse files that use
       // decorators / class private fields / etc. without throwing. We deliberately OMIT
       // `tokens` and `createParenthesizedExpressions` here (unlike the primary parse): some
       // plugins — notably babel-plugin-react-compiler — bail when paren nodes are present in the
@@ -711,15 +741,7 @@ export class CompilerFile<THasContent extends boolean> {
       const reparsedAst = babel.parse(regeneratedCode, {
         sourceType: 'module',
         errorRecovery: true,
-        plugins: [
-          'typescript',
-          'jsx',
-          'decorators-legacy',
-          'classProperties',
-          'classPrivateProperties',
-          'classPrivateMethods',
-          'throwExpressions',
-        ],
+        plugins: parserPlugins(this.abs),
       })
       const result = transformFromAstSync(reparsedAst, regeneratedCode, {
         ast: true,

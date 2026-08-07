@@ -443,6 +443,24 @@ export class Compiler {
     }
   }
 
+  /**
+   * Report the errors a compile collected. Every pass pushes what it survived into the one array `compile()` returns —
+   * and no caller (bun plugin, vite plugin, hot store) reads it, so without this a failed babel plugin or an unresolved
+   * point meant a quietly wrong bundle and no message anywhere. Runs once per real compile (cached results skip it),
+   * named by file. Recovered PARSE errors never land in this array — babel's `errorRecovery` keeps those on the parse
+   * result — so half-typed dev keystrokes don't spam; the bundler reports real syntax errors itself.
+   */
+  private reportErrors(file: string, errors: unknown[], note?: string): void {
+    for (const error of errors) {
+      log({
+        level: 'error',
+        category: ['compiler'],
+        message: `Compiling ${file} reported an error${note ? ` — ${note}` : ''}`,
+        error,
+      })
+    }
+  }
+
   /** The non-cached tail of {@link compile}: collect, shake, apply importer/babel, emit, write the cache entry. */
   private compileUncached({
     content,
@@ -490,9 +508,14 @@ export class Compiler {
     const collectResult = this.walker.collectPointsFromFile({ file: initialCf, content, stats: initialCfStats })
     errors.push(...collectResult.errors)
     if (!collectResult.ok) {
+      // Collection hard-failed (a parse `errorRecovery` couldn't recover). Serve the file UNTRANSFORMED — same as the
+      // plugins' own catch — so Bun/Vite report the real syntax error against the real source. `content` is set only
+      // for handed-in code (vite `transform`); for a disk-backed compile it is undefined, and the old `content || ''`
+      // replaced the module with an EMPTY one — a syntax error surfaced as a module that exports nothing.
+      this.reportErrors(initialCf.abs, errors, 'serving the file untransformed')
       return {
         file: collectResult.file,
-        code: content || '',
+        code: content ?? collectResult.file?.content ?? '',
         map: null,
         points: collectResult.points,
         errors,
@@ -564,6 +587,9 @@ export class Compiler {
       }
       return { code: cf.content, map: null }
     })()
+    // Late enough that every pass has had its say, and past the stale-points retry above (which returns a nested
+    // compile's result — already reported by that compile), so nothing is reported twice.
+    this.reportErrors(cf.abs, errors)
     const result = {
       file: cf,
       code: code,

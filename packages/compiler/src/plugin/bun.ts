@@ -91,12 +91,19 @@ export function compilerBunPlugin(options: CompilerOptions | Compiler): BunPlugi
   } satisfies BunPlugin
 }
 
-function guessLoader(path: string): Bun.Loader {
+export function guessLoader(path: string): Bun.Loader {
   const cleanedPath = path.toLowerCase().replace(/[?#].*$/, '')
   const filename = cleanedPath.split('/').pop() ?? cleanedPath
 
   if (filename.endsWith('.tsx')) return 'tsx'
-  if (filename.endsWith('.ts')) return 'ts'
+  // `.mts`/`.cts` are TypeScript too, and `compiler.filter` accepts them (`[cm]?[jt]sx?`) — without these they fell
+  // through to the `js` default at the bottom and their type annotations failed to parse.
+  if (filename.endsWith('.ts') || filename.endsWith('.mts') || filename.endsWith('.cts')) return 'ts'
+  // `.js` gets `js`, NOT `jsx`, even though Bun's own by-extension default for `.js` is jsx-enabled. The plugin claims
+  // more than app source: `compiler.filter` deliberately keeps `node_modules` paths containing "point0", so every
+  // `@point0/*` dist bundle comes through here, and reading shipped JavaScript with the JSX grammar changes what a
+  // bare `<` means in it. Tried the other way — `dev-hot-reload.e2e` broke. {@link relocatedExtension} is what keeps
+  // the hot store in step with this choice.
   if (filename.endsWith('.jsx')) return 'jsx'
   if (filename.endsWith('.js') || filename.endsWith('.mjs') || filename.endsWith('.cjs')) {
     return 'js'
@@ -157,4 +164,22 @@ function guessLoader(path: string): Bun.Loader {
 
   // Runtime transpilation target is usually JavaScript.
   return 'js'
+}
+
+/**
+ * The extension a copy of `path` must carry when it is moved somewhere this plugin does NOT claim — today, the
+ * hot-reload store's flattened modules, imported as plain files: there the loader comes from the NAME, so the name must
+ * yield the same loader {@link guessLoader} hands the bundler for the original. `loader-dialect.unit.test.ts` checks the
+ * pairing cell by cell.
+ *
+ * Most extensions are their own answer. `.js` and markdown are not: `guessLoader` gives both the strict `js` loader,
+ * but Bun's by-extension default for `.js` is jsx-enabled — so they move as `.mjs`, the extension whose default IS
+ * plain-js. (Fine for markdown too: it is compiled to JS before it is moved. point0 is ESM-only, so `.mjs` loses
+ * nothing.)
+ */
+export function relocatedExtension(path: string): string {
+  const cleanedPath = path.toLowerCase().replace(/[?#].*$/, '')
+  const ext = /\.[^./\\]+$/.exec(cleanedPath)?.[0] ?? ''
+  if (ext === '.js' || ext === '.md' || ext === '.mdx' || ext === '.mdc') return '.mjs'
+  return ext
 }

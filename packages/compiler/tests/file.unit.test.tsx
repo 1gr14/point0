@@ -3176,4 +3176,24 @@ export const action = root.lets
       expect(compiler.babel.plugins).toEqual([])
     })
   })
+
+  // The one rule that decides whether the parser gets the `jsx` plugin — and, downstream, the extension the engine's
+  // hot-reload store gives a relocated module. `.ts` is the only family where `<` starts a type, not a tag.
+  describe('.allowsJsxSyntax', () => {
+    it('says no for the TypeScript-only extensions', () => {
+      for (const path of ['/a/b.ts', '/a/b.mts', '/a/b.cts', '/a/b.d.ts', 'b.TS', '/a/b.ts?raw', '/a/b.ts#frag']) {
+        expect(CompilerFile.allowsJsxSyntax(path)).toBe(false)
+      }
+    })
+
+    it('says yes for everything else the compiler accepts', () => {
+      for (const path of ['/a/b.tsx', '/a/b.jsx', '/a/b.js', '/a/b.mjs', '/a/b.cjs', '/a/b.md', '/a/b.mdx', '/a/b.mdc'])
+        expect(CompilerFile.allowsJsxSyntax(path)).toBe(true)
+    })
+
+    it('is not fooled by a directory or basename ending in ts', () => {
+      expect(CompilerFile.allowsJsxSyntax('/a/components.ts/b.tsx')).toBe(true)
+      expect(CompilerFile.allowsJsxSyntax('/a/charts.tsx')).toBe(true)
+    })
+  })
 })

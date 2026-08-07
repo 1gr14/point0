@@ -45,9 +45,11 @@ import {
   appendInlineSourceMap,
   FileResolver,
   isImporterColdPath,
+  parserPlugins,
   resolveCacheDirPath,
   toPosixPath,
 } from '@point0/compiler'
+import { relocatedExtension } from '@point0/compiler/plugin/bun'
 import type { LogFn, PointsDefinitionSource } from '@point0/core'
 import {
   existsSync,
@@ -107,6 +109,13 @@ const splitQuery = (s: string): [string, string] => {
 }
 const ASSET_RE = /\.(png|jpe?g|gif|webp|avif|ico|bmp|svg|mp[34]|wav|ogg|webm|mov|woff2?|ttf|otf|eot|pdf|css|wasm)$/i
 
+/**
+ * A written store file, by shape: `<base>.<12-hex content hash>.<extension>`. Distinguishes store output from the other
+ * things living in the dir (`manifest.json`) for the GC sweep, and a rewritten specifier from an unresolved one. The
+ * alternation covers every extension {@link relocatedExtension} can return.
+ */
+const STORE_FILE_RE = /\.[0-9a-f]{12}\.[cm]?[jt]sx?$/
+
 // @babel/traverse ships as CJS with a default-wrapped namespace under ESM; unwrap to the callable (same shim the
 // compiler uses for it).
 const traverse = ((traverseModule as any).default ?? traverseModule) as typeof traverseType extends {
@@ -128,22 +137,19 @@ type ImportSourceRange = { start: number; end: number; value: string }
 /**
  * Collect the source string-literal ranges of every import / export-from / `export *` / dynamic-`import()` /
  * `require()` in `code`. A hard parse failure yields `[]`, so the caller leaves the code untouched.
+ *
+ * `path` is the ORIGINAL file the code came from, and it is required: it decides whether `<` may open a JSX tag,
+ * exactly as it does for the compiler's own parse (same `parserPlugins` list, so the two can't drift). Getting that
+ * wrong is not a cosmetic mismatch — a `.ts` module parsed as JSX can die on a type assertion, yield `[]`, and leave
+ * its imports un-rewritten, which the build reads as an unflattenable node and silently drops to cold.
  */
-export function collectImportSourceRanges(code: string): ImportSourceRange[] {
+export function collectImportSourceRanges(code: string, path: string): ImportSourceRange[] {
   let ast: ReturnType<typeof babelParser.parse>
   try {
     ast = babelParser.parse(code, {
       sourceType: 'module',
       errorRecovery: true,
-      plugins: [
-        'typescript',
-        'jsx',
-        'decorators-legacy',
-        'classProperties',
-        'classPrivateProperties',
-        'classPrivateMethods',
-        'throwExpressions',
-      ],
+      plugins: parserPlugins(path),
     })
   } catch {
     return []
@@ -219,7 +225,7 @@ function sanitizeBase(abs: string, appSrcDir: string): string {
 }
 
 /**
- * GC the content-addressed store dir: delete `.tsx` files that the CURRENT build no longer references (`keep`) AND that
+ * GC the content-addressed store dir: delete store files that the CURRENT build no longer references (`keep`) AND that
  * have been stale for at least `graceMs`. Without this the dir grows unbounded over a long dev session — every hot edit
  * cascade-rehashes the changed file + its importers into NEW content-hashed files and the old versions just linger.
  *
@@ -248,7 +254,7 @@ export function sweepStaleStoreFiles({
     return 0
   }
   for (const name of names) {
-    if (keep.has(name) || !name.endsWith('.tsx')) continue
+    if (keep.has(name) || !STORE_FILE_RE.test(name)) continue
     const full = nodePath.join(dir, name)
     try {
       if (statSync(full).mtimeMs < now - graceMs) {
@@ -534,15 +540,15 @@ export class ServerHotStore {
       const abs = queue.shift() as string
       nodes.add(abs)
       // Emit an inline source map + materialize virtual modules. Bun ITSELF ignores the map at runtime (it re-transpiles
-      // the .tsx and uses its own map), but `source-map-support` — installed in the dev child — reads this inline map
-      // via Error.prepareStackTrace and remaps store-file frames back to the ORIGINAL source, so anything that reads
+      // the store file and uses its own map), but `source-map-support` — installed in the dev child — reads this
+      // inline map via Error.prepareStackTrace and remaps store-file frames back to the ORIGINAL source, so what reads
       // `err.stack` (point0's error overlay / logs) shows original file:line. The map's `sources` already point at the
       // original abs path (compiler sets `sourceFileName`). `writeVirtual` materializes importer-rewritten virtual
       // modules (deny/mock) the store output references.
       const r = compiler.compile({ file: abs, map: true, writeVirtual: true })
       codeByAbs.set(abs, r.code)
       mapByAbs.set(abs, r.map)
-      rangesByAbs.set(abs, collectImportSourceRanges(r.code))
+      rangesByAbs.set(abs, collectImportSourceRanges(r.code, abs))
       let isColdRoot = isImporterColdPath({ path: abs, importer: compiler.importer })
       const outs: Array<{ pathOriginal: string; pathResolved: string }> = []
       for (const im of r.imports) {
@@ -650,7 +656,9 @@ export class ServerHotStore {
           hashInput += nodePath.relative(appSrcDir, m) + '\0' + code + '\0'
         }
         const sccHash = Bun.hash(hashInput).toString(16).padStart(16, '0').slice(0, 12)
-        for (const m of scc) hashedByAbs[m] = `${storeBase(m)}.${sccHash}.tsx`
+        // The extension comes from `relocatedExtension`: a store file's loader is picked by NAME (the dir is outside
+        // `compiler.filter` on purpose), so the name must yield the same loader the original file gets from the plugin.
+        for (const m of scc) hashedByAbs[m] = `${storeBase(m)}.${sccHash}${relocatedExtension(m)}`
         // Final pass: every name (external + intra-SCC) is known now -> rewrite, validate, stash the code.
         for (const m of scc) {
           order.push(m)
@@ -662,7 +670,7 @@ export class ServerHotStore {
           // asset (ok), or an UNRESOLVED import the store couldn't flatten (a miss — the build loop externalizes it).
           for (const x of code.matchAll(/(['"])(\.\.?\/[^'"]+)\1/g)) {
             const spec = x[2] as string
-            if (/\.[0-9a-f]{12}\.tsx$/.test(spec)) rewritten++
+            if (STORE_FILE_RE.test(spec)) rewritten++
             else if (ASSET_RE.test(spec)) {
               /* asset, already counted */
             } else misses.push({ file: m, spec })

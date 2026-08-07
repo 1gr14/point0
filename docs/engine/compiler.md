@@ -535,6 +535,31 @@ By default the compiler claims files matching:
 It skips ids containing `shim:` / `virtual:`, and skips `node_modules` paths
 **unless** the path contains `point0`. Override with `compiler.filter`.
 
+### The extension decides the syntax
+
+A file's extension says what syntax it may contain:
+
+| you may write | in                         |
+| ------------- | -------------------------- |
+| TypeScript    | `.ts` `.tsx` `.mts` `.cts` |
+| JSX           | `.tsx` `.jsx`              |
+| neither       | `.js` `.mjs` `.cjs`        |
+
+JSX belongs in `.tsx` or `.jsx`; a `.js` file is plain JavaScript. (Bun on its
+own is looser here — it takes JSX in a `.js` file — but point0 holds the
+stricter line, the same one `tsc` and Vite draw, so that a `.js` file means the
+same thing to every tool that reads it.)
+
+The consequence worth knowing is `.ts` vs `.tsx`. In `.ts` a leading `<` starts
+a type, so `const identity = <T>(x: T): T => x` and `const s = <string>x` are a
+generic arrow and a type assertion. In `.tsx` it opens a tag, which is why those
+same two lines are a syntax error there and TypeScript makes you write `<T,>`
+instead.
+
+The same answer holds in `dev`, in `dev --hot` — where your modules are
+relocated into a content-addressed store before they run — and in `build`. A
+file that compiles in one compiles in all three.
+
 ### Package exports
 
 ```ts
