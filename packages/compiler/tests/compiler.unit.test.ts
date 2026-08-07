@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, setDefaultTimeout } from 'bun:test'
+import { beforeAll, describe, expect, it, setDefaultTimeout, spyOn } from 'bun:test'
 import * as nodeFs from 'node:fs'
 import * as nodePath from 'node:path'
 import { Compiler } from '../src/compiler.js'
@@ -1472,5 +1472,78 @@ export const v = y`)
         }
       }),
     )
+  })
+
+  // `<` means one thing in `.ts` and another in `.tsx`, and the parser is told which by the EXTENSION — the same signal
+  // tsc and every bundler use. Getting it wrong is silent: babel's `errorRecovery` turns most of it into a recovered
+  // AST, and only the hard failures surfaced (as a mangled or empty module) far from the file that caused them.
+  describe('file dialect (.ts is not .tsx)', () => {
+    // A file at an explicit extension, since the shared `helper` always makes `.tsx`.
+    const withFile = async (ext: string, content: string, fn: (path: string) => void | Promise<void>) => {
+      const path = toPosixPath(nodePath.join(tempDir, `${crypto.randomUUID()}.${ext}`))
+      nodeFs.writeFileSync(path, content)
+      try {
+        await fn(path)
+      } finally {
+        nodeFs.rmSync(path, { force: true })
+      }
+    }
+    // Point-carrying, so the compiler actually PARSES the file: a file it has no reason to touch is returned as bytes
+    // and never reveals a parse problem.
+    const point = `import { Point0 } from '@point0/core'
+export const root = Point0.lets('root', 'root').root()`
+
+    it.concurrent('compiles TypeScript-only syntax in a .ts file', async () => {
+      // Both forms are legal `.ts` and both are unterminated JSX in `.tsx`: a generic arrow (what broke a real app's
+      // `dev --hot`) and the angle-bracket type assertion (which hard-failed the parse and emitted an empty module).
+      await withFile(
+        'ts',
+        `${point}
+export const identity = <T>(x: T): T => x
+export const len = (x: unknown) => (<string>x).length`,
+        (path) => {
+          const result = Compiler.create({ side: 'server', scope: 'root' }).compile({ file: path, cache: false })
+          expect(result.errors).toHaveLength(0)
+          expect(result.code).toContain('<T>(x: T): T => x')
+          expect(result.code).toContain('(<string>x).length')
+        },
+      )
+    })
+
+    it.concurrent('still compiles JSX in a .tsx file', async () => {
+      await withFile(
+        'tsx',
+        `${point}
+export const view = <div className="x">hi</div>`,
+        (path) => {
+          const result = Compiler.create({ side: 'client', scope: 'root' }).compile({ file: path, cache: false })
+          expect(result.errors).toHaveLength(0)
+          expect(result.code).toContain('<div className="x">hi</div>')
+        },
+      )
+    })
+
+    it.concurrent('serves the original source when a parse hard-fails, never an empty module', async () => {
+      // The failure mode this guards: a disk-backed compile (the bun plugin, the hot store) returned `''` for a file
+      // whose parse threw, so a syntax error reached the developer as a module that exports nothing instead of as a
+      // syntax error. Untransformed bytes let the bundler report it against the real file and line — and the compiler
+      // says so itself, because for a long time the `errors` it returns went unread by every one of its callers.
+      const broken = `${point}
+export const f = (x: number) => {`
+      const errorSpy = spyOn(console, 'error')
+      try {
+        await withFile('ts', broken, (path) => {
+          const result = Compiler.create({ side: 'server', scope: 'root' }).compile({ file: path, cache: false })
+          expect(result.errors.length).toBeGreaterThan(0)
+          expect(result.code).toBe(broken)
+          expect(result.modified).toBe(false)
+
+          const reported = errorSpy.mock.calls.map((args) => String(args[0]))
+          expect(reported.some((line) => line.includes(`Compiling ${path} reported an error`))).toBe(true)
+        })
+      } finally {
+        errorSpy.mockRestore()
+      }
+    })
   })
 })
