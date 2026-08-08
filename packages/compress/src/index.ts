@@ -1,6 +1,6 @@
 import type { FetcherFetchDetailedResult, MiddlewareFn } from '@point0/core'
 import { getRequestOrUndefined } from '@point0/core'
-import { Readable } from 'node:stream'
+import { once } from 'node:events'
 import { constants, createBrotliCompress, createGzip } from 'node:zlib'
 
 // The per-request compression override {@link tuneCompress} stashes and the middleware reads back after `next()` — the
@@ -279,8 +279,58 @@ export const compress = (options: CompressOptions = {}): MiddlewareFn<any> => {
       headers.set('ETag', `W/${etag}`)
     }
 
-    const nodeBody = Readable.fromWeb(response.body as unknown as import('node:stream/web').ReadableStream)
-    const compressedBody = Readable.toWeb(nodeBody.pipe(compressor)) as unknown as ReadableStream
+    // Pumped by hand because Bun's stream adapters break correctness here (verified on 1.3.14): `Readable.fromWeb`
+    // turns a source error into an UNCAUGHT exception instead of a stream 'error' — the response then hangs — and
+    // `Readable.toWeb` never surfaces a destroy-with-error. This wiring makes a body error reject the consumer's
+    // read, a client cancel destroy the source, and holds backpressure both ways (write/drain in, desiredSize out).
+    const reader = (response.body as ReadableStream<Uint8Array>).getReader()
+    void (async () => {
+      try {
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) {
+            break
+          }
+          if (!compressor.write(value)) {
+            await once(compressor, 'drain')
+          }
+        }
+        compressor.end()
+      } catch (error) {
+        compressor.destroy(error instanceof Error ? error : new Error(String(error)))
+      }
+    })()
+    const compressedBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        compressor.on('data', (chunk: Buffer) => {
+          controller.enqueue(new Uint8Array(chunk))
+          if ((controller.desiredSize ?? 1) <= 0) {
+            compressor.pause()
+          }
+        })
+        compressor.on('end', () => {
+          try {
+            controller.close()
+          } catch {
+            // the consumer may have cancelled already
+          }
+        })
+        compressor.on('error', (error) => {
+          try {
+            controller.error(error)
+          } catch {
+            // the consumer may have cancelled already
+          }
+        })
+      },
+      pull() {
+        compressor.resume()
+      },
+      cancel(reason) {
+        compressor.destroy()
+        void reader.cancel(reason).catch(() => {})
+      },
+    })
     result.response = new Response(compressedBody, init)
     return result
   }

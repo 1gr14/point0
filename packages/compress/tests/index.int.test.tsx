@@ -297,6 +297,45 @@ describe('compress', () => {
     expect(response.headers.get('content-encoding')).toBeNull()
   })
 
+  it('a body that errors mid-stream errors the compressed stream instead of hanging it', async () => {
+    let sentFirstChunk = false
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        // Error on the second pull, not in start(): a real body dies mid-transfer, while the reader is attached.
+        if (!sentFirstChunk) {
+          sentFirstChunk = true
+          controller.enqueue(new TextEncoder().encode(BODY))
+          return
+        }
+        controller.error(new Error('source exploded'))
+      },
+    })
+    const response = await run({ response: new Response(body, { headers: { 'content-type': 'text/html' } }) })
+    expect(response.headers.get('content-encoding')).toBe('br')
+    await expect(response.arrayBuffer()).rejects.toThrow()
+  })
+
+  it('a consumer cancelling the compressed stream destroys the source body', async () => {
+    let cancelled = false
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(BODY))
+        // never closes: only cancellation can end this stream
+      },
+      cancel() {
+        cancelled = true
+      },
+    })
+    const response = await run({ response: new Response(body, { headers: { 'content-type': 'text/html' } }) })
+    expect(response.headers.get('content-encoding')).toBe('br')
+    const reader = (response.body as ReadableStream).getReader()
+    await reader.read() // at least one compressed chunk arrives (flush-per-chunk)
+    await reader.cancel()
+    // teardown crosses two stream bridges asynchronously
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(cancelled).toBe(true)
+  })
+
   it('appends to an existing Vary and weakens a strong ETag', async () => {
     const response = await run({
       response: new Response(BODY, {
