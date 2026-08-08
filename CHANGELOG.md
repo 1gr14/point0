@@ -5,6 +5,21 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.9 — 2026-08-08
+
+- **Fixed a native memory leak on Linux — roughly a kilobyte per request.** Every
+  request seeded ~20 `new Error()` phase sentinels into its server storage
+  state, and on Linux each such request claimed allocator memory that was never
+  returned (invisible to the JS heap, so it only showed as container RSS climbing
+  until restart). Sentinels are now shared markers; the `Error` is built only
+  when a wrong-phase read actually throws — and its stack now points at the
+  offending read instead of the seeding site.
+- **`@point0/compress`: stream failures propagate instead of hanging.** A
+  response body that errors mid-stream now errors the compressed response (it
+  used to hang the client forever), and a client cancelling the response tears
+  down the source stream instead of leaving it open. Bun's `fromWeb`/`toWeb`
+  adapters drop both signals, so the middleware pumps the streams itself.
+
 ## 0.3.8 — 2026-08-07
 
 - **`dev --hot` no longer rejects TypeScript that `dev` and `build` accept.** Hot
