@@ -13,6 +13,20 @@ const __POINT0_SUPER_STORE_SERVER_STORAGE__ = singletonize(
 const __POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__ = singletonize('__POINT0_SUPER_STORE_CLIENT_GLOBAL_STATE__', {})
 const __POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__ = singletonize('__POINT0_SUPER_STORE_SERVER_GLOBAL_STATE__', {})
 
+/**
+ * "Not accessible in this phase" placeholder for a super-store slot. A shared plain object, NOT a prebuilt `Error`: the
+ * executor seeds ~20 of these per request, and per-request `Error` allocation is a native memory leak on Linux. The
+ * `Error` is built only at throw time, in {@link SuperStore.returnValueOrError}. Singletonized like
+ * `SuperStore.instance`: core can be evaluated twice, and `instanceof` must hold across copies.
+ */
+export const SuperStoreNotAccessible = singletonize(
+  '__POINT0_SUPER_STORE_NOT_ACCESSIBLE_CLASS__',
+  class SuperStoreNotAccessible {
+    constructor(public readonly message: string) {}
+  },
+)
+export type SuperStoreNotAccessible = InstanceType<typeof SuperStoreNotAccessible>
+
 export class SuperStore {
   static instance: SuperStore = singletonize('__POINT0_SUPER_STORE_INSTANCE__', new SuperStore())
 
@@ -322,7 +336,22 @@ export class SuperStore {
     return this.items.get(name)
   }
 
-  private static returnValueOrError<TValue = unknown>(value: TValue | Error, allowError = false): TValue | Error {
+  private static returnValueOrError<TValue = unknown>(
+    value: TValue | Error,
+    allowError = false,
+    undefinedOnNotAccessible = false,
+  ): TValue | Error | undefined {
+    // A marker becomes a real Error only on this cold path — never per request (see SuperStoreNotAccessible).
+    if (value instanceof SuperStoreNotAccessible) {
+      if (undefinedOnNotAccessible) {
+        return undefined
+      }
+      const error = new Error(value.message)
+      if (allowError) {
+        return error
+      }
+      throw error
+    }
     if (value instanceof Error) {
       if (allowError) {
         return value
@@ -406,7 +435,13 @@ export class SuperStore {
 
   getValue<TValue = unknown>(name: string, policy: SuperStoreItemPolicy): TValue | undefined
   getValue<TValue = unknown>(name: string, policy: SuperStoreItemPolicy, allowError: true): TValue | Error | undefined
-  getValue(name: string, policy: SuperStoreItemPolicy, allowError?: boolean) {
+  getValue<TValue = unknown>(
+    name: string,
+    policy: SuperStoreItemPolicy,
+    allowError: boolean,
+    undefinedOnNotAccessible: boolean,
+  ): TValue | Error | undefined
+  getValue(name: string, policy: SuperStoreItemPolicy, allowError?: boolean, undefinedOnNotAccessible?: boolean) {
     const states = this.getStates()
 
     const item = this.getItem(name)
@@ -421,20 +456,20 @@ export class SuperStore {
         this.prepared.delete(name)
         // this.touched.add(name)
         state[name] = hydratedValue
-        return SuperStore.returnValueOrError(hydratedValue, allowError)
+        return SuperStore.returnValueOrError(hydratedValue, allowError, undefinedOnNotAccessible)
       }
       if (name in state) {
-        return SuperStore.returnValueOrError(state[name], allowError)
+        return SuperStore.returnValueOrError(state[name], allowError, undefinedOnNotAccessible)
       }
       const initialValue = item.init()
       // this.touched.add(name)
       state[name] = initialValue
-      return SuperStore.returnValueOrError(initialValue, allowError)
+      return SuperStore.returnValueOrError(initialValue, allowError, undefinedOnNotAccessible)
     }
 
     const state = this.getStateByItemPolicy(name, policy, states)
     if (name in state) {
-      return SuperStore.returnValueOrError(state[name], allowError)
+      return SuperStore.returnValueOrError(state[name], allowError, undefinedOnNotAccessible)
     }
 
     // this.touched.add(name)
@@ -444,7 +479,9 @@ export class SuperStore {
 
   getValueOrUndefined<TValue = unknown>(name: string, policy: SuperStoreItemPolicy): TValue | undefined {
     try {
-      return this.getValue(name, policy)
+      // A marker answers `undefined` directly — building an Error just to swallow it would allocate on every
+      // not-yet-seeded read, and SSR passes make many of those.
+      return this.getValue(name, policy, false, true) as TValue | undefined
     } catch {
       return undefined
     }
@@ -532,12 +569,13 @@ export class SuperStore {
     }
     const fakeClient = serverStorageState.__POINT0_FAKE_CLIENT__ as
       | { id: string; scope: PointsScope; runtime: ClientRuntime; fetch: RichFetchFn; points: ClientPoints<any> }
+      | SuperStoreNotAccessible
       | Error
       | undefined
     if (!fakeClient) {
       return undefined
     }
-    if (fakeClient instanceof Error) {
+    if (fakeClient instanceof Error || fakeClient instanceof SuperStoreNotAccessible) {
       return undefined
     }
     return fakeClient
@@ -736,7 +774,9 @@ export type SuperStoreItemsValues<TItems extends Record<string, AnyNiceSuperStor
 }
 
 export type SuperStoreItemsValuesOrErrors<TItems extends Record<string, AnyNiceSuperStoreItem>> = {
-  [K in keyof TItems]: TItems[K] extends AnyNiceSuperStoreItem<infer TValue, any> ? TValue | Error : never
+  [K in keyof TItems]: TItems[K] extends AnyNiceSuperStoreItem<infer TValue, any>
+    ? TValue | Error | SuperStoreNotAccessible
+    : never
 }
 
 export type SuperStoreItemPolicyPermission = 'redefine' | 'readonlyRedefine' | 'readonly' | 'usual'

@@ -17,7 +17,7 @@ import type { Request0 } from './request0.js'
 import type { RscHoleRegistry } from './rsc.js'
 import type { SsrStorePendingMap } from './ssr-store.js'
 import type { SuperStoreItemsValues, SuperStoreItemsValuesOrErrors } from './super-store.js'
-import { superstore } from './super-store.js'
+import { superstore, SuperStoreNotAccessible } from './super-store.js'
 import type { LayoutPoint, PagePoint, PointsScope, RichFetchFn } from './types.js'
 
 const initUndefined = () => undefined as never
@@ -133,6 +133,18 @@ const knownKeys = Object.keys(_ss)
 export const _ssRunWithServerStorageState = superstore.createTypedRunWithServerStorageState<typeof _ss>()
 export type SuperStoreInternalValues = SuperStoreItemsValues<typeof _ss>
 export type SuperStoreInternalValuesOrErrors = SuperStoreItemsValuesOrErrors<typeof _ss>
+// One marker per message for the process lifetime — this runs per request, so nothing here may allocate per call
+// (see SuperStoreNotAccessible). Bounded: the messages are compile-time constants.
+const notAccessibleMarkers = new Map<string, SuperStoreNotAccessible>()
+export const _getNotAccessibleMarker = (message: string): SuperStoreNotAccessible => {
+  let marker = notAccessibleMarkers.get(message)
+  if (!marker) {
+    marker = new SuperStoreNotAccessible(message)
+    notAccessibleMarkers.set(message, marker)
+  }
+  return marker
+}
+
 export const _getSsItemsWithRestErrors = (
   ssItems: Partial<SuperStoreInternalValues>,
   errorMessage = 'This "%s" value is not yet accessible, maybe it is bug',
@@ -140,7 +152,9 @@ export const _getSsItemsWithRestErrors = (
   const notDefinedKeys = knownKeys.filter((key) => !(key in ssItems))
   Object.assign(
     ssItems,
-    Object.fromEntries(notDefinedKeys.map((key) => [key, new Error(errorMessage.replace('%s', key)) as never])),
+    Object.fromEntries(
+      notDefinedKeys.map((key) => [key, _getNotAccessibleMarker(errorMessage.replace('%s', key)) as never]),
+    ),
   )
   return ssItems as SuperStoreInternalValuesOrErrors
 }

@@ -39,6 +39,7 @@ import type {
 import {
   POINT0_ERROR_CODES_MAP,
   POINT0_QUERY_KEY_NAMESPACE,
+  _getNotAccessibleMarker,
   _point0_env,
   _ss,
   _ssRunWithServerStorageState,
@@ -129,20 +130,29 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
       // Inherit the parent run's page location, like the hole registry above: a page/layout loader's data
       // is fetched in a NESTED executor, but it serves the SAME page the outer run renders or prefetches,
       // so `getLocation()` must answer there — in the loader and in every server component it returns.
-      // Absent outside a page run (a standalone query/mutation hit) → the sentinel stays.
+      // Absent outside a page run (a standalone query/mutation hit) → the sentinel stays. Sentinels are shared
+      // markers, never per-request `new Error()`s — that allocation was a native leak (see SuperStoreNotAccessible).
       __POINT0_CURRENT_LOCATION__:
         _ss.__POINT0_CURRENT_LOCATION__.getOrUndefined() ??
-        (new Error('Current location will exists only on ssr phase') as never),
-      __POINT0_NAVIGATION_HELPERS__: new Error('Navigation helpers will exists only on ssr phase') as never,
-      __POINT0_NAVIGATION_PAGE_STATE__: new Error('Navigation page state will exists only on ssr phase') as never,
-      __POINT0_CURRENT_NAVIGATE_ID__: new Error('Current navigate id will exists only on ssr phase') as never,
-      __POINT0_NAVIGATION_TRANSITION_STATE__: new Error(
+        (_getNotAccessibleMarker('Current location will exists only on ssr phase') as never),
+      __POINT0_NAVIGATION_HELPERS__: _getNotAccessibleMarker(
+        'Navigation helpers will exists only on ssr phase',
+      ) as never,
+      __POINT0_NAVIGATION_PAGE_STATE__: _getNotAccessibleMarker(
+        'Navigation page state will exists only on ssr phase',
+      ) as never,
+      __POINT0_CURRENT_NAVIGATE_ID__: _getNotAccessibleMarker(
+        'Current navigate id will exists only on ssr phase',
+      ) as never,
+      __POINT0_NAVIGATION_TRANSITION_STATE__: _getNotAccessibleMarker(
         'Navigation transition state will exists only on ssr phase',
       ) as never,
-      __POINT0_LOAD_PAGE_COMPONENT_PROMISES__: new Error(
+      __POINT0_LOAD_PAGE_COMPONENT_PROMISES__: _getNotAccessibleMarker(
         'Load page component promises will exists only on ssr phase',
       ) as never,
-      __POINT0_PREFETCH_PAGE_PROMISES__: new Error('Prefetch page promises will exists only on ssr phase') as never,
+      __POINT0_PREFETCH_PAGE_PROMISES__: _getNotAccessibleMarker(
+        'Prefetch page promises will exists only on ssr phase',
+      ) as never,
       __POINT0_UNHEAD_SERVER_HEAD__: createHead(),
     } satisfies SuperStoreInternalValues)
     return new Executor<TRequiredCtx, TError>({
@@ -906,7 +916,8 @@ export class Executor<TRequiredCtx extends RequiredCtx = RequiredCtx, TError ext
   // inline and needs no streaming (mirrors `hasPendingSuspendableQueries` checking pending only).
   private hasPendingHoles(): boolean {
     const holes = this.serverStorageState.__POINT0_RSC_HOLES__
-    if (!holes) {
+    // Raw state read — guard the shape, not just truthiness: a "not accessible" placeholder must read as "no holes".
+    if (!holes || !(holes instanceof RscHoleRegistry)) {
       return false
     }
     for (const entry of holes.entries.values()) {
