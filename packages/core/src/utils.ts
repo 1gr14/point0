@@ -302,26 +302,54 @@ export const generateId = (): string => {
   }
 }
 
+/**
+ * The declaration site of the nearest caller OUTSIDE the machinery frames — what stamps `_fsLocation` on a point.
+ * `skip` names how many leading stack entries are machinery by contract (this function's own frame included); their
+ * FILES become the machinery set, and the answer is the first parsable frame at or past `skip` in a file outside that
+ * set. A walk, not a fixed index, on purpose: the `lets` sugar wraps every entry in a Proxy whose apply trap is a frame
+ * with no source at all (Bun prints it as `at unknown`), wrapper depth shifts as wrappers come and go, and a fixed
+ * index then lands on machinery or nothing — which silently strips the file location from every point error message.
+ * Top-level frames may carry no column (Bun prints `at /file.ts:8`), so the column is optional.
+ */
 export const getCallerLocation = (skip = 2): FsLocation | undefined => {
   const stack = new Error().stack
   if (!stack) return undefined
 
   const lines = stack.split('\n')
-  const target = lines[skip]
-  if (!target) return undefined
-
   // Matches:
   // at fn (/path/file.ts:10:5)
   // at /path/file.ts:10:5
-  const match = target.match(/\((.*):(\d+):(\d+)\)/) || target.match(/at (.*):(\d+):(\d+)/)
-
-  if (!match) return undefined
-
-  return {
-    path: match[1],
-    line: Number(match[2]),
-    column: Number(match[3]),
+  // at /path/file.ts:8  (a top-level frame — no column)
+  const parseFrame = (target: string): FsLocation | undefined => {
+    const match =
+      target.match(/\((.*):(\d+):(\d+)\)/) ??
+      target.match(/at (.*):(\d+):(\d+)/) ??
+      target.match(/\((.*):(\d+)\)/) ??
+      target.match(/at (.*):(\d+)$/)
+    if (!match) return undefined
+    return {
+      path: match[1],
+      line: Number(match[2]),
+      // the 2-group regexes (a top-level frame, no column) leave no third capture
+      column: match.length > 3 ? Number(match[3]) : 0,
+    }
   }
+
+  const machineryPaths = new Set<string>()
+  for (let index = 1; index < skip && index < lines.length; index++) {
+    const parsed = parseFrame(lines[index])
+    if (parsed) {
+      machineryPaths.add(parsed.path)
+    }
+  }
+  for (let index = skip; index < lines.length; index++) {
+    const parsed = parseFrame(lines[index])
+    if (!parsed || machineryPaths.has(parsed.path)) {
+      continue
+    }
+    return parsed
+  }
+  return undefined
 }
 export type FsLocation = {
   path: string
