@@ -538,7 +538,6 @@ Full reference at [1gr14.dev/point0](https://1gr14.dev/point0).
 - [Mutation](https://1gr14.dev/point0/latest/mutation)
 - [Action](https://1gr14.dev/point0/latest/action)
 - [Subscription](https://1gr14.dev/point0/latest/subscription)
-- [Channel, spaces & handlers](https://1gr14.dev/point0/latest/socket)
 - [Root](https://1gr14.dev/point0/latest/root)
 - [Base](https://1gr14.dev/point0/latest/base)
 - [Plugin](https://1gr14.dev/point0/latest/plugin)
@@ -560,6 +559,7 @@ Full reference at [1gr14.dev/point0](https://1gr14.dev/point0).
 - [Navigation](https://1gr14.dev/point0/latest/navigation)
 - [SSR](https://1gr14.dev/point0/latest/ssr)
 - [RSC](https://1gr14.dev/point0/latest/rsc)
+- [Socket](https://1gr14.dev/point0/latest/socket)
 - [Request](https://1gr14.dev/point0/latest/request)
 - [Response](https://1gr14.dev/point0/latest/response)
 - [Error handling](https://1gr14.dev/point0/latest/error-handling)
@@ -596,13 +596,15 @@ Full reference at [1gr14.dev/point0](https://1gr14.dev/point0).
 - [CookieStore](https://1gr14.dev/point0/latest/cookie-store)
 - [Basic Auth](https://1gr14.dev/point0/latest/basic-auth)
 - [CORS](https://1gr14.dev/point0/latest/cors)
+- [Cache-Control](https://1gr14.dev/point0/latest/cache-control)
+- [Compress](https://1gr14.dev/point0/latest/compress)
 
 **Examples**
 
 - [Basic](https://1gr14.dev/point0/latest/example-basic)
-- [Socket](https://1gr14.dev/point0/latest/example-socket)
 - [Vite](https://1gr14.dev/point0/latest/example-vite)
 - [Better Auth](https://1gr14.dev/point0/latest/example-better-auth)
+- [Socket](https://1gr14.dev/point0/latest/example-socket)
 - [Capacitor](https://1gr14.dev/point0/latest/example-capacitor)
 - [Expo](https://1gr14.dev/point0/latest/example-expo)
 
