@@ -3,6 +3,7 @@ import { Route0 } from '@1gr14/route0'
 import * as React from 'react'
 import type { ErrorPoint0 } from './error.js'
 import { log, type LogFn } from './logger.js'
+import { withChunkLoadRetry } from './stale.js'
 import type {
   PointName,
   PointsScope,
@@ -219,7 +220,12 @@ export class PointsManager<
   static toNormalizedPointsCollection(
     points: MixedPointsCollection | PointsDefinition<any, any>,
   ): NormalizedPointsCollection {
-    return points
+    // Resolved AFTER the map below, from the normalized root record (the same derivation `load()` uses for
+    // `this.scope`). Safe: the retry wrappers created during the map only call `getScope` at chunk-failure time,
+    // long after this function returned. A collection without a resolvable scope just skips the version check.
+    let rootScope: string | undefined = undefined
+    const getScope = () => rootScope
+    const normalized: NormalizedPointsCollection = points
       .map((p, index) => {
         // const sourcePoint = record.point
         try {
@@ -227,12 +233,15 @@ export class PointsManager<
           const record = 'type' in p && !('point' in p && 'point' in p.point) ? p : undefined
           const source = point ?? (record as Exclude<typeof record, undefined>)
           const pointSource = point ?? source.point
+          // Chunk loaders get the transient-failure retry here — the single choke point every consumer of the
+          // loader shares (`await point()`, the React.lazy FCs below, the socket handler preload). See stale.ts.
+          const load = typeof pointSource === 'function' ? withChunkLoadRetry(pointSource, { getScope }) : pointSource
           return {
             type: source.type,
             name: source.name,
             route: source.route ? Route0.from(source.route) : undefined,
             polh: !!source.polh,
-            point: point ?? source.point,
+            point: point ?? load,
             layouts: record ? (record.layouts ?? []) : point ? point._layouts.map((l) => l.name) : [],
             channel: record
               ? (record as { channel?: string }).channel
@@ -246,29 +255,29 @@ export class PointsManager<
                 : undefined,
             FC:
               source.type === 'layout'
-                ? typeof pointSource === 'function'
+                ? typeof load === 'function'
                   ? React.lazy(async () => ({
-                      default: await pointSource().then((p) => p.point.Layout),
+                      default: await load().then((p) => p.point.Layout),
                     }))
-                  : pointSource.point.Layout
+                  : load.point.Layout
                 : source.type === 'page'
-                  ? typeof pointSource === 'function'
+                  ? typeof load === 'function'
                     ? React.lazy(async () => ({
-                        default: await pointSource().then((p) => p.point.Page),
+                        default: await load().then((p) => p.point.Page),
                       }))
-                    : pointSource.point.Page
+                    : load.point.Page
                   : source.type === 'component'
-                    ? typeof pointSource === 'function'
+                    ? typeof load === 'function'
                       ? React.lazy(async () => ({
-                          default: await pointSource().then((p) => p.point.Component),
+                          default: await load().then((p) => p.point.Component),
                         }))
-                      : pointSource.point.Component
+                      : load.point.Component
                     : source.type === 'provider'
-                      ? typeof pointSource === 'function'
+                      ? typeof load === 'function'
                         ? React.lazy(async () => ({
-                            default: await pointSource().then((p) => p.point.Provider),
+                            default: await load().then((p) => p.point.Provider),
                           }))
-                        : pointSource.point.Provider
+                        : load.point.Provider
                       : undefined,
           }
         } catch (error) {
@@ -277,6 +286,9 @@ export class PointsManager<
         }
       })
       .filter(Boolean)
+    const rootPoint = normalized.at(0)?.point as { scope?: unknown } | undefined
+    rootScope = typeof rootPoint?.scope === 'string' && rootPoint.scope.length > 0 ? rootPoint.scope : undefined
+    return normalized
   }
 
   private static rawPointsCollectionToReadyPointsCollection(points: ReadyPoint[]): ReadyPointsCollection {

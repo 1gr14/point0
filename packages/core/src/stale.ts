@@ -25,6 +25,11 @@ import {
  * - When a page chunk fails to load during navigation, the navigation layer confirms staleness against the
  *   `build-version.json` (fetched fresh, never cached) via {@link fetchLatestClientBuildVersion} — a confirmed new
  *   version means "recover by document navigation", an unchanged version means "real network error, surface it".
+ * - Before a failed chunk import ever reaches the navigation layer, the loader itself retries it a couple of times
+ *   ({@link withChunkLoadRetry}, wrapped around every generated chunk loader) — but only when the failure looks
+ *   TRANSIENT (the served build version is unchanged, or unreachable): a dropped keep-alive socket or a Wi-Fi blip
+ *   heals silently instead of surfacing an error page. A confirmed NEWER build skips the retries entirely and falls
+ *   straight through to the recovery above.
  *
  * Everything here is inert in dev and on the server: no version is injected (nothing is bundled), so every check
  * resolves to "unknown" and the navigation behaves exactly as before.
@@ -218,6 +223,93 @@ export const fetchLatestClientBuildVersion = async ({ scope }: { scope: string }
     return typeof buildVersion === 'string' && buildVersion.length > 0 ? buildVersion : undefined
   } catch {
     return undefined
+  }
+}
+
+/**
+ * Delays (ms) before each chunk-load retry attempt. The first retry fires fast enough to absorb a dropped keep-alive
+ * socket or a Wi-Fi blip; the second gives a genuinely flaky network a real pause. Two retries keep the worst case — a
+ * dead network that also fails every version check — under a second and a half of added latency before the error
+ * surfaces.
+ */
+export const CHUNK_LOAD_RETRY_DELAYS_MS: readonly number[] = [300, 1000]
+
+/**
+ * Decide whether a failed chunk import is worth retrying. Retry only when the failure looks TRANSIENT — the currently
+ * served build (already known from a header mismatch, or fetched fresh from `build-version.json`) is the SAME one this
+ * tab runs, or cannot be determined at all (offline: the confirmation fetch fails the same way the chunk did, and a
+ * retry is exactly what a recovering network needs). Never retry when:
+ *
+ * - running on the server, or in dev (no build version is injected) — an import failure there is a real error (a compile
+ *   failure, a bad path) and must fail fast instead of sitting through backoff delays;
+ * - a NEWER build is confirmed — the old chunk is gone for good, so the retries would only delay the recovery; the tab is
+ *   marked stale so the navigation layer's deploy-invalidation recovery takes over without its own version fetch.
+ */
+const shouldRetryChunkLoad = async ({ getScope }: { getScope: () => string | undefined }): Promise<boolean> => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  const clientBuildVersion = getClientBuildVersion()
+  if (!clientBuildVersion) {
+    return false
+  }
+  if (getStaleClientBuildState()) {
+    // A header mismatch already proved this tab's build is old — the chunk is not coming back.
+    return false
+  }
+  const scope = getScope()
+  const latestBuildVersion = scope ? await fetchLatestClientBuildVersion({ scope }) : undefined
+  if (latestBuildVersion && latestBuildVersion !== clientBuildVersion) {
+    markClientBuildStale({ latestBuildVersion })
+    return false
+  }
+  return true
+}
+
+/**
+ * Wrap a chunk loader (a `() => import(...)` thunk from the generated points collection) with transient-failure
+ * retries, gated by {@link shouldRetryChunkLoad} before every attempt and paced by `delaysMs`.
+ *
+ * Wrapping the LOADER — rather than retrying around its call sites — is what lets one wrapper cover every consumer at
+ * once (`loadPage`'s `await point()`, the `React.lazy` instances built from the same loader, the socket handler
+ * preload), and it is the only placement that works for `React.lazy` at all: a lazy payload records a rejection
+ * PERMANENTLY, so the retries must happen inside the loader, before the payload settles.
+ *
+ * The wrapper is transparent: it resolves with the loader's result or rethrows the LAST failure unchanged, so the
+ * downstream chunk-failure classification (`PAGE_CHUNK_LOAD_FAILED` → deploy-invalidation recovery) behaves exactly as
+ * it does without it.
+ */
+export const withChunkLoadRetry = <TResult>(
+  load: () => Promise<TResult>,
+  {
+    getScope,
+    delaysMs = CHUNK_LOAD_RETRY_DELAYS_MS,
+  }: { getScope: () => string | undefined; delaysMs?: readonly number[] },
+): (() => Promise<TResult>) => {
+  return async () => {
+    try {
+      return await load()
+    } catch (firstError) {
+      let lastError: unknown = firstError
+      for (const [index, delayMs] of delaysMs.entries()) {
+        if (!(await shouldRetryChunkLoad({ getScope }))) {
+          break
+        }
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+        log({
+          level: 'warn',
+          category: ['navigation', 'stale'],
+          message: `A chunk import failed with no confirmed newer build — retrying (attempt ${index + 2}/${delaysMs.length + 1})`,
+          error: lastError,
+        })
+        try {
+          return await load()
+        } catch (error) {
+          lastError = error
+        }
+      }
+      throw lastError
+    }
   }
 }
 

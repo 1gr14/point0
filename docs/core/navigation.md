@@ -702,9 +702,20 @@ Detection is always on and free:
 - **A page chunk that fails to load mid-navigation** triggers a confirmation
   fetch of `build-version.json` (never cached, served next to the chunks). A new
   version confirms the deploy → recover by document navigation. The same version
-  means a genuine network error → it surfaces through the normal error path,
-  exactly as before, coded `POINT0_PAGE_CHUNK_LOAD_FAILED` — your `.error()` can
-  branch on it (e.g. "check your connection").
+  means a genuine network error → the import is retried in place (below) before
+  anything surfaces.
+
+A transient network failure — a dropped keep-alive socket after the laptop woke
+up, a Wi-Fi blip, a CDN edge hiccup — is not a stale deploy, and a reload would
+not fix it. So every chunk import that fails WITHOUT a confirmed newer build is
+retried up to two more times (300 ms, then 1 s between attempts), re-checking
+the served version before each attempt: if a deploy is confirmed mid-retry, the
+retries stop and the document-navigation recovery takes over immediately. Only
+after the retries are exhausted does the failure surface through the normal
+error path, coded `POINT0_PAGE_CHUNK_LOAD_FAILED` — your `.error()` can branch
+on it (e.g. "check your connection"). In dev there is no build version, and a
+failed import is a real error (a compile failure, a bad path) — it fails fast,
+no retries.
 
 Reload loops cannot happen: a document navigation is attempted once per new
 build version (sessionStorage-guarded), and only after the version check

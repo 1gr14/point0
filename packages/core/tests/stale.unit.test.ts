@@ -10,10 +10,12 @@ import {
   markClientBuildStale,
   resolveStaleReaction,
   shouldAttemptStaleReload,
+  withChunkLoadRetry,
 } from '../src/stale.js'
 import type { StaleContext } from '../src/stale.js'
 
 const originalWindow = (globalThis as { window?: unknown }).window
+const originalFetch = globalThis.fetch
 
 const withFakeWindow = (window: Record<string, unknown>): void => {
   ;(globalThis as { window?: unknown }).window = window
@@ -21,6 +23,7 @@ const withFakeWindow = (window: Record<string, unknown>): void => {
 
 afterEach(() => {
   ;(globalThis as { window?: unknown }).window = originalWindow
+  globalThis.fetch = originalFetch
   _resetStaleClientBuildState()
 })
 
@@ -169,5 +172,114 @@ describe('stale — deploy invalidation primitives', () => {
       }),
     ).toBe('handled')
     expect(seen).toEqual([ctx])
+  })
+})
+
+describe('withChunkLoadRetry — transient chunk-load retries', () => {
+  // The wrapper consults `build-version.json` before every retry; the version-fetch double below controls what the
+  // "server" answers. Delays are 1ms so the backoff pacing exists without slowing the suite.
+  const DELAYS = [1, 1]
+
+  const stubVersionFetch = (answer: { buildVersion: string } | 'network-error'): { calls: number[] } => {
+    const state = { calls: [] as number[] }
+    globalThis.fetch = (async () => {
+      state.calls.push(1)
+      if (answer === 'network-error') {
+        throw new TypeError('fetch failed')
+      }
+      return Response.json(answer)
+    }) as unknown as typeof fetch
+    return state
+  }
+
+  const makeLoader = (outcomes: Array<'fail' | 'ok'>): { load: () => Promise<string>; calls: () => number } => {
+    let calls = 0
+    return {
+      load: async () => {
+        const outcome = outcomes[calls] ?? 'ok'
+        calls += 1
+        if (outcome === 'fail') {
+          throw new TypeError(`Failed to fetch dynamically imported module (call ${calls})`)
+        }
+        return 'chunk'
+      },
+      calls: () => calls,
+    }
+  }
+
+  it('resolves without any version check when the loader succeeds', async () => {
+    withFakeWindow({ __POINT0_CLIENT_BUILD_VERSION__: 'v1' })
+    const versionFetch = stubVersionFetch({ buildVersion: 'v1' })
+    const loader = makeLoader(['ok'])
+    const wrapped = withChunkLoadRetry(loader.load, { getScope: () => 'root', delaysMs: DELAYS })
+    expect(await wrapped()).toBe('chunk')
+    expect(loader.calls()).toBe(1)
+    expect(versionFetch.calls.length).toBe(0)
+  })
+
+  it('retries a transient failure and succeeds when the served version is unchanged', async () => {
+    withFakeWindow({ __POINT0_CLIENT_BUILD_VERSION__: 'v1' })
+    stubVersionFetch({ buildVersion: 'v1' })
+    const loader = makeLoader(['fail', 'ok'])
+    const wrapped = withChunkLoadRetry(loader.load, { getScope: () => 'root', delaysMs: DELAYS })
+    expect(await wrapped()).toBe('chunk')
+    expect(loader.calls()).toBe(2)
+  })
+
+  it('does not retry a confirmed newer build — throws the original failure and marks the tab stale', async () => {
+    withFakeWindow({ __POINT0_CLIENT_BUILD_VERSION__: 'v1' })
+    stubVersionFetch({ buildVersion: 'v2' })
+    const loader = makeLoader(['fail', 'ok'])
+    const wrapped = withChunkLoadRetry(loader.load, { getScope: () => 'root', delaysMs: DELAYS })
+    await expect(wrapped()).rejects.toThrow('call 1')
+    expect(loader.calls()).toBe(1)
+    // ...so the navigation layer's recovery finds the mark and skips its own version fetch.
+    expect(getStaleClientBuildState()).toEqual({ latestBuildVersion: 'v2' })
+  })
+
+  it('does not retry when the tab is already marked stale (header mismatch seen earlier)', async () => {
+    withFakeWindow({ __POINT0_CLIENT_BUILD_VERSION__: 'v1' })
+    const versionFetch = stubVersionFetch({ buildVersion: 'v1' })
+    markClientBuildStale({ latestBuildVersion: 'v2' })
+    const loader = makeLoader(['fail', 'ok'])
+    const wrapped = withChunkLoadRetry(loader.load, { getScope: () => 'root', delaysMs: DELAYS })
+    await expect(wrapped()).rejects.toThrow('call 1')
+    expect(loader.calls()).toBe(1)
+    expect(versionFetch.calls.length).toBe(0)
+  })
+
+  it('retries when the version cannot be confirmed (offline) and rethrows the LAST failure', async () => {
+    withFakeWindow({ __POINT0_CLIENT_BUILD_VERSION__: 'v1' })
+    stubVersionFetch('network-error')
+    const loader = makeLoader(['fail', 'fail', 'fail'])
+    const wrapped = withChunkLoadRetry(loader.load, { getScope: () => 'root', delaysMs: DELAYS })
+    await expect(wrapped()).rejects.toThrow('call 3')
+    expect(loader.calls()).toBe(1 + DELAYS.length)
+  })
+
+  it('retries even without a resolvable scope (no way to confirm — assume transient)', async () => {
+    withFakeWindow({ __POINT0_CLIENT_BUILD_VERSION__: 'v1' })
+    const versionFetch = stubVersionFetch({ buildVersion: 'v1' })
+    const loader = makeLoader(['fail', 'ok'])
+    const wrapped = withChunkLoadRetry(loader.load, { getScope: () => undefined, delaysMs: DELAYS })
+    expect(await wrapped()).toBe('chunk')
+    expect(loader.calls()).toBe(2)
+    expect(versionFetch.calls.length).toBe(0)
+  })
+
+  it('never retries without an injected build version (dev: an import failure is a real error)', async () => {
+    withFakeWindow({})
+    const loader = makeLoader(['fail', 'ok'])
+    const wrapped = withChunkLoadRetry(loader.load, { getScope: () => 'root', delaysMs: DELAYS })
+    await expect(wrapped()).rejects.toThrow('call 1')
+    expect(loader.calls()).toBe(1)
+  })
+
+  it('never retries on the server', async () => {
+    ;(globalThis as { window?: unknown }).window = undefined
+    const loader = makeLoader(['fail', 'ok'])
+    const wrapped = withChunkLoadRetry(loader.load, { getScope: () => 'root', delaysMs: DELAYS })
+    await expect(wrapped()).rejects.toThrow('call 1')
+    expect(loader.calls()).toBe(1)
   })
 })
