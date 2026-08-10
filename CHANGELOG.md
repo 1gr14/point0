@@ -5,6 +5,49 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.10 — 2026-08-10
+
+- **Sockets: `enroll` is a guarantee.** A room granted by an enroller or by
+  `space.enroll()` cannot be dropped from the client: `leave()` on an enrolled
+  membership warns and does nothing, and a hand-crafted `leave` frame strips
+  only client-joined rooms. The server now stores each room's provenance —
+  joined, enrolled, or both — a resumed connection gets it back exactly, and
+  the `enrolled` frame carries only the enrolled set. The invariant you can
+  build on: if a space enrolls a user's room, an open channel means that room
+  is subscribed.
+- **Sockets: `kick` revokes rooms, `kill` closes connections.** `kick` lives on
+  space points only. Closing a connection from the server is `kill` — on a
+  channel by identity, or room-addressed on a space (`space.kill({ room })`),
+  so closing every connection in a user's room needs no identity iteration.
+  `refresh` and `amendIdentity` take room targets on spaces too.
+- **Sockets: `onEnter`/`onLeave` are room events.** They fire for every way a
+  connection enters or leaves rooms — join, enroll, resume, leave, kick, kill,
+  a refresh that revokes, transport loss — with a `reason` on the props and
+  `rooms` always an array. Point-level callbacks hear the whole space; a
+  membership's callbacks hear its own rooms, including a kick of them.
+  `onDisconnect` fires on transport loss too (with
+  `reason: 'socket' | 'kill' | 'close'`), and exactly once.
+  `memberships.client.rooms()` reports each room with its provenance:
+  `{ room, joined, enrolled }`.
+- **A chunk that fails to load on a flaky network retries in place.** A dropped
+  keep-alive socket or a Wi-Fi blip failed the import once and surfaced an
+  error page, even though nothing was stale. The import now retries up to two
+  more times (300 ms, then 1 s), re-checking the served build version before
+  each attempt — a confirmed newer build skips the retries and goes straight to
+  the deploy recovery, and dev still fails fast (an import failure there is a
+  real error).
+- **The engine's server defaults `idleTimeout` to 255 seconds.** Bun's
+  10-second default silently cut long-parked requests; the dev proxy already
+  sat at 255, now the production server matches it. Override via
+  `bunServeConfig`.
+- **Duplicate channel/space/handler names fail `generate`.** They were only
+  caught at runtime; the generator now refuses them the way it refuses other
+  duplicate points.
+- **Point declaration locations resolve again.** The location capture walked
+  the stack at a fixed depth and landed on the lets proxy's internal frame, so
+  every point reported no source location; it now walks past the machinery and
+  reports the first caller frame.
+
 ## 0.3.9 — 2026-08-08
 
 - **Fixed a native memory leak on Linux — roughly a kilobyte per request.** Every
