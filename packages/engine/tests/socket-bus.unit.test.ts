@@ -3,7 +3,7 @@
  * external Backplane (a Map plus per-channel subscriber sets, recording every publish and subscribe). Drives the
  * protocol directly — createConnection + claim + join over `handleMessage` — and proves the envelopes do their job over
  * the SHARDED topology: a room push initiated on A rides the room's own topic to B's socket and B's client reply lands
- * back in A's collect through A's process inbox; channel kick-by-identity crosses the shared channel; a space kick
+ * back in A's collect through A's process inbox; channel kill-by-identity crosses the shared channel; a space kick
  * crosses the bus and shrinks the remote membership; a `refresh` asks the matched remote connection to start over
  * without taking anything away from it; the enumerations scatter-gather (requests on the shared channel, answers into
  * the initiator's inbox — count sums numbers, list merges items, forEach streams them) WITH the spaces each connection
@@ -500,7 +500,7 @@ describe('socket bus (two instances, one backplane)', () => {
     }
   })
 
-  it('channel kick by identity matcher crosses the bus and closes the remote connection', async () => {
+  it('channel kill by identity matcher crosses the bus and closes the remote connection', async () => {
     const backplane = createSharedBackplane()
     const { chatChannel } = buildChannel()
     const a = createInstance({ backplane, channel: chatChannel })
@@ -509,20 +509,20 @@ describe('socket bus (two instances, one backplane)', () => {
     await b.socket.start()
     try {
       const memberB = await openConnection(b, chatChannel.point, { identity: { me: 'user-b' } })
-      await a.socket.adapter.kick({
+      await a.socket.adapter.kill({
         channel: chatChannel.point as never,
         matcher: JSON.stringify({ me: 'user-b' }),
-        reason: 'bus-kick',
+        reason: 'bus-kill',
       })
       await waitFor(
         () => memberB.socket.frames.some((frame) => frame.t === 'closed'),
-        'the kick to cross the bus and close the remote connection',
+        'the kill to cross the bus and close the remote connection',
       )
       const closed = memberB.socket.frames.find((frame) => frame.t === 'closed')
       expect(closed?.cid).toBe(memberB.cid)
-      expect(closed?.reason).toBe('bus-kick')
-      // a kick is a COMMAND — it rides the shared channel (an identity matcher cannot be laid out over topics)
-      expect(backplane.published.find((record) => envelopeOf(record).kind === 'kick')?.channel).toBe(SHARED_CHANNEL)
+      expect(closed?.reason).toBe('bus-kill')
+      // a kill is a COMMAND — it rides the shared channel (an identity matcher cannot be laid out over topics)
+      expect(backplane.published.find((record) => envelopeOf(record).kind === 'kill')?.channel).toBe(SHARED_CHANNEL)
       // B's entry is gone — a list() gather over the bus finds nothing anymore
       const listed = await a.socket.adapter.list({ channel: chatChannel.point as never, timeoutMs: 200 })
       expect(listed).toHaveLength(0)
@@ -954,7 +954,7 @@ describe('socket bus (two instances, one backplane)', () => {
         SHARED_CHANNEL,
         JSON.stringify({
           v: 1,
-          kind: 'kick',
+          kind: 'kill',
           pid: 'other',
           selector: { ...selector, connectionId: [memberB.cid] },
           reason: 'well-formed',
@@ -962,7 +962,7 @@ describe('socket bus (two instances, one backplane)', () => {
       )
       await waitFor(
         () => memberB.socket.frames.some((frame) => frame.t === 'closed'),
-        'the well-formed kick over the same bus',
+        'the well-formed kill over the same bus',
       )
       expect(memberB.socket.frames.find((frame) => frame.t === 'closed')?.reason).toBe('well-formed')
     } finally {

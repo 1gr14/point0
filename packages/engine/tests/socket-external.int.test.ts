@@ -190,10 +190,10 @@ export const forgeRepliesHandler = chatChannel.lets('serverHandler', 'forgeRepli
   })
   .serverHandler()
 
-export const adminKickHandler = chatChannel.lets('serverHandler', 'adminKickHandler')
+export const adminKillHandler = chatChannel.lets('serverHandler', 'adminKillHandler')
   .clientSend(z.object({ cid: z.string() }))
   .serverReply(async ({ input }) => {
-    await chatChannel.kick({ connectionId: input.cid })
+    await chatChannel.kill({ connectionId: input.cid })
     return { ok: true }
   })
   .serverHandler()
@@ -395,7 +395,7 @@ describe('socket over an external backplane', () => {
     }
   })
 
-  it('the conn record is DELETED on every way out: a client close, a dead socket, a kick', async () => {
+  it('the conn record is DELETED on every way out: a client close, a dead socket, a kill', async () => {
     const observer = await openAndClaim('kv-observer-2')
     try {
       // 1. the client closes the connection over a socket that stays up
@@ -422,7 +422,7 @@ describe('socket over an external backplane', () => {
         t: 'send',
         id: 'kick1',
         cid: observer.cid,
-        handler: 'adminKickHandler',
+        handler: 'adminKillHandler',
         input: JSON.stringify({ cid: kicked.cid }),
       })
       await kicked.wire.waitFrame((frame) => frame.t === 'closed')

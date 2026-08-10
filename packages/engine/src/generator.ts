@@ -856,11 +856,44 @@ export class FilesGenerator {
     }
   }
 
+  /**
+   * Socket points are addressed by NAME on the wire and registered by their `scope:type:name` id — a frame names its
+   * handler, a `claimed` frame names its spaces, a room topic is namespaced by the space name alone. Two channels, two
+   * spaces or two handlers sharing a name inside one scope would shadow each other (the server index resolves the
+   * first, the client registry keeps the last), so the manifest must never carry both. The runtime catches it too
+   * (`PointsManager` duplicates, `ServerPoints` conflicted identity); this check is the early one — it fails generation
+   * with both file paths, before anything runs.
+   */
+  private assertUniqueSocketPointNames(points: Array<CompilerPoint<true>>): void {
+    const seen = new Map<string, CompilerPoint>()
+    for (const point of points) {
+      if (
+        point.type !== 'channel' &&
+        point.type !== 'space' &&
+        point.type !== 'serverHandler' &&
+        point.type !== 'clientHandler'
+      ) {
+        continue
+      }
+      // keyed by the point ID itself — the runtime's own collision key, so this stays exactly as wide as the check
+      // it front-runs: a channel and a space may share a name, two channels of one scope may not
+      const key = `${point.scope}:${point.type}:${point.name}`
+      const existing = seen.get(key)
+      if (existing) {
+        throw new Error(
+          `Two ${point.type} points share the name "${point.name}" (${existing.file.abs} and ${point.file.abs}) — ${point.type} point names must be unique per scope to be addressed on the socket wire.`,
+        )
+      }
+      seen.set(key, point)
+    }
+  }
+
   emitLazyPointsFile(task: FilesGeneratorTaskClientPoints): string {
     const points = this.safePoints.filter((p) =>
       FilesGenerator.shouldExistsInClientPointsFile({ point: p, scope: task.scope }),
     ) as Array<CompilerPoint<true>>
     this.assertUniqueRscComponentNames(points)
+    this.assertUniqueSocketPointNames(points)
     const lines: string[] = []
     if (task.banner) {
       lines.push(task.banner)
@@ -910,6 +943,7 @@ export class FilesGenerator {
         : FilesGenerator.shouldExistsInServerPointsFile({ point: p, scope: task.scope }),
     ) as Array<CompilerPoint<true>>
     this.assertUniqueRscComponentNames(points)
+    this.assertUniqueSocketPointNames(points)
 
     const lines: string[] = []
     if (task.banner) {

@@ -6,12 +6,12 @@ connect matrix (GET/POST by input length × upgrade-vs-ticket by socket
 presence), the membership cascade (join/leave over the socket, `.enroller` at
 connection setup), the wire protocol, the socket backplane (KV + a bus sharded
 by topic) that binds multiple processes, the admin surface (channel
-`kick`/`refresh`/`amendIdentity`/`connections.*`, space
-`kick`/`enroll`/`memberships.*` — commands on the point, enumerations under the
-`server`/`client` floors, server targets are the `$`-dictionary), the
-per-process room index, the dev-server socket proxy, and the compiler strip
-rules. This documents the code as it is TODAY. User-facing docs:
-[docs/core/socket.md](../../docs/core/socket.md).
+`kill`/`refresh`/`amendIdentity`/`connections.*`, space
+`kick`/`kill`/`enroll`/`refresh`/`amendIdentity`/`memberships.*` — commands on
+the point, enumerations under the `server`/`client` floors, server targets are
+the `$`-dictionary), the per-process room index, the dev-server socket proxy,
+and the compiler strip rules. This documents the code as it is TODAY.
+User-facing docs: [docs/core/socket.md](../../docs/core/socket.md).
 
 ## The three-level model
 
@@ -105,7 +105,7 @@ a space's `TRoom` is never undefined now.
 | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | Client runtime: socket manager, connection holds, membership registry, send queue, dispatch                                                          | `packages/core/src/socket.ts`                                                     |
 | Wire protocol types (`SocketClientFrame` / `SocketServerFrame`) + `ChannelConnectOutput`                                                             | `packages/core/src/socket.ts` (top)                                               |
-| Server adapter seam (`SocketServerAdapter`: push/kick/refresh/count/list/forEach/localCount/localList/amendIdentity) + the adapter registry          | `packages/core/src/socket.ts` (server-only half, same module)                     |
+| Server adapter seam (`SocketServerAdapter`: push/kick/kill/refresh/count/list/forEach/localCount/localList/amendIdentity) + the adapter registry     | `packages/core/src/socket.ts` (server-only half, same module)                     |
 | Client helpers `reconnectAll` / `disconnectAll`, `getSocket`/`useSocket`/`<Socket>`                                                                  | `packages/core/src/socket.ts`                                                     |
 | Client enumeration floor (`listChannelConnectionFacades` / `listSpaceMembershipFacades` — `connections.client.*` / `memberships.client.*`)           | `packages/core/src/socket.ts`                                                     |
 | Builder surface: `.channel()`, `.space()`/`.joiner`, handlers, send methods, admin, `.with`                                                          | `packages/core/src/point0.ts` (search `// socket`, `_executeJoiner`)              |
@@ -222,7 +222,9 @@ Changing identity (login/logout) is not part of connect mechanics — it's
   `{t:'joinErr', id, error}`) and subscribes the socket to those room topics.
   Leave is `{t:'leave', cid, space, rooms}` — the client NAMES the rooms to drop
   (it owns the shared-room refcount across its own joins: a room another of its
-  memberships still covers stays out of the list).
+  memberships still covers stays out of the list); the server sheds only the
+  `joined` mark — an ENROLLED room survives any leave frame (provenance, the
+  enroll guarantee).
 - **The waiting cascade — one invariant across all levels: each level waits for
   the one below IF it was started, and throws if it was never started.** A send
   on a space handler waits for the membership (`joining` → `joined` → sends);
@@ -278,7 +280,7 @@ resolves to a room before anything is addressed.
   join — so a reconnect or a `refresh` (new cid) makes the client REPLAY all
   live joins automatically (it holds the inputs). On connection loss the
   membership stays and its status follows the connection down; on connection
-  dispose (kick/logout) it goes `closed`.
+  dispose (kill/logout) it goes `closed`.
 - Two different mechanisms, often confused. The stale-answer guard is the JOIN
   CORRELATION ID: `sendJoinFrame` mints a fresh `joinId` and registers the
   membership in `manager.pendingJoins` under it; re-sending a join deletes the
@@ -310,7 +312,7 @@ socket/subscription code lives in `POINT0_ERROR_CODES` (error.ts).
 | client → server | `{t:'discard', ticket}`                                                                                            | release an unclaimed ticket (dedup merged the connection away)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | client → server | `{t:'close', cid}`                                                                                                 | close one connection                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | client → server | `{t:'join', id, cid, space, input?}`                                                                               | run a space's `.joiner`; `id` correlates the answer                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| client → server | `{t:'leave', cid, space, rooms}`                                                                                   | leave the NAMED rooms — the client computes the list (it owns the refcount across its own memberships, enrolled ones included)                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| client → server | `{t:'leave', cid, space, rooms}`                                                                                   | leave the NAMED rooms — the client computes the list (it owns the refcount across its own memberships, enrolled ones included); the server drops only rooms whose sole mark is `joined` — an ENROLLED room never leaves by a client frame                                                                                                                                                                                                                                                                                                                                                          |
 | client → server | `{t:'send', id, cid, handler, input?, room?}`                                                                      | message to a handler; `room` = the serialized room a SPACE handler addresses                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | client → server | `{t:'reply', id, cid, data?, error?}`                                                                              | this client's `.clientReply` answer (`error` = the reply fn threw)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | client → server | `{t:'ping'}`                                                                                                       | keepalive (client-initiated, interval = channel `ping`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -326,7 +328,7 @@ socket/subscription code lives in `POINT0_ERROR_CODES` (error.ts).
 | server → client | `{t:'resumed', cid, streams}`                                                                                      | a resume succeeded — the connection is live again (identity/rooms/subscriptions restored, nothing ran); `streams` = wire key → `{gapless, head}`, the PER-STREAM proof and the authoritative cursor re-seed; the replayed `msg` frames follow as ONE tail, merge-ordered by the delivery clock across streams                                                                                                                                                                                                                                                                                      |
 | server → client | `{t:'resumeErr', cid}`                                                                                             | a resume refused — deliberately reasonless (unknown cid ≡ wrong key, no oracle); the client full-connects that one channel                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | server → client | `{t:'msg', channel, handler, space?, room?, cid?, rcid?, mid?, tseq?, input?, exceptConnectionIds?, exceptRooms?}` | a push; `space`+`room` = room push, `space` w/o `room` = space-wide, `cid` = personal (connection-addressed), none = channel-wide; `tseq` = the TOPIC STREAM's dense sequence (a resumable channel — the frame's shape names the stream: `cid` → 'p', else the topic); `rcid` = the replay target of a re-sent topic frame (dispatch narrows, the stream identity stays the topic's); `rp` = the replay marker on EVERY re-sent frame (props surface it as `replayed: { gapless }`); `exceptConnectionIds: string[]` = cids to skip, `exceptRooms: string[]` = serialized rooms whose members skip |
-| server → client | `{t:'closed', cid, reason?}`                                                                                       | a channel kick — client marks the connection `closed`; declarative holds auto-revive via the reconnect policy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| server → client | `{t:'closed', cid, reason?}`                                                                                       | a server kill — client marks the connection `closed`; declarative holds auto-revive via the reconnect policy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | server → client | `{t:'refresh', cid}`                                                                                               | re-run the connect request with the socket up (loader re-runs)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | server → client | `{t:'pong'}`                                                                                                       | keepalive answer — the client reads nothing off the frame; it exists so that a silent connection still produces inbound traffic for the client's liveness deadline to measure                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
@@ -339,9 +341,9 @@ space/room push narrowed to one connection (a connection-selection target,
 delivered on the PERSONAL stream) — or `rcid`, the same narrowing for a replayed
 topic frame. The client drops a frame its `exceptConnectionIds`/`exceptRooms`
 covers (it knows its own cid and memberships) — AFTER advancing the stream
-cursor: a cursor records receipt, not display. **Space kick vs channel kick**:
-`left` shrinks a membership's rooms (the connection lives on); `closed` disposes
-the whole connection.
+cursor: a cursor records receipt, not display. **Space kick vs kill**: `left`
+shrinks a membership's rooms (the connection lives on); `closed` disposes the
+whole connection.
 
 **The stream wire keys** — the dictionary cursors, heads and verdicts all speak:
 `'c'` = the channel-wide stream, `'p'` = the connection's personal stream,
@@ -433,12 +435,15 @@ advance monotonically (`max`).
   is `leave`/`kick`/`refresh`, never a join side-effect (the old input-keyed
   model incidentally dropped rooms a repeat join no longer returned — that was
   an accident of bookkeeping, not a designed revocation path).
-- `handleLeave`: `{t:'leave', cid, space, rooms}` — remove exactly the NAMED
-  rooms (`removeRoomsFromEntry`: unindex, release topics, emit
-  `pointSpaceLeaveServer` reason `'leave'`). The client computes the list — it
-  owns the shared-room refcount across its own joins.
+- `handleLeave`: `{t:'leave', cid, space, rooms}` — remove the NAMED rooms MINUS
+  the enrolled ones (`removeRoomsFromEntry` gates on provenance: a `'leave'`
+  clears the `joined` flag and keeps any room still flagged `enrolled`; unindex,
+  release topics, emit `pointSpaceLeaveServer` reason `'leave'` for what
+  actually went). The client computes the list — it owns the shared-room
+  refcount across its own joins.
 - `cleanupConnection` removes every space's rooms the same way (same refcount),
-  reason-tagged `'socket'` / `'kick'` / `'close'` — presence needs it.
+  reason-tagged `'socket'` / `'kick'` / `'kill'` / `'close'` — presence needs
+  it.
 
 ### Enrollment (`.enroller`) — server-side joins at connection setup
 
@@ -487,19 +492,22 @@ from the match selector when no room parts are present, exactly for that.
 Per match it UNIONS the rooms into the participation (`addRoomsToEntry`; over
 `maxRooms` → that connection is SKIPPED with a warning — an admin fan-out has no
 one requester to answer), answers `{t:'enrolled', cid, space, rooms}` with the
-connection's FULL new room set of the space (announcements replace client-side —
+connection's full new ENROLLED set of the space — a merely-joined room stays its
+own membership's business (announcements replace client-side —
 `applyEnrolledSpaces`, the same machinery the `claimed` reconcile uses), and
 emits the `pointSpaceJoinServer*` family with an empty input (added rooms only)
 — `Start`, then the Settled/Success pair after the union, like every join.
 Crosses processes as the `enroll` bus envelope. A space kick shrinks enrollments
 like any rooms — the pair is symmetric in SHAPE but not in park reach, by
-decision: a kick reaches parked entries (`parkedKickMatches` — a revocation must
-not hide in a park), an imperative enroll does NOT (`matchLocal` is live-only —
-parked connections are publicly dead, and a missed GRANT is recoverable: the
-reconnect re-runs `.enroller`, and a durable enrollment is data the enroller
-reads anyway). EPHEMERAL by design: a reconnect/refresh rebuilds enrollments
-from `.enroller` alone — a durable enrollment is DATA the enroller reads;
-`enroll` delivers that fact to the connections already live.
+decision: a kick reaches parked entries (`parkedSweepMatches` — a revocation
+must not hide in a park), an imperative enroll does NOT (`matchLocal` is
+live-only — parked connections are publicly dead, and a missed GRANT is
+recoverable: the reconnect re-runs `.enroller`, and a durable enrollment is data
+the enroller reads anyway). Lives as long as the CONNECTION: a resume restores
+it (the passport keeps each room's provenance), but a full reconnect or a
+`refresh` rebuilds enrollments from `.enroller` alone — a durable enrollment is
+DATA the enroller reads; `enroll` delivers that fact to the connections already
+live.
 
 ### Push targets and the addressing watershed
 
@@ -591,7 +599,7 @@ channel transformer, room → the space transformer) before sift runs, so Dates
 compare as live values. `$where` is rejected in `_assertNoWhereOperator` (a
 function can't cross the bus and is an eval hole).
 
-### Space kick vs channel kick
+### Space kick vs kill
 
 - `space.kick({ room?, $room?, connectionId?, $identity? })` is NOT a connection
   kill — it's a forced LEAVE of the rooms satisfying the room parts (exact
@@ -603,7 +611,7 @@ function can't cross the bus and is an eval hole).
   membership at zero rooms stays `joined` with `[]` (it re-fills only by
   leave+join or a refresh). "Close a chat" = `kick({ room })` for everyone — a
   room has no state of its own, it exists while someone is in it.
-- A space kick reaches PARKED entries too (`parkedKickMatches` — the selector's
+- A space kick reaches PARKED entries too (`parkedSweepMatches` — the selector's
   connection parts; the room parts filter per entry like for live ones): the
   kicked rooms leave the participation, the room index (the streams' subscriber
   truth), the epochs and the KV passport, through the same
@@ -619,8 +627,8 @@ function can't cross the bus and is an eval hole).
   client's own membership state keeps believing in the kicked room (no frame
   carried the news) — the same "the client re-derives what it can" weakness
   every KV restore has.
-- `channel.kick({ connectionId?, $identity? })` stays a whole-connection
-  `closed` + `cleanupConnection(reason: 'kick')`.
+- `kill({ connectionId?, $identity? })` (rooms parts too, from a space point)
+  stays a whole-connection `closed` + `cleanupConnection(reason: 'kill')`.
 
 ### Collect windows
 
@@ -668,7 +676,7 @@ excepted-reply tests in `socket.int.test.ts`.
 
 Strings only; the transformer already serialized. Written at the connect (POST
 or the upgrade stash), read at claim, re-written on every ping (TTL slide) and
-by `amendIdentity` (the patched identity), deleted on close/discard/kick. The KV
+by `amendIdentity` (the patched identity), deleted on close/discard/kill. The KV
 exists solely so the connect-serving process and the socket-holding process can
 differ; the admin surface crosses processes over the BUS (every process matches
 its OWN live entries), and the message hot path runs off in-memory
@@ -678,21 +686,22 @@ reclaims what a crashed process left behind.
 | Key                        | Written                                                             | Read          | TTL                    | Deleted                                                         |
 | -------------------------- | ------------------------------------------------------------------- | ------------- | ---------------------- | --------------------------------------------------------------- |
 | `point0:socket:ticket:<t>` | connect (POST/long path)                                            | claim         | 30 s                   | on claim, on `discard`, on TTL                                  |
-| `point0:socket:conn:<cid>` | connect, re-set on claim + every ping + amend + every room change\* | claim, resume | `connectionTtl` (90 s) | on close/kick, on TTL; on socket death only for NON-resumable\* |
+| `point0:socket:conn:<cid>` | connect, re-set on claim + every ping + amend + every room change\* | claim, resume | `connectionTtl` (90 s) | on close/kill, on TTL; on socket death only for NON-resumable\* |
 
 The `conn:<cid>` value is `{ scope, channel, identity }` — and, for a RESUMABLE
 channel's connection, the resume passport on top:
-`resume: { keyHash, rooms: { [spaceName]: string[] } }` (the SHA-256 of the
-resume key and the per-space serialized rooms, `resumable: false` spaces
-excluded). \*The starred cells are the resumable channel's additions: every room
-change (join/leave/enroll/space-kick — rare next to messages) writes the record
-through (`writeConnRecordThrough`, skipped when only an opt-out space changed),
-a resume is the record's second reader, and a SILENT socket death deliberately
-does NOT delete it — the record IS the right to resume and only its TTL (or a
-kick/close) ends it, which is also what keeps a graceful shutdown redeployable.
-A non-resumable channel's record stays exactly the old story: no rooms, no hash,
-deleted on every way out; its memberships are rebuilt by the client replaying
-its joins.
+`resume: { keyHash, rooms: { [spaceName]: { joined: string[]; enrolled: string[] } } }`
+(the SHA-256 of the resume key and the per-space serialized rooms split by
+PROVENANCE — a room both joined and enrolled sits in both lists;
+`resumable: false` spaces excluded). \*The starred cells are the resumable
+channel's additions: every room change (join/leave/enroll/space-kick — rare next
+to messages) writes the record through (`writeConnRecordThrough`, skipped when
+only an opt-out space changed), a resume is the record's second reader, and a
+SILENT socket death deliberately does NOT delete it — the record IS the right to
+resume and only its TTL (or a kill/close) ends it, which is also what keeps a
+graceful shutdown redeployable. A non-resumable channel's record stays exactly
+the old story: no rooms, no hash, deleted on every way out; its memberships are
+rebuilt by the client replaying its joins.
 
 **A live connection's identity lives in process memory and has no TTL.** The
 socket-holding process keeps `identityParsed` / `identitySerialized` on the
@@ -819,13 +828,14 @@ memory only, a page reload has no key and full-connects honestly. No rotation on
 resume (deliberate — see the card's security notes).
 
 **The passport.** `StoredConnection.resume = { keyHash, rooms }` built by
-`buildConnJson(entry)` — the per-space serialized rooms of the spaces
-`spaceInResume` admits (channel resumable AND space not opted out).
-`writeConnRecordThrough` mirrors every room change of a LIVE entry
-(`addRoomsToEntry` / `removeRoomsFromEntry` call it; a change that only touched
-an opt-out space skips the write — that is the whole point of the opt-out), the
-ping renew re-sets the same json, `amendLocal` rebuilds through the same builder
-so the passport rides an identity amend.
+`buildConnJson(entry)` — the per-space serialized rooms, split `joined` /
+`enrolled` by each room's provenance flags, of the spaces `spaceInResume` admits
+(channel resumable AND space not opted out). `writeConnRecordThrough` mirrors
+every room change of a LIVE entry (`addRoomsToEntry` / `removeRoomsFromEntry`
+call it; a change that only touched an opt-out space skips the write — that is
+the whole point of the opt-out), the ping renew re-sets the same json,
+`amendLocal` rebuilds through the same builder so the passport rides an identity
+amend.
 
 **The topic streams** (`TopicStream`: `tseq`, `log`, `logBytes`,
 `countByHandler`, `maxNonBufferedTseq`, `evictedMaxTseq`). Shared streams live
@@ -875,28 +885,29 @@ personal stream needs no epoch — it is born with the entry, at zero.
 `floor = max(cursor, epoch)` — a proof, not a guess. The verdicts ride the
 `resumed` frame per stream (`streams: { [wireKey]: { gapless, head } }`); the
 client re-seeds every named cursor from its head (authoritative), computes
-`onConnect`'s verdict as `'c' ∧ 'p'` and each membership's `onEnter` verdict as
-the AND over ITS streams (its rooms + its space-wide; a room the server did not
-answer for is being revoked — the queued `left` follows — and does not vote).
-Each stream is covered by exactly ONE callback level, so a gap in a busy room
-never forces the quiet rooms or the global data to refetch. The REPLAY is the
-union of every stream's log above its floor, sorted by `stamp` and sent as one
-tail after the `resumed` frame — the total per-connection order survives across
-streams within a process epoch. Every replayed frame is MARKED (`rp`), and a
-replayed TOPIC frame is additionally re-addressed to the resuming connection
-(`rcid`, a parse+patch at replay time — rare — instead of a per-recipient copy
-at push time — hot): another connection sharing the topic must not dispatch it
-twice; personal frames already carry their `cid`. A handler declared
-`replay: 'gapless'` is FILTERED out of a GAPPY stream's replay (`replayPolicyOf`
-memo in `answerResume`): its messages are only valuable as a complete sequence,
-so a partial tail never arrives and the honest verdict alone drives the refetch
-— the withheld frames STAY in the log, and a later resume provably clean from
-the client's cursor delivers them in full. Client-side the verdict bits live on
-the connection (`internal.resumeVerdicts`, voided by a full connect's claim),
-and every dispatched frame's props carry `replayed: false | { gapless }` — the
-frame's OWN stream's verdict (`msgStreamWireKey` names the stream from the
-frame's shape; `rcid` deliberately does not participate) — the per-listener
-escape hatch next to the per-handler declaration.
+`onConnect`'s verdict as `'c' ∧ 'p'` and each ROOM's `onEnter` verdict as its
+own stream ∧ the space-wide stream (a room the server did not answer for is
+being revoked — the queued `left` follows — and folds to `true`: the revocation
+arrives as its own signal). Each stream is covered by exactly ONE callback
+level, so a gap in a busy room never forces the quiet rooms or the global data
+to refetch. The REPLAY is the union of every stream's log above its floor,
+sorted by `stamp` and sent as one tail after the `resumed` frame — the total
+per-connection order survives across streams within a process epoch. Every
+replayed frame is MARKED (`rp`), and a replayed TOPIC frame is additionally
+re-addressed to the resuming connection (`rcid`, a parse+patch at replay time —
+rare — instead of a per-recipient copy at push time — hot): another connection
+sharing the topic must not dispatch it twice; personal frames already carry
+their `cid`. A handler declared `replay: 'gapless'` is FILTERED out of a GAPPY
+stream's replay (`replayPolicyOf` memo in `answerResume`): its messages are only
+valuable as a complete sequence, so a partial tail never arrives and the honest
+verdict alone drives the refetch — the withheld frames STAY in the log, and a
+later resume provably clean from the client's cursor delivers them in full.
+Client-side the verdict bits live on the connection (`internal.resumeVerdicts`,
+voided by a full connect's claim), and every dispatched frame's props carry
+`replayed: false | { gapless }` — the frame's OWN stream's verdict
+(`msgStreamWireKey` names the stream from the frame's shape; `rcid` deliberately
+does not participate) — the per-listener escape hatch next to the per-handler
+declaration.
 
 **Parking = death + subscriber-ship** (`parkConnection` from
 `cleanupConnection(reason: 'socket')`, only when the channel HAS buffering
@@ -914,13 +925,13 @@ time (`removeRoomsFromEntry`) — an unpark revives exactly what the passport
 promises. The window is the channel's `server.resume.parkWindow` (default 30 s);
 `sweepParked` drops the entry from the indexes (releasing streams nobody else
 holds) — the KV record lives on to its own TTL, so a later resume still works,
-replaying only what surviving shared streams can still prove. A channel KICK
-sweeps matching parked entries too and deletes their records, and a SPACE kick
-shrinks a parked entry's participation, index slot, epochs and passport the same
-way (revocation must not hide in a park — see «Space kick vs channel kick»); a
-`'socket'` cleanup of a resumable channel keeps the record even without parking
-— the record is the resume right, only kick/close/TTL end it, and a graceful
-shutdown (sockets closing = `'socket'`) therefore keeps a redeploy resumable by
+replaying only what surviving shared streams can still prove. A KILL sweeps
+matching parked entries too and deletes their records, and a SPACE kick shrinks
+a parked entry's participation, index slot, epochs and passport the same way
+(revocation must not hide in a park — see «Space kick vs kill»); a `'socket'`
+cleanup of a resumable channel keeps the record even without parking — the
+record is the resume right, only kill/close/TTL end it, and a graceful shutdown
+(sockets closing = `'socket'`) therefore keeps a redeploy resumable by
 construction.
 
 **The resume itself** (`handleResume` — a bare socket accepts `resume` and
@@ -940,7 +951,7 @@ resolves it). Three paths, cheapest first, each behind the hash check and the
    died publicly. Two tabs sharing an exported key steal the connection from
    each other, last-wins — documented.
 2. **Unpark** — same process, the entry is parked. The KV record is re-read
-   first: a kick's delete or a TTL lapse refuses the resume even though the park
+   first: a kill's delete or a TTL lapse refuses the resume even though the park
    is warm (the streams must not outvote the record). The revival re-announces
    symmetrically — `pointChannelOpenServer` + the join family per space
    (`emitResumedJoins`, empty input, like an enrollment); after the `resumed`
@@ -948,9 +959,10 @@ resolves it). Three paths, cheapest first, each behind the hash check and the
    the space kicks the client slept through.
 3. **KV restore** — the passport is all there is (a redeploy, a lapsed park):
    rebuild the entry from the record — identity parse, `addRoomsToEntry` per
-   passport space (spaces the deploy removed or opted out restore nothing),
-   fresh epochs at the CURRENT stream heads — run NOTHING (no
-   connector/joiner/enroller) and answer through
+   passport space with the stored provenance (the `joined` and `enrolled` lists
+   restore their flags — a restored enrollment stays leave-proof; spaces the
+   deploy removed or opted out restore nothing), fresh epochs at the CURRENT
+   stream heads — run NOTHING (no connector/joiner/enroller) and answer through
    `answerResume(…, { vouch: false })`: every verdict `false`, no replay, heads
    reset the client's cursors so the NEXT blip can prove itself. Deliberately
    conservative even when a shared stream survived on this process: the personal
@@ -970,23 +982,24 @@ a resumable connection's cid (`handleSocketClosed` skips the wipe) — cid + key
   re-seed every named cursor from its head FIRST, mark every restored membership
   SYNCED (`lastCid = cid`) BEFORE anything polls the cascade (a mid-loop poll
   would replay the joins the resume just skipped — the ordering is
-  load-bearing), fire `onEnter({ resumed: true, gapless })` per restored
-  membership with ITS OWN verdict and `onConnect({ resumed: true, gapless })`
-  once with `'c' ∧ 'p'`, `connectIndex++`, flush the queued sends; the replayed
-  frames then ride the ordinary dispatch (`rcid` narrows a topic frame to the
-  resuming connection; cursors advance in the `msg` case, before dispatch, by
-  `max`). The EVENTS mirror the callbacks at the same spots: each restored
-  membership's join family and the connection's connect family close `Settled` →
-  `Success` with the same markers and pre-increment index (no `Start` — see the
-  Events section). Opt-out spaces' memberships stay un-synced on purpose — the
-  cascade replays their joins (the joiner re-judges); their ENROLLED memberships
-  are disposed (the announcement is gone). `resumeErr` → clear the credential,
-  full-connect that one channel. `refresh` VOIDS the credential before the
-  re-connect (the resume bypass); a full connect voids it until its claim mints
-  the fresh one. Per-connection fallback timers at the channel's client
-  `resumeTimeout` (default 5 s) guard against a server that does not speak
-  resume (a rolling deploy): an unanswered entry falls back to the full connect
-  instead of hanging.
+  load-bearing), re-enter the restored rooms (`enterRooms` reason `'resume'`,
+  each room with ITS OWN verdict — enrolled memberships' rooms included) and
+  fire `onConnect({ resumed: true, gapless })` once with `'c' ∧ 'p'`,
+  `connectIndex++`, flush the queued sends; the replayed frames then ride the
+  ordinary dispatch (`rcid` narrows a topic frame to the resuming connection;
+  cursors advance in the `msg` case, before dispatch, by `max`). The EVENTS
+  mirror the callbacks at the same spots: each restored membership's join family
+  and the connection's connect family close `Settled` → `Success` with the same
+  markers and pre-increment index (no `Start` — see the Events section). Opt-out
+  spaces' memberships stay un-synced on purpose — the cascade replays their
+  joins (the joiner re-judges); their ENROLLED memberships are disposed (the
+  announcement is gone). `resumeErr` → clear the credential, full-connect that
+  one channel. `refresh` VOIDS the credential before the re-connect (the resume
+  bypass); a full connect voids it until its claim mints the fresh one.
+  Per-connection fallback timers at the channel's client `resumeTimeout`
+  (default 5 s) guard against a server that does not speak resume (a rolling
+  deploy): an unanswered entry falls back to the full connect instead of
+  hanging.
 
 **The markers.** `ChannelConnectionEventProps` / `SpaceMembershipEventProps`
 carry `resumed: boolean` + `gapless: boolean` next to the index; the fire
@@ -1025,13 +1038,13 @@ stream — on N nodes the old single channel cost every node the whole cluster's
 message flow (per-node work linear in cluster size, total quadratic). The
 channels:
 
-| Channel                                                   | Subscribed                                                        | Carries                                                                                                                                                |
-| --------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `point0:socket:bus` (shared)                              | every process, from `start()`                                     | commands (`kick`/`refresh`/`amend`/`enroll`), `count-req`/`connections-req`, and pushes with a SELECTION part (`connectionId` / `$identity` / `$room`) |
-| `point0:socket:proc:<pid>` (inbox)                        | its own process, from `start()`                                   | every ANSWER: forwarded collect `reply`s, `count-res`, `connections-res`                                                                               |
-| `point0:socket:channel:<scope>:<channel>`                 | processes holding ≥ 1 connection of the channel (parked included) | channel-wide pushes (no `space`, no selection)                                                                                                         |
-| `point0:socket:space:<scope>:<channel>:<space>`           | processes holding ≥ 1 member of the space (parked included)       | space-wide pushes (a bare space send)                                                                                                                  |
-| `point0:socket:room:<scope>:<channel>:<space>:<roomName>` | processes holding ≥ 1 member of the room (parked included)        | exact-room pushes — one publish per targeted room                                                                                                      |
+| Channel                                                   | Subscribed                                                        | Carries                                                                                                                                                       |
+| --------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `point0:socket:bus` (shared)                              | every process, from `start()`                                     | commands (`kick`/`kill`/`refresh`/`amend`/`enroll`), `count-req`/`connections-req`, and pushes with a SELECTION part (`connectionId` / `$identity` / `$room`) |
+| `point0:socket:proc:<pid>` (inbox)                        | its own process, from `start()`                                   | every ANSWER: forwarded collect `reply`s, `count-res`, `connections-res`                                                                                      |
+| `point0:socket:channel:<scope>:<channel>`                 | processes holding ≥ 1 connection of the channel (parked included) | channel-wide pushes (no `space`, no selection)                                                                                                                |
+| `point0:socket:space:<scope>:<channel>:<space>`           | processes holding ≥ 1 member of the space (parked included)       | space-wide pushes (a bare space send)                                                                                                                         |
+| `point0:socket:room:<scope>:<channel>:<space>:<roomName>` | processes holding ≥ 1 member of the room (parked included)        | exact-room pushes — one publish per targeted room                                                                                                             |
 
 The routing watershed for a push mirrors `deliverPushLocal`'s addressing
 watershed exactly: NO selection parts → the topic of the exact address; ANY
@@ -1164,7 +1177,8 @@ Envelope kinds (`BusEnvelope` in `engine/src/socket.ts`) and their channels:
 | ----------------- | ------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------- |
 | `push`            | a handler `send` with an external backplane                         | topic of the exact address; shared if a selection part | `deliverPushLocal` to its own sockets                   |
 | `reply`           | a collected push's reply lands on a process that didn't initiate it | the initiator's inbox (off the mid)                    | forwards it to the initiator's `PendingCollect`         |
-| `kick`            | `channel.kick` / `space.kick` with an external backplane            | shared                                                 | `kickLocal` on its matching connections/rooms           |
+| `kick`            | `space.kick` with an external backplane                             | shared                                                 | `kickLocal` on its matching rooms                       |
+| `kill`            | `kill` with an external backplane                                   | shared                                                 | `killLocal` on its matching connections                 |
 | `enroll`          | `space.enroll` ⋯ (selector + serialized rooms)                      | shared                                                 | `enrollImperativeLocal` — grow its matches' enrollments |
 | `refresh`         | `channel.refresh` ⋯                                                 | shared                                                 | `refreshLocal` on its matching connections              |
 | `amend`           | `channel.amendIdentity` ⋯ (selector + serialized patch)             | shared                                                 | `amendLocal` — shallow-merge into its matching entries  |
@@ -1177,8 +1191,9 @@ Envelope kinds (`BusEnvelope` in `engine/src/socket.ts`) and their channels:
 `enumerateSnapshots` machinery streams local matches first, then bus items as
 they arrive, and closes the gather on the timeout; `list` is `forEach` with an
 accumulating `onItem`. `count` rides its own numbers-only envelopes. The
-selector on `kick`/`refresh`/`amend`/`*-req` envelopes is the `AdminSelector`
-above — `space` set for a space selector, absent for a channel one.
+selector on `kick`/`kill`/`refresh`/`amend`/`*-req` envelopes is the
+`AdminSelector` above — `space` set for a space selector, absent for a channel
+one.
 
 **Eager subscribe.** `registerAdapters` (at server start) kicks off `start()`,
 which subscribes the shared channel and this process's inbox immediately — a
@@ -1191,20 +1206,21 @@ subscriptions. Off-hot-path KV calls go through `kvSafe` (catch + log).
 
 ## Admin surface
 
-The channel owns `kick` / `refresh` / `amendIdentity` and the `connections.*`
-enumerations; the space owns `kick` / `enroll` and the `memberships.*`
-enumerations (`refresh` is channel-only — a space has no identity to rebuild).
-The COMMANDS sit directly on the point — actions, not reads, and server-only,
-period. The ENUMERATIONS name a FLOOR first: `server.*` (the cluster, over the
-bus), `server.local.*` (this process, synchronous), `client.*` (this browser
-tab, synchronous). There is no flat `connections.count`, and a floor throws on
-the wrong side rather than answering empty. Every server-floor target is the
-`$`-dictionary (`ChannelAdminTarget` / `SpaceAdminTarget` in core types.ts),
-parts AND-combined, bare = everything in scope; the client floor takes no target
-at all:
+The channel owns `kill` / `refresh` / `amendIdentity` and the `connections.*`
+enumerations; the space owns `kick` / `kill` / `enroll` / `refresh` /
+`amendIdentity` and the `memberships.*` enumerations (`refresh` is channel-only
+— a space has no identity to rebuild). The COMMANDS sit directly on the point —
+actions, not reads, and server-only, period. The ENUMERATIONS name a FLOOR
+first: `server.*` (the cluster, over the bus), `server.local.*` (this process,
+synchronous), `client.*` (this browser tab, synchronous). There is no flat
+`connections.count`, and a floor throws on the wrong side rather than answering
+empty. Every server-floor target is the `$`-dictionary (`ChannelAdminTarget` /
+`SpaceAdminTarget` in core types.ts), parts AND-combined, bare = everything in
+scope; the client floor takes no target at all:
 
-- `channel.kick({ connectionId?, $identity?, reason? })` — `closed` per match,
-  then `cleanupConnection(reason:'kick')`.
+- `kill({ connectionId?, $identity?, reason? })` — `closed` per match, then
+  `cleanupConnection(reason:'kill')`; from a space point the target adds the
+  room parts (the connections HOLDING matching rooms).
 - `channel.refresh({ connectionId?, $identity? })` — `refresh` frame; the client
   re-connects (connector + enrollers re-run) and re-joins its spaces.
 - `channel.amendIdentity({ connectionId? | $identity? }, patch)` — shallow-merge
@@ -1245,7 +1261,7 @@ adapter seam, it reads the socket manager's own registries through
 `manager.connections` filtered by `channelKey`, `manager.memberships` filtered
 by `spaceName`, merge chains resolved, disposed ones out, deduped — and hands
 back the canonical facades. Synchronous, hold-less, no targets in v1. A
-kicked-but-still-held connection (`manager.closedHeld`) is NOT in it;
+killed-but-still-held connection (`manager.closedHeld`) is NOT in it;
 `getSocket()` is the surface that still shows those. `count()` is
 `list().length`. Its guard is `if (_point0_env.side.is.client) …` inverted —
 `side.is.server` first line, so the server bundle keeps only the throw. NOT in
@@ -1374,7 +1390,7 @@ them.
   `pointChannelCloseServer` carry `{ connectionId, identity }`;
   `pointChannelOpenServer` adds `resumed: boolean` (`true` on a resume revival —
   unpark or KV restore, no connector ran for that open);
-  `pointChannelCloseServer` adds `reason: 'close' | 'socket' | 'kick'`.
+  `pointChannelCloseServer` adds `reason: 'close' | 'socket' | 'kill'`.
 - `pointChannelClaimServerError` — the server-only single for a claim that never
   landed, emitted at EVERY site answering a `claimErr` frame (`emitClaimError`
   in engine/src/socket.ts; the ticket path routes through the one `fail` closure
@@ -1498,7 +1514,7 @@ them.
   imperative `space.enroll` skip on an over-cap connection emits nothing — its
   `Start` fires only on the success path.)
 - `pointSpaceLeaveServer` — server-only single:
-  `{ point, connectionId, identity, rooms, reason: 'leave' | 'socket' | 'kick' | 'close' }`.
+  `{ point, connectionId, identity, rooms, reason: 'leave' | 'socket' | 'kick' | 'kill' | 'close' }`.
   Presence depends on it.
 - `pointHandlerServer*` (`.serverReply`, with `identity`) /
   `pointHandlerClient*` (a clientHandler dispatch) carry `connectionId` on every
@@ -1607,29 +1623,40 @@ Answer now, keep running — the route:
 
 ## Lifecycle callbacks and the indexes
 
-Both levels carry a full client-side lifecycle, merged point-level → call-site
-(every hold's options; a callback throw only logs): connection —
-`onConnect`/`onDisconnect`/`onError` (`fireConnectionLifecycle`), membership —
-`onEnter`/`onLeave` (`fireMembershipLifecycle`). The counters: `connectIndex` on
-the internal connection (successful claims; ++ in the `claimed` handler AFTER
-the callbacks read it, carried across a revive so the next claim reads as a
-reconnect) and `joinIndex` on the membership (successful joins; ++ in the
-`joined` handler) — exposed as `connection.connectionIndex` /
-`membership.membershipIndex` and passed into every lifecycle input. `onConnect`
-fires on EVERY landed claim and `onEnter` on EVERY landed `joined` — the first
-and the replays alike; the index in the props (`0` = the first, `> 0` = a
-repeat) is the only first-vs-repeat distinction. The client event families carry
-the same index (captured pre-increment, so an event and the callback of one
-entry agree) plus the entry markers on success — see the Events section.
-`onLeave` fires when a previously-joined membership disposes — fired for the
-live holds plus `lastReleasedHold`, NOT the live holds alone: a voluntary
+The connection carries `onConnect`/`onDisconnect`/`onError`
+(`fireConnectionLifecycle`), merged point-level → call-site (every hold's
+options; a callback throw only logs). `onConnect` fires on every gained
+liveness; `onDisconnect` on every LOST one with the cause — `'socket'` at
+`handleSocketClosed`, `'kill'`/`'close'` at `disposeInternal` (which fires only
+if the connection was still live at dispose time — a dispose after the socket
+death finalizes silently, so the pair alternates strictly). The counters:
+`connectIndex` on the internal connection (successful claims; ++ AFTER the
+callbacks read it, carried across a revive) and `joinIndex` on the membership —
+exposed as `connection.connectionIndex` / `membership.membershipIndex` (facade
+counters; the join/connect EVENT families carry them, the lifecycle props do
+not).
+
+The space carries the ROOM lifecycle — `onEnter`/`onLeave` are the events of
+actually entering/leaving rooms, whatever the cause. The single source is
+`InternalConnection.liveRoomKeys`: `enterRooms`/`exitRooms` are the only write
+paths, so a double enter/leave is impossible; `enteredRoomKeys` (never cleared)
+tells a first entry (`gapless: true`) from a re-entry (`false`; a resume's
+per-room verdicts win). Dispatch (`fireRoomLifecycle`): the space point-level
+options hear every room of the space, each live membership's call-site options
+hear the slice ITS rooms cover (the message-listener visibility rule; the SOURCE
+membership of a change is never sliced — its keys may already be shrunk),
+`onLeave` with reason `'leave'` also reaches `lastReleasedHold` (a voluntary
 `leave()` empties `holds` before the dispose, but the leaver still wants its
-`onLeave`. An ENROLLED membership has no lifecycle of its own (it is announced,
-not joined — no `onEnter` ever fires for it, and the connection dying or a
-refresh dropping the announcement stays silent), with ONE exception: an explicit
-`leave()` on it is a departure and fires `onLeave` — that is what
-`disposeMembership`'s `voluntary` flag is for. The compiler cuts the membership
-trio from the SERVER bundle with the rest of the `client` group
+callback), and the client event pair
+(`pointSpaceEnterClient`/`pointSpaceLeaveClient`) goes out with the same
+payload. Cause map — enters: `'join'` (`joined` handler), `'enroll'`
+(`applyEnrolledSpaces`, install and growth), `'resume'` (`handleResumedFrame`,
+enrolled included); exits: `'leave'` (`disposeMembership`'s uncovered list),
+`'kick'` (the `left` handler, fired BEFORE the shrink so call sites still
+cover), `'kill'`/`'close'` (`disposeInternal` → `exitAllRooms`), `'socket'`
+(`handleSocketClosed` → `exitAllRooms`), `'refresh'` (a re-judged grant dropped
+rooms: the `joined`/`joinErr` shrink, the enrolled reconcile). The compiler cuts
+the membership trio from the SERVER bundle with the rest of the `client` group
 (space/spaceOptions case), mirroring the channel lifecycle split.
 `SpaceOptionsClientOnly.linger` (the `client` group of `.space({...})`) is the
 point-level default of the membership linger (call-site wins).
@@ -1753,18 +1780,14 @@ call sites) picks it up by composition. Nothing in the compiler changes.
   app a facade for one, and the sentinel input is not a key anyone would pass to
   `getMembership`, so `space.memberships.client.list()` is how an enrollment is
   read individually — it lists the registry, sentinel key and all.
-- **Leaving an enrollment** (`leaveEnrolledMembership`, the facade's `leave()`).
-  The protocol always allowed it: a `leave` frame NAMES its rooms and the server
-  keys nothing by how a room was entered, so this is the ordinary
-  `disposeMembership(…, { sendLeave: true, voluntary: true })` — its shared-room
-  refcount keeps a room another live membership of the connection still covers
-  (enrolled and joined memberships cover each other's rooms: both are `joined`
-  and both are in `membershipsByRoomKey`). No hold behind it means no `linger`:
-  the facade is dead right away. Not permanent — the enroller runs at every
-  connection setup, so a reconnect or a `refresh` installs the enrollment again;
-  a permanent opt-out is DATA the enroller reads. Idempotent: a second `leave()`
-  (or one after the refresh reconcile already disposed it) hits the `disposed`
-  guard and no-ops.
+- **`leave()` on an enrollment is a warn + no-op**
+  (`warnEnrolledMembershipLeave`, the facade's `leave()`): an enrollment is the
+  server's GUARANTEE, and the server enforces the same wall on the wire —
+  `removeRoomsFromEntry` keeps any room flagged `enrolled`, whatever a `leave`
+  frame names. The membership stays live and `joined`; it ends only with the
+  connection, a `space.kick`, or a `refresh` whose re-run enroller no longer
+  grants it (the reconcile disposes it, `sendLeave: false`). A permanent opt-out
+  is DATA the enroller reads, applied with a `refresh`.
 - **Dispatch registry + preload.** clientHandler points register in a global map
   at close time (module load). The generated client points manifest carries
   every channel/space/handler as a lazy record (handlers tagged with their
@@ -1809,7 +1832,7 @@ call sites) picks it up by composition. Nothing in the compiler changes.
 - **`reconnectAll()` / `disconnectAll()`** (from `@point0/core/socket`) reset
   every connection of the scope. `reconnectAll` revives closed-but-held ones,
   re-connects the live ones and clears every `preventRetry` "sit out" mark; the
-  memberships re-join naturally on the new cids. After a kick or
+  memberships re-join naturally on the new cids. After a kill or
   `disconnectAll`, DECLARATIVE holds (use-hooks/components — the `declarative`
   flag on the hold token) auto-revive through the reconnect policy
   (`scheduleDeclarativeRevive`, paced by `reviveAttempt`, reset on claim);
@@ -1823,8 +1846,8 @@ call sites) picks it up by composition. Nothing in the compiler changes.
   same policy (`scheduleDeclarativeConnectRetry`); an ANSWERED deny is terminal
   until `reconnectAll()`/remount (an answer is an answer), and so is a `joinErr`
   (it always comes from the server). Deliberate: the backoff counters reset on a
-  successful claim/join — a server kicking an accepted client in a tight loop
-  ping-pongs at its own kick rate, which is a server bug, not a client pacing
+  successful claim/join — a server killing an accepted client in a tight loop
+  ping-pongs at its own kill rate, which is a server bug, not a client pacing
   concern (the connector is the place to deny).
 
 ## The callable handler export
@@ -1924,7 +1947,7 @@ call sites) picks it up by composition. Nothing in the compiler changes.
   socket in several memberships of one room still gets ONE frame (dedup keeps ≤1
   subscription per room per socket).
 - `EngineSocket` registers one `SocketServerAdapter` per served scope in a
-  core-side global map — that is how `handler.sendToClient()` / `channel.kick()`
+  core-side global map — that is how `handler.sendToClient()` / `channel.kill()`
   / `space.kick()` called anywhere server-side finds the running server without
   importing the engine. All publishing AND the admin surface go through this
   seam.
@@ -2058,7 +2081,7 @@ dead code to a bundler), and each closure needs its own — `_buildEnumeration`
 guards each `connections.server.*` / `memberships.server.*` closure separately
 while the `client` floor stays guard-free. Guarded today:
 `_buildPushTarget`/`_sendClientHandler`,
-`kick`/`enroll`/`refresh`/`amendIdentity`, `_resolveAdminTarget`,
+`kick`/`kill`/`enroll`/`refresh`/`amendIdentity`, `_resolveAdminTarget`,
 `_assertNoWhereOperator`, the server floors of `_buildEnumeration`,
 `_executeServerReply`, `_executeJoiner`, `_executeEnroller`, `_normalizeRooms`,
 `_emitSpaceJoinSettled`.
@@ -2302,7 +2325,7 @@ that already covers its use case:
   A slow answer that fits the send window is just a slow handler — raise the
   send's `timeout`; a slower one is data + a push.
 - **Server commands to the client** ("call `reconnectAll`") — the cases are
-  covered by `refresh` / `kick` / `amendIdentity`.
+  covered by `refresh` / `kill` / `amendIdentity`.
 - **The `.subscription()` clientHandler flavor itself** — REMOVED 2026-07-25
   after living a day: `useSocketSubscription` duplicated
   `useOnMessageFromServer` (same listener, same `lastMessageFromServerAsData`
@@ -2495,7 +2518,7 @@ retry may land inside the send window). `SC` = `socket-client.int.test.ts`, `S`
 | send queued; connect fails on TRANSPORT with declarative holds   | stays queued through the retry policy; rejects with `SOCKET_CONNECTION_LOST` when its `timeout` runs out first. With IMPERATIVE-only holds (or the retry budget spent) no retry is scheduled, so the queue fails immediately with the transport error      | SC (the imperative branch — the dead-port fixture); the declarative branch by reading                                  |
 | space send queued; join DENIED (`joinErr`)                       | rejects NOW with the TYPED join error (the `joinErr` handler fails the unsent queue — the cascade would never flush it)                                                                                                                                    | SC                                                                                                                     |
 | `queue: false` while connecting/closed                           | rejects immediately with `SOCKET_CONNECTION_LOST`                                                                                                                                                                                                          | SC                                                                                                                     |
-| send queued; connection disposed (kick / disconnect)             | unsent rejects NOW with `SOCKET_CONNECTION_LOST` (`disposeInternal`); a SENT one keeps its chance — the reply may be in flight                                                                                                                             | SC                                                                                                                     |
+| send queued; connection disposed (kill / disconnect)             | unsent rejects NOW with `SOCKET_CONNECTION_LOST` (`disposeInternal`); a SENT one keeps its chance — the reply may be in flight                                                                                                                             | SC                                                                                                                     |
 | space send queued; membership disposed                           | unsent rejects NOW with `SOCKET_CONNECTION_LOST` (`disposeMembership`)                                                                                                                                                                                     | SC                                                                                                                     |
 | join on a space with NO `.joiner`                                | refused on the CLIENT before any frame (`join()` throws `SOCKET_JOIN_NOT_ALLOWED` synchronously, `useMembership` registers nothing); a hand-framed join gets `joinErr SOCKET_JOIN_NOT_ALLOWED`                                                             | SC, S                                                                                                                  |
 | `handler(room)` bound to a room no live membership covers        | refused on the CLIENT before any frame — `resolveSpaceHandlerTarget` throws "No live membership covers the room bound for …" (synchronously, from the bound surface); join or be enrolled first                                                            | SC                                                                                                                     |
@@ -2506,10 +2529,10 @@ retry may land inside the send window). `SC` = `socket-client.int.test.ts`, `S`
 | connector deny with `preventRetry`                               | connection `error`, no auto-revive and no re-POST until `reconnectAll()`/remount                                                                                                                                                                           | SC                                                                                                                     |
 | join deny with `preventRetry`                                    | membership `error`, the join is never replayed on later cids until `reconnectAll()`/remount                                                                                                                                                                | SC                                                                                                                     |
 | enroller throws at connect                                       | the WHOLE connection setup fails — `claimErr`, no `claimed` frame ever                                                                                                                                                                                     | S                                                                                                                      |
-| channel kick                                                     | `closed` frame → dispose; declarative holds auto-revive through the policy, imperative wait for `reconnectAll()`/remount                                                                                                                                   | SC                                                                                                                     |
+| kill                                                             | `closed` frame → dispose; declarative holds auto-revive through the policy, imperative wait for `reconnectAll()`/remount                                                                                                                                   | SC                                                                                                                     |
 | space kick                                                       | `left` frame → rooms shrink (enrolled ones included), membership stays `joined`; declarative holds replay the join, the joiner re-judges                                                                                                                   | SC, S                                                                                                                  |
 | `leave()` on an ENROLLED membership                              | a `leave` frame naming ITS rooms (minus any another live membership of the connection still covers) plus a local dispose — the server drops exactly those; the next connection setup (reconnect / `refresh`) re-runs the `.enroller` and installs it again | SC                                                                                                                     |
-| kick lands while a join is in flight                             | the join's `joined`/`joinErr` answers a connection being disposed — the `pendingJoins`/dispose guards drop the stale answer, the membership closes cleanly                                                                                                 | SC                                                                                                                     |
+| kill lands while a join is in flight                             | the join's `joined`/`joinErr` answers a connection being disposed — the `pendingJoins`/dispose guards drop the stale answer, the membership closes cleanly                                                                                                 | SC                                                                                                                     |
 | reply after the collect window closed                            | dropped server-side (`pendingCollects` miss; single-process) or bus-forwarded and dropped at the initiator (`landCollectedReply` accounting)                                                                                                               | S (the single-process drop); bus half: the forward pinned by `socket-external.int`, the initiator-side drop by reading |
 | duplicate / excepted replies into an open window                 | dropped by the per-cid accounting WITHOUT advancing `received` — no early close, no dup items                                                                                                                                                              | S                                                                                                                      |
 | stale `joined` for a previous cid after a refresh                | dropped (`lastCid` guard); the fresh cid's replayed join is the live one                                                                                                                                                                                   | SC (refresh)                                                                                                           |
@@ -2533,14 +2556,14 @@ retry may land inside the send window). `SC` = `socket-client.int.test.ts`, `S`
 | `engine/tests/socket-redis.int.test.ts`               | one ticket, two processes, one winner — `getDelete` claim atomicity over a real Redis (gated on `REDIS_URL`; CI: the engine-backplane runner)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `engine/tests/websocket-endpoint.int.test.ts`         | the bare endpoint as a request variant: middleware sees/vetoes it — the origin recipe's `endpoint` arm pinned against the cold-start channel-endpoint upgrade too — `socket: false` (channels declared + default features = the loud startup refusal; with `features: { socket: true }` = no endpoint + the startup warning), the websocket settings merge (engine defaults → `bunServeConfig.websocket` → `serve()`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `engine/tests/websocket-dev-proxy.int.test.ts`        | the dev proxy replays the browser's handshake headers upstream (the cookie-loss bug), `isSocketUpgradeRequest` recognition of both upgrade shapes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `engine/tests/socket-client.int.test.ts`              | the real core client runtime headless: holds, memberships, room binding (multi-room sends/queries/listeners), kick/refresh/reconnect, enrollments (install, leave, re-enroll on refresh), the `client` enumeration floor, the client event families incl. the settle-at-the-claim contract (a claim refused after a successful connect request → `Start`/`Settled`/`Error`, no `Success`; the upgrade-then-fallback story settling exactly once)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `engine/tests/socket-client.int.test.ts`              | the real core client runtime headless: holds, memberships, room binding (multi-room sends/queries/listeners), kill/refresh/reconnect, enrollments (install, the leave no-op, re-enroll on refresh), the `client` enumeration floor, the client event families incl. the settle-at-the-claim contract (a claim refused after a successful connect request → `Start`/`Settled`/`Error`, no `Success`; the upgrade-then-fallback story settling exactly once)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `engine/tests/socket-backplane.int.test.ts`           | a custom Backplane end-to-end (+ a REDIS_URL-gated real-Redis block; CI: the engine-backplane runner)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `engine/tests/backplane-adapters.unit.test.ts`        | the ready-made adapters over fakes: command mapping, lazy duplicate, dispose ownership (+ `closeClient`), postgres channel hashing / payload spill without reordering / DB-clock TTL reads / sweeper stop; plus the never-called type-assert pinning the structural client types against the real `postgres`/`ioredis`/`redis` typings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `engine/tests/backplane-redis-clients.int.test.ts`    | ioredis + node-redis adapters against a real Redis this file spawns itself (skips without the binary; CI provisions it on the engine-backplane Linux runner): the shared contract run — KV TTL expiry, one-shot getDelete, cross-instance pub/sub, unsubscribe, dispose leaves the passed client alive                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `engine/tests/redis-subscriber-reconnect.int.test.ts` | the resilient subscriber wrapper against a killed-and-restarted real Redis (skips without the binary; CI: the engine-backplane runner): the whole channel set replays on reconnect, no listener stacking                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `engine/tests/backplane-postgres.int.test.ts`         | the postgres adapter against a real Postgres (`POSTGRES_URL` or the probed local default; skips otherwise; CI: the engine-backplane runner): UNLOGGED tables on first use, DB-clock TTL, cross-instance getDelete race, LISTEN/NOTIFY across instances with >63-byte sibling topics staying distinct, a 100 KB spill arriving intact, dispose ownership                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `engine/tests/socket-resumable.int.test.ts`           | resumable connections over a FILE-backed backplane: the redeploy (server killed + respawned; the real client runtime resumes — markers fire, connector/joiner counters stay zero), the blip (park + stream replay in tseq order with `rcid` re-addressing, verdicts both ways), the PER-STREAM verdict divergence (a hole in the busy room, the quiet one provably clean), the `$room`-matcher push riding the room topics, the MERGE replay (room + personal frames back in delivery order), the byte ceiling (`server.resume.streamMaxBytes` evicting oldest with an honest gap), the takeover, the oracle-free refusals (wrong key ≡ unknown cid; kick/close/TTL void the record), the hash-only KV dump, the opt-out space, the space kick into a park (room stream out of the connection's verdicts + passport, the queued `left` on resume, ordinary rooms survive), the `$identity` push into a park («случай Бори»: the personal stream buffers + `gapless: true`, non-opted holes it + `gapless: false`, the live twin receives at once, the parked one stays out of the enumerations), the UNPARK order (a synchronous push from the resumed Open lands after the replay, exactly once), the `replay: 'gapless'` policy (a gappy stream withholds the strict handler and replays the ordinary one; the clean follow-up delivers the withheld tail in full) |
-| `engine/tests/socket-bus.unit.test.ts`                | two EngineSocket instances over one backplane: push/reply/kick/gather, plus the sharded-topology pins — channel layout per envelope kind, subscribe-before-confirm, the unsubscribe linger, multi-room dedup, the parked entry's streams as topic consumers (cross-process room and `$identity` pushes buffered for a park), the redis resubscribe wrapper, POINT0_SOCKET_BUS_FORCE_SHARED; plus the refusal singles (`pointChannelClaimServerError` on a bad ticket, `socketServerSendRefused` on an unknown handler / unknown connection, and neither on a send that reaches its handler)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `engine/tests/socket-resumable.int.test.ts`           | resumable connections over a FILE-backed backplane: the redeploy (server killed + respawned; the real client runtime resumes — markers fire, connector/joiner counters stay zero), the blip (park + stream replay in tseq order with `rcid` re-addressing, verdicts both ways), the PER-STREAM verdict divergence (a hole in the busy room, the quiet one provably clean), the `$room`-matcher push riding the room topics, the MERGE replay (room + personal frames back in delivery order), the byte ceiling (`server.resume.streamMaxBytes` evicting oldest with an honest gap), the takeover, the oracle-free refusals (wrong key ≡ unknown cid; kill/close/TTL void the record), the hash-only KV dump, the opt-out space, the space kick into a park (room stream out of the connection's verdicts + passport, the queued `left` on resume, ordinary rooms survive), the `$identity` push into a park («случай Бори»: the personal stream buffers + `gapless: true`, non-opted holes it + `gapless: false`, the live twin receives at once, the parked one stays out of the enumerations), the UNPARK order (a synchronous push from the resumed Open lands after the replay, exactly once), the `replay: 'gapless'` policy (a gappy stream withholds the strict handler and replays the ordinary one; the clean follow-up delivers the withheld tail in full) |
+| `engine/tests/socket-bus.unit.test.ts`                | two EngineSocket instances over one backplane: push/reply/kill/kick/gather, plus the sharded-topology pins — channel layout per envelope kind, subscribe-before-confirm, the unsubscribe linger, multi-room dedup, the parked entry's streams as topic consumers (cross-process room and `$identity` pushes buffered for a park), the redis resubscribe wrapper, POINT0_SOCKET_BUS_FORCE_SHARED; plus the refusal singles (`pointChannelClaimServerError` on a bad ticket, `socketServerSendRefused` on an unknown handler / unknown connection, and neither on a send that reaches its handler)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `engine/tests/socket-backpressure.unit.test.ts`       | the send funnel's reading of Bun's status: `0` on an OPEN socket closes it, `-1` and a byte count do not, `0` on a closing one is the ordinary teardown, and the close never recurses                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `engine/tests/socket-backpressure.int.test.ts`        | a real Bun server + a raw TCP client that stops reading: the fan-out disconnects the slow subscriber, the funnel does it when an app overrode that, the fast peer keeps every frame                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `engine/tests/engine-socket-helpers.unit.test.ts`     | `engine.socket.local.get()` / `.status()`: empty (never throwing) before `prepare()` and with no live socket (`socket: () => null` stands in for the option; the real `socket: false` path is pinned by `websocket-endpoint.int`), the counts and parsed values once live, the backplane kinds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |

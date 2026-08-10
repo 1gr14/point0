@@ -251,9 +251,8 @@ export type SocketServerFrame =
   | { t: 'reply'; id: string; data?: string }
   | { t: 'sendErr'; id: string; error: string }
   /**
-   * the server closed this connection (a channel kick) — the client marks it `closed`; declarative holds
-   * (hooks/components) auto-revive through the reconnect policy, imperative ones stay closed until
-   * `reconnectAll()`/remount
+   * the server closed this connection (a `kill`) — the client marks it `closed`; declarative holds (hooks/components)
+   * auto-revive through the reconnect policy, imperative ones stay closed until `reconnectAll()`/remount
    */
   | { t: 'closed'; cid: string; reason?: string }
   /** the server asks this connection to re-run its connect request (the loader re-runs) without dropping the socket */
@@ -420,8 +419,17 @@ export type SocketConnectionSnapshot = {
 /** What the engine plugs in per scope. All publishing goes through this seam so a multi-process backplane carries it. */
 export type SocketServerAdapter = {
   push: (args: SocketServerPushArgs) => void
-  /** close matching connections (a `closed` frame goes to each client), local + across the backplane bus */
+  /**
+   * force a LEAVE of the target's matching rooms (`left` frames; the connections live on) — the room revocation, local
+   *
+   * - across the backplane bus. Space targets only: kick lives on space points alone
+   */
   kick: (args: SocketAdminTarget & { reason?: string }) => Promise<void>
+  /**
+   * close matching connections (a `closed` frame goes to each client), local + across the backplane bus — under the
+   * FULL target: a channel target, or a space target whose room parts address the rooms' holders (`space.kill`)
+   */
+  kill: (args: SocketAdminTarget & { reason?: string }) => Promise<void>
   /**
    * grow the matching connections' server-side enrollment of the target's space by `enrollRooms` (space-transformer
    * serialized), local + across the backplane bus — the imperative twin of `.enroller`, the mirror of a space kick
@@ -507,7 +515,7 @@ export const getSocketServerAdapterOrThrow = (scope: PointsScope, pointId: strin
 type HoldToken = {
   internal: InternalConnection
   released: boolean
-  /** a use-hook/component hold ("stay connected while mounted") — the auto-revive after a kick serves these only */
+  /** a use-hook/component hold ("stay connected while mounted") — the auto-revive after a kill serves these only */
   declarative: boolean
   callSiteOptions: ExtraUseConnectionOptions<any, any> | undefined
 }
@@ -566,7 +574,7 @@ type InternalConnection = {
    * memory only (a page reload = no key = an honest full connect). While it is set, a socket drop KEEPS the cid: the
    * next socket's first frame offers `{ cid, key, cursors }` and a `resumed` answer revives the connection without a
    * connect request. Cleared by a `refresh` frame (the resume bypass — the re-connect mints a fresh key) and gone with
-   * the internal on any dispose (kick, close, logout)
+   * the internal on any dispose (kill, close, logout)
    */
   resumeKey: string | undefined
   /**
@@ -583,6 +591,19 @@ type InternalConnection = {
   resumeVerdicts: Record<string, boolean> | undefined
   /** a `resume` entry for this connection is in flight on the current socket — its `resumed`/`resumeErr` settles it */
   resumePending: boolean
+  /**
+   * the rooms this connection is CURRENTLY in from the client's point of view (room keys) — the single source of the
+   * room lifecycle: every `onEnter` adds here, every `onLeave` removes, and a room already in (or already out) fires
+   * nothing. Cleared whole when the socket dies (`onLeave` reason `'socket'`) and re-filled by the re-grants, the
+   * reconcile, or a resume restore.
+   */
+  liveRoomKeys: Set<string>
+  /**
+   * every room key this connection has EVER entered — what tells a first entry (`gapless: true`, nothing to miss yet)
+   * from a re-entry (`gapless: false`, the absence could have missed pushes). Never cleared while the connection
+   * lives.
+   */
+  enteredRoomKeys: Set<string>
   facade: AnyClientChannelConnection
   manager: SocketManager
 }
@@ -649,9 +670,10 @@ type InternalMembership = {
   /** the last join was denied with `preventRetry` — no replay on reconnects until `reconnectAll()`/remount */
   preventRejoin: boolean
   /**
-   * a server-side enrollment (`.enroller`) — no holds, no join frames: it is born from the `claimed` frame and its
-   * rooms are whatever the last claim announced. It lives with the connection OR until an explicit `leave()` drops it
-   * (the next connection setup re-runs the enroller and installs it again)
+   * a server-side enrollment (`.enroller` / `space.enroll`) — no holds, no join frames: it is born from the `claimed`
+   * frame (or a mid-life `enrolled` frame) and its rooms are whatever the last announcement carried. It lives with the
+   * connection — the enrollment is the server's GUARANTEE, `leave()` on it warns and does nothing; only the server ends
+   * it (`space.kick`, a `refresh` re-judging the enroller, the connection closing)
    */
   enrolled: boolean
   facade: AnyClientSpaceMembership
@@ -673,7 +695,7 @@ type SocketManager = {
   connections: Map<string, InternalConnection>
   connectionsByCid: Map<string, InternalConnection>
   pendingSends: Map<string, PendingSend>
-  /** closed-but-still-held connections (kick / disconnectAll) — dormant until a remount or `reconnectAll()` */
+  /** closed-but-still-held connections (kill / disconnectAll) — dormant until a remount or `reconnectAll()` */
   closedHeld: Set<InternalConnection>
   /**
    * the TOPIC stream cursors, shared per channel across its connections (the manager is per scope, so the channel NAME
@@ -909,19 +931,28 @@ const fireConnectionLifecycle = (
   name: 'onConnect' | 'onDisconnect' | 'onError',
   // the entry markers: an `onConnect` off a landed RESUME passes them explicitly ({ resumed: true, gapless: the
   // server's verdict }); everywhere else the default is the full-path truth table — resumed false, gapless only on
-  // the very first entry (nothing to miss yet)
+  // the very first entry (nothing to miss yet). An `onDisconnect` carries the loss's reason instead
   markers?: { resumed: boolean; gapless: boolean },
+  reason?: 'socket' | 'kill' | 'close',
 ): void => {
   const channel = internal.channel
   const pointLevel = mergeChannelOptions(channel._defaultChannelOptions, channel._channelOptions)
-  const input = {
-    connection: internal.facade,
-    point: channel,
-    connectionIndex: internal.connectIndex,
-    resumed: markers?.resumed ?? false,
-    gapless: markers?.gapless ?? internal.connectIndex === 0,
-    ...(name === 'onError' ? { error: internal.error } : {}),
-  }
+  const input =
+    name === 'onDisconnect'
+      ? {
+          connection: internal.facade,
+          point: channel,
+          connectionIndex: internal.connectIndex,
+          reason: reason ?? 'close',
+        }
+      : {
+          connection: internal.facade,
+          point: channel,
+          connectionIndex: internal.connectIndex,
+          resumed: markers?.resumed ?? false,
+          gapless: markers?.gapless ?? internal.connectIndex === 0,
+          ...(name === 'onError' ? { error: internal.error } : {}),
+        }
   const callbacks = [pointLevel[name], ...[...internal.holds].map((hold) => hold.callSiteOptions?.[name])]
   for (const callback of callbacks) {
     if (!callback) {
@@ -1130,7 +1161,11 @@ const ensureSocket = (manager: SocketManager, upgradeUrl?: string): void => {
         }
         internal.ticket = undefined
         notifyConnection(internal)
-        fireConnectionLifecycle(internal, 'onDisconnect')
+        // the socket's death is a real loss of liveness: the rooms leave ('socket') and the connection disconnects
+        // ('socket') — a later resume or re-grant re-enters them, the mirror of the server announcing the same
+        // leaves and Close at ITS end of the dead socket
+        exitAllRooms(internal, 'socket')
+        fireConnectionLifecycle(internal, 'onDisconnect', undefined, 'socket')
       }
     }
     if (internals.length > 0) {
@@ -1346,44 +1381,44 @@ const scheduleReconnect = (manager: SocketManager): void => {
   }, waitMs)
 }
 
+/** One room in a lifecycle change — the key addresses the client room index, `parsed` is what the callbacks read. */
+type RoomChange = { key: string; parsed: unknown }
+
 /**
- * Fire a membership lifecycle callback (`onEnter` / `onLeave`) — the space point-level options (`.space({...})` /
- * `.spaceOptions()`) and every hold's call-site options, in order. A callback's own throw only logs, mirroring the
- * channel lifecycle.
+ * Dispatch one room lifecycle change (`onEnter` / `onLeave`) — the space point-level options hear every room of the
+ * space, each live membership's call-site options hear the slice covered by THAT membership's rooms (the same
+ * visibility rule as the message listeners), and the matching client event (`pointSpaceEnterClient` /
+ * `pointSpaceLeaveClient`) goes out for app-wide `.on()` subscribers. `onLeave` with reason `'leave'` also reaches the
+ * leaver's just-released hold — a voluntary `leave()` empties the holds before the dispose, but the leaver still wants
+ * its callback. A callback's own throw only logs, mirroring the channel lifecycle.
  */
-const fireMembershipLifecycle = (
-  membership: InternalMembership,
+const fireRoomLifecycle = (
+  internal: InternalConnection,
+  space: AnyPoint,
   name: 'onEnter' | 'onLeave',
-  // same contract as fireConnectionLifecycle's markers: a resume passes them, the full path defaults — resumed
-  // false, gapless only on the first enter
-  markers?: { resumed: boolean; gapless: boolean },
+  rooms: RoomChange[],
+  reason: string,
+  markers: { resumed: boolean; gapless: boolean } | undefined,
+  // the membership whose action produced the change (a voluntary leave) — already out of the manager map, included
+  // explicitly so its last released hold still hears
+  sourceMembership?: InternalMembership,
 ): void => {
-  const space = membership.space
+  const manager = internal.manager
   const pointLevel = mergeSpaceOptions(space._defaultSpaceOptions, space._spaceOptions)
-  const input = {
-    membership: membership.facade,
+  const roomsParsed = rooms.map((room) => room.parsed)
+  const baseInput = {
     point: space,
-    membershipIndex: membership.joinIndex,
-    resumed: markers?.resumed ?? false,
-    gapless: markers?.gapless ?? membership.joinIndex === 0,
+    connection: internal.facade,
+    rooms: roomsParsed,
+    reason,
+    ...(name === 'onEnter' ? { resumed: markers?.resumed ?? false, gapless: markers?.gapless ?? false } : {}),
   }
-  // live holds only — a released holder's component unmounted, its closures are stale. The one exception: `onLeave`
-  // also reaches the LAST released hold, so a voluntary `leave()` (which empties `holds` before the dispose) still
-  // notifies the leaver.
-  const callbacks = [
-    pointLevel[name],
-    ...[...membership.holds].map((hold) => hold.callSiteOptions?.[name]),
-    ...(name === 'onLeave' ? [membership.lastReleasedHold?.callSiteOptions?.onLeave] : []),
-  ]
-  for (const callback of callbacks) {
-    if (!callback) {
-      continue
-    }
+  const run = (callback: unknown, input: unknown): void => {
     void (async () => {
       try {
         // the callback's props are typed by the SPACE's generics, erased to `AnyPoint` here — the call goes through
-        // the untyped shape (the channel twin above does the same with `as never`)
-        await (callback as (input: unknown) => void | Promise<void>)(input)
+        // the untyped shape (the channel lifecycle does the same with `as never`)
+        await (callback as (props: unknown) => void | Promise<void>)(input)
       } catch (error) {
         getLogFnForPoint(space)({
           level: 'error',
@@ -1394,6 +1429,136 @@ const fireMembershipLifecycle = (
       }
     })()
   }
+  if (pointLevel[name]) {
+    run(pointLevel[name], baseInput)
+  }
+  // call-site callbacks: each membership of this connection hears the slice of the change ITS rooms cover
+  const memberships = new Set<InternalMembership>()
+  for (const membership of manager.memberships.values()) {
+    if (!membership.disposed && membership.spaceName === space.name && membership.connectionKey === internal.key) {
+      memberships.add(membership)
+    }
+  }
+  if (sourceMembership) {
+    memberships.add(sourceMembership)
+  }
+  for (const membership of memberships) {
+    // the SOURCE membership owns the whole change — its rooms may already be shrunk away, so it is never sliced
+    const keys = new Set(membership.roomKeys)
+    const slice = membership === sourceMembership ? rooms : rooms.filter((room) => keys.has(room.key))
+    if (slice.length === 0) {
+      continue
+    }
+    const input = slice.length === rooms.length ? baseInput : { ...baseInput, rooms: slice.map((room) => room.parsed) }
+    for (const hold of membership.holds) {
+      if (hold.callSiteOptions?.[name]) {
+        run(hold.callSiteOptions[name], input)
+      }
+    }
+    if (
+      name === 'onLeave' &&
+      membership === sourceMembership &&
+      membership.lastReleasedHold?.callSiteOptions?.onLeave
+    ) {
+      run(membership.lastReleasedHold.callSiteOptions.onLeave, input)
+    }
+  }
+  space._emit(
+    name === 'onEnter' ? 'pointSpaceEnterClient' : 'pointSpaceLeaveClient',
+    {
+      point: space,
+      connectionId: internal.cid,
+      rooms: roomsParsed,
+      reason,
+      ...(name === 'onEnter' ? { resumed: markers?.resumed ?? false, gapless: markers?.gapless ?? false } : {}),
+    } as never,
+    { point: space.id, connection: internal.cid, reason, roomsCount: rooms.length },
+  )
+}
+
+/**
+ * Register rooms as ENTERED and fire `onEnter` for the ones that actually were not in — the one write path of
+ * `liveRoomKeys`, which is what makes a double enter impossible whatever produced it (a second join covering the same
+ * room, a reconcile re-announcing, a replayed grant). `gapless` per room: `true` on the very first entry of that room
+ * on this connection (nothing to miss yet), `false` on a re-entry — unless the caller carries the server's own verdicts
+ * (a resume), which win. Mixed batches split so the flag stays honest per call.
+ */
+const enterRooms = (
+  internal: InternalConnection,
+  space: AnyPoint,
+  rooms: RoomChange[],
+  reason: 'join' | 'enroll' | 'resume',
+  gaplessByKey?: Map<string, boolean>,
+): void => {
+  const fresh = rooms.filter((room) => !internal.liveRoomKeys.has(room.key))
+  if (fresh.length === 0) {
+    return
+  }
+  const batches = new Map<boolean, RoomChange[]>()
+  for (const room of fresh) {
+    internal.liveRoomKeys.add(room.key)
+    const gapless = gaplessByKey?.get(room.key) ?? !internal.enteredRoomKeys.has(room.key)
+    internal.enteredRoomKeys.add(room.key)
+    const batch = batches.get(gapless) ?? []
+    batch.push(room)
+    batches.set(gapless, batch)
+  }
+  for (const [gapless, batch] of batches) {
+    fireRoomLifecycle(internal, space, 'onEnter', batch, reason, { resumed: reason === 'resume', gapless })
+  }
+}
+
+/**
+ * Register rooms as LEFT and fire `onLeave` for the ones that actually were in — the one removal path of
+ * `liveRoomKeys`; a room already out (the socket death swept everything, a dispose raced a reconcile) fires nothing.
+ */
+const exitRooms = (
+  internal: InternalConnection,
+  space: AnyPoint,
+  rooms: RoomChange[],
+  reason: 'leave' | 'kick' | 'kill' | 'socket' | 'close' | 'refresh',
+  sourceMembership?: InternalMembership,
+): void => {
+  const present = rooms.filter((room) => internal.liveRoomKeys.has(room.key))
+  if (present.length === 0) {
+    return
+  }
+  for (const room of present) {
+    internal.liveRoomKeys.delete(room.key)
+  }
+  fireRoomLifecycle(internal, space, 'onLeave', present, reason, undefined, sourceMembership)
+}
+
+/**
+ * The connection is losing ALL its rooms at once — the socket died, a `kill`, the connection closing. Groups the live
+ * rooms by space through the connection's memberships (a room two memberships cover fires once — `liveRoomKeys` is the
+ * dedup) and fires `onLeave` per space with the given reason.
+ */
+const exitAllRooms = (internal: InternalConnection, reason: 'socket' | 'kill' | 'close'): void => {
+  if (internal.liveRoomKeys.size === 0) {
+    return
+  }
+  const bySpace = new Map<AnyPoint, RoomChange[]>()
+  const seen = new Set<string>()
+  for (const membership of internal.manager.memberships.values()) {
+    if (membership.disposed || membership.connectionKey !== internal.key) {
+      continue
+    }
+    membership.roomKeys.forEach((key, index) => {
+      if (seen.has(key) || !internal.liveRoomKeys.has(key)) {
+        return
+      }
+      seen.add(key)
+      const batch = bySpace.get(membership.space) ?? []
+      batch.push({ key, parsed: membership.rooms[index] })
+      bySpace.set(membership.space, batch)
+    })
+  }
+  for (const [space, rooms] of bySpace) {
+    exitRooms(internal, space, rooms, reason)
+  }
+  // rooms nothing indexes anymore (a disposed membership raced the sweep) leave silently — nothing could name them
+  internal.liveRoomKeys.clear()
 }
 
 const connectionLostError = (point: AnyPoint): ErrorPoint0 => {
@@ -1640,7 +1805,7 @@ const refreshInternal = (internal: InternalConnection): void => {
   void connectInternal(internal, { isReconnect: true })
 }
 
-/** Revive a closed-but-held connection (kick / disconnectAll): a fresh internal takes over the holds and listeners. */
+/** Revive a closed-but-held connection (kill / disconnectAll): a fresh internal takes over the holds and listeners. */
 const reviveInternal = (old: InternalConnection): void => {
   const manager = old.manager
   if (!manager.closedHeld.has(old)) {
@@ -1700,7 +1865,7 @@ const reviveInternal = (old: InternalConnection): void => {
     // `onConnect` with a `connectionIndex > 0` — the props tell it from a first connect
     everOpened: old.everOpened,
     connectIndex: old.connectIndex,
-    // pace repeated revives (a kick loop) through the reconnect policy; a successful claim resets it
+    // pace repeated revives (a kill loop) through the reconnect policy; a successful claim resets it
     reviveAttempt: old.reviveAttempt + 1,
     reviveTimer: undefined,
     preventRevive: false,
@@ -1709,6 +1874,10 @@ const reviveInternal = (old: InternalConnection): void => {
     personalCursor: 0,
     resumeVerdicts: undefined,
     resumePending: false,
+    // a revive is a full re-entry — the room lifecycle starts clean, but what was EVER entered stays remembered
+    // (a re-granted room is a re-entry: `gapless: false`, the closed stretch could have missed pushes)
+    liveRoomKeys: new Set(),
+    enteredRoomKeys: old.enteredRoomKeys,
     facade: old.facade,
     manager,
   }
@@ -1792,11 +1961,17 @@ export const disconnectAll = (): void => {
   }
 }
 
-const disposeInternal = (internal: InternalConnection, { silent }: { silent: boolean }): void => {
+const disposeInternal = (
+  internal: InternalConnection,
+  { silent, reason = 'close' }: { silent: boolean; reason?: 'kill' | 'close' },
+): void => {
   const manager = internal.manager
   if (internal.disposed) {
     return
   }
+  // the loss of liveness is announced ONCE: a connection the socket's death already took down ('socket' fired there,
+  // status left 'open') closes here silently — this dispose only finalizes it
+  const wasLive = internal.status === 'open'
   internal.disposed = true
   // still held (a mounted hook, an unreleased connect()) — keep it revivable: declarative holds auto-revive through
   // the reconnect policy (see scheduleDeclarativeRevive at the end), imperative ones wait for reconnectAll()/remount
@@ -1838,8 +2013,11 @@ const disposeInternal = (internal: InternalConnection, { silent }: { silent: boo
       failPendingSend(manager, pending, connectionLostError(pending.handler))
     }
   }
-  // enrolled memberships die with the connection (their other end is an explicit `leave()`) — a revive gets fresh ones
-  // from its new claimed frame
+  // the whole connection is going — every room it was in leaves with it, with the dispose's reason
+  if (wasLive) {
+    exitAllRooms(internal, reason)
+  }
+  // enrolled memberships die with the connection — a revive gets fresh ones from its new claimed frame
   for (const membership of [...manager.memberships.values()]) {
     if (membership.enrolled && !membership.disposed && membership.connectionKey === internal.key) {
       disposeMembership(membership, { sendLeave: false })
@@ -1847,11 +2025,11 @@ const disposeInternal = (internal: InternalConnection, { silent }: { silent: boo
   }
   notifyConnection(internal)
   notifyConnectionsChange(manager)
-  if (!silent && internal.everOpened) {
-    fireConnectionLifecycle(internal, 'onDisconnect')
+  if (!silent && internal.everOpened && wasLive) {
+    fireConnectionLifecycle(internal, 'onDisconnect', undefined, reason)
   }
   maybeCloseSocket(manager)
-  // the use-nature: a declarative hold means "stay connected while mounted", so a server kick (or disconnectAll)
+  // the use-nature: a declarative hold means "stay connected while mounted", so a server kill (or disconnectAll)
   // only interrupts — the connection re-establishes through the reconnect policy, and the connector stays the judge
   scheduleDeclarativeRevive(internal)
 }
@@ -2120,6 +2298,8 @@ export const connectToChannel = (
     personalCursor: 0,
     resumeVerdicts: undefined,
     resumePending: false,
+    liveRoomKeys: new Set(),
+    enteredRoomKeys: new Set(),
     facade: undefined as never,
     manager,
   }
@@ -2172,7 +2352,7 @@ export const getChannelConnectionOrUndefined = (
 /**
  * Every live connection facade of a channel ON THIS CLIENT — the manager's connections map filtered to this channel,
  * disposed ones out, merge chains resolved and deduped (`channel.connections.client.list()`). Purely a lookup: no hold
- * is added, nothing connects. A connection that was kicked but is still held (`closedHeld`) is NOT here — it is dormant
+ * is added, nothing connects. A connection that was killed but is still held (`closedHeld`) is NOT here — it is dormant
  * until a remount/`reconnectAll()`; `getSocket()` is the surface that still shows those. Empty on the server.
  */
 export const listChannelConnectionFacades = (channel: AnyPoint): AnyClientChannelConnection[] => {
@@ -2350,7 +2530,7 @@ const scheduleDeclarativeRejoin = (membership: InternalMembership): void => {
 
 /**
  * The cascade heartbeat: reconcile every live membership against its connection. Connection open with a NEW cid →
- * (re)send join; connection lost (connecting) → 'joining' (rooms kept as last-known); connection gone (disposed/kicked)
+ * (re)send join; connection lost (connecting) → 'joining' (rooms kept as last-known); connection gone (disposed/killed)
  * → 'closed'. Runs off `notifyConnection` / `notifyConnectionsChange` / claim — guarded against its own re-entrancy.
  */
 const pollMemberships = (manager: SocketManager): void => {
@@ -2365,7 +2545,7 @@ const pollMemberships = (manager: SocketManager): void => {
       }
       const internal = membershipConnection(membership)
       if (!internal) {
-        // the connection is gone (disposed / kicked / logout) — the membership closes; a connection revive re-joins it
+        // the connection is gone (disposed / killed / logout) — the membership closes; a connection revive re-joins it
         if (membership.status !== 'closed') {
           membership.status = 'closed'
           membership.lastCid = undefined
@@ -2687,14 +2867,9 @@ const releaseMembershipHold = (hold: MembershipHoldToken): void => {
 
 /**
  * Dispose a membership: send a `leave` (the last hold released, connection alive) or not (the connection is disposing —
- * the server cleans by cid). Remove it from every map. `voluntary` marks the client ASKING to be out (the last
- * `leave()`) as opposed to the membership being taken from it — it only decides whether an enrolled membership fires
- * its `onLeave`.
+ * the server cleans by cid). Remove it from every map.
  */
-const disposeMembership = (
-  membership: InternalMembership,
-  { sendLeave, voluntary = false }: { sendLeave: boolean; voluntary?: boolean },
-): void => {
+const disposeMembership = (membership: InternalMembership, { sendLeave }: { sendLeave: boolean }): void => {
   const manager = membership.manager
   if (membership.disposed) {
     return
@@ -2708,24 +2883,19 @@ const disposeMembership = (
     clearTimeout(membership.rejoinTimer)
     membership.rejoinTimer = undefined
   }
-  // a previously-joined membership closing is the `onLeave` moment. An ENROLLED one has no lifecycle of its own — it
-  // was announced, not joined, so no `onEnter` ever fired for it and the connection dying (or a refresh dropping the
-  // announcement) stays silent; its ONE lifecycle moment is an explicit `leave()`, which fires `onLeave` exactly like
-  // the voluntary leave of a joined membership
-  if (membership.everJoined && (!membership.enrolled || voluntary)) {
-    fireMembershipLifecycle(membership, 'onLeave')
-  }
   if (membership.joinId) {
     manager.pendingJoins.delete(membership.joinId)
     membership.joinId = undefined
   }
   unindexMembershipRooms(membership)
   const internal = membershipConnection(membership)
+  // the rooms this dispose actually takes the connection out of — the leave frame and the `onLeave` share the list
+  const left: RoomChange[] = []
   if (sendLeave && internal && internal.cid && manager.wsStatus === 'open') {
     // the client owns the shared-room refcount: a room another of THIS connection's memberships still covers stays
-    // out of the list (the server keys nothing by join input, nor by HOW a room was entered — it only hears which
-    // rooms to drop, and one entry holds each room once); unindexed above, so the index holds exactly the OTHER
-    // memberships — enrolled ones included, they are `joined` from birth and cover their rooms like any other
+    // out of the list (the server keys nothing by join input — it only hears which rooms to drop, and one entry holds
+    // each room once); unindexed above, so the index holds exactly the OTHER memberships — enrolled ones included,
+    // they are `joined` from birth and cover their rooms like any other
     const rooms: string[] = []
     membership.roomsSerialized.forEach((roomSerialized, index) => {
       const covering = manager.membershipsByRoomKey.get(membership.roomKeys[index])
@@ -2739,6 +2909,7 @@ const disposeMembership = (
         )
       if (!stillCovered) {
         rooms.push(roomSerialized)
+        left.push({ key: membership.roomKeys[index], parsed: membership.rooms[index] })
       }
     })
     if (rooms.length > 0) {
@@ -2761,23 +2932,28 @@ const disposeMembership = (
   }
   notifyMembership(membership)
   notifyMembershipsChange(manager)
+  // the connection actually left these rooms — the voluntary exit, after the state settled so callbacks read it.
+  // Every OTHER way a dispose loses rooms fires elsewhere: a dying connection sweeps everything at its own level
+  // ('kill' / 'close' / 'socket'), a reconcile drop fires 'refresh' at the reconcile
+  if (internal && left.length > 0) {
+    exitRooms(internal, membership.space, left, 'leave', membership)
+  }
 }
 
 /**
- * `leave()` on an ENROLLED membership — the one departure a server enrollment can have on the client's own initiative.
- * The protocol allows it: a `leave` frame NAMES its rooms and the server, which keys nothing by how a room was entered,
- * drops exactly those. So this is the regular dispose path with `sendLeave` — its shared-room refcount keeps a room
- * another live membership of this connection still covers. Immediate and local: there is no hold to release, hence no
- * `linger`, and the facade is dead right after. It is NOT a permanent exit — the next connection setup (a reconnect, a
- * `refresh`) re-runs the `.enroller` and installs the enrollment again; a permanent one is DATA the enroller reads.
- * Idempotent: a second call, or one after a refresh already dropped the enrollment, is a no-op.
+ * `leave()` on an ENROLLED membership does NOTHING — an enrollment is the server's GUARANTEE that this connection sits
+ * in these rooms, and a guarantee the client could shed would not be one (the server enforces the same wall on the
+ * wire: a `leave` frame never drops an enrolled room). By design this makes "the channel is open ⇒ the enroller's rooms
+ * are subscribed" a fact the server can rely on — a room-addressed push or command provably reaches every enrolled
+ * connection. The enrollment ends only on the server's initiative: `space.kick` (revocation), a `refresh` (the enroller
+ * re-judges), or the connection closing.
  */
-const leaveEnrolledMembership = (membership: InternalMembership): void => {
-  const live = resolveMembership(membership)
-  if (live.disposed) {
-    return
-  }
-  disposeMembership(live, { sendLeave: true, voluntary: true })
+const warnEnrolledMembershipLeave = (membership: InternalMembership): void => {
+  getLogFnForPoint(membership.space)({
+    level: 'warn',
+    category: ['point0', 'socket'],
+    message: `leave() on an enrolled membership does nothing — an enrollment is the server's guarantee; it ends via space.kick, refresh, or the connection closing (point ${membership.space.id})`,
+  })
 }
 
 /**
@@ -2801,7 +2977,25 @@ const reconcileEnrolledMemberships = (
       continue
     }
     if (!announcedSpaces.has(membership.spaceName)) {
+      // the re-run enroller no longer grants this space — rooms nothing else covers actually leave ('refresh').
+      // Computed BEFORE the dispose (it unindexes), excluding this membership from the coverage read
+      const dropped = membership.roomKeys
+        .map((roomKey, index) => ({ key: roomKey, parsed: membership.rooms[index] }))
+        .filter(({ key }) => {
+          const covering = manager.membershipsByRoomKey.get(key)
+          return !(
+            covering &&
+            [...covering].some(
+              (candidate) =>
+                candidate !== membership &&
+                !candidate.disposed &&
+                candidate.status === 'joined' &&
+                membershipConnection(candidate) === internal,
+            )
+          )
+        })
       disposeMembership(membership, { sendLeave: false })
+      exitRooms(internal, membership.space, dropped, 'refresh')
     }
   }
   applyEnrolledSpaces(manager, internal, enrolled)
@@ -2829,6 +3023,10 @@ const applyEnrolledSpaces = (
     const existing = manager.memberships.get(key)
     const live = existing ? resolveMembership(existing) : undefined
     if (live && !live.disposed) {
+      const previousRooms: RoomChange[] = live.roomKeys.map((roomKey, index) => ({
+        key: roomKey,
+        parsed: live.rooms[index],
+      }))
       unindexMembershipRooms(live)
       live.roomsSerialized = enrollment.rooms
       live.rooms = enrollment.rooms.map((room) => spaceTransformer.parse(room))
@@ -2839,6 +3037,34 @@ const applyEnrolledSpaces = (
       live.everJoined = true
       live.lastCid = internal.cid
       notifyMembership(live)
+      // the room lifecycle of the replace: announced rooms enter ('enroll' — the ones already live stay silent),
+      // rooms the fresh announcement no longer carries leave ('refresh' — the re-judged grant dropped them),
+      // refcounted against the connection's OTHER memberships
+      const announcedKeys = new Set(live.roomKeys)
+      exitRooms(
+        internal,
+        space,
+        previousRooms.filter(({ key }) => {
+          if (announcedKeys.has(key)) {
+            return false
+          }
+          const covering = manager.membershipsByRoomKey.get(key)
+          return !(
+            covering &&
+            [...covering].some(
+              (candidate) =>
+                !candidate.disposed && candidate.status === 'joined' && membershipConnection(candidate) === internal,
+            )
+          )
+        }),
+        'refresh',
+      )
+      enterRooms(
+        internal,
+        space,
+        live.roomKeys.map((roomKey, index) => ({ key: roomKey, parsed: live.rooms[index] })),
+        'enroll',
+      )
       continue
     }
     const membership: InternalMembership = {
@@ -2875,13 +3101,20 @@ const applyEnrolledSpaces = (
     }
     membership.facade = createMembershipFacade(
       () => membership,
-      // an enrollment HAS a leave: the frame names its rooms and the server drops them (a reconnect/refresh re-enrolls)
-      () => leaveEnrolledMembership(membership),
+      // an enrollment has NO leave — it is the server's guarantee; the call warns and does nothing
+      () => warnEnrolledMembershipLeave(membership),
     )
     internalsByCanonicalMembershipFacadeSsItem.get().set(membership.facade, membership)
     manager.memberships.set(key, membership)
     indexMembershipRooms(membership)
     notifyMembership(membership)
+    // a fresh enrollment is an entry into its rooms ('enroll') — the ones a join already covers stay silent
+    enterRooms(
+      internal,
+      space,
+      membership.roomKeys.map((roomKey, index) => ({ key: roomKey, parsed: membership.rooms[index] })),
+      'enroll',
+    )
   }
   notifyMembershipsChange(manager)
 }
@@ -3512,7 +3745,7 @@ const observeClientHandlerTarget = (
       read: () => {
         const live = resolveMembership(membership)
         // a non-disposed 'closed' membership is PARKED while its connection can come back (a live one under the
-        // same key, or a kicked-but-held one the revive policy may restore) — the comeback replays the join; it is
+        // same key, or a killed-but-held one the revive policy may restore) — the comeback replays the join; it is
         // gone for good only when disposed or when no such connection remains. An 'error' with a rejoin scheduled
         // is likewise transient.
         let ended = live.disposed
@@ -3554,7 +3787,7 @@ const observeClientHandlerTarget = (
   return {
     read: () => {
       const live = resolveInternal(internal)
-      // "closed for good" only: a kicked-but-held connection (closedHeld — declarative holds auto-revive,
+      // "closed for good" only: a killed-but-held connection (closedHeld — declarative holds auto-revive,
       // imperative ones wait for reconnectAll) and a scheduled revive/retry are TRANSIENT — the loop parks through
       // them; same for a transport-failure 'error' the retry policy is still redialing
       const reviving = live.reviveTimer !== undefined || live.manager.closedHeld.has(live)
@@ -3702,7 +3935,7 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
       internal.refreshOldCids.clear()
       internal.everOpened = true
       internal.status = 'open'
-      // a successful claim resets the auto-revive pacing — the next kick starts a fresh backoff run
+      // a successful claim resets the auto-revive pacing — the next kill starts a fresh backoff run
       internal.reviveAttempt = 0
       internal.preventRevive = false
       // a resumable channel's claim mints the resume credential — a fresh cid is a fresh personal stream
@@ -3804,10 +4037,10 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
       if (!internal || internal.disposed) {
         return
       }
-      // server-initiated close (kick): dispose it — declarative holders come back on their own (the dispose schedules
-      // the auto-revive; the connector re-judges), imperative ones wait for reconnectAll()/remount. A kick without a
+      // server-initiated close (a kill): dispose it — declarative holders come back on their own (the dispose schedules
+      // the auto-revive; the connector re-judges), imperative ones wait for reconnectAll()/remount. A kill without a
       // right revoked is therefore only an interruption — the real ban lives in the connector.
-      disposeInternal(internal, { silent: false })
+      disposeInternal(internal, { silent: false, reason: 'kill' })
       return
     }
     case 'refresh': {
@@ -3833,6 +4066,11 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
       // parse BEFORE any mutation — a transformer throw (schema drift on a rolling deploy) must not leave the
       // membership half-updated (unindexed, stale keys, a consumed join id)
       const parsedRooms = frame.rooms.map((room) => spaceTransformer.parse(room))
+      // the pre-grant state — what the room lifecycle diffs the grant against
+      const previousRooms: RoomChange[] = membership.roomKeys.map((key, index) => ({
+        key,
+        parsed: membership.rooms[index],
+      }))
       manager.pendingJoins.delete(frame.id)
       membership.joinId = undefined
       // re-index rooms: drop the old set, install the admitted rooms, index the new
@@ -3854,14 +4092,39 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
       // a successful join resets the auto-rejoin pacing — the next space kick starts a fresh backoff run
       membership.rejoinAttempt = 0
       membership.preventRejoin = false
-      // every landed join is an enter — `onEnter` fires each time, the props' membershipIndex tells the first (0)
-      // from a replay (> 0); the events carry the SAME value, so capture it before the increment
+      // the room lifecycle: rooms the grant actually put the connection into fire `onEnter` ('join' — the ones
+      // already live stay silent), and rooms a REPEAT grant no longer includes leave — a re-judged grant is the one
+      // way a room disappears with the socket alive and no kick ('refresh'), refcounted against the other memberships
       const membershipIndex = membership.joinIndex
-      fireMembershipLifecycle(membership, 'onEnter')
-      // count the successful join AFTER the callbacks read it — the first join fires with membershipIndex 0
+      if (joinedConnection) {
+        const grantedKeys = new Set(membership.roomKeys)
+        const dropped = previousRooms.filter(({ key }) => {
+          if (grantedKeys.has(key)) {
+            return false
+          }
+          const covering = manager.membershipsByRoomKey.get(key)
+          return !(
+            covering &&
+            [...covering].some(
+              (candidate) =>
+                !candidate.disposed &&
+                candidate.status === 'joined' &&
+                membershipConnection(candidate) === joinedConnection,
+            )
+          )
+        })
+        exitRooms(joinedConnection, membership.space, dropped, 'refresh', membership)
+        enterRooms(
+          joinedConnection,
+          membership.space,
+          membership.roomKeys.map((key, index) => ({ key, parsed: membership.rooms[index] })),
+          'join',
+        )
+      }
+      // count the successful join AFTER the room lifecycle read it — the first join fires with membershipIndex 0
       membership.joinIndex++
-      const cid = membershipConnection(membership)?.cid
-      // the full-path truth table, same as the lifecycle defaults: not a resume, gapless only on the first entry
+      const cid = joinedConnection?.cid
+      // the full-path truth table of the JOIN family: not a resume, gapless only on the first entry
       const outcome = { rooms: membership.rooms, resumed: false, gapless: membershipIndex === 0 }
       emitSpaceJoinEvent(membership, 'pointSpaceJoinClientSettled', cid, membershipIndex, outcome)
       emitSpaceJoinEvent(membership, 'pointSpaceJoinClientSuccess', cid, membershipIndex, outcome)
@@ -3884,10 +4147,37 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
       // grant would otherwise survive a re-join the server just refused: `membership.rooms` would keep announcing
       // them, and a frame for one of them (another connection still covers it, or the old server-side connection is
       // still subscribed through a refresh) would dispatch into this membership's listeners
+      const deniedRooms: RoomChange[] = membership.roomKeys.map((key, index) => ({
+        key,
+        parsed: membership.rooms[index],
+      }))
       unindexMembershipRooms(membership)
       membership.roomsSerialized = []
       membership.rooms = []
       membership.roomKeys = []
+      // rooms the refused re-judge dropped and nothing else covers actually left ('refresh')
+      const deniedConnection = membershipConnection(membership)
+      if (deniedConnection) {
+        const stillCovered = (key: string): boolean => {
+          const covering = manager.membershipsByRoomKey.get(key)
+          return Boolean(
+            covering &&
+            [...covering].some(
+              (candidate) =>
+                !candidate.disposed &&
+                candidate.status === 'joined' &&
+                membershipConnection(candidate) === deniedConnection,
+            ),
+          )
+        }
+        exitRooms(
+          deniedConnection,
+          membership.space,
+          deniedRooms.filter(({ key }) => !stillCovered(key)),
+          'refresh',
+          membership,
+        )
+      }
       // a hard deny — the join is not replayed on reconnects until reconnectAll()/remount
       if (joinError.preventRetry) {
         membership.preventRejoin = true
@@ -3924,11 +4214,34 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
         return
       }
       const removedSet = new Set(frame.rooms)
+      const kickedInternal = resolveInternal(internal)
+      // the kick's room lifecycle FIRST, while the memberships still cover the rooms (each call site hears its
+      // slice; the callbacks themselves run on a microtask, after the shrink below settled the state): the server
+      // removed these rooms for the whole connection — no membership covers them after
+      let kickedSpace: AnyPoint | undefined
+      const kicked = new Map<string, RoomChange>()
+      for (const membership of manager.memberships.values()) {
+        if (membership.disposed || membership.spaceName !== frame.space) {
+          continue
+        }
+        if (membershipConnection(membership) !== kickedInternal) {
+          continue
+        }
+        kickedSpace ??= membership.space
+        membership.roomsSerialized.forEach((serialized, index) => {
+          if (removedSet.has(serialized) && !kicked.has(membership.roomKeys[index])) {
+            kicked.set(membership.roomKeys[index], { key: membership.roomKeys[index], parsed: membership.rooms[index] })
+          }
+        })
+      }
+      if (kickedSpace && kicked.size > 0) {
+        exitRooms(kickedInternal, kickedSpace, [...kicked.values()], 'kick')
+      }
       for (const membership of [...manager.memberships.values()]) {
         if (membership.disposed || membership.spaceName !== frame.space) {
           continue
         }
-        if (membershipConnection(membership) !== resolveInternal(internal)) {
+        if (membershipConnection(membership) !== kickedInternal) {
           continue
         }
         const keptIndices = membership.roomsSerialized
@@ -3977,7 +4290,7 @@ const handleServerFrame = async (manager: SocketManager, frame: SocketServerFram
       return
     }
     case 'resumeErr': {
-      // the uniform refusal — whatever the reason (unknown cid, wrong key, lapsed record, a kick), the answer is the
+      // the uniform refusal — whatever the reason (unknown cid, wrong key, lapsed record, a kill), the answer is the
       // ordinary FULL connect for this one connection: the connector re-judges, the memberships re-join
       const internal = manager.connectionsByCid.get(frame.cid)
       if (!internal || internal.disposed || !internal.resumePending) {
@@ -4116,44 +4429,63 @@ const handleResumedFrame = (manager: SocketManager, frame: SocketServerFrame & {
       }
       continue
     }
+    // a room's own resume verdict: its stream AND the space-wide stream that also feeds it. A room the server did
+    // not answer for is being revoked (the queued `left` frames follow the replay) — the absence folds to `true` on
+    // purpose: the revocation arrives as its own signal, and a pre-emptive refetch of a room about to vanish would
+    // be work thrown away
+    const roomGapless = (spaceName: string, roomSerialized: string): boolean => {
+      const spaceVerdict = streamVerdicts[`s:${spaceName}`]?.gapless ?? true
+      const roomVerdict = streamVerdicts[`r:${spaceName}:${roomSerialized}`]?.gapless ?? true
+      return spaceVerdict && roomVerdict
+    }
     if (membership.enrolled) {
-      // restored with the passport; no lifecycle — an enrolled membership never fires onEnter
+      // restored with the passport — the rooms RE-ENTER with the resume markers, like everything else the restore
+      // brought back
       membership.lastCid = internal.cid
       if (membership.status !== 'joined') {
         membership.status = 'joined'
         notifyMembership(membership)
       }
+      enterRooms(
+        internal,
+        membership.space,
+        membership.roomKeys.map((roomKey, index) => ({ key: roomKey, parsed: membership.rooms[index] })),
+        'resume',
+        new Map(
+          membership.roomKeys.map((roomKey, index) => [
+            roomKey,
+            roomGapless(membership.spaceName, membership.roomsSerialized[index]),
+          ]),
+        ),
+      )
       continue
     }
     if (membership.everJoined && membership.roomsSerialized.length > 0 && !membership.preventRejoin) {
       // the passport held exactly the rooms this membership knows — mark it synced to the surviving cid so the
-      // cascade does NOT resend its join, and fire the enter with the resume markers. The verdict is THIS
-      // membership's own: AND over the streams that feed it — its rooms and its space-wide stream. A room the server
-      // did not answer for is being revoked (the queued `left` frames follow the replay) — it does not vote
+      // cascade does NOT resend its join, and re-enter the rooms with the resume markers and each room's own verdict
       membership.lastCid = internal.cid
       membership.status = 'joined'
       membership.error = null
-      const verdictParts: boolean[] = []
-      const spaceVerdict = streamVerdicts[`s:${membership.spaceName}`]
-      if (spaceVerdict !== undefined) {
-        verdictParts.push(spaceVerdict.gapless)
-      }
-      for (const roomSerialized of membership.roomsSerialized) {
-        const roomVerdict = streamVerdicts[`r:${membership.spaceName}:${roomSerialized}`]
-        if (roomVerdict !== undefined) {
-          verdictParts.push(roomVerdict.gapless)
-        }
-      }
-      // zero voting streams (every room revoked during the park — the queued `left` frames follow the replay) folds
-      // to `true` on purpose: the revocation arrives as its own signal, and a pre-emptive refetch of rooms about to
-      // vanish would be work thrown away
-      const membershipGapless = verdictParts.every(Boolean)
       const membershipIndex = membership.joinIndex
-      fireMembershipLifecycle(membership, 'onEnter', { resumed: true, gapless: membershipGapless })
+      enterRooms(
+        internal,
+        membership.space,
+        membership.roomKeys.map((roomKey, index) => ({ key: roomKey, parsed: membership.rooms[index] })),
+        'resume',
+        new Map(
+          membership.roomKeys.map((roomKey, index) => [
+            roomKey,
+            roomGapless(membership.spaceName, membership.roomsSerialized[index]),
+          ]),
+        ),
+      )
       membership.joinIndex++
-      // the resume IS this membership's landed (re-)entry — the join family closes Settled → Success with the same
-      // markers the callback read; no Start: no join frame was sent (a refused resume falls back to the full join
-      // path, whose family runs the complete cycle)
+      // the resume IS this membership's landed (re-)entry — the join family closes Settled → Success with the
+      // membership-level verdict (AND over its rooms); no Start: no join frame was sent (a refused resume falls back
+      // to the full join path, whose family runs the complete cycle)
+      const membershipGapless = membership.roomsSerialized.every((roomSerialized) =>
+        roomGapless(membership.spaceName, roomSerialized),
+      )
       const outcome = { rooms: membership.rooms, resumed: true, gapless: membershipGapless }
       emitSpaceJoinEvent(membership, 'pointSpaceJoinClientSettled', frame.cid, membershipIndex, outcome)
       emitSpaceJoinEvent(membership, 'pointSpaceJoinClientSuccess', frame.cid, membershipIndex, outcome)
@@ -4733,6 +5065,41 @@ export const listSpaceMembershipFacades = (space: AnyPoint): AnyClientSpaceMembe
 }
 
 /**
+ * The per-ROOM view of a space's client floor — every room the tab's live memberships cover, one entry per room, with
+ * its PROVENANCE: `joined` = a client join covers it, `enrolled` = the server's enrollment covers it (both can be true
+ * at once — the client mirror of the server's own per-room provenance flags). What `space.memberships.client.rooms()`
+ * hands out.
+ */
+export const listSpaceClientRooms = (space: AnyPoint): Array<{ room: unknown; joined: boolean; enrolled: boolean }> => {
+  if (_point0_env.side.is.server) {
+    return []
+  }
+  const manager = socketManagersSsItem.get().get(space.scope)
+  if (!manager) {
+    return []
+  }
+  const byKey = new Map<string, { room: unknown; joined: boolean; enrolled: boolean }>()
+  const seen = new Set<InternalMembership>()
+  for (const membership of manager.memberships.values()) {
+    const live = resolveMembership(membership)
+    if (live.disposed || live.spaceName !== space.name || live.status !== 'joined' || seen.has(live)) {
+      continue
+    }
+    seen.add(live)
+    live.roomKeys.forEach((key, index) => {
+      const entry = byKey.get(key) ?? { room: live.rooms[index], joined: false, enrolled: false }
+      if (live.enrolled) {
+        entry.enrolled = true
+      } else {
+        entry.joined = true
+      }
+      byKey.set(key, entry)
+    })
+  }
+  return [...byKey.values()]
+}
+
+/**
  * Find the live membership that covers a bound ROOM — the space-handler binder's room form. `membershipsByRoomKey` is
  * indexed per CHANNEL (`${scope}:${channelName}|${space}|${room}`), so the covering memberships may ride several
  * connections: an explicit `channelInput` picks one, otherwise the room must be covered under exactly one connection
@@ -5099,7 +5466,7 @@ const addSocketHold = (): (() => void) => {
 /**
  * A read-only snapshot of the scope's whole socket vertical: the transport `status` plus every connection and
  * membership this tab holds (their facades — the same objects the hooks and `getConnection`/`getMembership` hand out),
- * kicked-but-still-held connections included (dormant until a remount — the one surface that still shows them; the
+ * killed-but-still-held connections included (dormant until a remount — the one surface that still shows them; the
  * `client` enumeration floor lists live ones only). The seed of any monitoring/devtools surface.
  */
 export type SocketState = {
@@ -5124,7 +5491,7 @@ const snapshotSocketState = (manager: SocketManager): SocketState => {
   for (const internal of manager.connections.values()) {
     collectConnection(internal)
   }
-  // closed-but-still-held connections (a kick, disconnectAll) are part of the picture — they report status 'closed'
+  // closed-but-still-held connections (a kill, disconnectAll) are part of the picture — they report status 'closed'
   for (const internal of manager.closedHeld) {
     collectConnection(internal)
   }

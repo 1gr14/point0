@@ -235,10 +235,10 @@ export const adminIdentityCountHandler = mainChannel.lets('serverHandler', 'admi
   })
   .serverHandler()
 
-export const adminKickHandler = mainChannel.lets('serverHandler', 'adminKickHandler')
+export const adminKillHandler = mainChannel.lets('serverHandler', 'adminKillHandler')
   .clientSend(z.object({ cid: z.string() }))
   .serverReply(async ({ input }) => {
-    await mainChannel.kick({ connectionId: input.cid })
+    await mainChannel.kill({ connectionId: input.cid })
     return { ok: true }
   })
   .serverHandler()
@@ -257,6 +257,25 @@ export const adminRoomCountHandler = mainChannel.lets('serverHandler', 'adminRoo
   .clientSend(z.object({ chatId: z.string() }))
   .serverReply(async ({ input }) => ({
     count: await chatSpace.memberships.server.count({ room: { chatId: input.chatId } }),
+  }))
+  .serverHandler()
+
+// the imperative enroll — grows a connection's ENROLLED rooms of chatSpace (the provenance tests use it)
+export const adminEnrollHandler = mainChannel.lets('serverHandler', 'adminEnrollHandler')
+  .clientSend(z.object({ cid: z.string(), chatId: z.string() }))
+  .serverReply(async ({ input }) => {
+    await chatSpace.enroll({ connectionId: input.cid }, { chatId: input.chatId })
+    return { ok: true }
+  })
+  .serverHandler()
+
+// the room members with cids — the provenance assertions read presence with it
+export const adminRoomMembersHandler = mainChannel.lets('serverHandler', 'adminRoomMembersHandler')
+  .clientSend(z.object({ chatId: z.string() }))
+  .serverReply(({ input }) => ({
+    ids: chatSpace.memberships.server.local
+      .list({ room: { chatId: input.chatId } })
+      .map((membership) => membership.connectionId),
   }))
   .serverHandler()
 
@@ -552,7 +571,7 @@ describe('socket resumable connections', () => {
       await waitFor(() => readKvState()[connKey(member.cid)] !== undefined, 'the conn record on disk')
       const record = JSON.parse(readKvState()[connKey(member.cid)]!.value) as {
         identity: string
-        resume?: { keyHash: string; rooms: Record<string, string[]> }
+        resume?: { keyHash: string; rooms: Record<string, { joined: string[]; enrolled: string[] }> }
       }
       // the passport: the HASH of the key — the exact digest any process derives to verify a resume
       expect(record.resume?.keyHash).toBe(createHash('sha256').update(member.resumeKey!).digest('base64url'))
@@ -581,13 +600,16 @@ describe('socket resumable connections', () => {
         if (!raw) {
           return false
         }
-        const record = JSON.parse(raw.value) as { resume?: { rooms: Record<string, string[] | undefined> } }
-        return record.resume?.rooms.chatSpace?.length === 1
+        const record = JSON.parse(raw.value) as {
+          resume?: { rooms: Record<string, { joined: string[]; enrolled: string[] } | undefined> }
+        }
+        return record.resume?.rooms.chatSpace?.joined.length === 1
       }, 'the room write-through')
       const record = JSON.parse(readKvState()[connKey(member.cid)]!.value) as {
-        resume: { rooms: Record<string, string[]> }
+        resume: { rooms: Record<string, { joined: string[]; enrolled: string[] }> }
       }
-      expect(record.resume.rooms.chatSpace).toEqual([JSON.stringify({ chatId: 'p-1' })])
+      // the passport splits by PROVENANCE — a client join lands in `joined`, an enrollment in `enrolled`
+      expect(record.resume.rooms.chatSpace).toEqual({ joined: [JSON.stringify({ chatId: 'p-1' })], enrolled: [] })
       // the opt-out space's rooms stay OUT — fast-changing rooms must not hammer the KV
       expect(record.resume.rooms).not.toContainKey('liveSpace')
       // and a leave shrinks the passport back
@@ -597,11 +619,60 @@ describe('socket resumable connections', () => {
         if (!raw) {
           return false
         }
-        const record2 = JSON.parse(raw.value) as { resume?: { rooms: Record<string, string[] | undefined> } }
-        return (record2.resume?.rooms.chatSpace?.length ?? 0) === 0
+        const record2 = JSON.parse(raw.value) as {
+          resume?: { rooms: Record<string, { joined: string[]; enrolled: string[] } | undefined> }
+        }
+        return (record2.resume?.rooms.chatSpace?.joined.length ?? 0) === 0
       }, 'the leave write-through')
     } finally {
       member.wire.close()
+    }
+  })
+
+  it('the passport splits by PROVENANCE: an enrollment lands in `enrolled`, survives a client leave, dies by kick', async () => {
+    const admin = await openAndClaim('main-channel', 'prov-admin')
+    const member = await openAndClaim('main-channel', 'prov')
+    const passport = (): { joined: string[]; enrolled: string[] } | undefined => {
+      const raw = readKvState()[connKey(member.cid)]
+      if (!raw) {
+        return undefined
+      }
+      const record = JSON.parse(raw.value) as {
+        resume?: { rooms: Record<string, { joined: string[]; enrolled: string[] } | undefined> }
+      }
+      return record.resume?.rooms.chatSpace
+    }
+    try {
+      // one room entered BOTH ways, one enroll-only
+      await join(member.wire, member.cid, 'chatSpace', { chatId: 'pv-shared' })
+      await sendOver(admin.wire, admin.cid, 'adminEnrollHandler', { cid: member.cid, chatId: 'pv-shared' })
+      await sendOver(admin.wire, admin.cid, 'adminEnrollHandler', { cid: member.cid, chatId: 'pv-only' })
+      await waitFor(() => (passport()?.enrolled.length ?? 0) === 2, 'the enroll write-through')
+      expect(passport()).toEqual({
+        joined: [JSON.stringify({ chatId: 'pv-shared' })],
+        enrolled: [JSON.stringify({ chatId: 'pv-shared' }), JSON.stringify({ chatId: 'pv-only' })],
+      })
+      // a client leave naming BOTH rooms sheds only the JOINED mark — the enrolled rooms stay (the guarantee)
+      member.wire.send({
+        t: 'leave',
+        cid: member.cid,
+        space: 'chatSpace',
+        rooms: [JSON.stringify({ chatId: 'pv-shared' }), JSON.stringify({ chatId: 'pv-only' })],
+      })
+      await waitFor(() => (passport()?.joined.length ?? 1) === 0, 'the demote write-through')
+      expect(passport()).toEqual({
+        joined: [],
+        enrolled: [JSON.stringify({ chatId: 'pv-shared' }), JSON.stringify({ chatId: 'pv-only' })],
+      })
+      const members = await sendOver(admin.wire, admin.cid, 'adminRoomMembersHandler', { chatId: 'pv-only' })
+      expect((JSON.parse(members.data as string) as { ids: string[] }).ids).toContain(member.cid)
+      // the kick ends the enrollment — the passport stops promising the room
+      await sendOver(admin.wire, admin.cid, 'adminRoomKickHandler', { chatId: 'pv-only' })
+      await waitFor(() => (passport()?.enrolled.length ?? 2) === 1, 'the kick write-through')
+      expect(passport()?.enrolled).toEqual([JSON.stringify({ chatId: 'pv-shared' })])
+    } finally {
+      member.wire.close()
+      admin.wire.close()
     }
   })
 
@@ -823,7 +894,7 @@ describe('socket resumable connections', () => {
     }
   })
 
-  it('the REFUSALS are one oracle-free frame: wrong key ≡ unknown cid; kick and voluntary close void the record; TTL lapses it', async () => {
+  it('the REFUSALS are one oracle-free frame: wrong key ≡ unknown cid; kill and voluntary close void the record; TTL lapses it', async () => {
     // wrong key against a LIVE entry vs a cid that never existed — byte-identical answers
     const victim = await openAndClaim('main-channel', 'refuse-victim')
     const prober = await openWire()
@@ -845,7 +916,7 @@ describe('socket resumable connections', () => {
 
       // a KICK deletes the record — the resume refuses, revocation is never resumable
       const kicked = await openAndClaim('main-channel', 'refuse-kicked')
-      await sendOver(victim.wire, victim.cid, 'adminKickHandler', { cid: kicked.cid })
+      await sendOver(victim.wire, victim.cid, 'adminKillHandler', { cid: kicked.cid })
       await kicked.wire.waitFrame((frame) => frame.t === 'closed' && frame.cid === kicked.cid)
       await waitFor(
         () => readKvOps().some((op) => op.op === 'delete' && op.key === connKey(kicked.cid)),
@@ -945,13 +1016,15 @@ describe('socket resumable connections', () => {
         if (!raw) {
           return false
         }
-        const record = JSON.parse(raw.value) as { resume?: { rooms: Record<string, string[] | undefined> } }
-        return record.resume?.rooms.chatSpace?.length === 1
+        const record = JSON.parse(raw.value) as {
+          resume?: { rooms: Record<string, { joined: string[]; enrolled: string[] } | undefined> }
+        }
+        return record.resume?.rooms.chatSpace?.joined.length === 1
       }, 'the kick passport write-through')
       const record = JSON.parse(readKvState()[connKey(member.cid)]!.value) as {
-        resume: { rooms: Record<string, string[]> }
+        resume: { rooms: Record<string, { joined: string[]; enrolled: string[] }> }
       }
-      expect(record.resume.rooms.chatSpace).toEqual([JSON.stringify({ chatId: 'rk-kept' })])
+      expect(record.resume.rooms.chatSpace).toEqual({ joined: [JSON.stringify({ chatId: 'rk-kept' })], enrolled: [] })
       // …and the room left the buffer address: a push into it no longer rings, while the kept room's push does
       await sendOver(admin.wire, admin.cid, 'adminPushHandler', { chatId: 'rk-kicked', n: 3, kind: 'feed' })
       await sendOver(admin.wire, admin.cid, 'adminPushHandler', { chatId: 'rk-kept', n: 4, kind: 'feed' })
@@ -1277,8 +1350,8 @@ describe('socket resumable connections', () => {
     ] as never)
 
     const connects: Array<{ resumed: boolean; gapless: boolean; connectionIndex: number }> = []
-    const chatEnters: Array<{ resumed: boolean; gapless: boolean; membershipIndex: number }> = []
-    const liveEnters: Array<{ resumed: boolean; gapless: boolean; membershipIndex: number }> = []
+    const chatEnters: Array<{ resumed: boolean; gapless: boolean; reason: string }> = []
+    const liveEnters: Array<{ resumed: boolean; gapless: boolean; reason: string }> = []
     const received: number[] = []
 
     // this test shares the machine with parallel heavy suites (the tests lane runs several at once), so every stage
@@ -1296,16 +1369,14 @@ describe('socket resumable connections', () => {
       const chatMembership = chatSpace.join(
         { chatId: 'rd' },
         {
-          onEnter: ({ resumed, gapless, membershipIndex }: never) =>
-            void chatEnters.push({ resumed, gapless, membershipIndex } as never),
+          onEnter: ({ resumed, gapless, reason }: never) => void chatEnters.push({ resumed, gapless, reason } as never),
         },
         { userId: 'redeploy' },
       )
       const liveMembership = liveSpace.join(
         { key: 'rk' },
         {
-          onEnter: ({ resumed, gapless, membershipIndex }: never) =>
-            void liveEnters.push({ resumed, gapless, membershipIndex } as never),
+          onEnter: ({ resumed, gapless, reason }: never) => void liveEnters.push({ resumed, gapless, reason } as never),
         },
         { userId: 'redeploy' },
       )
@@ -1315,13 +1386,21 @@ describe('socket resumable connections', () => {
         30_000,
       )
       expect(connects).toEqual([{ resumed: false, gapless: true, connectionIndex: 0 }])
-      expect(chatEnters).toEqual([{ resumed: false, gapless: true, membershipIndex: 0 }])
+      expect(chatEnters).toEqual([{ resumed: false, gapless: true, reason: 'join' }])
 
       const listener = feedHandler(chatMembership).onMessageFromServer(
         ({ message }: { message: { n: number } }) => void received.push(message.n),
       )
       await adminPushHandler(connection).sendToServer({ chatId: 'rd', n: 1, kind: 'feed' }, SEND_TIMEOUT)
       await waitFor(() => received.includes(1), 'the pre-redeploy push', 30_000)
+
+      // a RAW-WIRE member rides the same redeploy: one room joined, one enrolled (it enrolls itself through the
+      // admin handler) — the KV restore must bring BOTH back with their provenance intact
+      const rawMember = await openAndClaim('main-channel', 'redeploy-raw')
+      await join(rawMember.wire, rawMember.cid, 'chatSpace', { chatId: 'pv-j' })
+      await sendOver(rawMember.wire, rawMember.cid, 'adminEnrollHandler', { cid: rawMember.cid, chatId: 'pv-e' })
+      await rawMember.wire.waitFrame((frame) => frame.t === 'enrolled' && frame.space === 'chatSpace')
+      const rawCursors = rawMember.wire.cursors()
 
       // THE REDEPLOY — kill the whole dev-server tree, free the ports, boot a new one on the same backplane files.
       // The port release and the SECOND boot are the load-sensitive stages: the fresh dev server compiles the whole
@@ -1345,7 +1424,7 @@ describe('socket resumable connections', () => {
       // the resumable space came back through the passport — resumed, with the honest gap marker
       expect(chatEnters[1].resumed).toBe(true)
       expect(chatEnters[1].gapless).toBe(false)
-      expect(chatEnters[1].membershipIndex).toBeGreaterThan(0)
+      expect(chatEnters[1].reason).toBe('resume')
       // the opt-out space RE-JOINED the full way — the joiner ran, so this enter is not a resume
       const lastLiveEnter = liveEnters[liveEnters.length - 1]
       expect(lastLiveEnter.resumed).toBe(false)
@@ -1387,7 +1466,7 @@ describe('socket resumable connections', () => {
         .at(-1)!
       expect(lastChatJoin.data.resumed).toBe(true)
       expect(lastChatJoin.data.gapless).toBe(false)
-      expect(lastChatJoin.data.membershipIndex).toBe(chatEnters[1].membershipIndex)
+      expect(lastChatJoin.data.membershipIndex).toBeGreaterThan(0)
       const lastLiveJoin = clientEvents
         .filter((event) => event.name === 'pointSpaceJoinClientSuccess' && spaceOf(event) === 'liveSpace')
         .at(-1)!
@@ -1396,6 +1475,30 @@ describe('socket resumable connections', () => {
       const socketConnects = clientEvents.filter((event) => event.name === 'socketClientConnect')
       expect(socketConnects[0].data.socketIndex).toBe(0)
       expect((socketConnects.at(-1)!.data.socketIndex as number) > 0).toBe(true)
+      // the raw member restores from the KV passport on the fresh process — and the restored enrollment is still
+      // leave-proof: a leave frame naming both rooms drops the joined one and cannot touch the enrolled one
+      const freshWire = await openWire()
+      freshWire.send({
+        t: 'resume',
+        entries: [{ cid: rawMember.cid, key: rawMember.resumeKey!, cursors: rawCursors }],
+      })
+      await freshWire.waitFrame((frame) => frame.t === 'resumed' && frame.cid === rawMember.cid)
+      const roomIds = async (chatId: string): Promise<string[]> => {
+        const reply = await sendOver(freshWire, rawMember.cid, 'adminRoomMembersHandler', { chatId })
+        return (JSON.parse(reply.data as string) as { ids: string[] }).ids
+      }
+      expect(await roomIds('pv-j')).toContain(rawMember.cid)
+      expect(await roomIds('pv-e')).toContain(rawMember.cid)
+      freshWire.send({
+        t: 'leave',
+        cid: rawMember.cid,
+        space: 'chatSpace',
+        rooms: [JSON.stringify({ chatId: 'pv-j' }), JSON.stringify({ chatId: 'pv-e' })],
+      })
+      await waitFor(async () => !(await roomIds('pv-j')).includes(rawMember.cid), 'the joined room left', 30_000)
+      expect(await roomIds('pv-e')).toContain(rawMember.cid)
+      freshWire.close()
+
       listener.remove()
       liveMembership.leave()
       chatMembership.leave()

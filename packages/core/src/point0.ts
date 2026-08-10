@@ -71,6 +71,7 @@ import {
   isDeadSocketFacade,
   isMembershipFacade,
   listChannelConnectionFacades,
+  listSpaceClientRooms,
   listSpaceMembershipFacades,
   readBoundSpaceRoom,
   getConnectionFacadeChannel,
@@ -4518,9 +4519,7 @@ export class Point0<
                       TError
                     >,
                   ) => TSpaceInputRaw),
-              membershipOptions?: ExtraUseMembershipOptions<
-                ClientSpaceMembership<TSpaceInputRaw, TSpaceRoom, TSpaceError, TSpaceChannelInput>
-              >,
+              membershipOptions?: ExtraUseMembershipOptions<TSpaceRoom>,
               gate?: Gate,
             ]
           : [
@@ -4547,9 +4546,7 @@ export class Point0<
                       TError
                     >,
                   ) => TSpaceInputRaw),
-              membershipOptions?: ExtraUseMembershipOptions<
-                ClientSpaceMembership<TSpaceInputRaw, TSpaceRoom, TSpaceError, TSpaceChannelInput>
-              >,
+              membershipOptions?: ExtraUseMembershipOptions<TSpaceRoom>,
               gate?: Gate,
             ]
         : TArg extends {
@@ -4745,7 +4742,7 @@ export class Point0<
     }
       ? [
           // the injected connection is ALWAYS the indeterminate facade — a connection carries no data and its status
-          // can flip (reconnect/kick) at any moment, so `gate` never narrows the type, it only gates the render
+          // can flip (reconnect/kill) at any moment, so `gate` never narrows the type, it only gates the render
           ...TConnectionsDefinitions,
           ClientChannelConnection<TChannelInputRaw, TChannelError>,
         ]
@@ -10842,7 +10839,7 @@ export class Point0<
    * The channel's connect callback — runs on every connect request through the full endpoint pipeline (middleware,
    * plugins, `.ctx`, input parse) and returns the connection's **identity**, bare: the connection's private server-side
    * data (who this connection is — userId, role, …), frozen until a reconnect or a `refresh`. The identity is what
-   * handlers receive next to their input, what admin selections (`kick` / `connections`) match over, and what `.joiner`
+   * handlers receive next to their input, what admin selections (`kill` / `connections`) match over, and what `.joiner`
    * sees when the client enters a space's rooms. Nothing else comes out of a connect — no rooms (spaces own them) and
    * no data (a query next door answers questions). The connector itself is optional: a channel without one connects
    * with an empty identity. The access check lives here — throw and the connect fails with the typed error (and it
@@ -11274,13 +11271,7 @@ export class Point0<
           spaceOptions?: SpacePointOptions<
             FinalServerInputParsed<'space', TServerInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
             TIdentity,
-            TRoom,
-            ClientSpaceMembership<
-              FinalInputRaw<'space', TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
-              TRoom,
-              TError,
-              TChannelInput
-            >
+            TRoom
           >,
         ]
       : never
@@ -11785,7 +11776,7 @@ export class Point0<
     // a channel renders as a MOUNTABLE, exactly like a Provider: the chain's mount actions (inherited wrappers,
     // .loading()/.error(), .with injections) run through the interpreter, and the channel's own `selfConnection`
     // terminal step holds the connection and gates it per `gate` (default errors-only — `closed` does NOT gate: it is
-    // either `enabled: false` or a later kick/logout — the children are already there and see the status), and provides
+    // either `enabled: false` or a later kill/logout — the children are already there and see the status), and provides
     // the channel context. `mountComponent: 'children'` — once past the terminal step the children render as-is.
     // The rest props ARE the connection options — they sit flat on the component.
     const {
@@ -11840,14 +11831,7 @@ export class Point0<
       TSearchSchema,
       TBodySchema
     >,
-    options?: ExtraUseMembershipOptions<
-      ClientSpaceMembership<
-        FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
-        TRoom,
-        TError,
-        TChannelInput
-      >
-    >,
+    options?: ExtraUseMembershipOptions<TRoom>,
   ): ClientSpaceMembership<
     FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
     TRoom,
@@ -11883,14 +11867,7 @@ export class Point0<
       TSearchSchema,
       TBodySchema
     >,
-    options?: ExtraUseMembershipOptions<
-      ClientSpaceMembership<
-        FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
-        TRoom,
-        TError,
-        TChannelInput
-      >
-    >,
+    options?: ExtraUseMembershipOptions<TRoom>,
     channelInput?: TChannelInput,
   ): ClientSpaceMembership<
     FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
@@ -11999,21 +11976,7 @@ export class Point0<
     ? (
         props: SpaceMembershipComponentProps<
           FinalInputRaw<TPointType, TServerInputSchema, TClientInputSchema, TParamsSchema, TSearchSchema, TBodySchema>,
-          ExtraUseMembershipOptions<
-            ClientSpaceMembership<
-              FinalInputRaw<
-                TPointType,
-                TServerInputSchema,
-                TClientInputSchema,
-                TParamsSchema,
-                TSearchSchema,
-                TBodySchema
-              >,
-              TRoom,
-              TError,
-              TChannelInput
-            >
-          >
+          ExtraUseMembershipOptions<TRoom>
         >,
       ) => React.ReactNode
     : never = ((props: { input?: unknown; gate?: Gate; children?: React.ReactNode }) => {
@@ -15267,32 +15230,36 @@ export class Point0<
   }
 
   /**
-   * Close matching live connections of this channel from the server — remove them from their rooms, stop sending,
-   * notify each client with a `closed` frame. What happens next follows the hold's nature: connections held by
-   * hooks/components auto-revive through the reconnect policy (the connector re-judges), imperative `connect()` holders
-   * stay closed until a remount or `reconnectAll()`. The target is the `$`-dictionary, parts AND-combined; a bare
-   * `kick()` closes every connection of the channel. On a SPACE point a kick is NOT a connection kill — it is a forced
-   * LEAVE of the matching rooms (`left` frames; the connection lives on). Works across processes through the backplane
-   * bus. A real ban still belongs in the connector — it re-applies on every connect.
+   * Kick matching connections OUT OF ROOMS of this space from the server — a forced LEAVE, never a connection kill: the
+   * matching rooms are removed, each client learns from a `left` frame, and the connections (and their other rooms)
+   * live on. The one verb that revokes rooms — which is also how a server-side enrollment ends. The target is the
+   * `$`-dictionary, parts AND-combined; a bare `kick()` empties every room of the space. A membership held by
+   * `useMembership` / `<Membership>` replays its join through the reconnect policy, so the joiner rules on it afresh —
+   * deny there (with `preventRetry` for a hard deny) and the rooms stay gone. Works across processes through the
+   * backplane bus. Closing the whole connection instead is {@link kill}; kick's mirror is {@link enroll} (kick = a forced
+   * leave, enroll = a forced join).
    *
-   * Server-only — a runtime error on the client.
+   * Server-only — a runtime error on the client; space points only.
    *
-   *     await chatChannel.kick({ $identity: { userId: '42' } })
-   *     await chatChannel.kick({ connectionId, reason: 'signed-out' })
-   *     await chatSpace.kick({ room: { chatId: '5' } }) // forced leave — "the room closed"
+   *     await chatSpace.kick({ room: { chatId: '5' } }) // "the room closed" — everyone out
+   *     await chatSpace.kick({ room: { chatId: '5' }, $identity: { userId: '42' } }) // one user out of one room
+   *     await chatSpace.kick({ $room: { workspaceId: '7' }, reason: 'workspace-archived' })
    *
    * Full reference: https://1gr14.dev/point0/latest/socket
    */
   kick(
-    target?: (TPointType extends 'space' ? SpaceAdminTarget<TRoom, TIdentity> : ChannelAdminTarget<TIdentity>) & {
-      reason?: string
-    },
-  ): Promise<void>
+    target?: TPointType extends 'space' ? SpaceAdminTarget<TRoom, TIdentity> & { reason?: string } : never,
+  ): TPointType extends 'space' ? Promise<void> : never
   async kick(...args: any[]): Promise<void> {
     if (_point0_env.side.is.client) {
       throw new Error(`kick() is server-side (point ${this.id})`)
     }
-    const [target] = args as [((ChannelAdminTarget | SpaceAdminTarget) & { reason?: string }) | undefined]
+    if (this.type !== 'space') {
+      throw new Error(
+        `kick() lives on space points only (a kick revokes rooms; to close connections use kill()), got ${this.toStringWithLocation()}`,
+      )
+    }
+    const [target] = args as [(SpaceAdminTarget & { reason?: string }) | undefined]
     const { adapter, adminTarget } = this._resolveAdminTarget(target, 'kick')
     await adapter.kick({ ...adminTarget, reason: target?.reason })
   }
@@ -15303,12 +15270,13 @@ export class Point0<
    * usual `$`-dictionary, parts AND-combined; bare = every connection of the channel; the room parts read "already in
    * these rooms"), the SECOND names the rooms to enroll them into. Each match's server-side enrollment grows by those
    * rooms and the client learns the new set from an `enrolled` frame — the rooms behave exactly like `.enroller` rooms
-   * (hold-less, no client join behind them, and the client may `leave()` them like any others). Works across processes
-   * through the backplane bus.
+   * (hold-less, no client join behind them, and just as GUARANTEED: the client cannot `leave()` them; only
+   * `space.kick`, a `refresh`, or the connection closing ends an enrollment). Works across processes through the
+   * backplane bus.
    *
-   * EPHEMERAL by design: an imperative enrollment lives until the connection does — a reconnect or a `refresh` rebuilds
-   * enrollments from `.enroller` alone. A durable enrollment is DATA: write the fact, have `.enroller` read it —
-   * `enroll` is how the fact reaches the connections that are ALREADY live.
+   * Lives as long as the CONNECTION does: a resume restores it — the guarantee holds across a socket blip — but a full
+   * reconnect or a `refresh` rebuilds enrollments from `.enroller` alone. A durable enrollment is DATA: write the fact,
+   * have `.enroller` read it — `enroll` is how the fact reaches the connections that are ALREADY live.
    *
    * Server-only — a runtime error on the client.
    *
@@ -15349,22 +15317,60 @@ export class Point0<
   /**
    * Ask matching live connections to re-run their connect request — the connector re-applies, the identity is rebuilt,
    * the socket stays up (the client also re-joins its spaces). The server-side "this user's identity changed" signal
-   * (roles granted, plan changed). Same targeting as `kick`; works across processes through the backplane bus.
+   * (roles granted, plan changed). Same targeting as `kill` — on a SPACE point the room parts address the connections
+   * HOLDING matching rooms (a room always belongs to connections, so any connection-level command can be sent "into a
+   * room"); the refresh itself stays connection-level: the whole connect re-runs, enrollers included. Works across
+   * processes through the backplane bus.
    *
    * Server-only — a runtime error on the client.
    *
    *     await chatChannel.refresh({ $identity: { userId: '42' } })
+   *     await chatSpace.refresh({ room: { chatId: '5' } }) // re-judge everyone in the room
    *
    * Full reference: https://1gr14.dev/point0/latest/socket
    */
-  refresh(target?: ChannelAdminTarget<TIdentity>): Promise<void>
+  refresh(
+    target?: TPointType extends 'space' ? SpaceAdminTarget<TRoom, TIdentity> : ChannelAdminTarget<TIdentity>,
+  ): Promise<void>
   async refresh(...args: any[]): Promise<void> {
     if (_point0_env.side.is.client) {
       throw new Error(`refresh() is server-side (point ${this.id})`)
     }
-    const [target] = args as [ChannelAdminTarget | undefined]
+    const [target] = args as [ChannelAdminTarget | SpaceAdminTarget | undefined]
     const { adapter, adminTarget } = this._resolveAdminTarget(target, 'refresh')
     await adapter.refresh(adminTarget)
+  }
+
+  /**
+   * Close matching live connections from the server — remove them from their rooms, stop sending, notify each client
+   * with a `closed` frame. What happens next follows the hold's nature: connections held by hooks/components
+   * auto-revive through the reconnect policy (the connector re-judges), imperative `connect()` holders stay closed
+   * until a remount or `reconnectAll()`. The target is the `$`-dictionary, parts AND-combined; a bare `kill()` closes
+   * every connection of the channel. On a SPACE point the room parts address the connections HOLDING matching rooms —
+   * the room always belongs to connections, so the connection-level kill can be sent "into a room" (where `space.kick`
+   * only revokes the rooms and leaves the connections up). Works across processes through the backplane bus. A real ban
+   * still belongs in the connector — it re-applies on every connect.
+   *
+   * Server-only — a runtime error on the client.
+   *
+   *     await chatChannel.kill({ $identity: { userId: '42' } })
+   *     await chatChannel.kill({ connectionId, reason: 'signed-out' })
+   *     await chatSpace.kill({ room: { chatId: '5' }, reason: 'chat-deleted' }) // everyone holding the room
+   *
+   * Full reference: https://1gr14.dev/point0/latest/socket
+   */
+  kill(
+    target?: (TPointType extends 'space' ? SpaceAdminTarget<TRoom, TIdentity> : ChannelAdminTarget<TIdentity>) & {
+      reason?: string
+    },
+  ): Promise<void>
+  async kill(...args: any[]): Promise<void> {
+    if (_point0_env.side.is.client) {
+      throw new Error(`kill() is server-side (point ${this.id})`)
+    }
+    const [target] = args as [((ChannelAdminTarget | SpaceAdminTarget) & { reason?: string }) | undefined]
+    const { adapter, adminTarget } = this._resolveAdminTarget(target, 'kill')
+    await adapter.kill({ ...adminTarget, reason: target?.reason })
   }
 
   /**
@@ -15376,31 +15382,39 @@ export class Point0<
    * the strict `{}`, so `amendIdentity` on it is a compile error (`AssertIdentityAmendable`) and a runtime one (the
    * `_connectorDeclared` guard), never a silent identity growing keys the type never admitted.
    *
+   * On a SPACE point the room parts address the connections HOLDING matching rooms — the same room addressing as
+   * `space.refresh`/`space.kill`; the patch still amends the CHANNEL identity of those connections.
+   *
    * Server-only — a runtime error on the client.
    *
    *     await chatChannel.amendIdentity({ $identity: { userId: '42' } }, { plan: 'pro' })
    *     await chatChannel.amendIdentity({ connectionId }, { displayName })
+   *     await chatSpace.amendIdentity({ room: { chatId: '5' } }, { lastSeenChatId: '5' })
    *
    * Full reference: https://1gr14.dev/point0/latest/socket
    */
   amendIdentity(
     ...args: TPointType extends 'channel'
       ? [target: ChannelAdminTarget<TIdentity> & AssertIdentityAmendable<TIdentity>, patch: Partial<TIdentity>]
-      : never
-  ): TPointType extends 'channel' ? Promise<void> : never
+      : TPointType extends 'space'
+        ? [target: SpaceAdminTarget<TRoom, TIdentity> & AssertIdentityAmendable<TIdentity>, patch: Partial<TIdentity>]
+        : never
+  ): TPointType extends 'channel' | 'space' ? Promise<void> : never
   async amendIdentity(...args: any[]): Promise<void> {
     if (_point0_env.side.is.client) {
       throw new Error(`amendIdentity() is server-side (point ${this.id})`)
     }
-    const [target, patch] = args as [ChannelAdminTarget | undefined, UnknownData | undefined]
-    if (this.type !== 'channel') {
-      throw new Error(`amendIdentity() lives on channel points only, got ${this.toStringWithLocation()}`)
+    const [target, patch] = args as [ChannelAdminTarget | SpaceAdminTarget | undefined, UnknownData | undefined]
+    if (this.type !== 'channel' && this.type !== 'space') {
+      throw new Error(`amendIdentity() lives on channel or space points only, got ${this.toStringWithLocation()}`)
     }
     // the runtime twin of `AssertIdentityAmendable` — the DECLARATION fact, never the runtime identity value (which
-    // this very method could have grown behind the type's back before the guard existed)
-    if (!this._connectorDeclared) {
+    // this very method could have grown behind the type's back before the guard existed). The identity always lives
+    // on the CHANNEL — a space point checks (and names) its channel's declaration
+    const identityOwner = this.type === 'space' ? this._channelPointOrThrow() : (this as AnyPoint)
+    if (!identityOwner._connectorDeclared) {
       throw new Error(
-        `amendIdentity() needs a connector-declared identity — a connectorless channel has nothing to amend (point ${this.id})`,
+        `amendIdentity() needs a connector-declared identity — a connectorless channel has nothing to amend (point ${identityOwner.id})`,
       )
     }
     const { adapter, adminTarget, transformer } = this._resolveAdminTarget(target, 'amendIdentity')
@@ -15504,6 +15518,7 @@ export class Point0<
     client: {
       count: () => number
       list: () => unknown[]
+      rooms?: () => unknown[]
     }
   } {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -15720,6 +15735,23 @@ export class Point0<
       client: {
         count: () => clientFacades().length,
         list: () => clientFacades(),
+        // the per-ROOM view with provenance — spaces only (a channel has no rooms to view)
+        ...(kind === 'memberships'
+          ? {
+              rooms: () => {
+                if (!_point0_env.feature.socket) {
+                  throw socketFeatureOffError(`memberships.client.rooms, point ${point.id}`)
+                }
+                if (_point0_env.side.is.server) {
+                  throw new Error(
+                    `memberships.client.* is client-side — nothing is ever joined on the server (point ${point.id})`,
+                  )
+                }
+                assertKind()
+                return listSpaceClientRooms(point as AnyPoint)
+              },
+            }
+          : {}),
       },
     }
   }
@@ -16503,6 +16535,7 @@ export class Point0<
       connect: point.connect.bind(point),
       Connection: point.Connection, // a class-field arrow — already closed over the point instance
       kick: point.kick.bind(point),
+      kill: point.kill.bind(point),
       refresh: point.refresh.bind(point),
       amendIdentity: point.amendIdentity.bind(point),
       enroll: point.enroll.bind(point),

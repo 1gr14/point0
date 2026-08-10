@@ -86,7 +86,7 @@ export const amendHandler = bareChannel.lets('serverHandler', 'amendHandler')
 export const kickHandler = bareChannel.lets('serverHandler', 'kickHandler')
   .clientSend(z.object({ matcherJson: z.string() }))
   .serverReply(async ({ input }) => {
-    await bareChannel.kick({ $identity: JSON.parse(input.matcherJson), reason: 'matcher-kick' })
+    await bareChannel.kill({ $identity: JSON.parse(input.matcherJson), reason: 'matcher-kill' })
     return { ok: true }
   })
   .serverHandler()
@@ -309,7 +309,7 @@ describe('socket connectorless channel', () => {
     }
   })
 
-  it('kick by matcher over {}: a keyed matcher kicks nobody; the empty matcher kicks everyone', async () => {
+  it('kill by matcher over {}: a keyed matcher kills nobody; the empty matcher kills everyone', async () => {
     const a = await openAndClaim()
     const b = await openAndClaim()
     try {
@@ -327,9 +327,9 @@ describe('socket connectorless channel', () => {
       const closedA = await a.wire.waitFrame((frame) => frame.t === 'closed')
       const closedB = await b.wire.waitFrame((frame) => frame.t === 'closed')
       expect(closedA.cid).toBe(a.cid)
-      expect(closedA.reason).toBe('matcher-kick')
+      expect(closedA.reason).toBe('matcher-kill')
       expect(closedB.cid).toBe(b.cid)
-      expect(closedB.reason).toBe('matcher-kick')
+      expect(closedB.reason).toBe('matcher-kill')
     } finally {
       a.wire.close()
       b.wire.close()

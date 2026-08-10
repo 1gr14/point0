@@ -4,14 +4,14 @@
  * GET+Upgrade connect), rooms as Bun's built-in pub/sub topics, message dispatch to serverHandlers, the participation
  * model (the server holds connection + rooms, NOTHING keyed by join input: a `join` runs `.joiner` and UNIONS the
  * admitted rooms in, a `leave` removes the rooms the client names, `.enroller`/`space.enroll` union from the server
- * side; every room subscribes its topic plus one space-wide topic), the admin surface (channel `kick` / `refresh` /
- * `amendIdentity` / `connections.*` and space `kick` / `enroll` / `memberships.*` — targets are the `$`-dictionary:
- * exact `connectionId`/`room` addresses plus sift `$identity`/`$room` selections), and the backplane — a Redis-shaped
- * KV (per-connection `{ scope, channel, identity }` and tickets, every record with a TTL) plus a bus SHARDED by topic
- * (exact-address pushes ride per-channel/space/room topics only the holding processes subscribe; commands and
- * selections ride the shared channel; answers ride the initiator's inbox — see the BUS_CHANNEL block) that carries
- * pushes, collected replies, counts, enumerations and admin commands across processes. In-memory by default (single
- * process).
+ * side; every room subscribes its topic plus one space-wide topic), the admin surface (channel `kill` / `refresh` /
+ * `amendIdentity` / `connections.*` and space `kick` / `kill` / `refresh` / `amendIdentity` / `enroll` /
+ * `memberships.*` — targets are the `$`-dictionary: exact `connectionId`/`room` addresses plus sift `$identity`/`$room`
+ * selections), and the backplane — a Redis-shaped KV (per-connection `{ scope, channel, identity }` and tickets, every
+ * record with a TTL) plus a bus SHARDED by topic (exact-address pushes ride per-channel/space/room topics only the
+ * holding processes subscribe; commands and selections ride the shared channel; answers ride the initiator's inbox —
+ * see the BUS_CHANNEL block) that carries pushes, collected replies, counts, enumerations and admin commands across
+ * processes. In-memory by default (single process).
  *
  * The connection carries an identity (frozen at connect, amendable by `amendIdentity`); rooms are NOT persisted — after
  * a socket death the client replays its joins (and the enrollments re-run at claim), so the KV stays small and the
@@ -71,10 +71,24 @@ export type SocketData = {
  * the joiner, rooms come out, and it is forgotten (the client keeps inputs — they are its hook-dedup keys, like query
  * keys; the server model is connection + rooms, nothing else).
  */
+/**
+ * How one room sits on a connection — the two flags are PROVENANCE, and provenance is the leave protection: `joined` is
+ * the client's mark (its `.joiner` admitted the room; a client `leave` clears it), `enrolled` is the server's
+ * (`.enroller` / `space.enroll` put the room there — a GUARANTEE the client cannot shed: only the server ends it, via
+ * `space.kick`, a `refresh` rebuild, or the connection closing). A room lives while either flag stands; both may stand
+ * at once (a client joins a room the server also enrolled), and then a client leave only clears `joined` — the room
+ * stays.
+ */
+type RoomHold = {
+  parsed: unknown
+  joined: boolean
+  enrolled: boolean
+}
+
 type SpaceParticipation = {
   spacePoint: AnyPoint
-  /** serialized room → parsed room (the space transformer's canonical string is the identity of a room) */
-  rooms: Map<string, unknown>
+  /** serialized room → its hold (the space transformer's canonical string is the identity of a room) */
+  rooms: Map<string, RoomHold>
 }
 
 /**
@@ -254,13 +268,15 @@ type StoredConnection = {
   identity: string
   /**
    * the RESUME PASSPORT of a resumable channel's connection: the key hash (never the key) and the per-space rooms
-   * (space name → serialized rooms; `resumable: false` spaces stay out). Written through on every room change —
-   * join/leave/enroll/space-kick are rare next to messages — so any process can restore the connection from the record
-   * alone. Absent on a non-resumable channel: its record stays exactly the connect→claim handoff.
+   * (space name → serialized rooms, split by PROVENANCE — a room both joined and enrolled appears in both lists;
+   * `resumable: false` spaces stay out). Written through on every room change — join/leave/enroll/space-kick are rare
+   * next to messages — so any process can restore the connection from the record alone, provenance included: a restored
+   * enrolled room is as leave-proof as the original. Absent on a non-resumable channel: its record stays exactly the
+   * connect→claim handoff.
    */
   resume?: {
     keyHash: string
-    rooms: Record<string, string[]>
+    rooms: Record<string, { joined: string[]; enrolled: string[] }>
   }
 }
 
@@ -317,7 +333,12 @@ type BusEnvelope =
       /** the replying client's `.clientReply` threw — counts toward the window, delivers nothing */
       error?: string | undefined
     }
+  /** force a LEAVE of the matching rooms of `selector.space` (`space.kick` — the room revocation) */
   | { v: 1; kind: 'kick'; pid: string; selector: AdminSelector; reason?: string | undefined }
+  /**
+   * close the matching connections — the connection kill under the FULL selector, room parts included (`space.kill`)
+   */
+  | { v: 1; kind: 'kill'; pid: string; selector: AdminSelector; reason?: string | undefined }
   /** grow the matching connections' enrolled membership of `selector.space` by `rooms` (`space.enroll`) */
   | { v: 1; kind: 'enroll'; pid: string; selector: AdminSelector; rooms: string[] }
   | { v: 1; kind: 'refresh'; pid: string; selector: AdminSelector }
@@ -478,6 +499,7 @@ const parseBusEnvelope = (parsed: unknown): BusEnvelope | undefined => {
       case 'reply':
         return isStr(envelope.mid) && isStr(envelope.cid) && isOptStr(envelope.data) && isOptStr(envelope.error)
       case 'kick':
+      case 'kill':
         return isBusSelector(envelope.selector) && isOptStr(envelope.reason)
       case 'enroll':
         return isBusSelector(envelope.selector) && isStrArray(envelope.rooms)
@@ -1004,6 +1026,17 @@ export class EngineSocket<TError extends ErrorPoint0> {
         })
         return
       }
+      case 'kill': {
+        this.killLocal(envelope.selector, envelope.reason).catch((error: unknown) => {
+          this.server.log({
+            level: 'error',
+            category: ['point0', 'socket'],
+            message: 'Socket bus kill handling failed',
+            error,
+          })
+        })
+        return
+      }
       case 'enroll': {
         this.enrollImperativeLocal(envelope.selector, envelope.rooms).catch((error: unknown) => {
           this.server.log({
@@ -1473,12 +1506,22 @@ export class EngineSocket<TError extends ErrorPoint0> {
       identity: entry.identitySerialized,
     }
     if (entry.resumeKeyHash !== undefined) {
-      const rooms: Record<string, string[]> = {}
+      const rooms: Record<string, { joined: string[]; enrolled: string[] }> = {}
       for (const [spaceName, participation] of entry.spaces) {
         if (!this.spaceInResume(participation.spacePoint)) {
           continue
         }
-        rooms[spaceName] = [...participation.rooms.keys()]
+        const joined: string[] = []
+        const enrolled: string[] = []
+        for (const [roomSerialized, hold] of participation.rooms) {
+          if (hold.joined) {
+            joined.push(roomSerialized)
+          }
+          if (hold.enrolled) {
+            enrolled.push(roomSerialized)
+          }
+        }
+        rooms[spaceName] = { joined, enrolled }
       }
       stored.resume = { keyHash: entry.resumeKeyHash, rooms }
     }
@@ -2301,6 +2344,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
     entry: SocketConnectionEntry,
     spacePoint: AnyPoint,
     rooms: Array<{ serialized: string; parsed: unknown }>,
+    via: 'join' | 'enroll',
   ): string[] {
     // a clean deny (or an empty enrollment) adds NOTHING — creating an empty participation here would index the
     // connection as a space member and subscribe it to the space-wide topic, so a DENIED join would still hear every
@@ -2310,14 +2354,31 @@ export class EngineSocket<TError extends ErrorPoint0> {
     }
     const spaceName = spacePoint.name
     const hadParticipation = entry.spaces.has(spaceName)
-    const participation = entry.spaces.get(spaceName) ?? { spacePoint, rooms: new Map<string, unknown>() }
+    const participation = entry.spaces.get(spaceName) ?? { spacePoint, rooms: new Map<string, RoomHold>() }
     entry.spaces.set(spaceName, participation)
     const added: string[] = []
+    // a room already held may still GAIN a flag (a client joins a room the server also enrolled, or the other way
+    // round) — no new subscription, but the passport's provenance split changes, so the write-through must still run
+    let flagsGrew = false
     for (const room of rooms) {
-      if (!participation.rooms.has(room.serialized)) {
+      const existing = participation.rooms.get(room.serialized)
+      if (!existing) {
         added.push(room.serialized)
+        participation.rooms.set(room.serialized, {
+          parsed: room.parsed,
+          joined: via === 'join',
+          enrolled: via === 'enroll',
+        })
+        continue
       }
-      participation.rooms.set(room.serialized, room.parsed)
+      if (via === 'join' && !existing.joined) {
+        existing.joined = true
+        flagsGrew = true
+      }
+      if (via === 'enroll' && !existing.enrolled) {
+        existing.enrolled = true
+        flagsGrew = true
+      }
     }
     this.indexRooms(entry, spaceName, participation.rooms.keys())
     // the first room of the space on this socket subscribes the space-wide topic (idempotent — Bun's pub/sub is a set)
@@ -2338,9 +2399,9 @@ export class EngineSocket<TError extends ErrorPoint0> {
         const roomKey = this.roomTopic(entry.scope, spaceName, roomSerialized)
         entry.streamEpochs.set(roomKey, this.streamTseq(roomKey))
       }
-      // a resumable connection's passport mirrors its rooms — write it through (an opt-out space's change never
-      // touches the KV: its rooms are not in the passport, so the record is unchanged)
-      if (added.length > 0) {
+      // a resumable connection's passport mirrors its rooms AND their provenance — write it through (an opt-out
+      // space's change never touches the KV: its rooms are not in the passport, so the record is unchanged)
+      if (added.length > 0 || flagsGrew) {
         this.writeConnRecordThrough(entry)
       }
     }
@@ -2351,12 +2412,17 @@ export class EngineSocket<TError extends ErrorPoint0> {
    * The ONE removal path — a client leave, a space kick, a cleanup: drop the named rooms from the participation,
    * unindex, release the now-unneeded topics (and the space-wide one when the space is empty), and emit the leave event
    * with what actually went. Returns the removed rooms (serialized).
+   *
+   * PROVENANCE gates a client `leave` ('leave'): it clears the `joined` flag, and a room the server ENROLLED stays —
+   * the enrollment is a guarantee the client cannot shed, however the frame was produced (the client runtime never
+   * sends one for an enrolled room; a hand-rolled frame hits this same wall). Every server-initiated reason ('kick' /
+   * 'kill' / 'close' / 'socket') removes unconditionally — revocation and teardown outrank both flags.
    */
   private removeRoomsFromEntry(
     entry: SocketConnectionEntry,
     spaceName: string,
     roomsSerialized: Iterable<string>,
-    reason: 'leave' | 'socket' | 'kick' | 'close',
+    reason: 'leave' | 'socket' | 'kick' | 'kill' | 'close',
   ): string[] {
     const participation = entry.spaces.get(spaceName)
     if (!participation) {
@@ -2364,15 +2430,31 @@ export class EngineSocket<TError extends ErrorPoint0> {
     }
     const removed: string[] = []
     const removedParsed: unknown[] = []
+    // a leave that only DEMOTES (clears `joined` on a still-enrolled room) changes the passport's provenance split
+    // without removing anything — the write-through below must still run
+    let flagsShrank = false
     for (const roomSerialized of roomsSerialized) {
-      if (!participation.rooms.has(roomSerialized)) {
+      const hold = participation.rooms.get(roomSerialized)
+      if (!hold) {
         continue
       }
-      removedParsed.push(participation.rooms.get(roomSerialized))
+      if (reason === 'leave') {
+        if (hold.joined) {
+          hold.joined = false
+          flagsShrank = true
+        }
+        if (hold.enrolled) {
+          continue
+        }
+      }
+      removedParsed.push(hold.parsed)
       participation.rooms.delete(roomSerialized)
       removed.push(roomSerialized)
     }
     if (removed.length === 0) {
+      if (flagsShrank && this.spaceInResume(participation.spacePoint)) {
+        this.writeConnRecordThrough(entry)
+      }
       return []
     }
     const spacePoint = participation.spacePoint
@@ -2485,6 +2567,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
         entry,
         spacePoint,
         roomsSerialized.map((serialized, index) => ({ serialized, parsed: rooms[index] })),
+        'enroll',
       )
       // the enrollment is registered — only now does the join family settle (an enrollment IS a join, with an empty
       // input): a `pointSpaceJoinServerSuccess` handler reading the room sees this connection in it
@@ -2776,8 +2859,8 @@ export class EngineSocket<TError extends ErrorPoint0> {
       this.answerResume(live, cursors)
       return
     }
-    // 2. UNPARK — this process parked it and has been buffering; the KV record is still the RIGHT to resume (a kick
-    // deleted it, a TTL lapse ended it — the buffer alone must not outvote either). ORDER IS LOAD-BEARING: every
+    // 2. UNPARK — this process parked it and has been buffering; the KV record is still the RIGHT to resume (a
+    // kill deleted it, a TTL lapse ended it — the buffer alone must not outvote either). ORDER IS LOAD-BEARING: every
     // await runs while the entry is STILL PARKED (frames landing meanwhile keep going to the streams only), each
     // await re-validates the park (the sweep timer or a concurrent resume may have raced it — an entry revived after
     // a sweep would live OUTSIDE every index), and the unpark→attach→answer runs as ONE synchronous block, with the
@@ -2927,8 +3010,11 @@ export class EngineSocket<TError extends ErrorPoint0> {
       unwindLostRestore()
       return
     }
-    for (const [spaceName, roomsSerialized] of Object.entries(stored.resume.rooms)) {
-      if (roomsSerialized.length === 0) {
+    for (const [spaceName, storedRooms] of Object.entries(stored.resume.rooms)) {
+      const joinedSerialized = storedRooms.joined
+      const enrolledSerialized = storedRooms.enrolled
+      const unionSerialized = [...new Set([...joinedSerialized, ...enrolledSerialized])]
+      if (unionSerialized.length === 0) {
         continue
       }
       const spacePoint = this.server.points.findPoint({ scope: stored.scope, type: 'space', name: spaceName })?.point
@@ -2937,15 +3023,24 @@ export class EngineSocket<TError extends ErrorPoint0> {
         continue
       }
       const transformer = spacePoint._getSocketTransformer()
-      const rooms = roomsSerialized.map((serialized) => ({ serialized, parsed: transformer.parse(serialized) }))
+      const parsedBySerialized = new Map(
+        unionSerialized.map((serialized) => [serialized, transformer.parse(serialized)]),
+      )
+      const withParsed = (serialized: string): { serialized: string; parsed: unknown } => ({
+        serialized,
+        parsed: parsedBySerialized.get(serialized),
+      })
       // a restore is a room grant like any other — its bus topics go up before the rooms are indexed
-      await this.subscribeRoomBusTopics(entry, spaceName, roomsSerialized)
+      await this.subscribeRoomBusTopics(entry, spaceName, unionSerialized)
       if (this.connections.get(cid) !== entry) {
-        this.sweepRoomBusTopics(entry, spaceName, roomsSerialized)
+        this.sweepRoomBusTopics(entry, spaceName, unionSerialized)
         unwindLostRestore()
         return
       }
-      this.addRoomsToEntry(entry, spacePoint, rooms)
+      // the passport's provenance split restores as it was written — a restored enrollment keeps its leave protection
+      this.addRoomsToEntry(entry, spacePoint, joinedSerialized.map(withParsed), 'join')
+      this.addRoomsToEntry(entry, spacePoint, enrolledSerialized.map(withParsed), 'enroll')
+      const rooms = unionSerialized.map(withParsed)
       // a restore IS a (server-side) re-enter of the rooms — the join family announces it with an empty input,
       // exactly like an enrollment, flagged `resumed` (no joiner/enroller ran); presence recipes stay symmetric with
       // the leave the death announced
@@ -3033,7 +3128,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
         { point: spacePoint.id, connection: entry.cid },
       )
       spacePoint._emitSpaceJoinSettled({
-        rooms: [...participation.rooms.values()],
+        rooms: [...participation.rooms.values()].map((hold) => hold.parsed),
         identity: entry.identityParsed,
         connectionId: entry.cid,
         resumed: true,
@@ -3234,6 +3329,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
         entry,
         spacePoint,
         roomsSerialized.map((serialized, index) => ({ serialized, parsed: rooms[index] })),
+        'join',
       )
       // a resumable connection's join seeds the freshly-entered streams' cursors — heads at the subscription moment
       const heads =
@@ -3261,7 +3357,8 @@ export class EngineSocket<TError extends ErrorPoint0> {
       return
     }
     // the client names the rooms to drop — IT owns the shared-room refcount across its own joins (a room another of
-    // its joins still covers is simply not in the list); the server just removes what it is told
+    // its joins still covers is simply not in the list). The server removes what it is told MINUS the enrolled rooms:
+    // an enrollment is the server's guarantee, and no client frame ends it (see removeRoomsFromEntry)
     this.removeRoomsFromEntry(entry, frame.space, frame.rooms, 'leave')
   }
 
@@ -3308,7 +3405,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
     }
   }
 
-  private async cleanupConnection(cid: string, reason: 'close' | 'socket' | 'kick'): Promise<void> {
+  private async cleanupConnection(cid: string, reason: 'close' | 'socket' | 'kill'): Promise<void> {
     const entry = this.connections.get(cid)
     if (!entry) {
       return
@@ -3348,7 +3445,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
       this.emitChannelConnectionEvent('pointChannelCloseServer', entry, { reason })
     }
     // a SILENT socket death keeps a resumable connection's record — it is the right to resume, and only its TTL (or
-    // an explicit way out) ends it. A voluntary close and a kick delete it: revocation is never resumable, and a
+    // an explicit way out) ends it. A voluntary close and a kill delete it: revocation is never resumable, and a
     // graceful shutdown closes sockets exactly like a crash does ('socket'), which is what keeps a redeploy resumable
     if (reason === 'socket' && entry.resumeKeyHash !== undefined) {
       return
@@ -3373,7 +3470,12 @@ export class EngineSocket<TError extends ErrorPoint0> {
         continue
       }
       if (participation.rooms.size > 0) {
-        this.emitSpaceLeaveEvent(entry, participation.spacePoint, [...participation.rooms.values()], 'socket')
+        this.emitSpaceLeaveEvent(
+          entry,
+          participation.spacePoint,
+          [...participation.rooms.values()].map((hold) => hold.parsed),
+          'socket',
+        )
       }
     }
     if (entry.opened) {
@@ -3808,6 +3910,13 @@ export class EngineSocket<TError extends ErrorPoint0> {
         this.publishToBus({ v: 1, kind: 'kick', pid: this.pid, selector, reason: args.reason })
       }
     },
+    kill: async (args) => {
+      const selector = this.toSelector(args)
+      await this.killLocal(selector, args.reason)
+      if (this.hasExternalBackplane()) {
+        this.publishToBus({ v: 1, kind: 'kill', pid: this.pid, selector, reason: args.reason })
+      }
+    },
     enroll: async (args) => {
       const selector = this.toSelector(args)
       await this.enrollImperativeLocal(selector, args.enrollRooms)
@@ -4045,8 +4154,8 @@ export class EngineSocket<TError extends ErrorPoint0> {
           return false
         }
         if (selector.rooms !== undefined || matchesRoom) {
-          const anyRoomSatisfies = [...participation.rooms.entries()].some(([roomSerialized, roomParsed]) =>
-            roomSatisfies(roomSerialized, roomParsed),
+          const anyRoomSatisfies = [...participation.rooms.entries()].some(([roomSerialized, hold]) =>
+            roomSatisfies(roomSerialized, hold.parsed),
           )
           if (!anyRoomSatisfies) {
             return false
@@ -4073,32 +4182,40 @@ export class EngineSocket<TError extends ErrorPoint0> {
   }
 
   /**
-   * Apply a kick to the local matches. A CHANNEL selector (no space) closes each matched connection — a `closed` frame,
-   * then full cleanup. A SPACE selector is NOT a connection kill: it forces a LEAVE of the rooms satisfying the room
-   * parts (exact `rooms` and/or `$room`; neither = all rooms) — remove them from each entry's participation, release
-   * the topics, tell the client with a `left` frame, and announce the leave. Both shapes sweep matching PARKED entries
-   * too (revocation must not hide in a park): the channel kick drops the park and deletes the record, the space kick
-   * shrinks the parked participation and passport and queues the `left` for the unpark.
+   * Apply a `kill` to the local matches: close each one — a `closed` frame, then full cleanup. The connection kill
+   * under the FULL selector: a channel selector closes the matching connections of the channel, a SPACE selector
+   * (`space.kill`) closes the connections holding matching rooms — where `space.kick` would only force a leave.
+   * Matching PARKED entries are swept and their records deleted — parked connections are publicly dead (`matchLocal`
+   * skips them) but their record and buffer would otherwise revive the killed identity, so the later resume must refuse
+   * and the full connect put the connector back in charge.
+   */
+  private async killLocal(selector: AdminSelector, reason: string | undefined): Promise<void> {
+    for (const entry of this.matchLocal(selector)) {
+      this.send(entry.ws, { t: 'closed', cid: entry.cid, ...(reason === undefined ? {} : { reason }) })
+      await this.cleanupConnection(entry.cid, 'kill')
+    }
+    for (const entry of this.parkedSweepMatches(selector)) {
+      this.sweepParked(entry.cid)
+      this.kvSafe(async () => {
+        const backplane = await this.getBackplane()
+        await backplane.delete(this.connKey(entry.cid))
+      }, 'record delete')
+    }
+  }
+
+  /**
+   * Apply a kick to the local matches — the ROOM revocation, never a connection kill (that is {@link killLocal}): force
+   * a LEAVE of the rooms satisfying the room parts (exact `rooms` and/or `$room`; neither = all rooms) — remove them
+   * from each entry's participation, release the topics, tell the client with a `left` frame, and announce the leave.
+   * Matching PARKED entries are swept too (revocation must not hide in a park): the kick shrinks the parked
+   * participation and passport and queues the `left` for the unpark. A kick always names its space (kick lives on space
+   * points alone) — a selector without one reaches nothing.
    */
   private async kickLocal(selector: AdminSelector, reason: string | undefined): Promise<void> {
-    const entries = this.matchLocal(selector)
     if (selector.space === undefined) {
-      for (const entry of entries) {
-        this.send(entry.ws, { t: 'closed', cid: entry.cid, ...(reason === undefined ? {} : { reason }) })
-        await this.cleanupConnection(entry.cid, 'kick')
-      }
-      // a kick voids the resume right too: PARKED connections are publicly dead (matchLocal skips them) but their
-      // record and buffer would otherwise revive the kicked identity — sweep the matching ones and delete their
-      // records, so the later resume refuses and the full connect puts the connector back in charge
-      for (const entry of this.parkedKickMatches(selector)) {
-        this.sweepParked(entry.cid)
-        this.kvSafe(async () => {
-          const backplane = await this.getBackplane()
-          await backplane.delete(this.connKey(entry.cid))
-        }, 'record delete')
-      }
       return
     }
+    const entries = this.matchLocal(selector)
     const spaceName = selector.space
     const spacePoint = this.server.points.findPoint({ scope: selector.scope, type: 'space', name: spaceName })?.point
     const matchesRoom =
@@ -4120,7 +4237,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
         continue
       }
       const toRemove = [...participation.rooms.entries()]
-        .filter(([roomSerialized, roomParsed]) => removeRoom(roomSerialized, roomParsed))
+        .filter(([roomSerialized, hold]) => removeRoom(roomSerialized, hold.parsed))
         .map(([roomSerialized]) => roomSerialized)
       const removed = this.removeRoomsFromEntry(entry, spaceName, toRemove, 'kick')
       if (removed.length > 0) {
@@ -4141,13 +4258,13 @@ export class EngineSocket<TError extends ErrorPoint0> {
     // queued `left` on unpark. The entry stays parked to its window: parking is per CONNECTION (the channel's
     // buffering handlers), not per room — channel-wide pushes still buffer, and the surviving streams' pre-kick frames still
     // replay
-    for (const entry of this.parkedKickMatches(selector)) {
+    for (const entry of this.parkedSweepMatches(selector)) {
       const participation = entry.spaces.get(spaceName)
       if (!participation) {
         continue
       }
       const toRemove = [...participation.rooms.entries()]
-        .filter(([roomSerialized, roomParsed]) => removeRoom(roomSerialized, roomParsed))
+        .filter(([roomSerialized, hold]) => removeRoom(roomSerialized, hold.parsed))
         .map(([roomSerialized]) => roomSerialized)
       const removed = this.removeRoomsFromEntry(entry, spaceName, toRemove, 'kick')
       if (removed.length > 0) {
@@ -4163,12 +4280,13 @@ export class EngineSocket<TError extends ErrorPoint0> {
   }
 
   /**
-   * The PARKED entries a kick selector's connection parts reach — same scope/channel, the exact `connectionId` cids and
-   * the sift identity matcher (room parts stay the caller's business). Parked entries are publicly dead and
-   * `matchLocal` skips them on purpose, but a revocation must not hide in a park — both kick shapes sweep through
-   * this.
+   * The PARKED entries a kick/kill selector reaches — same scope/channel, the exact `connectionId` cids, the sift
+   * identity matcher, and (a space selector) a participation of the space whose rooms satisfy the room parts — the park
+   * keeps its resumable rooms indexed, so provenance-complete matching costs nothing extra. Parked entries are publicly
+   * dead and `matchLocal` skips them on purpose, but a revocation must not hide in a park — kick and kill both sweep
+   * through this.
    */
-  private parkedKickMatches(selector: AdminSelector): SocketConnectionEntry[] {
+  private parkedSweepMatches(selector: AdminSelector): SocketConnectionEntry[] {
     const matchesIdentity =
       selector.matcher === undefined
         ? undefined
@@ -4182,6 +4300,14 @@ export class EngineSocket<TError extends ErrorPoint0> {
               ? siftQueryTester(channelPoint._getSocketTransformer().parse(selector.matcher))
               : () => false
           })()
+    const spacePoint =
+      selector.space === undefined
+        ? undefined
+        : this.server.points.findPoint({ scope: selector.scope, type: 'space', name: selector.space })?.point
+    const matchesRoom =
+      selector.roomMatcher === undefined || !spacePoint
+        ? undefined
+        : siftQueryTester(spacePoint._getSocketTransformer().parse(selector.roomMatcher))
     return [...this.parkedByCid.values()]
       .map((parked) => parked.entry)
       .filter((entry) => {
@@ -4194,6 +4320,26 @@ export class EngineSocket<TError extends ErrorPoint0> {
         if (matchesIdentity && !matchesIdentity(entry.identityParsed)) {
           return false
         }
+        if (selector.space !== undefined) {
+          const participation = entry.spaces.get(selector.space)
+          if (!participation) {
+            return false
+          }
+          if (selector.rooms !== undefined || matchesRoom) {
+            const anyRoomSatisfies = [...participation.rooms.entries()].some(([roomSerialized, hold]) => {
+              if (selector.rooms !== undefined && !selector.rooms.includes(roomSerialized)) {
+                return false
+              }
+              if (matchesRoom && !matchesRoom(hold.parsed)) {
+                return false
+              }
+              return true
+            })
+            if (!anyRoomSatisfies) {
+              return false
+            }
+          }
+        }
         return true
       })
   }
@@ -4205,13 +4351,15 @@ export class EngineSocket<TError extends ErrorPoint0> {
   }
 
   /**
-   * Apply an imperative `space.enroll` to the local matches: union the rooms into each entry's participation, index and
-   * subscribe the topics, announce the connection's FULL new room set of the space with an `enrolled` frame, and emit
-   * the server join events (an enrollment IS a join, server-initiated — the same family `.enroller` emits, with an
-   * empty input). WHO matches: room parts select by the rooms connections are already in, but a bare / `connectionId` /
-   * `$identity` target selects among ALL connections of the channel — requiring existing rooms would defeat the point
-   * (enrolling a connection into its FIRST room of the space). A connection the rooms would push past `maxRooms` is
-   * SKIPPED with a warning — an admin fan-out has no one requester to answer.
+   * Apply an imperative `space.enroll` to the local matches: union the rooms into each entry's participation (flagged
+   * `enrolled` — the guarantee), index and subscribe the topics, announce the connection's full new ENROLLED set of the
+   * space with an `enrolled` frame (a merely-joined room is its own membership's business — announcements replace the
+   * enrolled membership's rooms client-side), and emit the server join events (an enrollment IS a join,
+   * server-initiated — the same family `.enroller` emits, with an empty input). WHO matches: room parts select by the
+   * rooms connections are already in, but a bare / `connectionId` / `$identity` target selects among ALL connections of
+   * the channel — requiring existing rooms would defeat the point (enrolling a connection into its FIRST room of the
+   * space). A connection the rooms would push past `maxRooms` is SKIPPED with a warning — an admin fan-out has no one
+   * requester to answer.
    */
   private async enrollImperativeLocal(selector: AdminSelector, roomsSerialized: string[]): Promise<void> {
     const spaceName = selector.space
@@ -4247,8 +4395,13 @@ export class EngineSocket<TError extends ErrorPoint0> {
         entry,
         spacePoint,
         roomsSerialized.map((serialized) => ({ serialized, parsed: transformer.parse(serialized) })),
+        'enroll',
       )
-      const fullSet = [...(entry.spaces.get(spaceName)?.rooms.keys() ?? [])]
+      // the frame announces the ENROLLED set only — a room the client merely joined is its own membership's business,
+      // not part of the enrollment announcement (announcements replace the enrolled membership's rooms client-side)
+      const fullSet = [...(entry.spaces.get(spaceName)?.rooms.entries() ?? [])]
+        .filter(([, hold]) => hold.enrolled)
+        .map(([roomSerialized]) => roomSerialized)
       // seed the grown streams' cursors, like a join's answer would — heads for the FULL set (announcements replace)
       const heads =
         entry.resumeKeyHash === undefined
@@ -4589,14 +4742,14 @@ export class EngineSocket<TError extends ErrorPoint0> {
             continue
           }
           const participation = entry.spaces.get(target.space)
-          for (const [roomSerialized, roomParsed] of participation?.rooms ?? []) {
+          for (const [roomSerialized, hold] of participation?.rooms ?? []) {
             if (matched.has(roomSerialized)) {
               continue
             }
             if (target.rooms !== undefined && !target.rooms.includes(roomSerialized)) {
               continue
             }
-            if (matchesRoom(roomParsed)) {
+            if (matchesRoom(hold.parsed)) {
               matched.add(roomSerialized)
             }
           }
@@ -4650,11 +4803,11 @@ export class EngineSocket<TError extends ErrorPoint0> {
         if (target.rooms === undefined && matchesRoom === undefined) {
           frames.push({ ...personalBaseFrame, space: target.space, cid: entry.cid })
         } else {
-          for (const [roomSerialized, roomParsed] of participation.rooms) {
+          for (const [roomSerialized, hold] of participation.rooms) {
             if (target.rooms !== undefined && !target.rooms.includes(roomSerialized)) {
               continue
             }
-            if (matchesRoom && !matchesRoom(roomParsed)) {
+            if (matchesRoom && !matchesRoom(hold.parsed)) {
               continue
             }
             frames.push({ ...personalBaseFrame, space: target.space, room: roomSerialized, cid: entry.cid })
@@ -4852,7 +5005,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
   private emitChannelConnectionEvent(
     name: 'pointChannelOpenServer' | 'pointChannelCloseServer',
     entry: SocketConnectionEntry,
-    options: { resumed: boolean } | { reason: 'close' | 'socket' | 'kick' },
+    options: { resumed: boolean } | { reason: 'close' | 'socket' | 'kill' },
   ): void {
     entry.channelPoint._emit(
       name,
@@ -4874,7 +5027,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
     entry: SocketConnectionEntry,
     spacePoint: AnyPoint,
     roomsParsed: unknown[],
-    reason: 'leave' | 'socket' | 'kick' | 'close',
+    reason: 'leave' | 'socket' | 'kick' | 'kill' | 'close',
   ): void {
     spacePoint._emit(
       'pointSpaceLeaveServer',
@@ -4934,7 +5087,7 @@ export class EngineSocket<TError extends ErrorPoint0> {
           channel: entry.channelName,
           space: spaceName,
           connectionId: entry.cid,
-          rooms: [...participation.rooms.values()],
+          rooms: [...participation.rooms.values()].map((hold) => hold.parsed),
         })
       }
     }

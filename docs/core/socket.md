@@ -52,8 +52,8 @@ that one socket.** The pieces, top to bottom:
 - On one process everything runs in local memory. Several processes plug a
   **[backplane](#backplane)** into the engine — Redis by URL, Postgres, a Redis
   client you already run, or any KV + pub/sub. The server also gets
-  [admin commands and enumerations](#managing-connections) (`kick`, `refresh`,
-  who-is-connected) and [metrics](#observability).
+  [admin commands and enumerations](#managing-connections) (`kick`, `kill`,
+  `refresh`, who-is-connected) and [metrics](#observability).
 
 All four are [points](points): declared next to your pages, typed end to end,
 compiler-stripped per side. Here is the whole vertical in one chat feature — an
@@ -167,6 +167,14 @@ watch a public room live. Throwing in the connector rejects the whole connect �
 that is the tool for a fully closed app (an internal dashboard), not the default
 posture.
 
+Socket point names are the wire's addresses — a message frame names its handler,
+a `claimed` frame names its spaces, a room topic is namespaced by the space name
+alone — so channels, spaces and handlers must each be unique per scope.
+`point0 generate` fails with the two file paths when two of a kind collide, and
+the runtime refuses the whole points collection if a duplicate ever reaches it.
+The namespace is per kind (a point's id is `scope:type:name`), so a channel and
+a space may share a name, and so may a server handler and a client handler.
+
 See [points](points) for the `.lets` notation. A channel needs no input and no
 connector — with neither, it's a bare pipe with an empty identity. That identity
 is typed strictly empty (`{}`): reading a field off it — in a joiner, an
@@ -277,7 +285,7 @@ export const workspaceChannel = root.lets
 
 Identity is the connection's server-side credential. The socket carries no
 cookies or headers, so whoever the client is was decided at connect time and
-lives here. Handlers read it, `kick` / the `$identity` selections match over it,
+lives here. Handlers read it, `kill` / the `$identity` selections match over it,
 and it is rebuilt on a reconnect or a server [`refresh`](#managing-connections)
 — or patched in place with [`amendIdentity`](#managing-connections). It is
 deliberately not called `ctx`: that word stays a request's context (the `ctx`
@@ -529,15 +537,22 @@ so on the client an enrollment is read through
 [`memberships.client.list()`](#enumerating--connections-and-memberships) — the
 floor that includes them.
 
-**Leaving an enrollment.** `leave()` on an enrolled membership works like any
-other: the client names that membership's rooms in a `leave` frame, the server —
-which keys nothing by how a room was entered — drops them, and the facade dies
-immediately (no hold behind it, so no `linger`). A room another live membership
-of the same connection still covers is left out of the frame, so leaving an
-enrollment never silences a join of the same room. It is not a permanent exit,
-though: the enroller runs at **every connection setup**, so a reconnect or a
-`refresh` puts the connection right back in. Permanence is **data the enroller
-reads**:
+**An enrollment is a guarantee.** The server put the connection into these
+rooms, so only the server takes it out: `leave()` on an enrolled membership
+warns and does nothing, and the wire enforces the same wall — a `leave` frame
+never drops an enrolled room, however the frame was produced. The server keeps
+each room's **provenance** (entered by a join, by an enrollment, or both), and a
+client leave only sheds the join mark: a room that is joined _and_ enrolled
+stays for as long as the enrollment stands. This is what makes the enroller a
+fact you can build on — an open connection of the channel **provably sits in its
+enroller's rooms**, so a push (or a
+[room-addressed command](#managing-connections)) reaches every one of them and
+no client code path can opt out. The enrollment ends on the server's initiative
+alone: [`space.kick`](#kicking-from-rooms--spacekick) revokes the rooms, a
+`refresh` re-runs the enroller against the rebuilt identity, and the connection
+closing takes everything with it.
+
+Opting out is therefore **data the enroller reads**, applied with a `refresh`:
 
 ```tsx
 export const userSpace = appChannel.lets
@@ -551,15 +566,19 @@ export const userSpace = appChannel.lets
 ```
 
 ```tsx
-// the client: leave() stops the pushes for THIS connection right now, the mutation makes it stick
-userSpace.memberships.client.list().forEach((membership) => membership.leave())
-await muteNotificationsMutation.fetchMutation()
+// the server: write the fact, then have the live connections re-judged — the
+// enroller re-runs against each rebuilt identity and enrolls into nothing
+await muteNotifications(userId)
+await appChannel.refresh({ $identity: { userId } })
 ```
 
-An enrolled membership has no lifecycle of its own — it is announced, not
-joined, so [`onEnter`](#reconnect) never fires for it and its connection dying
-stays silent. The one exception is this `leave()`: it fires `onLeave`, exactly
-like the voluntary leave of a joined membership.
+An enrollment lives the same [room lifecycle](#reconnect) as everything else —
+its rooms fire the space's `onEnter` with `reason: 'enroll'` when they are
+granted (at connect, or mid-life via `space.enroll`) and `onLeave` with the
+server-initiated reason that ends them (`'kick'`, `'kill'`, `'socket'`,
+`'close'`, or `'refresh'` when a re-run enroller no longer grants them). Only
+the space's point-level callbacks apply — an enrollment has no call site to
+attach per-call ones.
 
 A space takes at most **one** `.enroller`; it coexists with `.joiner` in either
 order (the client can then join more rooms too — both callbacks answer to the
@@ -592,15 +611,17 @@ await chatSpace.enroll({ connectionId }, [{ chatId: '5' }, { chatId: '6' }])
 the channel** (no membership required — you are enrolling them); `room` /
 `$room` parts select by existing memberships ("those already in these rooms").
 The enrolled rooms behave exactly like `.enroller` rooms — hold-less, `joined`,
-no client join behind them — and a space kick (or the client's own `leave()`)
-removes them like any others. A connection the new rooms would push past
+no client join behind them, and just as **guaranteed**: a space kick removes
+them like any others, the client's `leave()` cannot. An imperative enrollment
+lives **as long as the connection does** — a [resume](#resumable-connections)
+restores it with the rest of the connection (the guarantee holds across a blip),
+but a full reconnect or a `refresh` rebuilds enrollments from `.enroller` alone.
+A connection the new rooms would push past
 [`maxRooms`](#join-guards-and-the-local-floor) is **skipped** with a logged
 warning: an admin fan-out has no one requester to answer, so the rest of the
-selection still gets its rooms. An imperative enrollment is **ephemeral**: it
-lives until the connection does, and a reconnect or `refresh` rebuilds
-enrollments from `.enroller` alone. A durable enrollment is data — write the
-fact, have `.enroller` read it, and use `enroll` to deliver it to the
-connections that are already online.
+selection still gets its rooms. A durable enrollment is data — write the fact,
+have `.enroller` read it, and use `enroll` to deliver it to the connections that
+are already online.
 
 ### Join guards and the `local` floor
 
@@ -1475,7 +1496,7 @@ once — the client side of a login/logout:
 ```tsx
 import { reconnectAll, disconnectAll } from '@point0/core/socket'
 
-onLogin(() => reconnectAll()) // re-run every connect (identities rebuilt), re-join spaces, revive kicked-but-held ones
+onLogin(() => reconnectAll()) // re-run every connect (identities rebuilt), re-join spaces, revive killed-but-held ones
 onLogout(() => {
   disconnectAll() // close everything now — the connectors re-judge whatever comes back
   queryClient.clear() // and the cache goes with the session, see below
@@ -1531,26 +1552,38 @@ window runs out.
 Pushes the server sent during the gap are gone on this path — there is no
 server-side buffer here (the contract is [Delivery](#delivery) below; a
 [resumable](#resumable-connections) channel adds an opt-in one). Catching up is
-a refetch, and the lifecycle callbacks are where it lives. Both levels have a
-full set, point-level or per call: a connection takes `onConnect` /
-`onDisconnect` / `onError`, a membership takes `onEnter` / `onLeave` (an
-[enrolled](#enrolling-from-the-server--enroller) membership is outside this: no
-`onEnter` fires for it, and only an explicit `leave()` fires its `onLeave`).
-`onConnect` and `onEnter` fire on **every** successful connect/join — the first
-and the replays alike — and each callback receives the facade plus three facts
-about the entry: the counter (`connectionIndex` / `membershipIndex` — how many
-successful connects/joins came BEFORE this one), `resumed` (this entry rode the
-[resume path](#resumable-connections) — the connector/joiners were skipped;
-always `false` on a non-resumable channel), and `gapless` — **provably nothing
-was missed**: `true` on the first entry and on a resume whose buffers covered
-the whole gap, `false` on every other re-entry. Each callback's `gapless` speaks
-for exactly the data that reaches IT: `onEnter`'s verdict covers that
-membership's rooms (and its space-wide pushes), `onConnect`'s the channel-wide
-and connection-addressed pushes — so a gap in one busy chat never forces the
-quiet ones (or the global data) to refetch. Each fact answers its own question:
-"did I miss anything HERE?" → `gapless`; "did the connector re-run?" →
-`resumed`; "is this the first time?" → the index. The catch-up is therefore ONE
-condition, on both levels:
+a refetch, and the lifecycle callbacks are where it lives. Two levels, each
+tracking its own STATE, point-level or per call:
+
+- The **connection** takes `onConnect` / `onDisconnect` / `onError`. The pair
+  alternates strictly: `onConnect` fires on every gained liveness (the first
+  connect, every reconnect, a resume), `onDisconnect` on every lost one, with
+  the cause in `reason` — `'socket'` (the transport died; the comeback machinery
+  is already working), `'kill'` (the server closed it), `'close'` (the client's
+  own release). A `refresh` fires neither: the socket stays up and nothing is
+  lost.
+- The **space** takes `onEnter` / `onLeave` — the events of ACTUALLY entering
+  and leaving rooms, whatever the cause. `onEnter`'s `reason` is `'join'` (a
+  landed join), `'enroll'` (the server enrolled — `.enroller` at connect or a
+  mid-life `space.enroll`), or `'resume'` (the rooms were restored after a
+  blip); `onLeave`'s is `'leave'` (your own), `'kick'`, `'kill'`, `'socket'`,
+  `'close'`, or `'refresh'` (a re-judged grant dropped the room). The props
+  carry `rooms` — always an array, the rooms of THIS change (the wire batches
+  them; usually one). A room already covered by another live membership of the
+  same connection never re-enters and never half-leaves: the callbacks report
+  real state changes, not join bookkeeping. On the point the callbacks hear
+  every room of the space; at a call site (`useMembership` / `join` /
+  `<Membership>`) only the rooms of that membership.
+
+`onConnect` and `onEnter` also carry the entry markers: `resumed` (this entry
+rode the [resume path](#resumable-connections) — the connector/joiners were
+skipped; always `false` on a non-resumable channel) and `gapless` — **provably
+nothing was missed**: `true` on the first entry and on a resume whose buffers
+covered the whole gap, `false` on every other re-entry. Each `gapless` speaks
+for exactly the data that reaches IT: `onEnter`'s verdict covers the entered
+rooms, `onConnect`'s the channel-wide and connection-addressed pushes — so a gap
+in one busy chat never forces the quiet ones (or the global data) to refetch.
+The catch-up is therefore ONE condition, on both levels:
 
 ```tsx
 chatSpace.useMembership(
@@ -1569,9 +1602,9 @@ appChannel.useConnection(undefined, {
 })
 ```
 
-On a plain channel `gapless` is simply `index === 0` — the condition reads "is
-this a re-entry?" there — and on a resumable channel it stops refetching exactly
-when the buffer proves the refetch redundant.
+On a plain channel `gapless` is simply "is this the first entry?" — the
+condition reads "is this a re-entry?" there — and on a resumable channel it
+stops refetching exactly when the buffer proves the refetch redundant.
 
 ## Resumable connections
 
@@ -1599,19 +1632,21 @@ Nothing changes in the client API — everything is automatic. The key arrives
 once with the connect confirmation and lives in the tab's memory (never in
 `localStorage` — a page reload is an honest full connect); the connection record
 every ping already renews becomes the **passport**: it carries the per-space
-rooms and the SHA-256 of the key (never the key itself — a leaked backplane
-mints no working credentials). The restore window is `connectionTtl` — there is
-no second knob: a live connection renews the record anyway, and a dead one
-leaves exactly the record behind.
+rooms split by provenance (joined vs enrolled) and the SHA-256 of the key (never
+the key itself — a leaked backplane mints no working credentials). The restore
+window is `connectionTtl` — there is no second knob: a live connection renews
+the record anyway, and a dead one leaves exactly the record behind.
 
 What a resume restores and what it never bypasses:
 
 - **`connectionId` survives the drop** — addressed pushes keep their addressee
   across a blip (a full reconnect mints a new cid).
-- **Enrolled memberships** restore with the passport like joined rooms — the
-  enroller does not re-run.
+- **Enrollments restore with their guarantee** — the passport keeps each room's
+  provenance, so a restored enrollment (the `.enroller`'s rooms AND any
+  imperative `space.enroll`) comes back exactly as leave-proof as the original;
+  the enroller does not re-run.
 - A server **`refresh` bypasses resume** — it exists to re-run the connectors,
-  and it voids the key; the fresh connect mints a new one. A **kick** and a
+  and it voids the key; the fresh connect mints a new one. A **kill** and a
   voluntary close delete the record, so the later resume is refused and the full
   connect puts the connector back in charge — **revocation is never resumable**.
   A refused resume falls back to the ordinary full connect of that one
@@ -1689,14 +1724,13 @@ client that returns within the window misses nothing. The park itself buffers
 nothing (the streams are the buffer — a parked member costs a room push zero
 extra work). Past the window the connection leaves the streams; the record lives
 on to its own TTL, so a later resume still works, just without the replay. A
-kick reaches into the park too: `channel.kick` sweeps matching parked
-connections and deletes their records, and a
-[`space.kick`](#kicking-from-rooms--spacekick) removes the kicked rooms from
-parked connections and their passports — the returning client receives the
-forced leave right after the resume.
+revocation reaches into the park too: `kill` sweeps matching parked connections
+and deletes their records, and a [`space.kick`](#kicking-from-rooms--spacekick)
+removes the kicked rooms from parked connections and their passports — the
+returning client receives the forced leave right after the resume.
 
 One price, deliberate: the identity a resume restores is as old as the record —
-the freeze is bounded by `connectionTtl`, and the admin answer is `kick`
+the freeze is bounded by `connectionTtl`, and the admin answer is `kill`
 (instant) or `refresh` (soft), both of which force the full path. Delivery costs
 nothing extra: room, space-wide and channel-wide pushes ride the same
 one-publish fan-out as a plain channel's, buffered once per stream — however
@@ -1795,13 +1829,19 @@ whole connect cascade — same outcome, a fraction of the load.
 
 ## Managing connections
 
-A **channel** exposes `kick`, `refresh`, `amendIdentity`, and the
-`connections.*` enumerations; a **space** exposes `kick`, `enroll` and the
-`memberships.*` enumerations (a space has no identity to refresh). The commands
-are server-only and take the same `$`-dictionary target the pushes use — parts
-combine with AND, a bare call means everything in scope. The enumerations name a
-[floor](#enumerating--connections-and-memberships) first (`server` / `client`)
-and only the server floor takes targets:
+A **channel** exposes `kill`, `refresh`, `amendIdentity`, and the
+`connections.*` enumerations; a **space** exposes `kick`, `enroll`, `kill`,
+`refresh`, `amendIdentity` and the `memberships.*` enumerations. Two verbs, two
+altitudes: `kick` / `enroll` are the ROOM operations (remove and add rooms —
+which is why they live on space points alone), everything else is
+CONNECTION-level. And since a room always belongs to connections, every
+connection-level command can also be **addressed by room** — from the space
+point, whose target carries the room parts: the space-side `kill` / `refresh` /
+`amendIdentity` act on the **connections holding** the matching rooms. The
+commands are server-only and take the same `$`-dictionary target the pushes use
+— parts combine with AND, a bare call means everything in scope. The
+enumerations name a [floor](#enumerating--connections-and-memberships) first
+(`server` / `client`) and only the server floor takes targets:
 
 ```tsx
 // channel target: { connectionId?, $identity? }
@@ -1832,25 +1872,29 @@ and only the server floor takes targets:
 
 ```tsx
 // close a user's connections entirely (a role revoked, an admin logout) — a `closed` frame
-await appChannel.kick({ $identity: { userId: '42' } })
-await appChannel.kick({ connectionId, reason: 'signed-out' })
+await appChannel.kill({ $identity: { userId: '42' } })
+await appChannel.kill({ connectionId, reason: 'signed-out' })
 
 // re-run the connect for matching connections — the identity is rebuilt, the socket stays up
 await appChannel.refresh({ $identity: { userId: '42' } })
+
+// the same commands addressed BY ROOM, from the space point — they act on the room's holders
+await chatSpace.refresh({ room: { chatId: '5' } }) // re-judge everyone in the room
+await chatSpace.kill({ room: { chatId: '5' }, reason: 'chat-deleted' }) // close their connections
 ```
 
-`channel.kick` removes matching connections and marks each client `closed`. What
-happens next follows the hold's nature: a connection held by `useConnection` /
+`kill` removes matching connections and marks each client `closed`. What happens
+next follows the hold's nature: a connection held by `useConnection` /
 `<Connection>` declares "stay connected while mounted", so it **re-establishes
 on its own** through the [reconnect](#reconnect) policy — the connector re-runs
 and judges afresh; an imperative `connect()` stays closed until its owner
-reconnects (or [`reconnectAll()`](#client-helpers)). So a kick is an
+reconnects (or [`reconnectAll()`](#client-helpers)). So a kill is an
 _interruption_, never a _ban_ — a real ban belongs in the connector, which
 re-applies on every connect (throw with
 [`preventRetry`](error-handling#preventretry) and the client stops knocking
 entirely). The optional `reason` rides the close frame — a raw WebSocket
 consumer can read it off the wire; Point0's own client runtime does not surface
-it (tell the user WHY with a push right before the kick). `refresh` is the "this
+it (tell the user WHY with a push right before the kill). `refresh` is the "this
 identity changed" signal: matching clients silently re-connect (the connector
 re-runs, the identity is rebuilt, the enrollers re-run) and re-join their
 spaces, without dropping the socket.
@@ -1863,6 +1907,12 @@ identity of matching connections, in place — no reconnect, no connector run:
 ```tsx
 await appChannel.amendIdentity({ $identity: { userId: '42' } }, { plan: 'pro' })
 await appChannel.amendIdentity({ connectionId }, { displayName })
+
+// by room, from the space point — the patch still amends the CHANNEL identity of the room's holders
+await chatSpace.amendIdentity(
+  { room: { chatId: '5' } },
+  { lastSeenChatId: '5' },
+)
 ```
 
 It amends **data, not rights**: rooms already granted stay granted. Narrowed
@@ -1900,13 +1950,27 @@ it exists while someone is in it, so "close the room" is just kicking everyone
 out of it (and revoking the right to come back in the joiner). On a
 [resumable](#resumable-connections) channel the kick reaches parked connections
 and their passports too — a kicked room does not come back through a resume.
-Like the channel kick's, the optional `reason` rides the `left` frame for raw
-consumers only — the typed client runtime does not surface it.
+Like `kill`'s, the optional `reason` rides the `left` frame for raw consumers
+only — the typed client runtime does not surface it.
 
 Kick's mirror is [`space.enroll`](#enrolling-from-the-server--enroller) — a
 forced **join**: the same `$`-dictionary selects who, the second argument names
 the rooms. The two compose into a server-side "move": kick from the old room,
 enroll into the new.
+
+When the room's holders should lose the whole **connection**, not just the room,
+[`kill`](#managing-connections) takes the same room target:
+
+```tsx
+// everyone in chat 5 gets logged off this channel entirely — a `closed` frame each
+await chatSpace.kill({ room: { chatId: '5' }, reason: 'chat-deleted' })
+```
+
+Same aftermath as any kill: held connections auto-revive through the reconnect
+policy and the connector re-judges; on a resumable channel matching parked
+connections are swept and their records deleted, so the kill does not hide in a
+park. `kick` and `kill` on a space are the two ends of one dial — revoke the
+rooms, or close the connections holding them.
 
 ### Enumerating — connections and memberships
 
@@ -2001,20 +2065,32 @@ chatSpace.memberships.client.list() // → ClientSpaceMembership[]
 [`.enroller` or `space.enroll`](#enrolling-from-the-server--enroller) created
 server-side with no join behind them. Nothing else reads those one at a time: an
 enrollment has no join input, so `getMembership(input)` has nothing to look up.
-On a space with no `.joiner` this is THE read — and since these are the real
-facades, it is also where an enrollment is
-[left](#enrolling-from-the-server--enroller): `membership.leave()` drops its
-rooms until the next connection setup re-enrolls.
+On a space with no `.joiner` this is THE read — listen to its handlers, read its
+rooms; `leave()` on such a facade
+[warns and does nothing](#enrolling-from-the-server--enroller), the enrollment
+is the server's.
+
+`memberships.client.rooms()` is the per-ROOM view of the same floor: every room
+the tab's live memberships cover, one entry per room, with its PROVENANCE —
+`{ room, joined, enrolled }`, where `joined` means a client join covers it and
+`enrolled` means the server's enrollment does (both can be true at once; the
+client mirror of the server's own per-room provenance):
+
+```tsx
+chatSpace.memberships.client.rooms()
+// [{ room: { chatId: '5' }, joined: true, enrolled: false },
+//  { room: { chatId: 'inbox' }, joined: false, enrolled: true }]
+```
 
 The lookups are the per-item twins — `getConnection(input)` /
 `getMembership(input)` find the one that joined with that input, the `client`
 floor gives you all of them. Across every point of a scope at once there is
 [`getSocket()` / `useSocket()`](#client-helpers), which also lists
-kicked-but-still-held connections (dormant until a remount); the `client` floor
+killed-but-still-held connections (dormant until a remount); the `client` floor
 is live ones only. A `local` sub-floor here would mean nothing: a browser tab IS
 one process.
 
-The **commands** stay directly on the point — `channel.kick(...)`,
+The **commands** stay directly on the point — `channel.kill(...)`,
 `channel.refresh(...)`, `channel.amendIdentity(...)`, `space.enroll(...)`, never
 under a floor. They are actions, not reads, and they are server-only, period.
 
@@ -2264,7 +2340,7 @@ channel names and passes each one as an argument (they all live under
 nothing about `point0:*`, exactly like the KV side where keys already arrive
 ready-made. The five functions carry everything the sockets need across
 processes: the stored records, room and channel pushes, collected replies, the
-`kick` / `refresh` / `amendIdentity` commands, and the enumerations.
+`kick` / `kill` / `refresh` / `amendIdentity` commands, and the enumerations.
 
 ```ts
 // engine config — the backplane is a Redis-shaped KV + channel pub/sub
@@ -2458,6 +2534,7 @@ there — and a failed connect's `Settled` / `Error` carry it `undefined`).
 | `pointChannelClaimServerError`                       | server-only single — a connection failed to claim its place on the socket                            |
 | `pointSpaceJoinServer*`                              | four phases around each `.joiner` / `.enroller` run                                                  |
 | `pointSpaceJoinClient*`                              | four phases around the join frame                                                                    |
+| `pointSpaceEnterClient` / `pointSpaceLeaveClient`    | the room-state pair: the connection actually entered / left rooms, with the cause in `reason`        |
 | `pointSpaceLeaveServer`                              | server-only single — a membership left its rooms                                                     |
 | `pointHandlerServer*`                                | four phases around a `.serverReply` run                                                              |
 | `pointHandlerClient*`                                | four phases around a clientHandler dispatch                                                          |
@@ -2483,7 +2560,7 @@ time — _before_ the claim — so a connect success is not yet a live connectio
 through a [resume revival](#resumable-connections) (an unpark or a KV restore —
 no connector ran for that open), `false` on a real claim.
 `pointChannelCloseServer` carries a `reason`: `'close'` (the client left),
-`'socket'` (the socket died), or `'kick'` (a server-side `channel.kick`).
+`'socket'` (the socket died), or `'kill'` (a server-side `kill`).
 
 A claim that never landed is the third single, `pointChannelClaimServerError` —
 also server-only. It fires wherever the server refuses a claim: an unknown,
@@ -2534,7 +2611,16 @@ joiner or enroller ran for it; a real join, enrollment, or `space.enroll`
 carries `false`, and the error variants carry no `resumed` at all (a refused
 resume never reaches the family). `pointSpaceLeaveServer` carries a `reason`:
 `'leave'` (the client left), `'socket'` (the socket died), `'kick'` (a
-`space.kick`), or `'close'` (the whole connection closed).
+`space.kick`), `'kill'` (the whole connection was killed server-side), or
+`'close'` (the connection closed).
+
+The CLIENT's state pair is `pointSpaceEnterClient` / `pointSpaceLeaveClient` —
+the event twins of the `onEnter` / `onLeave` [callbacks](#reconnect), fired when
+the connection actually enters or leaves rooms, with the same `rooms`, `reason`
+and (on the enter) `resumed` / `gapless`. The join family above is the REQUEST
+story — four phases around a join operation; the state pair is the STATE story:
+an enrollment, a kick or a socket death fires it with no join operation
+anywhere.
 
 ### The client families carry the counters and markers
 
@@ -2873,9 +2959,9 @@ pipeline's marker response cancels it.
   envelopes whose payload fields went through the transformer: claim / claimed /
   claimErr (plus discard and close), join / joined / joinErr / leave / left,
   `enrolled` (a server-side `space.enroll` grew a connection's enrollment —
-  carrying the full new room set), send / reply / sendErr, msg, ping/pong,
+  carrying the full new enrolled set), send / reply / sendErr, msg, ping/pong,
   resume / resumed / resumeErr (the [resumable](#resumable-connections)
-  handshake), and the server-initiated `closed` (a channel kick) and `refresh`.
+  handshake), and the server-initiated `closed` (a server `kill`) and `refresh`.
   The `claimed` confirmation carries the `.enroller` enrollments.
 - **Rooms are Bun pub/sub topics**, namespaced by space —
   `<scope>:<space>:<serialized room>`; the channel-wide
@@ -2975,7 +3061,7 @@ are also accepted per call on `useConnection` / `connect` (flat):
 | `client`           | `ping`                                   | `30_000`    | keepalive interval; effective on the root — one socket. It also arms the client's liveness deadline: two pings answered by nothing at all and more than two intervals of silence is a half-open socket, which the client closes and reconnects. `0` turns off both halves                                                                                                                                                                                               |
 | `client`           | `upgradeTimeout`                         | `5000`      | ms a cold-start GET+Upgrade waits for its confirmation before falling back to the ticket path (a middlebox may swallow a handshake without failing it)                                                                                                                                                                                                                                                                                                                  |
 | `client`           | `resumeTimeout`                          | `5000`      | ms a [resume](#resumable-connections) offer waits for its answer before that connection falls back to the full connect (a rolling deploy may not speak resume yet)                                                                                                                                                                                                                                                                                                      |
-| `client`           | `onConnect` / `onDisconnect` / `onError` | —           | connection lifecycle callbacks, chain in order; `onConnect` fires on every landed connect — `connectionIndex` `0` = the first, `> 0` = a reconnect; the props also carry `resumed`/`gapless` ([resumable connections](#resumable-connections))                                                                                                                                                                                                                          |
+| `client`           | `onConnect` / `onDisconnect` / `onError` | —           | connection lifecycle callbacks, chain in order; `onConnect` fires on every gained liveness (`connectionIndex` `0` = the first; the props carry `resumed`/`gapless`), `onDisconnect` on every lost one with the cause in `reason` (`'socket'` / `'kill'` / `'close'`)                                                                                                                                                                                                    |
 | `server`           | `maxMessageSize`                         | `1_048_576` | rejects bigger incoming frames                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `server`           | `maxConnections`                         | `32`        | live connections to this channel one SOCKET may hold — point0's client keeps one socket, so one browser tab; other sockets, other tabs and other channels each count on their own, so it bounds a socket, never a user. `1` is a fine value (the socket then holds one connection to the channel at most) and costs no reconnects: a socket takes its connections down with it, one that dies unnoticed goes on the idle timeout, and the fresh socket counts from zero |
 | `server`           | `connectionTtl`                          | `90_000`    | ms a connection record lives in the backplane without a ping renewal (keep it above `ping`)                                                                                                                                                                                                                                                                                                                                                                             |
@@ -2986,15 +3072,15 @@ are also accepted per call on `useConnection` / `connect` (flat):
 `.space({...})` — also via `.spaceOptions()` up the chain. The `client` rows are
 also accepted per call on `useMembership` / `join`:
 
-| Group         | Option                | Default | What it does                                                                                                                                                                                                                             |
-| ------------- | --------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `client`      | `linger`              | `1000`  | ms a membership outlives its last hold — the membership twin of the channel `linger`                                                                                                                                                     |
-| `client`      | `onEnter` / `onLeave` | —       | membership lifecycle callbacks; `onEnter` fires on every landed join — `membershipIndex` `0` = the first, `> 0` = a replay; the props also carry `resumed`/`gapless`                                                                     |
-| `server`      | `maxRooms`            | `256`   | rooms of this space one connection may be in, however it got there (join / enroller / `enroll`); `Infinity` opts out                                                                                                                     |
-| `server`      | `onBeforeJoiner`      | —       | guard per incoming join — throw to refuse it. Typed at the closer                                                                                                                                                                        |
-| `server`      | `onAfterJoiner`       | —       | observer after the join settles — audit/metrics                                                                                                                                                                                          |
-| `server`      | `resume`              | —       | `{ streamMaxFrames?, streamMaxBytes? }` — this space's own buffer ceilings, overriding the channel's `server.resume` for its room and space-wide streams; needs the space in the resume (refused on a plain channel or an opt-out space) |
-| _(top level)_ | `resumable`           | —       | `false` opts the space OUT of a [resumable](#resumable-connections) channel's restore: rooms out of the passport, the client re-joins them itself; needs a resumable channel and refuses `.enroller` — both fail at the closer           |
+| Group         | Option                | Default | What it does                                                                                                                                                                                                                                                                                                             |
+| ------------- | --------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `client`      | `linger`              | `1000`  | ms a membership outlives its last hold — the membership twin of the channel `linger`                                                                                                                                                                                                                                     |
+| `client`      | `onEnter` / `onLeave` | —       | the ROOM lifecycle: `onEnter` fires when the connection actually enters rooms of the space (`reason` `'join'` / `'enroll'` / `'resume'`, plus `resumed`/`gapless`), `onLeave` when it actually leaves them (`reason` `'leave'` / `'kick'` / `'kill'` / `'socket'` / `'close'` / `'refresh'`); `rooms` is always an array |
+| `server`      | `maxRooms`            | `256`   | rooms of this space one connection may be in, however it got there (join / enroller / `enroll`); `Infinity` opts out                                                                                                                                                                                                     |
+| `server`      | `onBeforeJoiner`      | —       | guard per incoming join — throw to refuse it. Typed at the closer                                                                                                                                                                                                                                                        |
+| `server`      | `onAfterJoiner`       | —       | observer after the join settles — audit/metrics                                                                                                                                                                                                                                                                          |
+| `server`      | `resume`              | —       | `{ streamMaxFrames?, streamMaxBytes? }` — this space's own buffer ceilings, overriding the channel's `server.resume` for its room and space-wide streams; needs the space in the resume (refused on a plain channel or an opt-out space)                                                                                 |
+| _(top level)_ | `resumable`           | —       | `false` opts the space OUT of a [resumable](#resumable-connections) channel's restore: rooms out of the passport, the client re-joins them itself; needs a resumable channel and refuses `.enroller` — both fail at the closer                                                                                           |
 
 `.serverHandler({...})` — also via `.serverHandlerOptions()`. The `client` rows
 are also accepted per send as `sendToServer(input, {...})`. There is no `room`
@@ -3033,7 +3119,7 @@ Per-send targeting (the `target` argument — `room` / `connectionId` /
 | channel        | `useConnection(input?, options?)` / `connect(input?, options?)`                                                                                                                                                               | the connection facade                                                                                    |
 | channel        | `getConnection(input?)` / `getConnectionOrUndefined(input?)` — client side                                                                                                                                                    | the live connection, no hold                                                                             |
 | channel        | `<Connection input gate LoadingComponent ErrorComponent ...options>` / `.lets`                                                                                                                                                | holds a connection / grows spaces and handlers                                                           |
-| channel        | `kick(target?)` / `refresh(target?)` / `amendIdentity(target, patch)` — server                                                                                                                                                | `Promise<void>` each                                                                                     |
+| channel        | `kill(target?)` / `refresh(target?)` / `amendIdentity(target, patch)` — server                                                                                                                                                | `Promise<void>` each                                                                                     |
 | channel        | `connections.server.count/.list/.forEach(target?, options?)` — server, the cluster                                                                                                                                            | `number` / `Array<{ connectionId, identity, spaces }>` / stream                                          |
 | channel        | `connections.server.local.count/.list(target?)` — server, synchronous, this process                                                                                                                                           | `number` / `Array<{ connectionId, identity, spaces }>`                                                   |
 | channel        | `connections.client.count/.list()` — client, synchronous, this tab                                                                                                                                                            | `number` / `ClientChannelConnection[]` — the live facades                                                |
@@ -3041,9 +3127,11 @@ Per-send targeting (the `target` argument — `room` / `connectionId` /
 | space          | `getMembership(membershipInput, channelInput?)` / `getMembershipOrUndefined(...)`                                                                                                                                             | the live membership, no hold                                                                             |
 | space          | `<Membership input gate LoadingComponent ErrorComponent ...options>` / `.lets`                                                                                                                                                | holds a membership / grows handlers                                                                      |
 | space          | `kick(target?)` — server                                                                                                                                                                                                      | `Promise<void>` — a forced leave of the matching rooms                                                   |
+| space          | `enroll(target, room)` — server                                                                                                                                                                                               | `Promise<void>` — a forced join: grows the matches' enrolled rooms                                       |
+| space          | `kill(target?)` / `refresh(target?)` / `amendIdentity(target, patch)` — server, addressed by room                                                                                                                             | `Promise<void>` each — the connection-level commands aimed at the rooms' holders                         |
 | space          | `memberships.server.count/.list/.forEach(target?, options?)` — server, the cluster                                                                                                                                            | `number` / `Array<{ connectionId, identity, rooms }>` / stream                                           |
 | space          | `memberships.server.local.count/.list/.rooms(target?)` — server, synchronous, this process                                                                                                                                    | `number` / `Array<{ connectionId, identity, rooms }>` / `Room[]`                                         |
-| space          | `memberships.client.count/.list()` — client, synchronous, this tab (enrolled included)                                                                                                                                        | `number` / `ClientSpaceMembership[]` — the live facades                                                  |
+| space          | `memberships.client.count/.list/.rooms()` — client, synchronous, this tab (enrolled included)                                                                                                                                 | `number` / `ClientSpaceMembership[]` — the live facades                                                  |
 | serverHandler  | `sendToServer(input?, options?)` — client side                                                                                                                                                                                | `Promise<reply>`                                                                                         |
 | serverHandler  | `useSocketMutation` / `useSocketQuery` / `useSocketInfiniteQuery`                                                                                                                                                             | the flavor's TanStack surface (mutation is the default)                                                  |
 | serverHandler  | the query flavors' full family — `useSuspenseSocket*`, `fetchSocket*`, `prefetchSocket*`, `ensureSocket*Data`, `getSocket*Options/Key/Data/State/Cache(s)`, `setSocket*Data`, `refetch/invalidate/cancel/remove/resetSocket*` | mirrors the regular query surface, transport socket (`*` = `Query` / `InfiniteQuery`, paired per flavor) |

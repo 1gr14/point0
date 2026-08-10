@@ -31,6 +31,7 @@ const root = Point0.lets('root', 'root').root()
 const makeAdapter = (overrides?: Partial<SocketServerAdapter>): SocketServerAdapter => ({
   push: () => {},
   kick: async () => {},
+  kill: async () => {},
   enroll: async () => {},
   refresh: async () => {},
   count: async () => 0,
@@ -1768,7 +1769,7 @@ describe('socket builders', () => {
 
   // ---- amendIdentity + the connections/memberships enumeration namespaces ----
 
-  it('amendIdentity serializes the patch with the channel transformer and rides the adapter; channel points only', async () => {
+  it('amendIdentity serializes the patch with the channel transformer and rides the adapter; a space point addresses by room', async () => {
     const calls: any[] = []
     const channel = root
       .lets('channel', 'amendChan')
@@ -1792,9 +1793,15 @@ describe('socket builders', () => {
       expect(calls[0].matcher).toBe(transformer.stringify({ userId: 'u1' }))
       expect(calls[0].patchSerialized).toBe(transformer.stringify({ displayName: 'B' }))
       expect(calls[0].space).toBeUndefined()
-      await expect(
-        (space as never as { amendIdentity: (target: unknown, patch: unknown) => Promise<void> }).amendIdentity({}, {}),
-      ).rejects.toThrow(/amendIdentity\(\) lives on channel points only/)
+      // a SPACE point amends the channel identity of the room's holders — the space name and room ride the selector
+      await (space as never as { amendIdentity: (target: unknown, patch: unknown) => Promise<void> }).amendIdentity(
+        { room: { chatId: 'c-5' } },
+        { displayName: 'C' },
+      )
+      expect(calls).toHaveLength(2)
+      expect(calls[1].space).toBe('amendSpace')
+      expect(calls[1].rooms).toEqual([space.point._getSocketTransformer().stringify({ chatId: 'c-5' })])
+      expect(calls[1].patchSerialized).toBe(transformer.stringify({ displayName: 'C' }))
     } finally {
       unregisterSocketServerAdapter('root')
     }
@@ -2478,9 +2485,9 @@ describe('socket builders', () => {
       void barePing.sendToClient(undefined, { $identity: { $or: [{}, {}] } })
       // @ts-expect-error — no identity fields exist to match over
       void barePing.sendToClient(undefined, { $identity: { userId: '1' } })
-      void bareChannel.kick({ $identity: {} })
+      void bareChannel.kill({ $identity: {} })
       // @ts-expect-error — no identity fields exist to match over
-      void bareChannel.kick({ $identity: { userId: '1' } })
+      void bareChannel.kill({ $identity: { userId: '1' } })
 
       // the same channel WITH a connector: every surface above compiles with the exact connector-named identity
       const userChannel = root
@@ -2498,7 +2505,7 @@ describe('socket builders', () => {
       void userChannel.lets('serverHandler', 'userEchoT').serverReply(({ identity }) => ({ me: identity.userId }))
       const userPing = userChannel.lets('clientHandler', 'userPingT').clientHandler()
       void userPing.sendToClient(undefined, { $identity: { userId: { $in: ['1', '2'] } } })
-      void userChannel.kick({ $identity: { userId: '1' } })
+      void userChannel.kill({ $identity: { userId: '1' } })
       void userChannel.amendIdentity({ connectionId: 'c1' }, { userId: '2' })
       // @ts-expect-error — `plan` is not a field of { userId: string }
       void userChannel.amendIdentity({ connectionId: 'c1' }, { plan: 'pro' })
@@ -2677,24 +2684,24 @@ describe('socket builders', () => {
     expect(infiniteResult).toEqual({ __socket: 'infinite' })
   })
 
-  it('channel.kick without a running socket server throws "Socket server is not running"', async () => {
+  it('channel.kill without a running socket server throws "Socket server is not running"', async () => {
     const channel = root
       .lets('channel', 'noServer')
       .connector(() => ({ userId: 'u1' }))
       .channel()
-    await expect(channel.kick({ $identity: { userId: 'u1' } })).rejects.toThrow(/Socket server is not running/)
+    await expect(channel.kill({ $identity: { userId: 'u1' } })).rejects.toThrow(/Socket server is not running/)
   })
 
   it('a $where identity matcher is rejected before the adapter is touched, even nested under $or', async () => {
     const adapter = makeAdapter({
-      kick: async () => {
-        throw new Error('adapter.kick must not be reached')
+      kill: async () => {
+        throw new Error('adapter.kill must not be reached')
       },
     })
     const channel = root.lets('channel', 'whereGuard').channel()
     registerSocketServerAdapter('root', adapter)
     try {
-      await expect(channel.kick({ $identity: { $or: [{ $where: 'return true' }] } as never })).rejects.toThrow(
+      await expect(channel.kill({ $identity: { $or: [{ $where: 'return true' }] } as never })).rejects.toThrow(
         /\$where is not allowed/,
       )
     } finally {
@@ -2740,13 +2747,20 @@ describe('socket builders', () => {
         .space()
 
       // CHANNEL admin: the $-dictionary — `connectionId` exact, `$identity` a sift matcher; no room part
-      expectTypeOf(appChannel.kick({ $identity: { userId: { $ne: 'u1' } } })).toEqualTypeOf<Promise<void>>()
-      expectTypeOf(appChannel.kick({ connectionId: 'cid1', reason: 'signed-out' })).toEqualTypeOf<Promise<void>>()
+      expectTypeOf(appChannel.kill({ $identity: { userId: { $ne: 'u1' } } })).toEqualTypeOf<Promise<void>>()
+      expectTypeOf(appChannel.kill({ connectionId: 'cid1', reason: 'signed-out' })).toEqualTypeOf<Promise<void>>()
       expectTypeOf(appChannel.refresh({ $identity: { userId: 'u1' } })).toEqualTypeOf<Promise<void>>()
-      // @ts-expect-error — a channel admin target has no room
-      void appChannel.kick({ room: { chatId: '5' } })
+      // SPACE admin rides the room parts on the connection-level commands too — the room addresses the HOLDERS
+      expectTypeOf(chatSpace.refresh({ room: { chatId: '5' } })).toEqualTypeOf<Promise<void>>()
+      expectTypeOf(chatSpace.kill({ $room: { chatId: '5' }, reason: 'room-closed' })).toEqualTypeOf<Promise<void>>()
+      // @ts-expect-error — a channel refresh target has no room part
+      void appChannel.refresh({ room: { chatId: '5' } })
+      // @ts-expect-error — kick lives on space points only (a kick revokes rooms; a channel closes with kill)
+      void appChannel.kick({ $identity: { userId: 'u1' } })
+      // @ts-expect-error — a channel kill target has no room part
+      void appChannel.kill({ room: { chatId: '5' } })
       // @ts-expect-error — `identity:` is renamed `$identity` (the $-dictionary)
-      void appChannel.kick({ identity: { userId: 'u1' } })
+      void appChannel.kill({ identity: { userId: 'u1' } })
 
       // amendIdentity: channel-only, the patch is a partial identity
       expectTypeOf(appChannel.amendIdentity({ $identity: { userId: 'u1' } }, { workspaceId: 'w2' })).toEqualTypeOf<
@@ -2754,8 +2768,10 @@ describe('socket builders', () => {
       >()
       // @ts-expect-error — the patch must be a partial identity
       void appChannel.amendIdentity({ connectionId: 'cid1' }, { nope: true })
-      // @ts-expect-error — amendIdentity lives on channel points only
-      void chatSpace.amendIdentity({ connectionId: 'cid1' }, {})
+      // a space point amends the CHANNEL identity of the connections holding matching rooms
+      expectTypeOf(chatSpace.amendIdentity({ room: { chatId: '5' } }, { workspaceId: 'w2' })).toEqualTypeOf<
+        Promise<void>
+      >()
 
       // `connections` is a NAMESPACE now — the old method-call form is gone
       // @ts-expect-error — connections is a namespace, not a method
@@ -3117,7 +3133,7 @@ describe('socket builders', () => {
     void typesOnly
   })
 
-  it('the resume markers ride every lifecycle props object, typed: resumed + gapless booleans next to the index', () => {
+  it('the lifecycle props are typed: connect markers, the disconnect reason, and the ROOM events with their causes', () => {
     const markedChannel = root.lets('channel', 'markedChannel').channel({
       resumable: true,
       client: {
@@ -3126,9 +3142,9 @@ describe('socket builders', () => {
           expectTypeOf(gapless).toEqualTypeOf<boolean>()
           expectTypeOf(connectionIndex).toEqualTypeOf<number>()
         },
-        onDisconnect: ({ resumed, gapless }) => {
-          expectTypeOf(resumed).toEqualTypeOf<boolean>()
-          expectTypeOf(gapless).toEqualTypeOf<boolean>()
+        onDisconnect: ({ reason, connectionIndex }) => {
+          expectTypeOf(reason).toEqualTypeOf<'socket' | 'kill' | 'close'>()
+          expectTypeOf(connectionIndex).toEqualTypeOf<number>()
         },
         onError: ({ resumed, gapless }) => {
           expectTypeOf(resumed).toEqualTypeOf<boolean>()
@@ -3142,20 +3158,39 @@ describe('socket builders', () => {
       .joiner(({ input }) => ({ chatId: input.chatId }))
       .space({
         client: {
-          onEnter: ({ resumed, gapless, membershipIndex, membership }) => {
+          // the ROOM lifecycle: rooms always an array (typed by the space's room shape), the cause, the markers
+          onEnter: ({ rooms, reason, resumed, gapless }) => {
+            expectTypeOf(rooms).toEqualTypeOf<Array<{ chatId: string }>>()
+            expectTypeOf(reason).toEqualTypeOf<'join' | 'enroll' | 'resume'>()
             expectTypeOf(resumed).toEqualTypeOf<boolean>()
             expectTypeOf(gapless).toEqualTypeOf<boolean>()
-            expectTypeOf(membershipIndex).toEqualTypeOf<number>()
-            // the membership is the CONCRETE facade, not the any-typed one — rooms/input keep their types
-            expectTypeOf(membership.rooms).toEqualTypeOf<Array<{ chatId: string }>>()
-            expectTypeOf(membership.input).toEqualTypeOf<{ chatId: string }>()
           },
-          onLeave: ({ resumed, gapless }) => {
-            expectTypeOf(resumed).toEqualTypeOf<boolean>()
-            expectTypeOf(gapless).toEqualTypeOf<boolean>()
+          onLeave: ({ rooms, reason }) => {
+            expectTypeOf(rooms).toEqualTypeOf<Array<{ chatId: string }>>()
+            expectTypeOf(reason).toEqualTypeOf<'leave' | 'kick' | 'kill' | 'socket' | 'close' | 'refresh'>()
           },
         },
       })
+    // the call site hears the same room events, typed the same
+    const typesOnly = () => {
+      void markedSpace.useMembership(
+        { chatId: '1' },
+        {
+          onEnter: ({ rooms, reason }) => {
+            expectTypeOf(rooms).toEqualTypeOf<Array<{ chatId: string }>>()
+            expectTypeOf(reason).toEqualTypeOf<'join' | 'enroll' | 'resume'>()
+          },
+          onLeave: ({ rooms, reason }) => {
+            expectTypeOf(rooms).toEqualTypeOf<Array<{ chatId: string }>>()
+            expectTypeOf(reason).toEqualTypeOf<'leave' | 'kick' | 'kill' | 'socket' | 'close' | 'refresh'>()
+          },
+        },
+      )
+      // the per-room client floor carries the provenance flags
+      const clientRooms = markedSpace.memberships.client.rooms()
+      expectTypeOf(clientRooms).toEqualTypeOf<Array<{ room: { chatId: string }; joined: boolean; enrolled: boolean }>>()
+    }
+    void typesOnly
     expect(markedSpace.point.type).toBe('space')
   })
 

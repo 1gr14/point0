@@ -513,12 +513,12 @@ describe.skipIf(!process.env.REDIS_URL)('socket backplane (real Redis)', () => {
       }
       await b.handleMessage(socket as never, JSON.stringify({ t: 'claim', ticket }))
       expect(frames.find((frame) => frame.t === 'claimed')?.cid).toBe(cid)
-      // the bus crosses processes: a kick issued on A closes the connection B holds
-      await a.adapter.kick({ channel: chatChannel.point as never, reason: 'url-kick' })
+      // the bus crosses processes: a kill issued on A closes the connection B holds
+      await a.adapter.kill({ channel: chatChannel.point as never, reason: 'url-kill' })
       await new Promise((resolve) => setTimeout(resolve, 300))
       const closed = frames.find((frame) => frame.t === 'closed')
       expect(closed?.cid).toBe(cid)
-      expect(closed?.reason).toBe('url-kick')
+      expect(closed?.reason).toBe('url-kill')
     } finally {
       a.dispose()
       b.dispose()

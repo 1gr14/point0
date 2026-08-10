@@ -283,6 +283,118 @@ export const notifyHandler = chatChannel.lets('clientHandler', 'notifyHandler').
       }),
     )
 
+    // A socket point is addressed by NAME on the wire (a frame names its handler, a `claimed` frame its spaces, a room
+    // topic is namespaced by the space name), and registered by its `scope:type:name` id — two of a kind sharing a
+    // name shadow each other. Generation must refuse the manifest, naming BOTH files, like it does for components.
+    it(
+      'refuses to generate when two channel points share a name — both files in the error',
+      helper(async ({ dir, files: [rootFile, otherFile, pointsFile], log }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const chatChannel = root.lets('channel', 'chatChannel').connector(() => ({ room: {} })).channel()
+        `)
+        await otherFile.write(`import { root } from '${rootFile.importpath}'
+export const chatChannelToo = root.lets('channel', 'chatChannel').connector(() => ({ room: {} })).channel()
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [{ scope: 'myroot', what: 'clientPoints', outfile: pointsFile.path, lazy: true }],
+          log,
+          routes: {},
+        })
+        await expect(generator.sync()).rejects.toThrow(
+          /Two channel points share the name "chatChannel" \(.+ and .+\) — channel point names must be unique per scope to be addressed on the socket wire\./,
+        )
+        // nothing half-written: the manifest that would carry both is never emitted
+        expect(pointsFile.isExists()).toBe(false)
+      }),
+    )
+
+    it(
+      'refuses to generate when two space points share a name, even under different channels',
+      helper(async ({ dir, files: [rootFile, otherFile, pointsFile], log }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const chatChannel = root.lets('channel', 'chatChannel').connector(() => ({ room: {} })).channel()
+export const boardSpace = chatChannel.lets('space', 'boardSpace').joiner(() => ({})).space()
+        `)
+        await otherFile.write(`import { root } from '${rootFile.importpath}'
+export const gameChannel = root.lets('channel', 'gameChannel').connector(() => ({ room: {} })).channel()
+export const boardSpaceToo = gameChannel.lets('space', 'boardSpace').joiner(() => ({})).space()
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [{ scope: 'myroot', what: 'clientPoints', outfile: pointsFile.path, lazy: true }],
+          log,
+          routes: {},
+        })
+        await expect(generator.sync()).rejects.toThrow(
+          /Two space points share the name "boardSpace" \(.+ and .+\) — space point names must be unique per scope to be addressed on the socket wire\./,
+        )
+      }),
+    )
+
+    it(
+      'refuses to generate when two handler points share a name — the SERVER points file too',
+      helper(async ({ dir, files: [rootFile, otherFile, pointsFile], log }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const chatChannel = root.lets('channel', 'chatChannel').connector(() => ({ room: {} })).channel()
+export const sendHandler = chatChannel.lets('serverHandler', 'sendHandler').serverReply(() => ({ ok: true })).serverHandler()
+        `)
+        await otherFile.write(`import { root } from '${rootFile.importpath}'
+export const gameChannel = root.lets('channel', 'gameChannel').connector(() => ({ room: {} })).channel()
+export const sendHandlerToo = gameChannel.lets('serverHandler', 'sendHandler').serverReply(() => ({ ok: true })).serverHandler()
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          ssr: true,
+          tasks: [{ scope: 'myroot', what: 'serverPoints', outfile: pointsFile.path }],
+          log,
+          routes: {},
+        })
+        await expect(generator.sync()).rejects.toThrow(
+          /Two serverHandler points share the name "sendHandler" \(.+ and .+\) — serverHandler point names must be unique per scope to be addressed on the socket wire\./,
+        )
+      }),
+    )
+
+    // The id is `scope:type:name`, so the namespace is per TYPE — a channel and a space may share a name, and a
+    // serverHandler and a clientHandler may too (the wire tells the two directions apart).
+    it(
+      'allows one name across different socket point types — the id is scope:type:name',
+      helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log }) => {
+        await rootFile.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const chat = root.lets('channel', 'chat').connector(() => ({ room: {} })).channel()
+export const chatSpace = chat.lets('space', 'chat').joiner(() => ({})).space()
+export const chatServerHandler = chat.lets('serverHandler', 'ping').serverReply(() => ({ ok: true })).serverHandler()
+export const chatClientHandler = chat.lets('clientHandler', 'ping').clientHandler()
+        `)
+
+        const generator = FilesGenerator.create({
+          cwd: dir,
+          glob: '**/*.tsx',
+          tasks: [{ scope: 'myroot', what: 'clientPoints', outfile: pointsFile.path, lazy: true }],
+          log,
+          routes: {},
+        })
+        await generator.sync()
+
+        const content = fixPaths(await pointsFile.text())
+        expect(content).toContain(`type: 'channel',\n    name: 'chat',`)
+        expect(content).toContain(`type: 'space',\n    name: 'chat',`)
+        expect(content).toContain(`type: 'serverHandler',\n    name: 'ping',`)
+        expect(content).toContain(`type: 'clientHandler',\n    name: 'ping',`)
+      }),
+    )
+
     it(
       'generates lazy clients points file, and log errors for invalid points',
       helper(async ({ dir, files: [rootFile, pointsFile], fixPaths, log: log, getLogs }) => {

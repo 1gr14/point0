@@ -162,10 +162,10 @@ export const cidPushHandler = chatChannel.lets('serverHandler', 'cidPushHandler'
   })
   .serverHandler()
 
-export const adminKickHandler = chatChannel.lets('serverHandler', 'adminKickHandler')
+export const adminKillHandler = chatChannel.lets('serverHandler', 'adminKillHandler')
   .clientSend(z.object({ me: z.string() }))
   .serverReply(async ({ input }) => {
-    await chatChannel.kick({ $identity: { me: input.me }, reason: 'kicked' })
+    await chatChannel.kill({ $identity: { me: input.me }, reason: 'killed' })
     return { ok: true }
   })
   .serverHandler()
@@ -492,6 +492,8 @@ const socketClientEventNames: AnyEventerEventName[] = [
   'pointSpaceJoinClientSettled',
   'pointSpaceJoinClientSuccess',
   'pointSpaceJoinClientError',
+  'pointSpaceEnterClient',
+  'pointSpaceLeaveClient',
   'pointHandlerClientStart',
   'pointHandlerClientSettled',
   'pointHandlerClientSuccess',
@@ -686,7 +688,7 @@ const buildClientPoints = (serverPort: number) => {
     .clientSend()
     .serverReply()
     .serverHandler()
-  const adminKickHandler = anyLets(chatChannel)('serverHandler', 'adminKickHandler')
+  const adminKillHandler = anyLets(chatChannel)('serverHandler', 'adminKillHandler')
     .clientSend()
     .serverReply()
     .serverHandler()
@@ -829,7 +831,7 @@ const buildClientPoints = (serverPort: number) => {
     roomPushHandler,
     exceptRoomPushHandler,
     cidPushHandler,
-    adminKickHandler,
+    adminKillHandler,
     adminRefreshHandler,
     adminSpaceListHandler,
     adminUserListHandler,
@@ -896,7 +898,7 @@ describe('socket client runtime', () => {
       points.roomPushHandler,
       points.exceptRoomPushHandler,
       points.cidPushHandler,
-      points.adminKickHandler,
+      points.adminKillHandler,
       points.adminRefreshHandler,
       points.adminSpaceListHandler,
       points.adminUserListHandler,
@@ -1508,7 +1510,7 @@ describe('socket client runtime', () => {
     connection.disconnect()
   })
 
-  it('leave() on an ENROLLED membership drops its rooms server-side — the other member of the room keeps hearing it', async () => {
+  it("leave() on an ENROLLED membership does NOTHING — the enrollment is the server's guarantee", async () => {
     const enrolled = points.chatChannel.connect({ userId: 'lvs-a' })
     const joiner = points.chatChannel.connect({ userId: 'lvs-b' })
     await waitFor(() => enrolled.status === 'open' && joiner.status === 'open')
@@ -1529,37 +1531,38 @@ describe('socket client runtime', () => {
     await waitFor(() => enrollmentOfA() !== undefined)
     expect(await membersOfRoom()).toContain(enrolled.id as string)
 
-    const bReceived: string[] = []
-    const bListener = points
-      .messageReceivedHandler(bMembership)
+    const aReceived: string[] = []
+    const aListener = points
+      .messageReceivedHandler(enrollmentOfA()!)
       .onMessageFromServer(({ message }: { message: { text: string } }) => {
-        bReceived.push(message.text)
+        aReceived.push(message.text)
       })
 
-    // the enrollment leaves on the client's own initiative: a `leave` frame naming ITS rooms, and the facade is dead
-    // right away — no hold behind it, so no linger to outwait
+    // leave() on the enrollment warns and does NOTHING — an enrollment is the server's guarantee, only the server
+    // ends it. The facade stays live, the server keeps the room, the pushes keep landing
     const membership = enrollmentOfA()!
     membership.leave()
-    expect(membership.status).toBe('closed')
-    expect(enrollmentOfA()).toBeUndefined()
-    // leaving twice is a no-op, not a throw (the same as a refresh that already dropped the enrollment)
+    expect(membership.status).toBe('joined')
+    expect(enrollmentOfA()).toBeDefined()
+    // calling it again changes nothing either
     membership.leave()
+    expect(await membersOfRoom()).toContain(enrolled.id as string)
+    await points.roomPushHandler(admin).sendToServer({ chatId: 'lvs-room', text: 'after-leave-attempt' })
+    await waitFor(() => aReceived.includes('after-leave-attempt'))
 
-    // the server dropped THIS connection from the room — and only this one
+    // the departure that DOES work is the server's: a space kick revokes the room, enrollment included
+    await points.adminSpaceKickHandler(admin).sendToServer({ chatId: 'lvs-room' })
     const ids = await waitForRead(membersOfRoom, (value) => !value.includes(enrolled.id as string))
-    expect(ids).toContain(joiner.id as string)
-    // the room itself is untouched: the member that stayed still gets its pushes
-    await points.roomPushHandler(admin).sendToServer({ chatId: 'lvs-room', text: 'after-leave' })
-    await waitFor(() => bReceived.includes('after-leave'))
+    expect(ids).not.toContain(enrolled.id as string)
 
-    bListener.remove()
+    aListener.remove()
     bMembership.leave()
     admin.disconnect()
     joiner.disconnect()
     enrolled.disconnect()
   })
 
-  it('an enrolled and a joined membership share ONE room: a leave names it only when nothing else covers it', async () => {
+  it('an enrolled and a joined membership share ONE room: neither departure silences the other', async () => {
     const connection = points.chatChannel.connect({ userId: 'lvr' })
     await waitFor(() => connection.status === 'open')
     const admin = points.chatChannel.connect({ userId: 'lvr-adm' })
@@ -1590,16 +1593,16 @@ describe('socket client runtime', () => {
       .onMessageFromServer(({ message }: { message: { text: string } }) => {
         received.push(message.text)
       })
-    // the ENROLLMENT leaves while the join still covers the room — the server keys nothing by how a room was entered,
-    // so naming it here would silence the join too: the leave frame must not carry it
+    // the ENROLLMENT tries to leave while the join covers the room — a no-op on both sides: the join keeps hearing,
+    // and the enrollment itself stays (the server's guarantee)
     enrollment()!.leave()
     await points.roomPushHandler(admin).sendToServer({ chatId: 'lvr-room', text: 'join-still-here' })
     await waitFor(() => received.includes('join-still-here'))
     expect(await membersOfRoom()).toContain(connection.id as string)
+    expect(enrollment()).toBeDefined()
 
-    // the mirror: enroll again, then let the JOIN go — the enrollment covers the room, so this leave stays silent too
-    await enroll()
-    await waitFor(() => enrollment() !== undefined)
+    // the mirror: let the JOIN go — the enrollment still covers the room (the client refcount keeps it out of the
+    // leave frame, and the server-side provenance would keep it either way), so pushes keep landing on the enrollment
     const enrolledReceived: string[] = []
     const enrolledListener = points
       .messageReceivedHandler(enrollment()!)
@@ -1614,8 +1617,8 @@ describe('socket client runtime', () => {
     await waitFor(() => enrolledReceived.includes('enrollment-still-here'))
     expect(await membersOfRoom()).toContain(connection.id as string)
 
-    // nothing covers the room now — this last leave DOES name it and the server drops it
-    enrollment()!.leave()
+    // only the server ends it — the space kick drops the room, enrollment included
+    await points.adminSpaceKickHandler(admin).sendToServer({ chatId: 'lvr-room' })
     expect(await waitForRead(membersOfRoom, (value) => !value.includes(connection.id as string))).not.toContain(
       connection.id as string,
     )
@@ -1624,7 +1627,7 @@ describe('socket client runtime', () => {
     connection.disconnect()
   })
 
-  it('a left enrollment comes back on the next connection setup — a refresh re-runs the enroller', async () => {
+  it('an enrollment survives leave() — a refresh re-runs the enroller and re-installs it on the fresh cid', async () => {
     const before = personalReceived.length
     const connection = points.chatChannel.connect({ userId: 'lve' })
     await waitFor(() => connection.status === 'open')
@@ -1643,23 +1646,22 @@ describe('socket client runtime', () => {
     await waitFor(() => personalReceived.slice(before).some((message) => message.text === 'while-enrolled'))
     expect(await membersOfPersonalRoom()).toContain(connection.id as string)
 
-    // out — the client dropped its own enrollment; the connection stays open and the room is empty server-side
+    // the client cannot opt out — leave() is a no-op, the enrollment stays and the personal room keeps ringing
     enrollment()!.leave()
-    expect(enrollment()).toBeUndefined()
+    expect(enrollment()).toBeDefined()
     expect(connection.status).toBe('open')
-    const leftCid = connection.id as string
-    expect(await waitForRead(membersOfPersonalRoom, (value) => !value.includes(leftCid))).toEqual([])
-    // this push reaches nobody — the assertion below is barriered by the 'after-refresh' one arriving after it
-    await points.personalPushHandler(admin).sendToServer({ me: 'user-lve', text: 'while-out' })
+    const cidBefore = connection.id as string
+    expect(await membersOfPersonalRoom()).toContain(cidBefore)
+    await points.personalPushHandler(admin).sendToServer({ me: 'user-lve', text: 'still-enrolled' })
+    await waitFor(() => personalReceived.slice(before).some((message) => message.text === 'still-enrolled'))
 
     // a refresh re-runs the connect AND the enroller on a fresh cid — the enrollment is installed again
     await points.adminRefreshHandler(admin).sendToServer({ me: 'user-lve' })
-    await waitFor(() => connection.status === 'open' && connection.id !== leftCid)
+    await waitFor(() => connection.status === 'open' && connection.id !== cidBefore)
     await waitFor(() => enrollment() !== undefined)
     expect(await membersOfPersonalRoom()).toContain(connection.id as string)
     await points.personalPushHandler(admin).sendToServer({ me: 'user-lve', text: 'after-refresh' })
     await waitFor(() => personalReceived.slice(before).some((message) => message.text === 'after-refresh'))
-    expect(personalReceived.slice(before).some((message) => message.text === 'while-out')).toBe(false)
 
     admin.disconnect()
     connection.disconnect()
@@ -1989,7 +1991,7 @@ describe('socket client runtime', () => {
     connection.disconnect()
   })
 
-  it('an IMPERATIVE kicked connection stays closed; reconnectAll revives it and REPLAYS the join', async () => {
+  it('an IMPERATIVE killed connection stays closed; reconnectAll revives it and REPLAYS the join', async () => {
     const victim = points.chatChannel.connect({ userId: 'kv' })
     await waitFor(() => victim.status === 'open')
     const membership = points.chatSpace.join({ chatId: 'kv' }, undefined, { userId: 'kv' })
@@ -1997,7 +1999,7 @@ describe('socket client runtime', () => {
     const admin = points.chatChannel.connect({ userId: 'kadm' })
     await waitFor(() => admin.status === 'open')
 
-    await points.adminKickHandler(admin).sendToServer({ me: 'user-kv' })
+    await points.adminKillHandler(admin).sendToServer({ me: 'user-kv' })
     await waitFor(() => victim.status === 'closed')
     // the membership follows its connection down
     await waitFor(() => membership.status === 'closed')
@@ -2022,7 +2024,7 @@ describe('socket client runtime', () => {
     victim.disconnect()
   })
 
-  it('a DECLARATIVE kicked connection auto-revives through the reconnect policy and replays the join', async () => {
+  it('a DECLARATIVE killed connection auto-revives through the reconnect policy and replays the join', async () => {
     // the use-hook path without React: connectToChannel/joinSpace with the declarative flag is exactly what
     // useConnection/useMembership call — "stay connected while mounted"
     const victim = connectToChannel(points.chatChannel.point as never, { userId: 'akv' }, undefined, {
@@ -2042,7 +2044,7 @@ describe('socket client runtime', () => {
     const admin = points.chatChannel.connect({ userId: 'akadm' })
     await waitFor(() => admin.status === 'open')
 
-    await points.adminKickHandler(admin).sendToServer({ me: 'user-akv' })
+    await points.adminKillHandler(admin).sendToServer({ me: 'user-akv' })
     // the kick interrupts, the declarative hold comes back on its own — a fresh cid, the join replayed
     await waitFor(() => victim.status === 'open' && victim.id !== firstCid)
     await waitFor(() => membership.status === 'joined')
@@ -2056,7 +2058,7 @@ describe('socket client runtime', () => {
     await waitFor(() => victim.status === 'closed')
   })
 
-  it('a kick landing while a join is IN FLIGHT closes the membership cleanly — no dangling joining, no crash', async () => {
+  it('a kill landing while a join is IN FLIGHT closes the membership cleanly — no dangling joining, no crash', async () => {
     const connection = points.chatChannel.connect({ userId: 'kj' })
     await waitFor(() => connection.status === 'open')
     const admin = points.chatChannel.connect({ userId: 'kj-adm' })
@@ -2064,7 +2066,7 @@ describe('socket client runtime', () => {
     // the slow joiner keeps the join in flight while the kick lands
     const membership = points.chatSpace.join({ chatId: 'slow-kj' }, undefined, { userId: 'kj' })
     expect(membership.status).toBe('joining')
-    await points.adminKickHandler(admin).sendToServer({ me: 'user-kj' })
+    await points.adminKillHandler(admin).sendToServer({ me: 'user-kj' })
     // the connection dies mid-join; the IMPERATIVE membership follows it down — never stuck in 'joining'
     await waitFor(() => membership.status === 'closed')
     expect(connection.status).toBe('closed')
@@ -2174,26 +2176,22 @@ describe('socket client runtime', () => {
     admin.disconnect()
   })
 
-  it('membership lifecycle: onEnter on EVERY landed join — index 0 first, 1 on the replay — onLeave on close', async () => {
+  it('room lifecycle: onEnter on the ACTUAL entry only — a refresh replay of the same room is continuity — onLeave names the voluntary exit', async () => {
     const events: string[] = []
+    const onEnter = ({ rooms, reason }: { rooms: Array<{ chatId: string }>; reason: string }) =>
+      events.push(`enter:${reason}:${rooms.map((room) => room.chatId).join()}`)
+    const onLeave = ({ rooms, reason }: { rooms: Array<{ chatId: string }>; reason: string }) =>
+      events.push(`leave:${reason}:${rooms.map((room) => room.chatId).join()}`)
     const connection = points.chatChannel.connect({ userId: 'lc' })
     await waitFor(() => connection.status === 'open')
     expect(connection.connectionIndex).toBe(1)
-    const membership = points.chatSpace.join(
-      { chatId: 'lc' },
-      {
-        linger: 0,
-        onEnter: ({ membershipIndex }: { membershipIndex: number }) => events.push('enter:' + membershipIndex),
-        onLeave: ({ membershipIndex }: { membershipIndex: number }) => events.push('leave:' + membershipIndex),
-      },
-      { userId: 'lc' },
-    )
+    const membership = points.chatSpace.join({ chatId: 'lc' }, { linger: 0, onEnter, onLeave }, { userId: 'lc' })
     await waitFor(() => membership.status === 'joined')
-    expect(events).toEqual(['enter:0'])
+    expect(events).toEqual(['enter:join:lc'])
     expect(membership.membershipIndex).toBe(1)
 
-    // a SECOND hold of the same membership with its own callbacks — released BEFORE the replay: its callbacks must
-    // NOT fire afterwards (a released holder's component unmounted, its closures are stale)
+    // a SECOND hold of the same membership — the room is already entered, nothing fires; released BEFORE the replay,
+    // its callbacks must not fire afterwards either (a released holder's component unmounted, its closures are stale)
     const staleEvents: string[] = []
     const secondHold = points.chatSpace.join(
       { chatId: 'lc' },
@@ -2201,25 +2199,129 @@ describe('socket client runtime', () => {
       { userId: 'lc' },
     )
     await waitFor(() => secondHold.status === 'joined')
+    expect(events).toEqual(['enter:join:lc'])
     secondHold.leave() // released — the membership itself lives on (the first hold keeps it)
 
-    // a server refresh re-runs the connect and replays the join — the replayed join fires onEnter with index 1
+    // a server refresh re-runs the connect and replays the join — the SAME room comes back, so the room lifecycle
+    // stays silent (nothing was actually left or entered; the facade counters still tick)
     const admin = points.chatChannel.connect({ userId: 'lcadm' })
     await waitFor(() => admin.status === 'open')
     await points.adminRefreshHandler(admin).sendToServer({ me: 'user-lc' })
-    await waitFor(() => events.includes('enter:1'))
-    expect(membership.membershipIndex).toBe(2)
-    expect(connection.connectionIndex).toBe(2)
+    await waitFor(() => connection.connectionIndex === 2 && membership.membershipIndex === 2)
+    expect(events).toEqual(['enter:join:lc'])
     // the released second holder saw nothing
     expect(staleEvents).toEqual([])
 
+    // the last hold released — the connection actually leaves the room, and the leaver still hears it
     membership.leave()
     await waitFor(() => events.some((event) => event.startsWith('leave:')))
-    expect(events).toEqual(['enter:0', 'enter:1', 'leave:2'])
-    // the final leaver got its onLeave (through lastReleasedHold); the earlier-released holder still saw nothing
+    expect(events).toEqual(['enter:join:lc', 'leave:leave:lc'])
     expect(staleEvents).toEqual([])
     connection.disconnect()
     admin.disconnect()
+  })
+
+  it('room lifecycle causes: a kick fires onLeave `kick`, a kill fires onLeave `kill` + onDisconnect `kill`', async () => {
+    const roomEvents: string[] = []
+    const connectionEvents: string[] = []
+    const connection = points.chatChannel.connect(
+      { userId: 'rlc' },
+      { onDisconnect: ({ reason }: { reason: string }) => void connectionEvents.push('disconnect:' + reason) },
+    )
+    await waitFor(() => connection.status === 'open')
+    const membership = points.chatSpace.join(
+      { chatId: 'rlc-room' },
+      {
+        onEnter: ({ rooms, reason }: { rooms: Array<{ chatId: string }>; reason: string }) =>
+          void roomEvents.push(`enter:${reason}:${rooms.map((room) => room.chatId).join()}`),
+        onLeave: ({ rooms, reason }: { rooms: Array<{ chatId: string }>; reason: string }) =>
+          void roomEvents.push(`leave:${reason}:${rooms.map((room) => room.chatId).join()}`),
+      },
+      { userId: 'rlc' },
+    )
+    await waitFor(() => membership.status === 'joined')
+    expect(roomEvents).toEqual(['enter:join:rlc-room'])
+    const admin = points.chatChannel.connect({ userId: 'rlc-adm' })
+    await waitFor(() => admin.status === 'open')
+
+    // the kick revokes the room — the call-site callback hears it with the cause
+    await points.adminSpaceKickHandler(admin).sendToServer({ chatId: 'rlc-room' })
+    await waitFor(() => roomEvents.includes('leave:kick:rlc-room'))
+    // the SECOND room is untouched by the kick — it leaves only with the kill below
+    const secondMembership = points.chatSpace.join(
+      { chatId: 'rlc-second' },
+      {
+        onEnter: ({ rooms, reason }: { rooms: Array<{ chatId: string }>; reason: string }) =>
+          void roomEvents.push(`enter:${reason}:${rooms.map((room) => room.chatId).join()}`),
+        onLeave: ({ rooms, reason }: { rooms: Array<{ chatId: string }>; reason: string }) =>
+          void roomEvents.push(`leave:${reason}:${rooms.map((room) => room.chatId).join()}`),
+      },
+      { userId: 'rlc' },
+    )
+    await waitFor(() => roomEvents.includes('enter:join:rlc-second'))
+
+    // the kill closes the whole connection: the surviving room leaves with reason 'kill', the connection disconnects
+    await points.adminKillHandler(admin).sendToServer({ me: 'user-rlc' })
+    await waitFor(() => roomEvents.includes('leave:kill:rlc-second'))
+    await waitFor(() => connectionEvents.includes('disconnect:kill'))
+    // the kicked room did NOT re-leave with the kill — it was already out
+    expect(roomEvents.filter((event) => event.startsWith('leave:')).sort()).toEqual([
+      'leave:kick:rlc-room',
+      'leave:kill:rlc-second',
+    ])
+    secondMembership.leave()
+    membership.leave()
+    admin.disconnect()
+    connection.disconnect()
+  })
+
+  it('an enrollment ENTERS with reason `enroll` (the client events carry it), and rooms() reports the provenance', async () => {
+    const events = recordSocketEvents()
+    const connection = points.chatChannel.connect({ userId: 'prov' })
+    await waitFor(() => connection.status === 'open')
+    const admin = points.chatChannel.connect({ userId: 'prov-adm' })
+    await waitFor(() => admin.status === 'open')
+    try {
+      // the enroller-born personal room ENTERS at connect — the event names the cause
+      await waitFor(() =>
+        events.some(
+          (event) =>
+            event.name === 'pointSpaceEnterClient' &&
+            event.data.reason === 'enroll' &&
+            (event.data.point as { name?: string }).name === 'userSpace',
+        ),
+      )
+      // one room entered BOTH ways: a join plus an imperative enroll of the same room, and one enroll-only room
+      const membership = points.chatSpace.join({ chatId: 'pv-shared' }, undefined, { userId: 'prov' })
+      await waitFor(() => membership.status === 'joined')
+      await points.adminEnrollHandler(admin).sendToServer({ me: 'user-prov', chatIds: ['pv-shared', 'pv-only'] })
+      const enrollEnters = () =>
+        events.filter(
+          (event) =>
+            event.name === 'pointSpaceEnterClient' &&
+            event.data.reason === 'enroll' &&
+            (event.data.point as { name?: string }).name === 'chatSpace',
+        )
+      // only the enroll-ONLY room enters (the shared one is already live — no double entry)
+      await waitFor(() => enrollEnters().length === 1)
+      expect((enrollEnters()[0].data.rooms as Array<{ chatId: string }>).map((room) => room.chatId)).toEqual([
+        'pv-only',
+      ])
+      // the per-room client floor carries the provenance
+      const rooms = points.chatSpace.memberships.client.rooms() as Array<{
+        room: { chatId: string }
+        joined: boolean
+        enrolled: boolean
+      }>
+      const byId = new Map(rooms.map((entry) => [entry.room.chatId, entry]))
+      expect(byId.get('pv-shared')).toEqual({ room: { chatId: 'pv-shared' }, joined: true, enrolled: true })
+      expect(byId.get('pv-only')).toEqual({ room: { chatId: 'pv-only' }, joined: false, enrolled: true })
+      membership.leave()
+    } finally {
+      stopRecordingSocketEvents()
+      admin.disconnect()
+      connection.disconnect()
+    }
   })
 
   it('a server refresh re-runs the connect with a new cid and the client REPLAYS its joins automatically', async () => {
@@ -2273,7 +2375,7 @@ describe('socket client runtime', () => {
     connection.disconnect()
   })
 
-  it('connection lifecycle: onConnect on EVERY landed claim — index 0, then 1 on a refresh (no onDisconnect) — a kick fires onDisconnect', async () => {
+  it('connection lifecycle: onConnect on EVERY landed claim — index 0, then 1 on a refresh (no onDisconnect) — a kill fires onDisconnect', async () => {
     const events: string[] = []
     const record =
       (name: string) =>
@@ -2306,7 +2408,7 @@ describe('socket client runtime', () => {
     expect(connection.connectionIndex).toBe(2)
 
     // a kick DOES drop the connection — onDisconnect, with the two claims it had behind it
-    await points.adminKickHandler(admin).sendToServer({ me: 'user-lifec' })
+    await points.adminKillHandler(admin).sendToServer({ me: 'user-lifec' })
     await waitFor(() => connection.status === 'closed')
     await waitFor(() => events.length === 3)
     await new Promise((resolve) => setTimeout(resolve, 300))
@@ -2327,7 +2429,7 @@ describe('socket client runtime', () => {
     expect(Date.now() - startedAt).toBeLessThan(700)
   })
 
-  it('iterateMessagesFromServer PARKS through a kick and resumes on the auto-revive; the release ends it', async () => {
+  it('iterateMessagesFromServer PARKS through a kill and resumes on the auto-revive; the release ends it', async () => {
     // a DECLARATIVE hold: the kick only interrupts — the reconnect policy brings the connection back on its own, so
     // the loop must not treat the transient close as the end of the feed
     const victim = connectToChannel(points.chatChannel.point as never, { userId: 'iterkick' }, undefined, {
@@ -2351,7 +2453,7 @@ describe('socket client runtime', () => {
     await points.startTicksHandler(victim).sendToServer({ count: 1 })
     await waitFor(() => ticks.length === 1)
 
-    await points.adminKickHandler(admin).sendToServer({ me: 'user-iterkick' })
+    await points.adminKillHandler(admin).sendToServer({ me: 'user-iterkick' })
     await waitFor(() => victim.status === 'open' && victim.id !== firstCid)
     expect(ended).toBe(false)
 

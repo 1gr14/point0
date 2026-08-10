@@ -465,8 +465,8 @@ export type EventerEventPointChannelCloseServer = EventerEvent<
     point: AnyNiceReadyPoint
     connectionId: string
     identity: unknown
-    /** what closed it: the client (`close`), the socket dying (`socket`), or a server-side kick (`kick`) */
-    reason: 'close' | 'socket' | 'kick'
+    /** what closed it: the client (`close`), the socket dying (`socket`), or a server-side `kill` */
+    reason: 'close' | 'socket' | 'kill'
   }
 >
 /**
@@ -898,9 +898,42 @@ export type EventerEventPointSpaceJoinClientError<TError extends ErrorPoint0> = 
   }
 >
 
+// pointSpaceEnterClient / pointSpaceLeaveClient — the CLIENT's room-state pair, the client mirror of the server's
+// join/leave state events: fired when the connection ACTUALLY enters or leaves rooms of a space, whatever the cause
+// (the `onEnter`/`onLeave` callbacks ride the same machinery; these are their app-wide `.on()` twins).
+export type EventerEventPointSpaceEnterClient = EventerEvent<
+  'client',
+  'pointSpaceEnterClient',
+  {
+    point: AnyNiceReadyPoint
+    connectionId: string | undefined
+    /** the rooms that ENTERED in this change (parsed) */
+    rooms: unknown[]
+    /** what put the connection into them: a landed join, a server enrollment, or a resume restore */
+    reason: 'join' | 'enroll' | 'resume'
+    resumed: boolean
+    gapless: boolean
+  }
+>
+export type EventerEventPointSpaceLeaveClient = EventerEvent<
+  'client',
+  'pointSpaceLeaveClient',
+  {
+    point: AnyNiceReadyPoint
+    connectionId: string | undefined
+    /** the rooms that LEFT in this change (parsed) */
+    rooms: unknown[]
+    /**
+     * why: the client's own `leave()`, a `space.kick`, a server `kill`, the socket dying, the connection closing, or a
+     * re-judged grant dropping rooms (`refresh`)
+     */
+    reason: 'leave' | 'kick' | 'kill' | 'socket' | 'close' | 'refresh'
+  }
+>
+
 // pointSpaceLeaveServer — a membership leaving its rooms. Server-only, single event (a state transition): the client
-// released its last hold (`leave`), the socket died (`socket`), a room was closed by a kick (`kick`), or the
-// connection itself closed (`close`).
+// released its last hold (`leave`), the socket died (`socket`), a room was closed by a kick (`kick`), the whole
+// connection was killed server-side (`kill`), or the connection itself closed (`close`).
 export type EventerEventPointSpaceLeaveServer = EventerEvent<
   'server',
   'pointSpaceLeaveServer',
@@ -911,10 +944,10 @@ export type EventerEventPointSpaceLeaveServer = EventerEvent<
     /** the rooms that LEFT in this change (parsed) — not the rooms the connection still holds */
     rooms: unknown[]
     /**
-     * what took them out: the client's `leave` frame, the socket dying, a `space.kick`/`channel.kick`, or the
-     * connection itself closing
+     * what took them out: the client's `leave` frame, the socket dying, a `space.kick` (the room revocation), a
+     * server-side `kill` (the whole connection closed), or the connection itself closing
      */
-    reason: 'leave' | 'socket' | 'kick' | 'close'
+    reason: 'leave' | 'socket' | 'kick' | 'kill' | 'close'
   }
 >
 
@@ -1390,6 +1423,8 @@ export type AnyEventerEvent<TError extends ErrorPoint0> =
   | EventerEventPointSpaceJoinClientSettled<TError>
   | EventerEventPointSpaceJoinClientSuccess
   | EventerEventPointSpaceJoinClientError<TError>
+  | EventerEventPointSpaceEnterClient
+  | EventerEventPointSpaceLeaveClient
   | EventerEventPointSpaceLeaveServer
   | EventerEventSocketServerUpgrade
   | EventerEventSocketServerConnect

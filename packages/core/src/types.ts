@@ -5358,7 +5358,7 @@ export type NiceChannelReadyPoint<
   | 'getConnection'
   | 'getConnectionOrUndefined'
   | 'Connection'
-  | 'kick'
+  | 'kill'
   | 'refresh'
   | 'amendIdentity'
   | 'connections'
@@ -5366,8 +5366,9 @@ export type NiceChannelReadyPoint<
 >
 
 // The space ready surface — `join` / `useMembership` / `<Membership>` / `getMembership(OrUndefined)` (client),
-// `kick` / `enroll` / `memberships.*` (server admin), and `lets` (grows handlers). It carries the four trailing slots
-// forward to its handlers and `Infer`. No endpoint (space runs over the socket), so no `route`.
+// `kick` / `kill` / `refresh` / `amendIdentity` / `enroll` / `memberships.*` (server admin), and `lets` (grows
+// handlers). It carries the four trailing slots forward to its handlers and `Infer`. No endpoint (space runs over the
+// socket), so no `route`.
 export type NiceSpaceReadyPoint<
   TPointType extends 'space',
   TLetsReadyPointType extends UndefinedReadyPointType,
@@ -5437,6 +5438,9 @@ export type NiceSpaceReadyPoint<
   | 'getMembershipOrUndefined'
   | 'Membership'
   | 'kick'
+  | 'kill'
+  | 'refresh'
+  | 'amendIdentity'
   | 'enroll'
   | 'memberships'
   | 'Infer'
@@ -7254,8 +7258,9 @@ export type ClientSpaceMembership<
   membershipIndex: number
   /**
    * release this hold; the real membership leaves when the last hold is gone (after `linger`). On an ENROLLED
-   * membership (nothing holds it) it leaves right away — the rooms drop server-side and the next connection setup
-   * re-runs the `.enroller`
+   * membership it warns and does nothing — an enrollment is the server's GUARANTEE that this connection sits in these
+   * rooms, and only the server ends it: `space.kick` (revocation), a `refresh` (the enroller re-judges), or the
+   * connection closing
    */
   leave: () => void
 }
@@ -7563,13 +7568,26 @@ export type ChannelConnectionEventProps<TConnection = AnyClientChannelConnection
    */
   resumed: boolean
   /**
-   * provably nothing was missed ON THE CHANNEL LEVEL — the channel-wide and connection-addressed pushes (each
-   * membership's `onEnter` carries its own rooms' verdict): `true` on the first entry (there was nothing to miss) and
-   * on a resume whose channel-level streams replayed without a hole; `false` on every other re-entry. The catch-up
+   * provably nothing was missed ON THE CHANNEL LEVEL — the channel-wide and connection-addressed pushes (the room
+   * `onEnter` events carry their own rooms' verdicts): `true` on the first entry (there was nothing to miss) and on a
+   * resume whose channel-level streams replayed without a hole; `false` on every other re-entry. The catch-up
    * condition: `if (!gapless) refetch()`.
    */
   gapless: boolean
 }
+/** What `onDisconnect` receives — the connection that lost liveness, and why. */
+export type ChannelDisconnectEventProps<TConnection = AnyClientChannelConnection> = {
+  connection: TConnection
+  point: AnyNiceReadyPoint
+  /** how many successful connects this connection had — the pair counter for the `onConnect` that preceded this */
+  connectionIndex: number
+  /**
+   * why liveness was lost: the socket died (`socket`), the server killed the connection (`kill`), or the connection
+   * closed on the client's own initiative (`close`)
+   */
+  reason: 'socket' | 'kill' | 'close'
+}
+
 /** What `onError` receives — the failing connection plus the typed error (no entry markers: nothing was entered). */
 export type ChannelConnectionErrorEventProps<
   TConnection = AnyClientChannelConnection,
@@ -7586,24 +7604,45 @@ export type ChannelConnectionErrorEventProps<
   gapless: boolean
 }
 
-/** What the membership lifecycle callbacks (`onEnter` / `onLeave`) receive. */
-export type SpaceMembershipEventProps<TMembership = AnyClientSpaceMembership> = {
-  membership: TMembership
+/**
+ * What `onEnter` receives — the rooms this change actually put the connection into (the wire batches them, so `rooms`
+ * is an array; usually it holds one). `reason` names the cause: a landed client `join`, a server `enroll` (the
+ * `.enroller` at connection setup or a mid-life `space.enroll`), or a `resume` restoring the rooms after a socket
+ * blip.
+ */
+export type SpaceRoomsEnterEventProps<TRoom = UnknownData | EmptyObject> = {
   point: AnyNiceReadyPoint
-  /** how many successful joins this membership had BEFORE this one — `0` on the first, `> 0` = a re-enter */
-  membershipIndex: number
-  /**
-   * this entry rode the RESUME path — the joiner was SKIPPED and the rooms were restored from the connection passport;
-   * `false` = a real join ran. Always `false` on a non-resumable channel (and for a `resumable: false` space, whose
-   * rooms a resume never restores — the client re-joins them itself).
-   */
+  /** the connection that entered the rooms */
+  connection: AnyClientChannelConnection
+  /** the rooms that ENTERED in this change (parsed) */
+  rooms: TRoom[]
+  reason: 'join' | 'enroll' | 'resume'
+  /** the rooms came back through the RESUME path — nothing re-ran, the server restored them in place */
   resumed: boolean
   /**
-   * provably nothing was missed BY THIS MEMBERSHIP — its rooms' and its space-wide streams: `true` on the first enter,
-   * and on a resume that replayed them without a hole; `false` on every other re-entry (a gap in ANOTHER room never
-   * flips this one's bit). The room-scoped catch-up condition: `if (!gapless) refetch()`.
+   * provably nothing was missed IN THESE ROOMS — `true` on their very first entry (there was nothing to miss yet) and
+   * on a resume whose room streams replayed without a hole; `false` on every other (re-)entry. The room-scoped catch-up
+   * condition: `if (!gapless) refetch()`.
    */
   gapless: boolean
+}
+
+/**
+ * Why rooms left: the client's own `leave()` released them (`leave`), a `space.kick` revoked them (`kick`), the whole
+ * connection was killed server-side (`kill`), the socket died (`socket`), the connection itself closed (`close`), or a
+ * re-judged grant no longer includes them — a `refresh` re-ran the joiner/enroller, or a repeat join landed fewer rooms
+ * (`refresh`).
+ */
+export type SpaceRoomsLeaveReason = 'leave' | 'kick' | 'kill' | 'socket' | 'close' | 'refresh'
+
+/** What `onLeave` receives — the rooms this change actually took the connection out of, and why. */
+export type SpaceRoomsLeaveEventProps<TRoom = UnknownData | EmptyObject> = {
+  point: AnyNiceReadyPoint
+  /** the connection that left the rooms */
+  connection: AnyClientChannelConnection
+  /** the rooms that LEFT in this change (parsed) */
+  rooms: TRoom[]
+  reason: SpaceRoomsLeaveReason
 }
 
 /**
@@ -7669,13 +7708,19 @@ export type ChannelOptionsClientOnly<
    * Runs on the client on EVERY successful connect — the first and every re-connect after a break; the props'
    * `connectionIndex` tells the first (`0`) from a repeat (`> 0`), and `resumed`/`gapless` carry the
    * [resumable-connection](socket#resumable-connections) entry markers (`gapless` speaks for the CHANNEL-LEVEL streams
-   * — channel-wide pushes and connection-addressed ones; each membership's `onEnter` carries its own rooms' verdict) —
+   * — channel-wide pushes and connection-addressed ones; the room `onEnter` events carry their own rooms' verdicts) —
    * the channel-wide catch-up is one condition, `if (!gapless) refetch()`. Client code; cut from the SERVER bundle with
    * its imports.
    */
   onConnect?: (props: ChannelConnectionEventProps<TConnection>) => void | Promise<void>
-  /** Runs on the client when the connection closes. Client code; cut from the SERVER bundle with its imports. */
-  onDisconnect?: (props: ChannelConnectionEventProps<TConnection>) => void | Promise<void>
+  /**
+   * Runs on the client on EVERY loss of the connection's liveness, with the cause in `reason`: the socket died
+   * (`socket` — the reconnect/resume machinery is already working on the comeback), the server killed the connection
+   * (`kill`), or the connection closed on the client's own initiative (`close` — a released hold, `disconnectAll`). A
+   * `refresh` fires nothing here — the socket stays up and nothing is lost. Client code; cut from the SERVER bundle
+   * with its imports.
+   */
+  onDisconnect?: (props: ChannelDisconnectEventProps<TConnection>) => void | Promise<void>
   /** Runs on the client when a connect fails. Client code; cut from the SERVER bundle with its imports. */
   onError?: (props: ChannelConnectionErrorEventProps<TConnection, TError>) => void | Promise<void>
 }
@@ -7773,7 +7818,7 @@ export type ChannelOptionsDeclarationOnly = {
    * restores the connection — identity, rooms, subscriptions — without re-running the connector, the joiners or the
    * enrollers (`onConnect`/`onEnter` fire with `resumed: true`). The restore window is `connectionTtl` — the same
    * record the ping renews is the resume passport (its per-space rooms and the HASH of the resume key ride it). A
-   * server `refresh`, a kick and a voluntary close all bypass/void the resume — revocation is never resumable. Default
+   * server `refresh`, a kill and a voluntary close all bypass/void the resume — revocation is never resumable. Default
    * `false`.
    *
    * Read by both sides (the client keeps the key and sends the resume, the server verifies and restores); kept on both
@@ -8146,7 +8191,7 @@ export type IdentityMatcher<TIdentity> = ([keyof TIdentity & string] extends [ne
 }
 
 /**
- * The target of `channel.kick` / `.refresh` / `.amendIdentity` / the `connections.*` enumerations — parts combine with
+ * The target of `channel.kill` / `.refresh` / `.amendIdentity` / the `connections.*` enumerations — parts combine with
  * AND, a bare call means every connection of the channel. The `$`-rule: a bare key is an exact address (`connectionId`
  * — an O(1) lookup), a `$`-key is a Mongo-style selection evaluated by sift (a scan over the live entries). The matcher
  * travels the backplane bus transformer-serialized, each process evaluates it against the parsed identity it holds — so
@@ -8160,12 +8205,13 @@ export type ChannelAdminTarget<TIdentity = UnknownData | EmptyObject> = {
 }
 
 /**
- * The target of `space.kick` / `space.enroll` / the `memberships.*` enumerations — parts combine with AND, a bare call
- * means every membership of the space (except `enroll`, where a target with NO room parts selects among ALL connections
- * of the channel — you are enrolling them into their first room). The `$`-rule: `room` is an exact room snapshot (or an
- * array of them) — full-object equality, the topic/index address; `$room` is a Mongo-style selection over rooms — a
- * flat `$room: { chatId: '5' }` reads as SUBSET semantics (every room whose `chatId` is `'5'`, whatever its other
- * fields), which is why the two are different keys: an exact address and a selection are different operations.
+ * The target of the space-side admin surface — `space.kick` / `space.kill` / `space.refresh` / `space.amendIdentity` /
+ * `space.enroll` / the `memberships.*` enumerations. Parts combine with AND, a bare call means every membership of the
+ * space (except `enroll`, where a target with NO room parts selects among ALL connections of the channel — you are
+ * enrolling them into their first room). The `$`-rule: `room` is an exact room snapshot (or an array of them) —
+ * full-object equality, the topic/index address; `$room` is a Mongo-style selection over rooms — a flat `$room: {
+ * chatId: '5' }` reads as SUBSET semantics (every room whose `chatId` is `'5'`, whatever its other fields), which is
+ * why the two are different keys: an exact address and a selection are different operations.
  */
 export type SpaceAdminTarget<TRoom = UnknownData | EmptyObject, TIdentity = UnknownData | EmptyObject> = {
   /** exact room snapshot(s) — full-object equality, the hot address */
@@ -8299,7 +8345,7 @@ export type SpaceMembershipsEnumeration<
   /** the server floor — cluster reads over the bus, plus the synchronous `local` sub-floor */
   server: ServerSpaceMembershipsEnumeration<TRoom, TIdentity>
   /** the client floor — this tab's live membership facades, synchronous (enrolled ones included) */
-  client: ClientSpaceMembershipsEnumeration<TMembership>
+  client: ClientSpaceMembershipsEnumeration<TMembership, TRoom>
 }
 
 /**
@@ -8367,11 +8413,28 @@ export type LocalSpaceMembershipsEnumeration<
  * Client-side — a runtime error on the server (nothing is ever joined there; the cluster picture is
  * `memberships.server.*`).
  */
-export type ClientSpaceMembershipsEnumeration<TMembership = AnyClientSpaceMembership> = {
+export type ClientSpaceMembershipsEnumeration<
+  TMembership = AnyClientSpaceMembership,
+  TRoom = UnknownData | EmptyObject,
+> = {
   /** how many live memberships of this space this client holds */
   count: () => number
   /** the live membership facades of this space on this client, enrolled ones included */
   list: () => TMembership[]
+  /**
+   * the per-ROOM view: every room the tab's live memberships cover, one entry per room, with its provenance — `joined`
+   * (a client join covers it) and `enrolled` (the server's enrollment covers it); both can be true at once
+   */
+  rooms: () => Array<SpaceClientRoom<TRoom>>
+}
+
+/** One room of `memberships.client.rooms()` — the room plus HOW the connection is in it. */
+export type SpaceClientRoom<TRoom = UnknownData | EmptyObject> = {
+  room: TRoom
+  /** a client join covers this room */
+  joined: boolean
+  /** the server's enrollment covers this room — the part no client action can shed */
+  enrolled: boolean
 }
 
 /** One collected `.clientReply` answer — what the `replies` iterable/array/`onReply` hand out per client. */
@@ -8627,9 +8690,12 @@ export type EnrollerProps<TIdentity = UnknownData | EmptyObject> = {
  * A space's `.enroller`: which rooms the server puts a fresh connection into WITHOUT the client joining — the hot
  * personal-push room (`({ identity }) => ({ userId: identity.userId })`). Returns one room snapshot, an array, or
  * `undefined`/nothing (enroll into nothing) — checked against the opener-declared `TRoom`, extra keys included, like
- * `.joiner`. Runs on every connection setup of the space's channel; the client learns its enrollments from the connect
- * confirmation and holds them without holds — they live with the connection, and a client `leave()` drops their rooms
- * until the next connection setup runs this callback again (a permanent opt-out is data the enroller reads).
+ * `.joiner`. Runs on every connection setup of the space's channel BEFORE the connect confirms — so an open connection
+ * provably sits in its enroller's rooms; the client learns its enrollments from the connect confirmation and holds them
+ * without holds. An enrollment is the server's GUARANTEE: the client cannot leave it (`leave()` warns and does nothing,
+ * and the wire enforces the same), a [resume](socket#resumable-connections) restores it, and it ends only on the
+ * server's initiative — `space.kick`, a `refresh` re-running this callback (a permanent opt-out is data the enroller
+ * reads), or the connection closing.
  */
 export type EnrollerFn<
   TIdentity = UnknownData | EmptyObject,
@@ -8712,7 +8778,7 @@ export type SpaceAfterJoinerEventProps<
  * The CLIENT side of the space options — read by the client's membership runtime, so the join call sites
  * (`useMembership` / `join` / `<space.Membership>`) may override them per call.
  */
-export type SpaceOptionsClientOnly<TMembership = AnyClientSpaceMembership> = {
+export type SpaceOptionsClientOnly<TRoom = UnknownData | EmptyObject> = {
   /**
    * ms a membership outlives its last hold (survives route transitions); default `1000` — the membership twin of the
    * channel `linger`. Overridable per call site. Read by the client; rides the `client` group, cut from the SERVER
@@ -8720,20 +8786,23 @@ export type SpaceOptionsClientOnly<TMembership = AnyClientSpaceMembership> = {
    */
   linger?: number
   /**
-   * Runs on the client on EVERY landed join — the first and every replay (a reconnect, a space-kick comeback, a
-   * [resume](socket#resumable-connections)); the props' `membershipIndex` tells the first (`0`) from a repeat (`> 0`),
-   * and `resumed`/`gapless` carry the entry markers. The room-scoped catch-up is one condition: `if (!gapless)
-   * refetch()` — a resume whose buffer covered the gap proves the refetch redundant. Client code; cut from the SERVER
-   * bundle with its imports.
+   * Runs on the client when the connection ACTUALLY ENTERS rooms of this space — whatever put it there: a landed
+   * `join`, a server enrollment (`.enroller` at connect, a mid-life `space.enroll`), or a
+   * [resume](socket#resumable-connections) restoring the rooms after a blip (`resumed: true`, with the honest per-room
+   * `gapless` verdict). A room already covered by another live membership of the same connection does not re-enter —
+   * the callback reports real state changes, not join bookkeeping. On the point it hears every room of the space; at a
+   * call site (`useMembership` / `join` / `<Membership>`) only the rooms of that membership. The room-scoped catch-up
+   * is one condition: `if (!gapless) refetch()`. Client code; cut from the SERVER bundle with its imports.
    */
-  onEnter?: (props: SpaceMembershipEventProps<TMembership>) => void | Promise<void>
+  onEnter?: (props: SpaceRoomsEnterEventProps<TRoom>) => void | Promise<void>
   /**
-   * Runs on the client when a previously-joined membership closes (a `leave()`, the connection dying, a kick). An
-   * ENROLLED membership has no lifecycle of its own — no `onEnter` ever fired for it, and its connection dying stays
-   * silent — with one exception: an explicit `leave()` on it fires this, like any voluntary leave. Client code; cut
-   * from the SERVER bundle with its imports.
+   * The exit twin: runs when the connection ACTUALLY LEAVES rooms of this space, with the cause in `reason` — the
+   * client's own `leave()`, a `space.kick`, a server `kill`, the socket dying, the connection closing, or a re-judged
+   * grant dropping rooms (`refresh`). A room still covered by another live membership of the same connection has not
+   * left — nothing fires for it. Same scoping as `onEnter`: point-level hears every room, a call site its membership's
+   * rooms. Client code; cut from the SERVER bundle with its imports.
    */
-  onLeave?: (props: SpaceMembershipEventProps<TMembership>) => void | Promise<void>
+  onLeave?: (props: SpaceRoomsLeaveEventProps<TRoom>) => void | Promise<void>
 }
 
 /**
@@ -8810,12 +8879,11 @@ export type SpacePointOptions<
   TInput = unknown,
   TIdentity extends UnknownData | EmptyObject | UndefinedIdentity = any,
   TRoom extends UnknownData | EmptyObject | UndefinedRoom = any,
-  TMembership = AnyClientSpaceMembership,
 > = SpaceOptionsDeclarationOnly & {
   /** Server-read space options — the room cap and the join guards. Dropped WHOLE from the client bundle. */
   server?: SpaceOptionsServerOnly<TInput, TIdentity, TRoom>
-  /** Client-read space options — the membership linger and lifecycle. Dropped WHOLE from the server bundle. */
-  client?: SpaceOptionsClientOnly<TMembership>
+  /** Client-read space options — the membership linger and the room lifecycle. Dropped WHOLE from the server bundle. */
+  client?: SpaceOptionsClientOnly<TRoom>
 }
 
 /** The RESOLVED space options — the groups flattened, defaults → chain → closer → call site. Internal shape. */
@@ -8840,7 +8908,7 @@ export type Gate = boolean | { loading?: boolean; error?: boolean }
  * Options for `space.useMembership` / `space.join` / `<space.Membership>` — the space's CLIENT side plus `enabled`
  * (gates joining, like a disabled query).
  */
-export type ExtraUseMembershipOptions<TMembership = AnyClientSpaceMembership> = SpaceOptionsClientOnly<TMembership> & {
+export type ExtraUseMembershipOptions<TRoom = UnknownData | EmptyObject> = SpaceOptionsClientOnly<TRoom> & {
   /** call-site only — join or not; default `true`. Read by the client. */
   enabled?: boolean
 }

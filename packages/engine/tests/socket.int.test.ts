@@ -97,6 +97,45 @@ export const adminCapEnrollHandler = chatChannel.lets('serverHandler', 'adminCap
   })
   .serverHandler()
 
+// presence of a capEnrollSpace room, straight off this process — the enroll-guarantee tests read it
+export const adminCapRoomHandler = chatChannel.lets('serverHandler', 'adminCapRoomHandler')
+  .clientSend(z.object({ slot: z.string() }))
+  .serverReply(({ input }) => ({
+    ids: capEnrollSpace.memberships.server.local
+      .list({ room: { slot: input.slot } })
+      .map((membership) => membership.connectionId),
+  }))
+  .serverHandler()
+
+// the space kick for capEnrollSpace — the departure an enrollment DOES have
+export const adminCapKickHandler = chatChannel.lets('serverHandler', 'adminCapKickHandler')
+  .clientSend(z.object({ slot: z.string() }))
+  .serverReply(async ({ input }) => {
+    await capEnrollSpace.kick({ room: { slot: input.slot } })
+    return { ok: true }
+  })
+  .serverHandler()
+
+// the room-addressed CONNECTION-level commands: a room belongs to connections, so refresh and disconnect take a room
+export const adminSpaceRefreshHandler = chatChannel.lets('serverHandler', 'adminSpaceRefreshHandler')
+  .clientSend(z.object({ chatId: z.string() }))
+  .serverReply(async ({ input }) => {
+    await chatSpace.refresh({ room: { chatId: input.chatId } })
+    return { ok: true }
+  })
+  .serverHandler()
+
+export const adminSpaceKillHandler = chatChannel.lets('serverHandler', 'adminSpaceKillHandler')
+  .clientSend(z.object({ chatId: z.string(), reason: z.string().optional() }))
+  .serverReply(async ({ input }) => {
+    await chatSpace.kill({
+      room: { chatId: input.chatId },
+      ...(input.reason === undefined ? {} : { reason: input.reason }),
+    })
+    return { ok: true }
+  })
+  .serverHandler()
+
 // a joiner that takes its time — the window in which the connection can die WHILE the join runs
 export const slowSpace = chatChannel.lets<{ chatId: string }>('space', 'slowSpace')
   .input(z.object({ chatId: z.string() }))
@@ -278,10 +317,10 @@ export const personalPushHandler = chatChannel.lets('serverHandler', 'personalPu
   .serverHandler()
 
 // the admin surface, driven from inside the app (that is how server-side code runs in these tests)
-export const adminKickHandler = chatChannel.lets('serverHandler', 'adminKickHandler')
+export const adminKillHandler = chatChannel.lets('serverHandler', 'adminKillHandler')
   .clientSend(z.object({ me: z.string().optional(), cid: z.string().optional(), reason: z.string().optional() }))
   .serverReply(async ({ input }) => {
-    await chatChannel.kick({
+    await chatChannel.kill({
       ...(input.me === undefined ? {} : { $identity: { me: input.me } }),
       ...(input.cid === undefined ? {} : { connectionId: input.cid }),
       ...(input.reason === undefined ? {} : { reason: input.reason }),
@@ -430,7 +469,7 @@ export const adminLocalHandler = chatChannel.lets('serverHandler', 'adminLocalHa
 export const adminWhereHandler = chatChannel.lets('serverHandler', 'adminWhereHandler')
   .serverReply(async () => {
     try {
-      await chatChannel.kick({ $identity: { $where: 'return true' } as never })
+      await chatChannel.kill({ $identity: { $where: 'return true' } as never })
       return { error: 'no-throw' }
     } catch (error) {
       return { error: (error as Error).message }
@@ -1483,7 +1522,7 @@ describe('socket', () => {
     }
   })
 
-  it('channel kick by identity matcher: the connection gets closed, stops receiving, others keep receiving', async () => {
+  it('channel kill by identity matcher: the connection gets closed, stops receiving, others keep receiving', async () => {
     const a = await openAndClaim(tp, 'ka')
     const b = await openAndClaim(tp, 'kb')
     const adm = await openAndClaim(tp, 'adm')
@@ -1494,7 +1533,7 @@ describe('socket', () => {
         t: 'send',
         id: 'k1',
         cid: adm.cid,
-        handler: 'adminKickHandler',
+        handler: 'adminKillHandler',
         input: JSON.stringify({ me: 'user-ka', reason: 'gone' }),
       })
       const closed = await a.wire.waitFrame((frame) => frame.t === 'closed')
@@ -1531,7 +1570,7 @@ describe('socket', () => {
     }
   })
 
-  it('channel kick by connectionId closes exactly that connection, not its identity twin', async () => {
+  it('channel kill by connectionId closes exactly that connection, not its identity twin', async () => {
     const x = await openAndClaim(tp, 'kc')
     const y = await openAndClaim(tp, 'kc') // the SAME identity — proves the cid part targets, not the identity
     const adm = await openAndClaim(tp, 'kc-adm')
@@ -1540,7 +1579,7 @@ describe('socket', () => {
         t: 'send',
         id: 'kc1',
         cid: adm.cid,
-        handler: 'adminKickHandler',
+        handler: 'adminKillHandler',
         input: JSON.stringify({ cid: x.cid, reason: 'bye' }),
       })
       const closed = await x.wire.waitFrame((frame) => frame.t === 'closed')
@@ -2139,7 +2178,7 @@ describe('socket', () => {
     }
   })
 
-  it('emits pointChannelOpenServer on claim and pointChannelCloseServer with the reason (close / kick)', async () => {
+  it('emits pointChannelOpenServer on claim and pointChannelCloseServer with the reason (close / kill)', async () => {
     type LoggedEvent = { name: string; id: string; reason?: string; resumed?: boolean; identity: unknown }
     const reader = await openAndClaim(tp, 'ev-reader')
     const readEvents = async (id: string): Promise<LoggedEvent[]> => {
@@ -2178,22 +2217,22 @@ describe('socket', () => {
       })
       closer.wire.close()
 
-      // a kick emits pointChannelCloseServer with reason 'kick'
-      const kicked = await openAndClaim(tp, 'ev-kick')
+      // a kill emits pointChannelCloseServer with reason 'kill'
+      const killed = await openAndClaim(tp, 'ev-kill')
       reader.wire.send({
         t: 'send',
-        id: 'ev-kick-cmd',
+        id: 'ev-kill-cmd',
         cid: reader.cid,
-        handler: 'adminKickHandler',
-        input: JSON.stringify({ me: 'user-ev-kick' }),
+        handler: 'adminKillHandler',
+        input: JSON.stringify({ me: 'user-ev-kill' }),
       })
-      await kicked.wire.waitFrame((frame) => frame.t === 'closed')
-      events = await readEvents(kicked.cid)
+      await killed.wire.waitFrame((frame) => frame.t === 'closed')
+      events = await readEvents(killed.cid)
       expect(events.map((event) => [event.name, event.reason])).toEqual([
         ['pointChannelOpenServer', undefined],
-        ['pointChannelCloseServer', 'kick'],
+        ['pointChannelCloseServer', 'kill'],
       ])
-      kicked.wire.close()
+      killed.wire.close()
     } finally {
       reader.wire.close()
     }
@@ -2354,7 +2393,8 @@ describe('socket', () => {
       })
       const alive = await target.wire.waitFrame((frame) => frame.t === 'reply' && frame.id === 'ce3')
       expect((JSON.parse(alive.data as string) as { list: unknown[] }).list).toHaveLength(1)
-      // an enroll that FITS lands and announces the connection's FULL room set of the space
+      // an enroll that FITS lands and announces the connection's full ENROLLED set of the space — the joined room
+      // stays its own membership's business (provenance: announcements replace the enrolled membership's rooms)
       adm.wire.send({
         t: 'send',
         id: 'ce4',
@@ -2365,9 +2405,162 @@ describe('socket', () => {
       const enrolled = await target.wire.waitFrame(
         (frame) => frame.t === 'enrolled' && frame.space === 'capEnrollSpace',
       )
-      expect(enrolled.rooms).toEqual([JSON.stringify({ slot: 'j1' }), JSON.stringify({ slot: 'e1' })])
+      expect(enrolled.rooms).toEqual([JSON.stringify({ slot: 'e1' })])
     } finally {
       target.wire.close()
+      adm.wire.close()
+    }
+  })
+
+  it('a leave frame never drops an ENROLLED room — provenance guards the wire; a space kick still revokes', async () => {
+    const target = await openAndClaim(tp, 'prov')
+    const adm = await openAndClaim(tp, 'prov-adm')
+    const roomIds = async (slot: string, id: string): Promise<string[]> => {
+      adm.wire.send({ t: 'send', id, cid: adm.cid, handler: 'adminCapRoomHandler', input: JSON.stringify({ slot }) })
+      const reply = await adm.wire.waitFrame((frame) => frame.t === 'reply' && frame.id === id)
+      return (JSON.parse(reply.data as string) as { ids: string[] }).ids
+    }
+    try {
+      // one room entered BOTH ways (a join + an enrollment), one room enroll-only
+      target.wire.send({
+        t: 'join',
+        id: 'pv1',
+        cid: target.cid,
+        space: 'capEnrollSpace',
+        input: JSON.stringify({ slot: 'pv-shared' }),
+      })
+      await target.wire.waitFrame((frame) => frame.t === 'joined' && frame.id === 'pv1')
+      adm.wire.send({
+        t: 'send',
+        id: 'pv2',
+        cid: adm.cid,
+        handler: 'adminCapEnrollHandler',
+        input: JSON.stringify({ cid: target.cid, slots: ['pv-shared', 'pv-only'] }),
+      })
+      const enrolled = await target.wire.waitFrame(
+        (frame) => frame.t === 'enrolled' && frame.space === 'capEnrollSpace',
+      )
+      // the announcement is the ENROLLED set — the shared room included (it just gained the flag)
+      expect(enrolled.rooms).toEqual([JSON.stringify({ slot: 'pv-shared' }), JSON.stringify({ slot: 'pv-only' })])
+      // a hand-rolled leave naming BOTH rooms drops NEITHER — enrolled rooms are the server's guarantee, and no
+      // client frame sheds a guarantee (the shared room only loses its `joined` mark)
+      target.wire.send({
+        t: 'leave',
+        cid: target.cid,
+        space: 'capEnrollSpace',
+        rooms: [JSON.stringify({ slot: 'pv-shared' }), JSON.stringify({ slot: 'pv-only' })],
+      })
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      expect(await roomIds('pv-shared', 'pv3')).toContain(target.cid)
+      expect(await roomIds('pv-only', 'pv4')).toContain(target.cid)
+      // the revocation that works is the server's: the space kick drops the room and tells the client with a left
+      adm.wire.send({
+        t: 'send',
+        id: 'pv5',
+        cid: adm.cid,
+        handler: 'adminCapKickHandler',
+        input: JSON.stringify({ slot: 'pv-only' }),
+      })
+      const left = await target.wire.waitFrame((frame) => frame.t === 'left' && frame.space === 'capEnrollSpace')
+      expect(left.rooms).toEqual([JSON.stringify({ slot: 'pv-only' })])
+      expect(await roomIds('pv-only', 'pv6')).not.toContain(target.cid)
+      expect(await roomIds('pv-shared', 'pv7')).toContain(target.cid)
+    } finally {
+      target.wire.close()
+      adm.wire.close()
+    }
+  })
+
+  it('space.refresh addressed by room asks exactly the holders of the room to re-connect', async () => {
+    const inRoom = await openAndClaim(tp, 'rr-in')
+    const outRoom = await openAndClaim(tp, 'rr-out')
+    const adm = await openAndClaim(tp, 'rr-adm')
+    try {
+      inRoom.wire.send({
+        t: 'join',
+        id: 'rr1',
+        cid: inRoom.cid,
+        space: 'chatSpace',
+        input: JSON.stringify({ chatId: 'rr-room' }),
+      })
+      await inRoom.wire.waitFrame((frame) => frame.t === 'joined' && frame.id === 'rr1')
+      outRoom.wire.send({
+        t: 'join',
+        id: 'rr2',
+        cid: outRoom.cid,
+        space: 'chatSpace',
+        input: JSON.stringify({ chatId: 'rr-other' }),
+      })
+      await outRoom.wire.waitFrame((frame) => frame.t === 'joined' && frame.id === 'rr2')
+      adm.wire.send({
+        t: 'send',
+        id: 'rr3',
+        cid: adm.cid,
+        handler: 'adminSpaceRefreshHandler',
+        input: JSON.stringify({ chatId: 'rr-room' }),
+      })
+      await adm.wire.waitFrame((frame) => frame.t === 'reply' && frame.id === 'rr3')
+      const refresh = await inRoom.wire.waitFrame((frame) => frame.t === 'refresh')
+      expect(refresh.cid).toBe(inRoom.cid)
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      // the other room's holder (and the admin itself) heard nothing
+      expect(outRoom.wire.frames.some((frame) => frame.t === 'refresh')).toBe(false)
+      expect(adm.wire.frames.some((frame) => frame.t === 'refresh')).toBe(false)
+    } finally {
+      inRoom.wire.close()
+      outRoom.wire.close()
+      adm.wire.close()
+    }
+  })
+
+  it('space.kill addressed by room CLOSES the holders, reason carried; space.kick would only force a leave', async () => {
+    const inRoom = await openAndClaim(tp, 'rd-in')
+    const outRoom = await openAndClaim(tp, 'rd-out')
+    const adm = await openAndClaim(tp, 'rd-adm')
+    try {
+      inRoom.wire.send({
+        t: 'join',
+        id: 'rd1',
+        cid: inRoom.cid,
+        space: 'chatSpace',
+        input: JSON.stringify({ chatId: 'rd-room' }),
+      })
+      await inRoom.wire.waitFrame((frame) => frame.t === 'joined' && frame.id === 'rd1')
+      outRoom.wire.send({
+        t: 'join',
+        id: 'rd2',
+        cid: outRoom.cid,
+        space: 'chatSpace',
+        input: JSON.stringify({ chatId: 'rd-other' }),
+      })
+      await outRoom.wire.waitFrame((frame) => frame.t === 'joined' && frame.id === 'rd2')
+      adm.wire.send({
+        t: 'send',
+        id: 'rd3',
+        cid: adm.cid,
+        handler: 'adminSpaceKillHandler',
+        input: JSON.stringify({ chatId: 'rd-room', reason: 'room-closed' }),
+      })
+      await adm.wire.waitFrame((frame) => frame.t === 'reply' && frame.id === 'rd3')
+      // the whole CONNECTION closes — not a left: the closed frame lands, reason riding it
+      const closed = await inRoom.wire.waitFrame((frame) => frame.t === 'closed' && frame.cid === inRoom.cid)
+      expect(closed.reason).toBe('room-closed')
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      expect(inRoom.wire.frames.some((frame) => frame.t === 'left')).toBe(false)
+      // the other room's holder lives on and still answers
+      expect(outRoom.wire.frames.some((frame) => frame.t === 'closed')).toBe(false)
+      outRoom.wire.send({
+        t: 'send',
+        id: 'rd4',
+        cid: outRoom.cid,
+        handler: 'adminListHandler',
+        input: JSON.stringify({ me: 'user-rd-out' }),
+      })
+      const alive = await outRoom.wire.waitFrame((frame) => frame.t === 'reply' && frame.id === 'rd4')
+      expect((JSON.parse(alive.data as string) as { list: unknown[] }).list).toHaveLength(1)
+    } finally {
+      inRoom.wire.close()
+      outRoom.wire.close()
       adm.wire.close()
     }
   })
