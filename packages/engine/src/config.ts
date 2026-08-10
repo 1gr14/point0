@@ -622,7 +622,12 @@ export type EngineServerOptions<
   devEntries?: string | string[] | '*'
   /** Default watch glob for `point0 dev` when `--watch` is passed with no value. Default `[]`. */
   devWatchGlob?: string | string[]
-  /** Raw `Bun.serve` overrides (idleTimeout, tls, …), merged over the engine's own serve config. Default `null`. */
+  /**
+   * Raw `Bun.serve` overrides (idleTimeout, tls, …), merged over the engine's own serve config. Default `null`. The
+   * engine's own serve defaults sit under it: the top-level `idleTimeout` is 255 (Bun's maximum — Bun's own 10 s
+   * default would cut long-parked requests: streamed responses waiting for their first chunk, slow handlers, long
+   * polls), and the `websocket` settings default as documented on {@link EngineSocketServerOptions}.
+   */
   bunServeConfig?: Partial<Serve.Options<any, any>>
   /**
    * The socket backplane (`Backplane`: KV with TTL + channel pub/sub), a lazy `async () => backplane` factory, or a

@@ -573,8 +573,9 @@ window.${POINT0_DEHYDRATED_SUPER_STORE_GLOBAL} = ${uneval(superstore.stringify(c
           atFlushBoundary = true
           if (firstChunkSent) {
             // Heartbeat while React has nothing to flush (a slow suspended query / deferred hole): a no-op script
-            // every RSC_STREAM_HEARTBEAT_MS keeps the socket non-idle past Bun's default 10s idleTimeout and proxy
-            // idle windows. Injected through the same channel as the push scripts, and only AFTER the shell — nothing
+            // every RSC_STREAM_HEARTBEAT_MS keeps the socket non-idle past proxy idle windows and any idleTimeout in
+            // front (see RSC_STREAM_HEARTBEAT_MS). Injected through the same channel as the push scripts, and only
+            // AFTER the shell — nothing
             // may precede `<!DOCTYPE html>` (silence BEFORE the shell is an ordinary slow request, the same class as
             // any non-streamed slow response).
             while (await raceIsTimeout(read, RSC_STREAM_HEARTBEAT_MS)) {

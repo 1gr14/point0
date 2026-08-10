@@ -708,6 +708,10 @@ export class EngineServer<TPrepared extends boolean, TError extends ErrorPoint0>
     const providedWebsocketConfig = _providedServeConfig.websocket as any
     const maxPayloadLength = this.socketMaxPayloadLength()
     const serveConfig: Serve.Options<any, any> = {
+      // long-parked requests (a streamed response waiting for its first chunk, a slow handler, a long poll) move no
+      // bytes, and Bun's default idleTimeout (10 s) cuts exactly those mid-request. 255 is Bun's maximum — same
+      // reasoning as the dev client proxy; `bunServeConfig` / `serve()` options override it like any serve key
+      idleTimeout: 255,
       ...customServeConfig,
       ...providedServeConfig,
       port: this.port,

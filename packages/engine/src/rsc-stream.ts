@@ -10,12 +10,13 @@ import {
 } from '@point0/core'
 
 /**
- * How often a WAITING streamed response writes a no-op byte so the socket never looks idle: Bun's default `idleTimeout`
- * reaps a silent connection after 10s, and reverse proxies carry idle windows of their own (nginx/edge, typically
- * 30-60s) — without a heartbeat, a `defer()`/suspend subtree slower than the smallest of those killed the stream
- * mid-response. 5s stays safely under Bun's default; the beat runs only while something is still pending and stops with
- * the stream. NDJSON writes a blank line (the client reader skips empty lines); the SSR document pump writes an empty
- * `<script></script>` through the same injection point as the push scripts (proven hydration-safe).
+ * How often a WAITING streamed response writes a no-op byte so the socket never looks idle: reverse proxies carry idle
+ * windows (nginx/edge, typically 30-60s), and any `Bun.serve` in front of the app may run an `idleTimeout` of its own
+ * (the engine server raises Bun's 10 s default to 255, but a user override or a foreign server keeps the class of
+ * reaper alive) — without a heartbeat, a `defer()`/suspend subtree slower than the smallest of those killed the stream
+ * mid-response. 5s stays safely under every window in that class; the beat runs only while something is still pending
+ * and stops with the stream. NDJSON writes a blank line (the client reader skips empty lines); the SSR document pump
+ * writes an empty `<script></script>` through the same injection point as the push scripts (proven hydration-safe).
  */
 export const RSC_STREAM_HEARTBEAT_MS = 5000
 
