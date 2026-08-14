@@ -17,6 +17,14 @@ description:
 > same level; an [issue on GitHub](https://github.com/1gr14/point0/issues) gets
 > them there sooner.
 
+> **Want the tour first?**
+> [Realtime in Point0: channels, spaces and handlers](https://1gr14.dev/blog/point0-socket)
+> is a light walkthrough of everything on this page, built as five small apps —
+> feed notifications, a shared board, a chat with history, direct messages, and
+> a site whose every request travels the socket. Read it to get the shape of the
+> feature quickly; this page is the reference behind it, and the article links
+> back into it section by section.
+
 **One WebSocket per client application. Everything else is abstractions over
 that one socket.** The pieces, top to bottom:
 

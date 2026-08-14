@@ -5,6 +5,17 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **Docs: the benchmarks page is re-measured on the August 2026 stack.** Point0
+  0.3.10 vs Next.js 16.3.0, TanStack Start 1.168.27 and — new on the page —
+  React Router 8.3.0, all on React 19.2.7, with a streaming section and
+  green/red deltas against Point0 in every table. Wins and losses both moved:
+  HMR and navigation payloads still lead, while first-load JS and the cold
+  type-check are named plainly as the current costs. Every number comes from
+  the re-run public repo (github.com/1gr14/point0-benchmarks).
+- **Docs: the socket reference links the realtime tour.** The blog walkthrough
+  ("Realtime in Point0: channels, spaces and handlers") is now cross-linked at
+  the top of the socket page, section by section.
+
 ## 0.3.10 — 2026-08-10
 
 - **Sockets: `enroll` is a guarantee.** A room granted by an enroller or by
