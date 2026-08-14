@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.11 — 2026-08-14
+
 - **Docs: the benchmarks page is re-measured on the August 2026 stack.** Point0
   0.3.10 vs Next.js 16.3.0, TanStack Start 1.168.27 and — new on the page —
   React Router 8.3.0, all on React 19.2.7, with a streaming section and
