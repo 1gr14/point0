@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.12 — 2026-08-20
+
 - **Bun 1.4 is the floor.** CI runs on 1.4.0 and every `engines.bun` — the
   packages, the examples and the scaffolder's template — now reads `>=1.4.0`.
   Point0 keeps working on 1.3.14 (that is where `--no-orphans` landed), but
