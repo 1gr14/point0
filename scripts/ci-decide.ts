@@ -12,7 +12,7 @@
  * release job publishes what npm doesn't have yet and only THEN tags `v<version>`. Tags trigger nothing.
  *
  *     pull_request → main      full matrix, no publish         (the merge gate)
- *       …docs-only diff        empty matrix, no publish        (every changed file is *.md)
+ *       …prose/assets diff     empty matrix, no publish        (every changed file is *.md or assets/*)
  *     push        main         full matrix (MANDATORY), publish→latest/next by version   (release.yml)
  *     push        feature      tests only if --run-tests[=os], never publish
  *     push        tag          full matrix, never publishes    (defensive — no workflow listens on tags)
@@ -42,13 +42,15 @@ export const FULL_OSES = ['ubuntu-latest', 'windows-latest'] as const
 export const MAIN_BRANCH = 'main'
 
 /**
- * Whether a PR is docs-only — EVERY changed file is Markdown (`*.md`). Deliberately the narrowest safe rule: only `.md`
- * can ever skip the matrix, so no executable or config file can slip into a skip — not even one living under `dev/` or
- * `docs/` (e.g. `dev/scripts/foo.ts`, `docs/categories.json`). Anything else in the diff — code, `.json`, `.yml`,
- * `.mdx` points, images, `LICENSE` — forces the full gate. Empty change set ⇒ false, so we never skip blind.
+ * Whether a PR's diff can skip the test matrix — EVERY changed file is either Markdown (`*.md`) or a brand asset in the
+ * top-level `assets/` directory (logos, cards, avatars: artwork nothing in the repo imports). Deliberately the
+ * narrowest safe rule, so no executable or config file can slip into a skip — not even one living under `dev/` or
+ * `docs/` (e.g. `dev/scripts/foo.ts`, `docs/categories.json`), and not an image anywhere else: the asset-pipeline
+ * fixtures under `examples/` and `packages/` are test inputs and must keep gating. Anything else in the diff — code,
+ * `.json`, `.yml`, `.mdx` points, `LICENSE` — forces the full gate. Empty change set ⇒ false, so we never skip blind.
  */
-export const isDocsOnly = (files: readonly string[]): boolean =>
-  files.length > 0 && files.every((file) => file.endsWith('.md'))
+export const isSkippableDiff = (files: readonly string[]): boolean =>
+  files.length > 0 && files.every((file) => file.endsWith('.md') || file.startsWith('assets/'))
 
 const OS_ALIASES: Record<string, string> = {
   linux: 'ubuntu-latest',
@@ -95,7 +97,7 @@ export type DecideInput = {
   /** The relevant commit message (tip commit on a push/PR, release commit on a tag). */
   message: string
   /**
-   * Files changed by a PR (relative repo paths), used only on `pull_request` to detect a docs-only diff.
+   * Files changed by a PR (relative repo paths), used only on `pull_request` to detect a prose/assets-only diff.
    * Empty/undefined ⇒ treated as "unknown", so the gate runs the full matrix (never skips blind).
    */
   changedFiles?: string[]
@@ -115,11 +117,11 @@ export function decide({ event, refType, ref, message, changedFiles }: DecideInp
 
   // GATE — never publishes (invariant 2). Checked BEFORE --skip-ci: commit-message flags are ignored on a
   // PR, so no one can merge an untested change by writing --skip-ci into the tip commit — the only thing
-  // that may skip a PR's matrix is a provably docs-only diff.
+  // that may skip a PR's matrix is a diff provably made of prose and brand assets.
   if (event === 'pull_request') {
-    // A PR that touches only prose has nothing to build or test → skip the matrix. The `gate` job in
-    // ci.yml stays green on the skip, so the required check still reports (a bare skip would hang the PR).
-    if (isDocsOnly(changedFiles ?? [])) return { oses: [], publish: false }
+    // A PR that touches only prose or artwork has nothing to build or test → skip the matrix. The `gate` job
+    // in ci.yml stays green on the skip, so the required check still reports (a bare skip would hang the PR).
+    if (isSkippableDiff(changedFiles ?? [])) return { oses: [], publish: false }
     return { oses: full, publish: false }
   }
 

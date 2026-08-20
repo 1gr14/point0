@@ -7,13 +7,13 @@ name: CI
 #   decide   what should run (scripts/ci-decide.ts) + the test plan (scripts/test.ts)
 #   build    ONCE, ubuntu — the single `dist` artifact every later job consumes
 #   check    prettier + eslint on the artifact (no second build)
-#   test     the cross-OS matrix from the plan (skipped when decide says so, e.g. a docs-only PR)
+#   test     the cross-OS matrix from the plan (skipped when decide says so, e.g. a prose-only PR)
 #   gate     the single required status check
 #
 # Triggers:
 #   pull_request → main   the real gate: runs the full matrix (forks run WITHOUT secrets), UNLESS the PR
-#                         is docs-only (EVERY changed file is *.md) — then decide returns an empty matrix
-#                         and only build + check run under the gate.
+#                         touches only prose and brand assets (EVERY changed file is *.md or under assets/) —
+#                         then decide returns an empty matrix and only build + check run under the gate.
 #   push (not main)       a maintainer branch can opt in to a test run via a commit-message flag
 #                         (--run-tests[=os]); without it, only build + check run.
 # `main` is deliberately EXCLUDED here — not because it isn't gated, but because release.yml owns it:
@@ -48,14 +48,14 @@ jobs:
       solo: ${{ steps.d.outputs.solo }}
       soloInt: ${{ steps.d.outputs.soloInt }}
     steps:
-      # fetch-depth: 0 so the docs-only diff below has both the PR base and head commits available.
+      # fetch-depth: 0 so the diff below has both the PR base and head commits available.
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
-      # On a PR, the changed-file set decides whether the whole matrix can be skipped (docs-only diff).
+      # On a PR, the changed-file set decides whether the whole matrix can be skipped (prose/assets diff).
       # `A...B` is the PR delta from the merge-base; a diff failure yields an empty list → decide runs the
       # full matrix (never skips blind).
       - id: changed
@@ -80,7 +80,7 @@ jobs:
         run: bun scripts/ci-decide.ts >> "$GITHUB_OUTPUT"
 
   # Build ONCE (ubuntu-only) → `dist` artifact. Runs on EVERY gate run — `check` needs it even on a
-  # docs-only PR (type-aware lint resolves @point0/* from dist), and the test shards download it instead
+  # prose-only PR (type-aware lint resolves @point0/* from dist), and the test shards download it instead
   # of each building per-OS, so the bytes that ship are the ones the e2e/heavy-int lane and the lint ran
   # against (the unit/int lane runs src on purpose — see build.yml's header).
   build:
@@ -88,7 +88,7 @@ jobs:
     uses: ./.github/workflows/build.yml
 
   # Prettier + ESLint (check.yml) on the built artifact — one build per run, not two. Runs on EVERY gate
-  # run, including docs-only PRs where the test matrix is skipped. The pre-commit hook is advisory
+  # run, including PRs where the test matrix is skipped. The pre-commit hook is advisory
   # (--no-verify exists); this is the hard gate.
   check:
     needs: build
@@ -104,7 +104,7 @@ jobs:
       solo: ${{ needs.decide.outputs.solo }}
 
   # Line coverage → Codecov (dev/docs/coverage.md). Deliberately OUTSIDE `gate`'s `needs`: a flake in the coverage
-  # lane must never turn a green PR red. Skipped when `test` is (a docs-only PR has no coverage to report) and on
+  # lane must never turn a green PR red. Skipped when `test` is (a prose-only PR has no coverage to report) and on
   # fork PRs, which get no `id-token` for Codecov's OIDC upload and would only fail at the last step.
   #
   # OFF by default — it re-runs the whole unit+int suite on ubuntu, and there's nowhere to upload to until the
@@ -123,7 +123,7 @@ jobs:
       soloInt: ${{ needs.decide.outputs.soloInt }}
 
   # The single required status check. Because build/check/test are reusable-workflow calls, skipping one (a
-  # docs-only PR skips `test`) makes its nested contexts NEVER report — a bare required `test / fast …` would
+  # prose-only PR skips `test`) makes its nested contexts NEVER report — a bare required `test / fast …` would
   # then hang the PR forever. This gate always runs, so exactly one context is always present: decide, build
   # and check must SUCCEED (they run on every gate run); test must succeed or be legitimately skipped.
   # Make the ruleset require `gate` (+ `decide`) instead of the nested contexts.
@@ -150,4 +150,4 @@ jobs:
           if [ "$TEST" != "success" ] && [ "$TEST" != "skipped" ]; then
             echo "::error::test did not succeed ($TEST)"; exit 1
           fi
-          echo "gate ok — stages passed (test skipped is fine, e.g. a docs-only PR)"
+          echo "gate ok — stages passed (test skipped is fine, e.g. a prose-only PR)"

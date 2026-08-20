@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { decide, FULL_OSES, isDocsOnly, type DecideInput } from './ci-decide.js'
+import { decide, FULL_OSES, isSkippableDiff, type DecideInput } from './ci-decide.js'
 
 const FULL = [...FULL_OSES]
 const LINUX = ['ubuntu-latest']
@@ -35,7 +35,7 @@ describe('ci-decide', () => {
     it('INVARIANT: commit-message flags are ignored on a PR — no flag can skip the merge gate', () => {
       expect(decide(run({ event: 'pull_request', ref: '7/merge', message: 'wip --skip-ci' })).oses).toEqual(FULL)
       expect(decide(run({ event: 'pull_request', ref: '7/merge', message: 'wip --skip-tests' })).oses).toEqual(FULL)
-      // …only a provably docs-only diff skips (and stays gated by check):
+      // …only a provably prose/assets-only diff skips (and stays gated by check):
       expect(
         decide(run({ event: 'pull_request', ref: '7/merge', message: '--skip-ci', changedFiles: ['docs/a.md'] })).oses,
       ).toEqual([])
@@ -56,7 +56,7 @@ describe('ci-decide', () => {
       expect(decide(run({ message: '--run-tests=macos' })).oses).toEqual(['macos-latest'])
     })
 
-    describe('docs-only PR skips the matrix', () => {
+    describe('a prose/assets-only PR skips the matrix', () => {
       const pr = (changedFiles: string[]) => run({ event: 'pull_request', ref: '9/merge', changedFiles })
 
       it('every changed file is *.md → empty matrix', () => {
@@ -64,13 +64,20 @@ describe('ci-decide', () => {
         expect(decide(pr(['docs/core/ssr.md', 'README.md', 'packages/core/README.md'])).oses).toEqual([])
       })
 
-      it('any non-.md file in the diff → full matrix', () => {
+      it('every changed file is brand artwork under assets/ → empty matrix', () => {
+        expect(decide(pr(['assets/point0-avatar-black.svg', 'assets/point0-avatar-black.png'])).oses).toEqual([])
+        expect(decide(pr(['assets/point0-card-white.png', 'README.md'])).oses).toEqual([])
+      })
+
+      it('any other file in the diff → full matrix', () => {
         expect(decide(pr(['dev/backlog/note.md', 'packages/core/src/point0.ts'])).oses).toEqual(FULL)
         expect(decide(pr(['.github/workflows/ci.yml'])).oses).toEqual(FULL)
         expect(decide(pr(['examples/basic/src/pages/home.mdx'])).oses).toEqual(FULL) // .mdx is a point, not docs
-        // non-.md even UNDER dev/ or docs/ must NOT skip — the whole point of the *.md-only rule.
+        // non-.md even UNDER dev/ or docs/ must NOT skip — the whole point of the narrow rule.
         expect(decide(pr(['dev/scripts/tool.ts'])).oses).toEqual(FULL)
         expect(decide(pr(['docs/categories.json'])).oses).toEqual(FULL)
+        // artwork OUTSIDE the top-level assets/ dir is a test fixture, not branding — it keeps gating.
+        expect(decide(pr(['examples/basic/src/assets/gem.png'])).oses).toEqual(FULL)
       })
 
       it('unknown/empty change set → full matrix (never skips blind)', () => {
@@ -80,14 +87,16 @@ describe('ci-decide', () => {
     })
   })
 
-  describe('isDocsOnly', () => {
-    it('true only when every file is *.md', () => {
-      expect(isDocsOnly(['dev/x.md', 'docs/y.md', 'anything.md'])).toBe(true)
-      expect(isDocsOnly(['docs/a.md', 'packages/core/src/a.ts'])).toBe(false)
-      expect(isDocsOnly(['dev/scripts/tool.ts'])).toBe(false) // under dev/ but executable → not docs
-      expect(isDocsOnly(['docs/categories.json'])).toBe(false) // under docs/ but not markdown → not docs
-      expect(isDocsOnly(['LICENSE'])).toBe(false)
-      expect(isDocsOnly([])).toBe(false)
+  describe('isSkippableDiff', () => {
+    it('true only when every file is *.md or lives in the top-level assets/', () => {
+      expect(isSkippableDiff(['dev/x.md', 'docs/y.md', 'anything.md'])).toBe(true)
+      expect(isSkippableDiff(['assets/point0-avatar-white.svg', 'README.md'])).toBe(true)
+      expect(isSkippableDiff(['docs/a.md', 'packages/core/src/a.ts'])).toBe(false)
+      expect(isSkippableDiff(['dev/scripts/tool.ts'])).toBe(false) // under dev/ but executable → not prose
+      expect(isSkippableDiff(['docs/categories.json'])).toBe(false) // under docs/ but not markdown → not prose
+      expect(isSkippableDiff(['packages/create-app/template/src/assets/logo.svg'])).toBe(false) // not the brand dir
+      expect(isSkippableDiff(['LICENSE'])).toBe(false)
+      expect(isSkippableDiff([])).toBe(false)
     })
   })
 
@@ -107,7 +116,7 @@ describe('ci-decide', () => {
       for (const message of ['--skip-tests', '--skip-tests=linux,windows', '--skip-ci', '--run-tests=linux']) {
         expect(decide(run({ ref: 'main', message })).oses).toEqual(FULL)
       }
-      // …not even a docs-only file set (which skips on a PR) weakens the release path.
+      // …not even a prose-only file set (which skips on a PR) weakens the release path.
       expect(decide(run({ ref: 'main', changedFiles: ['docs/x.md'] })).oses).toEqual(FULL)
     })
 

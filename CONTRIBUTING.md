@@ -37,7 +37,7 @@ and the fast/slow test split. Read it before a non-trivial change.
 Every pull request runs the full cross-OS test matrix (Linux + Windows)
 automatically, plus a format + lint check (`prettier --check` + `eslint`, no
 autofix) — together they are the merge gate. The format/lint check runs on
-_every_ PR, even a docs-only one where the test matrix is skipped, so run
+_every_ PR, even one where the test matrix is skipped, so run
 `bun run format && bun run lint` before pushing. PRs from forks run **without
 repository secrets**, and nothing a PR does can ever publish to npm (only a
 maintainer's push to `main` can), so it's safe to propose anything.

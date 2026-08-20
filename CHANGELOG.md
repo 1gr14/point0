@@ -5,6 +5,11 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **CI skips the test matrix for brand-asset PRs too.** The rule that let a
+  Markdown-only PR skip the cross-OS matrix now also covers files in the
+  top-level `assets/` directory; anything else, images under `examples/` and
+  `packages/` included, still runs the full gate.
+
 ## 0.3.11 — 2026-08-14
 
 - **Docs: the benchmarks page is re-measured on the August 2026 stack.** Point0

@@ -37,7 +37,7 @@ decide → build → check → test → gate (ci.yml) / release (release.yml)
   `bun run size:audit` — which fails if a package reached the browser without a
   row in [`scripts/size.ts`](../../scripts/size.ts), i.e. if the docs now
   under-report what a Point0 app downloads. Runs on **every** path — including a
-  docs-only PR, where the test matrix is skipped. The pre-commit hook is
+  prose/assets PR, where the test matrix is skipped. The pre-commit hook is
   advisory (`--no-verify` exists); this is the hard gate.
 - **`test.yml`** — the reusable cross-OS matrix (`workflow_call`, inputs
   `oses` + `groups` + `solo`). Downloads the `dist` artifact rather than
@@ -74,7 +74,7 @@ invariants can't silently regress. The full table:
 | event                 | tests                            | publish                         |
 | --------------------- | -------------------------------- | ------------------------------- |
 | `pull_request → main` | full matrix                      | no                              |
-| …docs-only diff       | none (only build + check)        | no                              |
+| …prose/assets diff    | none (only build + check)        | no                              |
 | `push` to `main`      | full matrix, **mandatory**       | if not on npm → `latest`/`next` |
 | `push` to a branch    | only if `--run-tests[=os]`       | no                              |
 | branch `--skip-ci`    | none (`main` or a PR ignores it) | no                              |
@@ -106,7 +106,7 @@ locally instead of publishing untested bytes).
 4. **Format + lint can never be skipped.** `check.yml` runs on every PR and
    every push to `main`; `ci.yml`'s `gate` and `release.yml`'s `release` both
    require its result to be exactly `success`. So unformatted or unlinted code
-   can't land via a `--no-verify` commit or a docs-only PR.
+   can't land via a `--no-verify` commit or a PR the matrix skips.
 5. **The major version is pinned.**
    [`scripts/release.ts`](../../scripts/release.ts) refuses any bump whose major
    ≠ `PINNED_MAJOR` — no command or flag can raise it. A major is cut only by a
