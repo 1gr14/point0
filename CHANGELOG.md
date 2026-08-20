@@ -5,6 +5,10 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **Brand assets: `point0-avatar-black` / `point0-avatar-white`** (SVG + a
+  1024×1024 PNG) — the sign centred on a filled square with 15% padding, sized
+  for an avatar upload.
+
 - **CI skips the test matrix for brand-asset PRs too.** The rule that let a
   Markdown-only PR skip the cross-OS matrix now also covers files in the
   top-level `assets/` directory; anything else, images under `examples/` and
