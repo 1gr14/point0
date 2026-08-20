@@ -153,10 +153,11 @@ the `bun run dev` wrapper itself dies with the terminal. Close the terminal and
 the dev server (and all its children) exits with it — no orphaned servers
 holding ports.
 
-`--no-orphans` landed in **Bun 1.3.14**, so that's the floor — the generated
-`package.json` declares it as `"engines": { "bun": ">=1.3.14" }`. On an older
-Bun the dev server still runs, but it can leak orphaned processes that keep
-holding ports; upgrade with `bun upgrade`.
+`--no-orphans` landed in **Bun 1.3.14**, and Point0 itself is built and tested
+on **Bun 1.4** — the generated `package.json` declares
+`"engines": { "bun": ">=1.4.0" }`. On an older Bun the dev server still runs,
+but it can leak orphaned processes that keep holding ports; upgrade with
+`bun upgrade`.
 
 ## Manual setup
 

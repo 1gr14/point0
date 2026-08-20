@@ -112,12 +112,22 @@ locally instead of publishing untested bytes).
    ≠ `PINNED_MAJOR` — no command or flag can raise it. A major is cut only by a
    human hardcoding that constant. Never automatic, never accidental.
 6. **The Bun the runners use is pinned too.** Every `setup-bun` step names an
-   exact version, never `latest`. Bun is the package manager, the test runner
-   and the framework's runtime all at once, so `latest` let a release on the
-   other side of the world change how our installs resolve, how bins get linked
-   and how many bytes the bundler emits — with no commit of ours in sight, and
-   nothing in the log saying the ground had moved. Bumping it is now an edit
-   someone makes on purpose, in one place per workflow, and the diff says so.
+   exact version (**1.4.0**), never `latest`. Bun is the package manager, the
+   test runner and the framework's runtime all at once, so `latest` let a
+   release on the other side of the world change how our installs resolve, how
+   bins get linked and how many bytes the bundler emits — with no commit of ours
+   in sight, and nothing in the log saying the ground had moved. Bumping it is
+   now an edit someone makes on purpose, in one place per workflow, and the diff
+   says so.
+
+   **Two Buns, and the second one is the one that runs the tests.**
+   `bun-plugin-tailwind` peer-depends on `bun`, so the npm `bun` package sits in
+   `node_modules` — and `bun run` puts `node_modules/.bin` first on `PATH`, so
+   every `bun` a script spawns (the whole test runner) is _that_ binary, not the
+   runner's. It is therefore declared in the root `devDependencies`
+   (`"bun": "^1.4.0"`) and must be bumped together with `setup-bun`; left
+   implicit, it silently froze at the version first resolved into the lockfile.
+   Check with `node_modules/.bin/bun --version`.
 
 ## The test matrix
 

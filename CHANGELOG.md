@@ -5,10 +5,14 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **Bun 1.4 is the floor.** CI runs on 1.4.0 and every `engines.bun` — the
+  packages, the examples and the scaffolder's template — now reads `>=1.4.0`.
+  Point0 keeps working on 1.3.14 (that is where `--no-orphans` landed), but
+  1.4 is what we build and test against. `@types/bun` stays on 1.3.14 until
+  the 1.4 types are published.
 - **Brand assets: `point0-avatar-black` / `point0-avatar-white`** (SVG + a
   1024×1024 PNG) — the sign centred on a filled square with 15% padding, sized
   for an avatar upload.
-
 - **CI skips the test matrix for brand-asset PRs too.** The rule that let a
   Markdown-only PR skip the cross-OS matrix now also covers files in the
   top-level `assets/` directory; anything else, images under `examples/` and

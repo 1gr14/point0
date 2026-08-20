@@ -48,9 +48,9 @@ instead:
   exactly that mode's cascade. Since the flag-free shebang lets Bun auto-load on
   every platform, the genuine environment is recovered from the native OS env
   block (`env-os.ts`), which Bun's JS-only auto-load never touches.
-- `--no-orphans` (bun >= 1.3.14 — hence the `engines` field in `@point0/engine`)
-  ties each dev/build child's process tree to its parent — it is passed on every
-  spawn, not on the shebang; out of scope here, see
+- `--no-orphans` (bun >= 1.3.14, covered by the `engines` floor in
+  `@point0/engine`) ties each dev/build child's process tree to its parent — it
+  is passed on every spawn, not on the shebang; out of scope here, see
   [dev-lifecycle](./dev-lifecycle.md).
 - The app's bunfig (and so its preload) never runs in the CLI process: the CLI
   imports the engine directly and does not need it — see "who needs plugins"
