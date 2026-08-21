@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.14 — 2026-08-21
+
 - **Docs: the benchmarks page is re-measured on Point0 0.3.13 and Bun 1.4.** The
   whole suite was re-run on one machine in one sitting against Next.js 16.3.2,
   TanStack Start 1.168.27 and React Router 8.3.0, all on React 19.2.8, with a
