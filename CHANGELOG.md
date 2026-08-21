@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.13 — 2026-08-21
+
 - **`@types/bun` moved to `^1.4.0`** — it was held at 1.3.14 in the Bun 1.4
   release only because the 1.4 types were not published yet.
 
