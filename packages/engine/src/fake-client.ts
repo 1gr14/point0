@@ -30,6 +30,16 @@ type CookieStoreGetter = {
   (): Record<string, string>
 }
 
+/**
+ * Yield the event loop a few times so work another library queued — React's scheduler, above all — has run before the
+ * caller tears anything down. Three turns because a React unmount can chain: the cleanup task queues the next one.
+ */
+const drainScheduledWork = async (): Promise<void> => {
+  for (let turn = 0; turn < 3; turn++) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  }
+}
+
 class GlobalThisItemProxy {
   // item key -> item proxy
   static items = new Map<string, GlobalThisItemProxy>()
@@ -595,6 +605,13 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
       if (this.onDestroyInside) {
         await this.run(async () => {
           await this.onDestroyInside?.(this.state)
+          // Teardown does not finish in the turn that starts it: React's scheduler lands an unmount's passive
+          // cleanup on a later macrotask. Those tasks were scheduled inside this client's context, so they still
+          // ask GlobalThisItemProxy for `window` — and the `finally` below drops this client's values, after which
+          // the getter answers `originalValue`, which is `undefined` for `window` under Bun. The late task then
+          // throws reading it, outside any test's stack, and bun reports an unhandled error that reddens the whole
+          // file even though every assertion passed. So let the queue empty while the globals still resolve.
+          await drainScheduledWork()
         })
       }
     } finally {
