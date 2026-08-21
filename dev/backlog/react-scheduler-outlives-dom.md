@@ -1,7 +1,7 @@
 # React scheduled work outlives the test's DOM, and Bun 1.4 counts it
 
-**Status:** open · **Area:** test-infra (int lane, Linux) · **Kind:** teardown
-leak
+**Status:** fixed, watching · **Area:** test-infra +
+`@point0/engine/fake-client` · **Kind:** teardown leak
 
 Seen twice on ubuntu right after the Bun 1.4 bump, in two different files, with
 one signature: react-dom's scheduler callback runs **after** the test's DOM is
@@ -48,31 +48,42 @@ anyone outside a fake-client context. So:
 - **Context missing when it should be there** — React's scheduler task runs on a
   chain the ALS store doesn't reach, `window` resolves to `undefined`, and
   `window.event` throws. This is the `int-2` failure.
-- **Context present when it should not be** — `subscription-tracked` builds its
-  engine through a plain `Engine.create()` at test level, outside any
-  `fakeClient.run()`. If a previous test's context is still on the chain,
-  `getFakeClient()` answers, `superstore` resolves `variant: 'fakeClient'`
-  instead of `'server'`, and the `serverOnlyGlobal` write throws. This is the
-  `int-3` failure.
+- **Context present when it should not be** — a hypothesis for the
+  `serverOnlyGlobal` errors seen once alongside it: `subscription-tracked`
+  builds its engine through a plain `Engine.create()` at test level, outside any
+  `fakeClient.run()`, so a context still on the chain would make `superstore`
+  resolve `variant: 'fakeClient'` instead of `'server'`. Unconfirmed — see the
+  control run below, where those same tests passed.
 
 Note that `variant` is decided in `super-store.ts` from `POINT0_SIDE`, the ALS
 store and the fake client — **not** from `window`. An earlier draft of this card
 blamed the DOM global for the variant confusion; that was wrong.
 
-## What is fixed, and what is not
+## The fix, and the evidence for it
 
-**The int-2 half is fixed** (`FakeClient.destroy`): teardown now drains the
-macrotask queue inside the client's context, before the `finally` drops the
-client's values, so React's late unmount work still resolves `window`.
+`FakeClient.destroy` drains the macrotask queue before dropping the client's
+values, so React's late unmount work still resolves `window`. Twice, because
+teardown unmounts in two places — `onDestroyInside`, and the `onRunEndInside`
+that `run()` fires after it.
 
-**The int-3 half is not.** How a fake-client context outlives its `run()` and
-greets the next test's `Engine.create()` is still unexplained, and nothing here
-addresses it.
+Measured, because one green run proves nothing at this failure rate:
+
+- **control**, `main` without the fix, `ci.yml` dispatched on trunk
+  (run 32459129957) → **both** `int-2` and `int-3` red on ubuntu, each on the
+  `window.event` signature.
+- **fixed branch**, linux matrix (run 32458532509, plus a rerun) → **green
+  twice**.
+
+Note what the control says about the `serverOnlyGlobal` failures: there, the
+three `subscription-tracked` tests that carried them the first time **passed**,
+and the file still died on `window.event` alone. So that symptom looks
+downstream of this same teardown, not a second bug — but it has been seen once
+and not since, so this card does not claim it fixed.
 
 Neither half reproduces in isolation: `test-one.yml` ran each file ×10 on ubuntu
-green (runs 32458036398, 32458045167). It needs the fast lane's real load —
-dozens of files in parallel on one runner — so verification means pushing a
-branch with `--run-tests=linux`, not a point run.
+green (runs 32458036398, 32458045167), and the windows playwright file ×40 green
+(32459184338). It needs the fast lane's real load — dozens of files in parallel
+on one runner — so verification means a branch run, not a point run.
 
 ## Related
 

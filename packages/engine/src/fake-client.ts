@@ -605,16 +605,20 @@ export class FakeClient<TState extends FakeClientState, TError extends ErrorPoin
       if (this.onDestroyInside) {
         await this.run(async () => {
           await this.onDestroyInside?.(this.state)
-          // Teardown does not finish in the turn that starts it: React's scheduler lands an unmount's passive
-          // cleanup on a later macrotask. Those tasks were scheduled inside this client's context, so they still
-          // ask GlobalThisItemProxy for `window` — and the `finally` below drops this client's values, after which
-          // the getter answers `originalValue`, which is `undefined` for `window` under Bun. The late task then
-          // throws reading it, outside any test's stack, and bun reports an unhandled error that reddens the whole
-          // file even though every assertion passed. So let the queue empty while the globals still resolve.
           await drainScheduledWork()
         })
       }
     } finally {
+      // Teardown does not finish in the turn that starts it: React's scheduler lands an unmount's passive cleanup on
+      // a later macrotask. Those tasks still resolve `window` through GlobalThisItemProxy, and the line below drops
+      // this client's values — after which the getter answers `originalValue`, `undefined` for `window` under Bun.
+      // The late task then throws reading `window.event`, outside any test's stack, and bun reports an unhandled
+      // error that reddens the whole file even though every assertion passed.
+      //
+      // Drained twice on purpose, because teardown unmounts in two places: `onDestroyInside` above (the caller's own
+      // cleanup) and `onRunEndInside`, which `run()` fires after it. Only this one, after `run()` has fully
+      // returned, covers the second — and it is also the only drain a client with no `onDestroyInside` gets.
+      await drainScheduledWork()
       GlobalThisItemProxy.destroy(this)
     }
   }
