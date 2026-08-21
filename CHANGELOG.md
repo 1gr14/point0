@@ -5,6 +5,15 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **`FakeClient.destroy` waits for scheduled work before dropping its globals.**
+  React finishes an unmount on a later macrotask, and that task still resolves
+  `window` through the fake client — so dropping the client's values first left
+  the getter answering `undefined` and the task throwing on `window.event`,
+  outside any test's stack. Under Bun 1.4 the timing made this common enough to
+  redden whole test files whose assertions all passed. Teardown now drains after
+  both stages: the caller's `onDestroyInside` and the `onRunEndInside` that
+  `run()` fires after it.
+
 ## 0.3.12 — 2026-08-20
 
 - **Bun 1.4 is the floor.** CI runs on 1.4.0 and every `engines.bun` — the
