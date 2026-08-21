@@ -379,8 +379,23 @@ export class PlaywrightPage {
     return page
   }
 
+  /**
+   * Wait until every DOM change the browser has already reported is actually IN `history[].htmls`.
+   *
+   * `onDomChanged` does not push synchronously — it chains onto {@link domChangeQueue}, and the entry lands only once
+   * `HtmlView.parse` resolves. Everything that reads those entries (`preview`, `previews`, `story`, `tale`) is a plain
+   * getter and cannot await, so without this the reader can see an empty array while the parse is still in flight —
+   * which is how the windows run went red on `htmls.length` being 0 and on a half-built `tale` snapshot. One round-trip
+   * first, so a MutationObserver callback the page has queued has been delivered before we drain.
+   */
+  async settleDom(): Promise<void> {
+    await this.original.evaluate(() => undefined)
+    await this.domChangeQueue
+  }
+
   async goto(url: string): Promise<this> {
     await this.original.goto(url, { waitUntil: 'networkidle' })
+    await this.settleDom()
     return this
   }
 
@@ -587,11 +602,13 @@ export class PlaywrightPage {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (true) {
       if (Date.now() - startTime > timeout) {
+        // Settle first: the message renders `tale`, and a half-drained queue would describe a page that never existed.
+        await this.settleDom()
         throw new Error(`Timeout waiting for content: ${search} within ${timeout}ms. Current tale: ${this.tale}`)
       }
       const htmlView = this.getLastHtmlView()
       if (htmlView?.hasContent(search)) {
-        // await this.parseAllHtmlViews()
+        await this.settleDom()
         return
       }
       await new Promise((resolve) => setTimeout(resolve, 30))
@@ -615,11 +632,12 @@ export class PlaywrightPage {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (true) {
       if (Date.now() - startTime > timeout) {
+        await this.settleDom()
         throw new Error(`Timeout waiting for no content: ${search} within ${timeout}ms`)
       }
       const htmlView = this.getLastHtmlView()
       if (!htmlView || htmlView.hasNoContent(search)) {
-        // await this.parseAllHtmlViews()
+        await this.settleDom()
         return
       }
       await new Promise((resolve) => setTimeout(resolve, 30))

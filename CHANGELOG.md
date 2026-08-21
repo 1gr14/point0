@@ -5,6 +5,9 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **`@types/bun` moved to `^1.4.0`** — it was held at 1.3.14 in the Bun 1.4
+  release only because the 1.4 types were not published yet.
+
 - **`FakeClient.destroy` waits for scheduled work before dropping its globals.**
   React finishes an unmount on a later macrotask, and that task still resolves
   `window` through the fake client — so dropping the client's values first left

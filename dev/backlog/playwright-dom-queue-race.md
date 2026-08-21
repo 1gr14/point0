@@ -1,7 +1,7 @@
 # The playwright helper reads `htmls` before the DOM bridge delivered them
 
-**Status:** open · **Area:** test-infra (`tests/utils/playwright.ts`) ·
-**Kind:** harness race
+**Status:** fixed, unproven in CI · **Area:** test-infra
+(`tests/utils/playwright.ts`) · **Kind:** harness race
 
 Surfaced on the **v0.3.12** release run (the Bun 1.4 bump), Windows solo lane,
 `packages/engine/tests/utils/test/playwright.e2e.test.ts` — two failures, one
@@ -29,14 +29,20 @@ is why the snapshot fails in the same breath.
 The window is small, so it stayed invisible until the runtime's timing moved
 under it. Bun 1.4 moved it; the shape means it was always reachable.
 
-## The fix, when someone picks this up
+## The fix
 
-Drain before reading, not sleep-then-hope: give the readers a
-`await page.settleDom()` (await `domChangeQueue`, plus one browser round-trip so
-a MutationObserver callback already queued in the page has been delivered) and
-call it from `tale`/`previews` and from the tests that read `htmls`. A bare
-`waitFor`-style poll on `htmls.length` would fix these two tests and leave the
-same hole for the next reader.
+`page.settleDom()` — one browser round-trip, then `await domChangeQueue` — is
+now called from `goto` and from both exits of `waitContent` / `waitNoContent`,
+including the timeout throw, whose message renders `tale`. So every await a test
+already performs leaves the queue drained, and the synchronous getters
+(`preview`, `previews`, `story`, `tale`) keep their shape.
+
+**Unproven against the original failure.** It does not reproduce point-wise —
+`test-one.yml` ran the file ×10 and ×40 on windows green
+(32458589661, 32459184338) — so there is no red to turn green. What is verified:
+the read was genuinely unsynchronised, and the suite passes with the fix (26
+pass). If the windows solo lane reddens on `htmls` again, this card was not
+enough.
 
 ## Related
 

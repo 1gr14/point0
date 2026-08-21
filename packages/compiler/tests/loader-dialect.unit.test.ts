@@ -30,27 +30,40 @@ const TS = 'export const n: number = 1\n'
 const EXTENSIONS = ['ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs'] as const
 
 /** `dev` / `build`: the plugin claims the file and picks the loader itself. Throws ⇒ rejected, same as a failed build. */
-const buildViaPlugin = async (file: string): Promise<boolean> => {
+/**
+ * Both paths answer "did this compile", and the WHY comes with it: a build that failed and a build that threw look
+ * identical through a bare boolean, which is exactly what made run 32460656005's `.jsx` disagreement undiagnosable
+ * (dev/backlog/loader-dialect-jsx-disagreement.md). The reason rides along so the assertion can print it.
+ */
+type BuildOutcome = { ok: boolean; why: string }
+
+const outcomeOf = (result: Awaited<ReturnType<typeof Bun.build>>): BuildOutcome => ({
+  ok: result.success,
+  why: result.success ? 'built' : result.logs.map((log) => String(log)).join('; ') || 'failed with no logs',
+})
+
+const buildViaPlugin = async (file: string): Promise<BuildOutcome> => {
   try {
-    const result = await Bun.build({
-      entrypoints: [file],
-      target: 'bun',
-      plugins: [compilerBunPlugin({ side: 'server', scope: 'root', mode: 'development' })],
-    })
-    return result.success
-  } catch {
-    return false
+    return outcomeOf(
+      await Bun.build({
+        entrypoints: [file],
+        target: 'bun',
+        plugins: [compilerBunPlugin({ side: 'server', scope: 'root', mode: 'development' })],
+      }),
+    )
+  } catch (error) {
+    return { ok: false, why: `threw: ${(error as Error).message}` }
   }
 }
 
 /** `dev --hot`: the same source, copied to the name the store would give it, loaded by that name alone. */
-const buildViaStoreName = async (file: string): Promise<boolean> => {
+const buildViaStoreName = async (file: string): Promise<BuildOutcome> => {
   const moved = file.replace(/\.[^./]+$/, '') + '.moved' + relocatedExtension(file)
   nodeFs.copyFileSync(file, moved)
   try {
-    return (await Bun.build({ entrypoints: [moved], target: 'bun' })).success
-  } catch {
-    return false
+    return outcomeOf(await Bun.build({ entrypoints: [moved], target: 'bun' }))
+  } catch (error) {
+    return { ok: false, why: `threw: ${(error as Error).message}` }
   }
 }
 
@@ -91,8 +104,14 @@ describe('extension → syntax, across every path a file takes', () => {
         const file = write(`${label}.${ext}`, code)
         const viaPlugin = await buildViaPlugin(file)
         const viaStoreName = await buildViaStoreName(file)
-        if (viaPlugin) (acceptedByPlugin[label] as string[]).push(ext)
-        expect({ ext, label, viaPlugin }).toEqual({ ext, label, viaPlugin: viaStoreName })
+        if (viaPlugin.ok) (acceptedByPlugin[label] as string[]).push(ext)
+        // Compared as a rendered disagreement rather than two booleans: `expect` takes no message, so the reason each
+        // path gave has to travel inside the value if the diff is to explain itself.
+        const disagreement =
+          viaPlugin.ok === viaStoreName.ok
+            ? null
+            : `plugin ${viaPlugin.ok} (${viaPlugin.why}) vs store name ${viaStoreName.ok} (${viaStoreName.why})`
+        expect({ ext, label, disagreement }).toEqual({ ext, label, disagreement: null })
       })
     }
   }
