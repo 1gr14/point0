@@ -5,6 +5,18 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **Docs: the benchmarks page is re-measured on Point0 0.3.13 and Bun 1.4.** The
+  whole suite was re-run on one machine in one sitting against Next.js 16.3.2,
+  TanStack Start 1.168.27 and React Router 8.3.0, all on React 19.2.8, with a
+  cooldown and an idle gate before each suite. Point0 leads the edit loop — HMR
+  at 20 ms and the only sub-second warm dev start (972 ms); the costs are named
+  plainly in the same tables — the cold whole-project type-check (6.85 s at 500
+  pages on TS7), the heaviest first-load JS (150 kB) and ~230 MB of idle RSS
+  above its own bare-Bun floor. The page also now says where nothing separates
+  the four at all: per-edit type re-checks, felt navigation latency, and the
+  entire SSR picture once a real database query enters the loader. Numbers come
+  from the re-run public repo (github.com/1gr14/point0-benchmarks).
+
 ## 0.3.13 — 2026-08-21
 
 - **`@types/bun` moved to `^1.4.0`** — it was held at 1.3.14 in the Bun 1.4
