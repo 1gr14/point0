@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.1 — 2026-09-23
+
 - **Route strings carry typed params and search params.** Point0 now sits on
   route0 0.4, so `'/ideas/:id[int]'` gives a loader `params.id` as a `number` and
   stops matching `/ideas/abc`, and `'/ideas&q&page[int]=0'` declares search params
