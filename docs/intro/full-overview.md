@@ -1,8 +1,7 @@
 ---
 index: 300
 title: Full Overview
-description:
-  The whole framework in one long read — every major feature as a code example.
+description: The whole framework in one long read — every major feature as a code example.
 video: https://www.youtube.com/watch?v=lhZ6eWMXMdg
 ---
 

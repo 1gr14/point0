@@ -1,7 +1,6 @@
 ---
 title: AsyncAPI для сокет-поверхности (@point0/asyncapi)
-description:
-  Новый пакет по аналогии с @point0/openapi — AsyncAPI-документ из
+description: Новый пакет по аналогии с @point0/openapi — AsyncAPI-документ из
   channel/space/handler-деклараций, отдаваемый той же мидлварной механикой.
 ---
 

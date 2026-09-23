@@ -83,8 +83,7 @@ jobs:
     # unit-tested policy (`decide.publish`, true only for a push to `main`) and the structural ref/event
     # check right here in the workflow.
     needs: [decide, build, check, test]
-    if:
-      ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.decide.outputs.publish == 'true' &&
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.decide.outputs.publish == 'true' &&
       needs.decide.result == 'success' && needs.build.result == 'success' && needs.check.result == 'success' &&
       needs.test.result == 'success' }}
     runs-on: ubuntu-latest

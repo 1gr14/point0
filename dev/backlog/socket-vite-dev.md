@@ -1,7 +1,6 @@
 ---
 title: Сокеты — vite-dev-прокси и второй upgrade-connect
-description:
-  Vite-dev-прокси не переваривает второй одновременный cold-start
+description: Vite-dev-прокси не переваривает второй одновременный cold-start
   upgrade-connect; корневая причина не найдена, продакшена не касается.
 ---
 
