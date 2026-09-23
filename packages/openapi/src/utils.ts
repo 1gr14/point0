@@ -21,7 +21,6 @@ import {
   hasFileOrBlobBySchemasHelpers,
   isAllItemsOptionalBySchemasHelpers,
 } from '@point0/core/schema/utils'
-import type { AnyRoute } from '@1gr14/route0'
 import type { OpenAPIV3, OpenAPIV3_1 } from 'openapi-types'
 import stringify from 'safe-stable-stringify'
 
@@ -138,31 +137,6 @@ const appendJsonSchemaByValidatorSchema = ({
 
 const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
   return !!value && typeof value === 'object' && !Array.isArray(value)
-}
-
-/**
- * `/posts/:kind(new|top)/:id` ⇒ `/posts/{kind}/{id}`.
- *
- * Walks the route's own tokens rather than rewriting the definition string: only route0 knows the path grammar, so a
- * value constraint or a trailing `?` never reaches the emitted path template. A wildcard has no OpenAPI equivalent and
- * is emitted verbatim.
- */
-const convertRouteToOpenapiPath = (route: AnyRoute): string => {
-  const tokens = route.getTokens()
-  if (tokens.length === 0) {
-    return '/'
-  }
-  return tokens
-    .map((token) => {
-      if (token.kind === 'param') {
-        return `/{${token.name}}`
-      }
-      if (token.kind === 'wildcard') {
-        return `/${token.prefix}*${token.optional ? '?' : ''}`
-      }
-      return `/${token.value}`
-    })
-    .join('')
 }
 
 const buildOpenapiParametersBySchema = (
@@ -368,7 +342,9 @@ const getOpenapiSchemaFromPoint = (
     return undefined
   }
   const jsonSchemas = getJsonSchemasFromPoint(normalizedPoint, options)
-  const path = convertRouteToOpenapiPath(endpoint.route)
+  // route0 owns the path grammar, so it emits the `{param}` template itself — in-segment literals and tails kept,
+  // constraints/types/`?` never leak in, a wildcard verbatim
+  const path = endpoint.route.toUriTemplate()
   const method = endpoint.method.toLowerCase()
 
   const parameters = [

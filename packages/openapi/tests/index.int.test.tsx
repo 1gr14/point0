@@ -913,4 +913,34 @@ describe('openapi', () => {
       expect(Object.keys(withoutChannel.paths as Record<string, unknown>)).not.toContain('/_point0/root/websocket')
     })
   })
+
+  describe('route0 typed params, declarations and wildcards', () => {
+    it('path templates keep in-segment literals and tails; declarations never leak into the path', () => {
+      const root = Point0.lets('root', 'root').root()
+      const typed = root.lets('GET', '/api/items/:id[int]&page[int]=0').action(() => new Response('ok'))
+      const image = root.lets('GET', '/files/img-:id[int].png').action(() => new Response('ok'))
+      const doc = root.lets('GET', '/my/:slug.:ext').action(() => new Response('ok'))
+      const files = root.lets('GET', '/download/*').action(() => new Response('ok'))
+      const spec = getOpenapiSchemaFromPoints([typed, image, doc, files] as never, {
+        info: { title: 'T', version: '1.0.0' },
+      })
+      expect(Object.keys(spec.paths as Record<string, unknown>).sort()).toEqual([
+        '/api/items/{id}',
+        '/download/*',
+        '/files/img-{id}.png',
+        '/my/{slug}.{ext}',
+      ])
+      // the typed param and the declared search param carry route0's own JSON Schema shapes
+      const parameters = (spec.paths as Record<string, Record<string, any>>)['/api/items/{id}'].get.parameters
+      expect(parameters).toContainEqual(
+        expect.objectContaining({
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: expect.objectContaining({ type: 'integer', minimum: 0 }),
+        }),
+      )
+      expect(parameters).toContainEqual(expect.objectContaining({ in: 'query', name: 'page' }))
+    })
+  })
 })

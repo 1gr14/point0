@@ -181,7 +181,7 @@
   },
   "peerDependencies": {
     "@1gr14/flat": "^0.1.4",
-    "@1gr14/route0": "^0.3.0",
+    "@1gr14/route0": "^0.4.1",
     "@tanstack/react-query": "^5.101.4",
     "@unhead/react": "^3.2.3",
     "unhead": "^3.2.3",
@@ -220,7 +220,7 @@
   },
   "devDependencies": {
     "@1gr14/flat": "^0.1.4",
-    "@1gr14/route0": "^0.3.0",
+    "@1gr14/route0": "^0.4.1",
     "@sinclair/typebox": "^0.34.52",
     "@types/bun": "^1.4.0",
     "@types/node": "^26.1.2",

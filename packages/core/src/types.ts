@@ -5,7 +5,10 @@ import type {
   Extended,
   HasParams,
   ParamsInput,
+  ParamsInputStringOnly,
   ParamsOutput,
+  SearchInput,
+  SearchOutput,
   UnknownSearchInput,
 } from '@1gr14/route0'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
@@ -262,9 +265,22 @@ export type Infer<
   >
   ParamsSchema: TParamsSchema
   ParamsRaw: InputRaw<TParamsSchema>
+  /**
+   * `ParamsRaw` with every value in its URL-string form — the params exactly as the path carries them. Derived from the
+   * route definition (route0's `ParamsInputStringOnly`), so an enum param keeps its literal union and a typed param is
+   * the `string` its segment matches; a `.params(schema)` refinement never changes what the URL itself holds.
+   */
+  ParamsRawStringOnly: TRouteDefinition extends RouteDefinition
+    ? ParamsInputStringOnly<TRouteDefinition>
+    : InputRawStringOnly<InputRaw<TParamsSchema>>
   ParamsParsed: InputParsed<TParamsSchema>
   SearchSchema: TSearchSchema
   SearchRaw: InputRaw<TSearchSchema>
+  /**
+   * `SearchRaw` with every value in its URL-string form — the query string as the wire carries it: the same keys,
+   * optionality and nesting, arrays and string literals (enums) kept, every other leaf a `string`.
+   */
+  SearchRawStringOnly: InputRawStringOnly<InputRaw<TSearchSchema>>
   SearchParsed: InputParsed<TSearchSchema>
   BodySchema: TBodySchema
   BodyRaw: InputRaw<TBodySchema>
@@ -1021,6 +1037,16 @@ export type RouteSchema<TRouteDefinition extends RouteDefinition> = RecordValida
   ParamsInput<TRouteDefinition>,
   ParamsOutput<TRouteDefinition>
 >
+/**
+ * The search-side sibling of {@link RouteSchema}: the schema a route's declared search params (`/ideas&q&page[int]=0`)
+ * stand for. It types the point's search exactly as an equivalent `.search(schema)` call would — route0's `SearchInput`
+ * in (typed values or their URL-string forms, required `!` keys demanded), `SearchOutput` out (coerced, defaults
+ * filled, arrays wrapped).
+ */
+export type RouteSearchSchema<TRouteDefinition extends RouteDefinition> = RecordValidationSchema<
+  SearchInput<TRouteDefinition>,
+  SearchOutput<TRouteDefinition>
+>
 export type CustomValidationFn<TOutput extends InputParsed = InputParsed> = (data: InputRawUnknown) => TOutput
 export type CustomValidationFnWithKnownInput<TInput extends InputRaw, TOutput extends InputParsed> = (
   data: TInput,
@@ -1261,6 +1287,28 @@ export type InputParsed<TInputSchema extends InputSchema | UndefinedInputSchema 
   TInputSchema extends RecordValidationSchema ? RecordValidationSchemaOutput<TInputSchema> : EmptyObject
 export type InputRaw<TInputSchema extends InputSchema | UndefinedInputSchema = InputSchema | UndefinedInputSchema> =
   TInputSchema extends RecordValidationSchema ? RecordValidationSchemaInput<TInputSchema> : EmptyObject
+
+/**
+ * The URL-string form of an input object: the same keys, optionality and nesting, every leaf in the form the wire
+ * carries. A string literal (an enum member) stays itself, `undefined`/`null` (absence) stay, an array maps over its
+ * element, a nested object recurses — and every other leaf (`number`, `boolean`, `bigint`, `Date`, and the `unknown` a
+ * coercing schema declares as its input) becomes `string`. Backs the `ParamsRawStringOnly` / `SearchRawStringOnly`
+ * Infer members — the mirror of route0's `ParamsInputStringOnly` / `SearchInputStringOnly` for schema-shaped inputs.
+ */
+export type InputRawStringOnly<T> = { [K in keyof T]: InputRawStringOnlyValue<T[K]> }
+type InputRawStringOnlyValue<T> = [unknown] extends [T]
+  ? string
+  : T extends undefined | null
+    ? T
+    : T extends string
+      ? T
+      : T extends Date
+        ? string
+        : T extends ReadonlyArray<infer U>
+          ? Array<InputRawStringOnlyValue<U>>
+          : T extends object
+            ? { [K in keyof T]: InputRawStringOnlyValue<T[K]> }
+            : string
 type UndefinedIfEmptyObject<T> = IsEmptyObjectSpecial<T> extends true ? undefined | EmptyObjectOnly : T
 export type FinalInputRawOrUndefined<
   TPointType extends PointType,

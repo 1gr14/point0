@@ -70,12 +70,19 @@ route at the type level:
 export const ideaPage = root.lets
   .page('/ideas/:id') // params is { id: string }
   .page(({ params }) => <h1>Idea {params.id}</h1>)
+
+export const ideaPageTyped = root.lets
+  .page('/ideas/:id[int]') // params is { id: number } — and /ideas/abc is a 404
+  .page(({ params }) => <h1>Idea {params.id}</h1>)
 ```
 
-Params are strings; coerce them yourself (`Number(params.id)`), or validate and
-transform them with [`.params(schema)`](validation). Optional and wildcard
-segments work too — `'/files/:dir?/*?'` gives you `params.dir` and
-`params['*']`.
+A plain param is a string; give it a type in square brackets (`[int]`, `[uuid]`,
+`[date]`, …) and it arrives converted — and the route stops matching URLs of the
+wrong shape. For transforms beyond a type there's
+[`.params(schema)`](validation). Optional and wildcard segments work too —
+`'/files/:dir?/*?'` gives you `params.dir` and `params['*']` — and the route
+string can declare typed [search params](validation) as well:
+`'/ideas&page[int]=0'`.
 
 ### The route prefix is inherited
 

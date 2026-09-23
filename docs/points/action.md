@@ -94,8 +94,29 @@ a.method // => "POST"
 a.route.definition // => "/api/my-test/:id"
 ```
 
-A route token can't be a wildcard — `root.lets('GET', '/files/*')` throws
-(`Wildcard is not allowed in action point. Use middleware instead`).
+### Wildcards
+
+An action's route may end in a wildcard — the file-server shapes:
+
+```ts
+const files = root.lets('GET', '/files/*').action(({ params }) => {
+  return new Response(`serving ${params['*']}`)
+})
+const raw = root.lets('GET', '/raw/*.:ext').action(({ params }) => {
+  return new Response(`${params['*']} as ${params.ext}`)
+})
+```
+
+Dispatch stays deterministic: endpoints route through the same
+specificity-ordered matching pages use, so a wildcard answers only what no more
+specific action claims — `GET /files/special` and `GET /files/:id[int]` both win
+over `GET /files/*` regardless of declaration order, and two same-method actions
+that genuinely overlap are still rejected as a conflict at startup.
+
+One dispatch rule to know: **endpoints match before pages.** A `GET /files/*`
+action owns everything under `/files/` for GET — a page at `/files/readme`
+becomes unreachable. Keep GET wildcards on API-only prefixes, or serve the page
+from the action yourself.
 
 ### The route prefix is inherited
 

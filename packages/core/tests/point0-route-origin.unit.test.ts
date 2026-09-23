@@ -47,10 +47,10 @@ describe('point route absorbs serverUrl as origin', () => {
     expect(() => ownRoute.origin).toThrow()
   })
 
-  it('without serverUrl the route still has no origin on the server', () => {
+  it('without serverUrl the route still has no origin on the server — abs() stays relative (building never throws)', () => {
     const root = Point0.lets('root', 'app').root()
     const action = root.lets('action', 'x', 'GET', '/api/x').action(() => new Response('ok'))
-    expect(() => action.route.abs()).toThrow('origin for route /api/x is not set')
+    expect(action.route.abs()).toBe('/api/x')
   })
 })
 

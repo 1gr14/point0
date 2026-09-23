@@ -867,6 +867,82 @@ export const a4 = nested.lets('PATCH', '/users').loader(() => ({ ok: true })).ac
         expect(parsed[3]).toMatchObject({ valid: true, name: 'PATCH /api/v1/users' })
       }),
     )
+
+    // route0 0.4.0 syntax must survive the static walk untouched: typed params (`:id[int]`), search declarations
+    // (`&page[int]=0`), wildcards on actions — the compiler builds routes through route0 itself, so the extracted
+    // definitions (and the endpoint routes derived from them) have to match what core computes at runtime
+    describe('route0 typed params and search declarations', () => {
+      it.concurrent(
+        'a page keeps its typed params and search declarations, endpoint route included',
+        helper({ ssr: true }, async ({ files: [file], walker }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const ideaPage = root.lets('page', 'idea', '/ideas/:id[int]&page[int]=0&q').page(() => <div>x</div>)
+        `)
+          const result = walker.collectPointsFromFile({ file: file.path })
+          expect(result.errors).toHaveLength(0)
+          const parsed = result.points[1].parse()
+          expect(parsed.simplify()).toMatchObject({
+            valid: true,
+            type: 'page',
+            name: 'idea',
+            route: '/ideas/:id[int]&page[int]=0&q',
+            endpoint: {
+              method: 'GET',
+              route: '/_point0/myroot/page/idea/ideas/:id[int]&page[int]=0&q',
+            },
+          })
+        }),
+      )
+
+      it.concurrent(
+        'a layout declaration concatenates into the page extended from it, declarations at the tail',
+        helper(async ({ files: [file], walker }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').root()
+export const docsLayout = root.lets('layout', 'docs', '/docs&lang(ru|en)').layout(({children}) => children)
+export const docPage = docsLayout.lets('page', 'doc', '/:slug&page[int]').page(() => <div>x</div>)
+        `)
+          const result = walker.collectPointsFromFile({ file: file.path })
+          expect(result.errors).toHaveLength(0)
+          const layout = result.points[1].parse()
+          expect(layout.simplify()).toMatchObject({ valid: true, route: '/docs&lang(ru|en)' })
+          const page = result.points[2].parse()
+          expect(page.simplify()).toMatchObject({
+            valid: true,
+            route: '/docs/:slug&lang(ru|en)&page[int]',
+            layouts: ['docs'],
+          })
+        }),
+      )
+
+      it.concurrent(
+        'an action takes a wildcard and typed declarations, basePath included',
+        helper(async ({ files: [file], walker }) => {
+          await file.write(`import {Point0} from '@point0/core'
+export const root = Point0.lets('root', 'myroot').basePath('/api').root()
+export const files = root.lets('GET', '/files/*').action(() => new Response('ok'))
+export const list = root.lets('GET', '/items/:id[int]&page[int]=0').action(() => new Response('ok'))
+        `)
+          const result = walker.collectPointsFromFile({ file: file.path })
+          expect(result.errors).toHaveLength(0)
+          const files = result.points[1].parse()
+          expect(files.simplify()).toMatchObject({
+            valid: true,
+            type: 'action',
+            name: 'GET /api/files/*',
+            route: '/api/files/*',
+            endpoint: { method: 'GET', route: '/api/files/*', methods: ['GET'] },
+          })
+          const list = result.points[2].parse()
+          expect(list.simplify()).toMatchObject({
+            valid: true,
+            name: 'GET /api/items/:id[int]&page[int]=0',
+            route: '/api/items/:id[int]&page[int]=0',
+          })
+        }),
+      )
+    })
   })
 
   describe('#shakeMethods', () => {

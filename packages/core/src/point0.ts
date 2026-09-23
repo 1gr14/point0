@@ -6,6 +6,7 @@ import type {
   CallableRoute,
   ExactLocation,
   HasParams,
+  HasSearchDecls,
   ParamsOutput,
   UnknownSearchInput,
   UnknownSearchParsed,
@@ -366,6 +367,7 @@ import type {
   RootPoint,
   RouteDefinition,
   RouteSchema,
+  RouteSearchSchema,
   SchemaHelper,
   ScrollConfig,
   ScrollPositionGetter,
@@ -1673,18 +1675,14 @@ export class Point0<
       }
       return prevRoute
     })()
-    const newRouteTokens = newRoute?.getTokens()
-    const hasWildcard = !!newRouteTokens?.some((token) => token.kind === 'wildcard')
-    if (hasWildcard && isLayout) {
+    if (newRoute?.hasWildcard && isLayout) {
       throw new Error(
         `Wildcard is not allowed in layout point ${this.toStringWithLocation()}. You should just attach your pages to layout points instead.`,
       )
     }
-    if (hasWildcard && isAction) {
-      throw new Error(
-        `Wildcard is not allowed in action point ${this.toStringWithLocation()}. Use middleware instead, or add ctx methods before.`,
-      )
-    }
+    // actions MAY carry a wildcard (`GET /files/*`): endpoints dispatch through the same per-method route0 Routes
+    // collection pages use, which orders by specificity — a wildcard action matches only what no more specific
+    // endpoint claims, and a genuine ambiguity is still rejected as a conflict at index time
 
     const normalizedPointName = (() => {
       if (isAction && !pointName) {
@@ -1749,7 +1747,7 @@ export class Point0<
           this._serverUrl ? { origin: this._serverUrl } : undefined,
         )
         if (isPage || isLayout) {
-          if (!newRoute || !newRouteTokens) {
+          if (!newRoute) {
             throw new Error(`Route is required for page or layout point ${this.toStringWithLocation()}`)
           }
           return routeGeneral.extend(newRoute.definition)
@@ -1796,8 +1794,9 @@ export class Point0<
         return []
       }
       const paramsKeys = newRoute.getParamsKeys()
+      const searchKeys = Object.keys(newRoute.searchParams)
       if (isPage || isLayout) {
-        if (newRoute.definition === prevRoute?.definition || paramsKeys.length === 0) {
+        if (newRoute.definition === prevRoute?.definition || (paramsKeys.length === 0 && searchKeys.length === 0)) {
           return []
         }
       }
@@ -1810,7 +1809,31 @@ export class Point0<
                 schema: newRoute.schema,
               },
             ]),
+        // search params declared in the route string (`/ideas&page[int]=0`) validate exactly like `.search(schema)`
+        // would: the route's own searchSchema coerces declared keys, fills defaults and wraps arrays
+        ...(searchKeys.length === 0
+          ? []
+          : [
+              {
+                type: 'search' as const,
+                schema: newRoute.searchSchema,
+              },
+            ]),
       ]
+    })()
+
+    // declared search keys feed the same key set `.search(schema)` feeds — the query-key filter that decides which
+    // search params identify a page's data (see _rawInputToRoutedRawInputForQueryKey); a loose route (`&` tail) keeps
+    // every key, like a schema whose keys can't be extracted
+    const newSearchSchemaKeys = (() => {
+      const searchKeys = newRoute ? Object.keys(newRoute.searchParams) : []
+      if (searchKeys.length === 0) {
+        return this._searchSchemaKeys
+      }
+      if (this._searchSchemaKeys === true || newRoute?.searchLoose) {
+        return true
+      }
+      return [...new Set([...(this._searchSchemaKeys ?? []), ...searchKeys])]
     })()
 
     const serverExecuteActionsAll = [
@@ -1860,6 +1883,7 @@ export class Point0<
     return this._continue({
       scope,
       scopes,
+      _searchSchemaKeys: newSearchSchemaKeys,
       // handlers and spaces run over the socket, never through the HTTP execute pipeline — the channel's input/ctx
       // entries would be dead weight on them (a space adds its OWN `.input` after the opener, kept for the joiner parse)
       _serverExecuteActions: isSocketPoint ? [] : serverExecuteActionsSuitable,
@@ -1968,7 +1992,12 @@ export class Point0<
               RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
             >
           : TParamsSchema,
-        TSearchSchema,
+        HasSearchDecls<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>> extends true
+          ? MergeRecordValidationSchemas<
+              TSearchSchema,
+              RouteSearchSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+            >
+          : TSearchSchema,
         TBodySchema,
         THeadersSchema,
         TCookiesSchema,
@@ -2018,7 +2047,12 @@ export class Point0<
               RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
             >
           : TParamsSchema,
-        TSearchSchema,
+        HasSearchDecls<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>> extends true
+          ? MergeRecordValidationSchemas<
+              TSearchSchema,
+              RouteSearchSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
+            >
+          : TSearchSchema,
         TBodySchema,
         THeadersSchema,
         TCookiesSchema,
@@ -2066,7 +2100,12 @@ export class Point0<
               RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
             >
           : TParamsSchema,
-        TSearchSchema,
+        HasSearchDecls<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>> extends true
+          ? MergeRecordValidationSchemas<
+              TSearchSchema,
+              RouteSearchSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+            >
+          : TSearchSchema,
         TBodySchema,
         THeadersSchema,
         TCookiesSchema,
@@ -2114,7 +2153,12 @@ export class Point0<
               RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
             >
           : TParamsSchema,
-        TSearchSchema,
+        HasSearchDecls<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>> extends true
+          ? MergeRecordValidationSchemas<
+              TSearchSchema,
+              RouteSearchSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
+            >
+          : TSearchSchema,
         TBodySchema,
         THeadersSchema,
         TCookiesSchema,
@@ -2158,7 +2202,12 @@ export class Point0<
               RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
             >
           : TParamsSchema,
-        TSearchSchema,
+        HasSearchDecls<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>> extends true
+          ? MergeRecordValidationSchemas<
+              TSearchSchema,
+              RouteSearchSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+            >
+          : TSearchSchema,
         TBodySchema,
         THeadersSchema,
         TCookiesSchema,
@@ -2200,7 +2249,9 @@ export class Point0<
         HasParams<TProvidedRoute['definition']> extends true
           ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
           : TParamsSchema,
-        TSearchSchema,
+        HasSearchDecls<TProvidedRoute['definition']> extends true
+          ? MergeRecordValidationSchemas<TSearchSchema, RouteSearchSchema<TProvidedRoute['definition']>>
+          : TSearchSchema,
         TBodySchema,
         THeadersSchema,
         TCookiesSchema,
@@ -2244,7 +2295,12 @@ export class Point0<
               RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
             >
           : TParamsSchema,
-        TSearchSchema,
+        HasSearchDecls<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>> extends true
+          ? MergeRecordValidationSchemas<
+              TSearchSchema,
+              RouteSearchSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+            >
+          : TSearchSchema,
         TBodySchema,
         THeadersSchema,
         TCookiesSchema,
@@ -2286,7 +2342,9 @@ export class Point0<
         HasParams<TProvidedRoute['definition']> extends true
           ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
           : TParamsSchema,
-        TSearchSchema,
+        HasSearchDecls<TProvidedRoute['definition']> extends true
+          ? MergeRecordValidationSchemas<TSearchSchema, RouteSearchSchema<TProvidedRoute['definition']>>
+          : TSearchSchema,
         TBodySchema,
         THeadersSchema,
         TCookiesSchema,
@@ -2917,7 +2975,12 @@ export class Point0<
                     RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
                   >
                 : TParamsSchema,
-              TSearchSchema,
+              HasSearchDecls<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>> extends true
+                ? MergeRecordValidationSchemas<
+                    TSearchSchema,
+                    RouteSearchSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+                  >
+                : TSearchSchema,
               TBodySchema,
               THeadersSchema,
               TCookiesSchema,
@@ -2966,7 +3029,12 @@ export class Point0<
                     RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
                   >
                 : TParamsSchema,
-              TSearchSchema,
+              HasSearchDecls<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>> extends true
+                ? MergeRecordValidationSchemas<
+                    TSearchSchema,
+                    RouteSearchSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute['definition']>>
+                  >
+                : TSearchSchema,
               TBodySchema,
               THeadersSchema,
               TCookiesSchema,
@@ -3014,7 +3082,12 @@ export class Point0<
                       RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
                     >
                   : TParamsSchema,
-                TSearchSchema,
+                HasSearchDecls<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>> extends true
+                  ? MergeRecordValidationSchemas<
+                      TSearchSchema,
+                      RouteSearchSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+                    >
+                  : TSearchSchema,
                 TBodySchema,
                 THeadersSchema,
                 TCookiesSchema,
@@ -3058,7 +3131,9 @@ export class Point0<
                 HasParams<TProvidedRoute['definition']> extends true
                   ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
                   : TParamsSchema,
-                TSearchSchema,
+                HasSearchDecls<TProvidedRoute['definition']> extends true
+                  ? MergeRecordValidationSchemas<TSearchSchema, RouteSearchSchema<TProvidedRoute['definition']>>
+                  : TSearchSchema,
                 TBodySchema,
                 THeadersSchema,
                 TCookiesSchema,
@@ -3102,7 +3177,12 @@ export class Point0<
                       RouteSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
                     >
                   : TParamsSchema,
-                TSearchSchema,
+                HasSearchDecls<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>> extends true
+                  ? MergeRecordValidationSchemas<
+                      TSearchSchema,
+                      RouteSearchSchema<ExtendRouteDefinition<TRouteDefinition, TProvidedRoute>>
+                    >
+                  : TSearchSchema,
                 TBodySchema,
                 THeadersSchema,
                 TCookiesSchema,
@@ -3146,7 +3226,9 @@ export class Point0<
                 HasParams<TProvidedRoute['definition']> extends true
                   ? MergeRecordValidationSchemas<TParamsSchema, RouteSchema<TProvidedRoute['definition']>>
                   : TParamsSchema,
-                TSearchSchema,
+                HasSearchDecls<TProvidedRoute['definition']> extends true
+                  ? MergeRecordValidationSchemas<TSearchSchema, RouteSearchSchema<TProvidedRoute['definition']>>
+                  : TSearchSchema,
                 TBodySchema,
                 THeadersSchema,
                 TCookiesSchema,
@@ -7139,11 +7221,16 @@ export class Point0<
    * Attach the schema for a page/layout/action's route segments — the `:id` parts of `/ideas/:id`. Parsed and typed
    * into `params` everywhere it flows. Use coercion (`z.coerce.number()`) since route segments arrive as strings.
    *
+   * A typed route param does the same from the string alone — `.page('/ideas/:id[int]')` gives a `number` param with no
+   * schema call, and narrows matching too (`/ideas/abc` is a 404, not a validation error). `.params` then refines on
+   * top when you need more than the type.
+   *
    * Server-and-client on a non-action mountable (isomorphic — kept on both bundles); server-only on an action (the
    * schema is stripped from the client bundle).
    *
    *     .page('/ideas/:id').params(z.object({ id: z.coerce.number() })) // schema form
    *     .params((raw) => ({ id: Number(raw.id) }))                      // custom validate-fn form
+   *     .page('/ideas/:id[int]')                                        // route-typed form, no schema call
    *
    * Full reference: https://1gr14.dev/point0/latest/validation
    */
@@ -7264,11 +7351,18 @@ export class Point0<
    * Attach the schema for a page/layout/action's query string — `?page=2&limit=10`. Parsed and typed into `search`,
    * with `setSearch` available in the render. Use coercion/defaults since query values arrive as strings.
    *
+   * Search params declared in the route string do the same with no schema call — `.page('/ideas&page[int]=0')` gives a
+   * coerced, defaulted `search.page: number`, and the declared keys feed the cache-key filter without any schema
+   * helper. `.search` then refines on top (nested shapes, cross-field rules). One behavioral difference: on a matched
+   * page an invalid declared value degrades to its absent case instead of failing validation; a missing required
+   * (`&token!`) declaration still fails loudly.
+   *
    * Server-and-client on a non-action mountable (isomorphic — kept on both bundles); server-only on an action (the
    * schema is stripped from the client bundle).
    *
    *     .page('/ideas').search(z.object({ page: z.coerce.number().default(0) })) // schema form
    *     .search((raw) => ({ page: Number(raw.page ?? 0) }))            // custom validate-fn form
+   *     .page('/ideas&page[int]=0')                                    // route-declared form, no schema call
    *
    * Full reference: https://1gr14.dev/point0/latest/validation
    */

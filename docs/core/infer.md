@@ -109,8 +109,11 @@ type Body = typeof uploadAction.Infer.BodyParsed // parsed request body
 ```
 
 The same `*Schema` / `*Raw` / `*Parsed` triple exists for `Params`, `Search`,
-`Body`, `Headers`, and `Cookies`. See [validation](validation) for which point
-type uses which input source.
+`Body`, `Headers`, and `Cookies`. `Params` and `Search` add a fourth form,
+`*RawStringOnly` — the raw shape with every value in its URL-string form, the
+object exactly as the wire carries it: enum literals and arrays/nesting kept,
+every other leaf a `string`. See [validation](validation) for which point type
+uses which input source.
 
 ## RouteDefinition
 
@@ -173,7 +176,9 @@ any key on any point.
 | `ServerInputRaw` / `ServerInputParsed`                | merged raw / parsed server input                                                   |
 | `IsServerInputOptional`                               | `true` / `false` — is server input optional?                                       |
 | `ParamsSchema` / `ParamsRaw` / `ParamsParsed`         | route-params schema / raw / parsed                                                 |
+| `ParamsRawStringOnly`                                 | `ParamsRaw` with every value in its URL-string form (enum literals kept)           |
 | `SearchSchema` / `SearchRaw` / `SearchParsed`         | query-string schema / raw / parsed                                                 |
+| `SearchRawStringOnly`                                 | `SearchRaw` with every value in its URL-string form (arrays/nesting kept)          |
 | `BodySchema` / `BodyRaw` / `BodyParsed`               | request-body schema / raw / parsed                                                 |
 | `HeadersSchema` / `HeadersRaw` / `HeadersParsed`      | headers schema / raw / parsed                                                      |
 | `CookiesSchema` / `CookiesRaw` / `CookiesParsed`      | cookies schema / raw / parsed                                                      |

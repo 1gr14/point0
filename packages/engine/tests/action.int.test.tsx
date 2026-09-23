@@ -553,4 +553,57 @@ describe('action', () => {
 
     await expect(createTestThings({ ssr: true, points: [root, action1, action2] })).rejects.toThrow()
   })
+
+  describe('wildcard routes', () => {
+    it('an action may carry a wildcard; dispatch orders by specificity, not by registration order', async () => {
+      const root = createRoot()
+      // the catch-all is registered FIRST on purpose — route0's specificity ordering, not registration order,
+      // decides who answers (same mechanism that orders page routes)
+      const catchAll = root
+        .lets('action', 'files', 'GET', '/files/*')
+        .action(({ params }) => new Response(`wild:${params['*']}`))
+      const special = root.lets('action', 'special', 'GET', '/files/special').action(() => new Response('special'))
+      const byId = root
+        .lets('action', 'byId', 'GET', '/files/:id[int]')
+        .action(({ params }) => new Response(`int:${params.id}`))
+
+      const { fetch } = await createTestThings({ ssr: true, points: [root, catchAll, special, byId] })
+      expect(await (await fetch('http://localhost/files/special')).text()).toBe('special')
+      expect(await (await fetch('http://localhost/files/42')).text()).toBe('int:42')
+      expect(await (await fetch('http://localhost/files/readme')).text()).toBe('wild:readme')
+      expect(await (await fetch('http://localhost/files/a/b.txt')).text()).toBe('wild:a/b.txt')
+    })
+
+    it('a wildcard tail narrows the wildcard — /raw/*.:ext parses both params', async () => {
+      const root = createRoot()
+      const raw = root
+        .lets('action', 'raw', 'GET', '/raw/*.:ext')
+        .action(({ params }) => new Response(`${params['*']}|${params.ext}`))
+
+      const { fetch } = await createTestThings({ ssr: true, points: [root, raw] })
+      expect(await (await fetch('http://localhost/raw/a/b.md')).text()).toBe('a/b|md')
+      expect((await fetch('http://localhost/raw/noext')).status).toBe(404)
+    })
+
+    it('a GET wildcard action shadows pages under it — endpoints dispatch before pages', async () => {
+      const root = createRoot()
+      const catchAll = root.lets('action', 'files', 'GET', '/files/*').action(() => new Response('action'))
+      const page = root.lets('page', 'readme', '/files/readme').page(() => <div id="page">page</div>)
+
+      const { fetch } = await createTestThings({ ssr: true, points: [root, catchAll, page] })
+      expect(await (await fetch('http://localhost/files/readme')).text()).toBe('action')
+    })
+
+    it('two same-method wildcard actions on one path still conflict at index time', async () => {
+      const root = createRoot()
+      const action1 = root.lets('action', 'files1', 'GET', '/files/*').action(() => new Response('1'))
+      const action2 = root.lets('action', 'files2', 'GET', '/files/*').action(() => new Response('2'))
+      await expect(createTestThings({ ssr: true, points: [root, action1, action2] })).rejects.toThrow()
+    })
+
+    it('a layout still rejects a wildcard route', () => {
+      const root = createRoot()
+      expect(() => root.lets('layout', 'files', '/files/*')).toThrow('Wildcard is not allowed in layout')
+    })
+  })
 })

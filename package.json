@@ -31,7 +31,7 @@
       "@tanstack/query-core": "^5.101.4",
       "superjson": "^2.2.6",
       "@1gr14/error0": "^0.4.8",
-      "@1gr14/route0": "^0.3.0",
+      "@1gr14/route0": "^0.4.1",
       "@1gr14/flat": "^0.1.4",
       "arktype": "^2.2.3",
       "wouter": "^3.10.0",
@@ -157,7 +157,7 @@
   "dependencies": {
     "@1gr14/error0": "^0.4.8",
     "@1gr14/flat": "^0.1.4",
-    "@1gr14/route0": "^0.3.0"
+    "@1gr14/route0": "^0.4.1"
   },
   "patchedDependencies": {
     "playwright-core@1.62.1": "patches/playwright-core@1.62.1.patch"

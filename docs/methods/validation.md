@@ -280,6 +280,51 @@ from either bundle, so the query string parses on either side — and
 `setSearch` and the rest of the search/routing surface live on
 [Navigation](navigation).
 
+### Or declare both in the route string
+
+The route string itself can carry what `.params` and `.search` express — typed
+path params in square brackets, search params `&`-declared after the path
+([route0](https://github.com/1gr14/route0)'s syntax):
+
+```tsx
+export const ideaViewPage = generalLayout.lets
+  .page('/ideas/:sn[int]') // ≡ .params(z.object({ sn: z.coerce.number().int() }))
+  .page(({ params }) => <h1>Idea #{params.sn}</h1>) // params.sn is a number
+
+export const ideaListPage = generalLayout.lets
+  .page('/ideas&page[int]=0&limit[int]=2') // ≡ .search(z.object({ page: …, limit: … }))
+  .page(({ search, setSearch }) => {
+    // search is { page: number, limit: number } — coerced, defaults filled
+  })
+```
+
+The effect is the same as the schema calls: the values arrive parsed and typed
+in the loader, the component, the cache key and the OpenAPI spec, and a declared
+search param needs **no schema helper** — the declaration itself names the keys.
+A typed param goes further than a coercing schema: it also narrows **matching**,
+so `/ideas/abc` is a 404 instead of a validation error.
+
+Three differences to know:
+
+- **A typed param decides the match.** `.params(z.coerce.number())` on
+  `'/ideas/:sn'` still matches `/ideas/abc` and then fails validation loudly;
+  `'/ideas/:sn[int]'` never matches it in the first place.
+- **An invalid declared search value degrades, it doesn't throw.** On a matched
+  page `?page=abc` parses as an absent `page` (here: the default `0`) — the page
+  renders instead of erroring. A missing **required** declaration (`&token!`)
+  still fails validation like a required schema key.
+- **Declarations close the search object** to the declared keys (a trailing `&`
+  keeps it open); undeclared keys still reach `request.location.search`, they
+  just stay untyped and out of the cache key.
+
+Both can combine — `.search` refines on top of the declared keys (a nested
+filter object, a cross-field rule), `.params` on top of the typed ones. Actions
+take the same syntax: `root.lets('GET', '/api/items/:id[int]&page[int]=0')`. The
+full pattern language — enums `(a|b)`, arrays `[]`, `[uuid]`/`[date]` params,
+prefixes and tails — is route0's:
+[typed params](https://github.com/1gr14/route0#give-a-param-a-type) and
+[search declarations](https://github.com/1gr14/route0#declare-search-params-in-the-pattern).
+
 ## `.body`, `.headers`, `.cookies` — actions and request data
 
 An [action](action) is a raw HTTP endpoint, so it splits its request across the

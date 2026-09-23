@@ -5,6 +5,28 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **Route strings carry typed params and search params.** Point0 now sits on
+  route0 0.4, so `'/ideas/:id[int]'` gives a loader `params.id` as a `number` and
+  stops matching `/ideas/abc`, and `'/ideas&q&page[int]=0'` declares search params
+  right in the route string. A declaration works like the equivalent
+  `.search(schema)`: values are coerced, defaults filled, arrays wrapped, the keys
+  join the page's query key (no schema helper needed) and the Infer types follow.
+  One deliberate difference: an invalid declared value (`?page=abc`) falls back to
+  its default and the page still renders, while a missing required `!` key fails
+  loudly. Details in the validation guide.
+- **Actions may carry a wildcard.** `GET /files/*` is allowed now: endpoints
+  dispatch by specificity, so a wildcard action answers only what no more
+  specific endpoint claims, and two identical wildcards are still a conflict.
+  Endpoints match before pages, so a `GET` wildcard action shadows the pages
+  under it. Layouts still refuse a wildcard.
+- **`Infer` gains `ParamsRawStringOnly` and `SearchRawStringOnly`**: the params
+  and search in the string form the URL carries.
+- **OpenAPI paths come from route0.** In-segment literals and tail params
+  (`/files/img-{id}.png`, `/my/{slug}.{ext}`) are emitted correctly, typed params
+  get their schema (`[int]` is an integer).
+- **route0 0.4 builds URLs without throwing.** A point's `abs()` with no origin
+  configured now returns a relative URL instead of throwing.
+
 ## 0.4.0 — 2026-08-24
 
 - **Navigation guards: ask before a client navigation runs.** A guard is asked
