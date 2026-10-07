@@ -20,23 +20,55 @@ import {
  */
 export const RSC_STREAM_HEARTBEAT_MS = 5000
 
+type SettleWatch = { settled: boolean; wakers: Set<() => void> }
+
+const settleWatches = new WeakMap<Promise<unknown>, SettleWatch>()
+
+// One reaction per watched promise, ever. Heartbeat loops wait on the SAME pending promise every few seconds for as long
+// as a stream stays quiet (hours, for an idle subscription); a `Promise.race`/`.then` per beat would chain one more
+// reaction onto it each time, and those stay reachable until the promise settles — memory that grows with the stream's
+// lifetime. Here a beat only adds a waker to a set and removes it again when its timer fires.
+const watchSettle = (promise: Promise<unknown>): SettleWatch => {
+  let watch = settleWatches.get(promise)
+  if (watch === undefined) {
+    const created: SettleWatch = { settled: false, wakers: new Set() }
+    const settle = (): void => {
+      created.settled = true
+      for (const wake of created.wakers) {
+        wake()
+      }
+      created.wakers.clear()
+    }
+    promise.then(settle, settle)
+    settleWatches.set(promise, created)
+    watch = created
+  }
+  return watch
+}
+
 /**
  * Race a promise against a timer: resolves `true` when the timer wins (time to write a heartbeat), `false` when the
- * promise settles first. The timer never holds the process (unref) and is cleared on either outcome.
+ * promise settles first (fulfilled or rejected — read the outcome from the promise itself). Safe to call every beat on
+ * the same long-pending promise: it attaches a single reaction per promise, so waiting does not accumulate memory. The
+ * timer never holds the process (unref) and is cleared on either outcome.
  */
 export const raceIsTimeout = async (promise: Promise<unknown>, ms: number): Promise<boolean> => {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  try {
-    return await Promise.race([
-      promise.then(() => false),
-      new Promise<true>((resolve) => {
-        timer = setTimeout(() => resolve(true), ms)
-        ;(timer as unknown as { unref?: () => void }).unref?.()
-      }),
-    ])
-  } finally {
-    clearTimeout(timer)
+  const watch = watchSettle(promise)
+  if (watch.settled) {
+    return false
   }
+  return await new Promise<boolean>((resolve) => {
+    const wake = (): void => {
+      clearTimeout(timer)
+      resolve(false)
+    }
+    const timer = setTimeout(() => {
+      watch.wakers.delete(wake)
+      resolve(true)
+    }, ms)
+    ;(timer as unknown as { unref?: () => void }).unref?.()
+    watch.wakers.add(wake)
+  })
 }
 
 /**
@@ -153,7 +185,10 @@ export const createHoleNdjsonStream = ({
           // wakes on progress and never throws out of the loop. While nothing settles, write a blank-line heartbeat
           // (see RSC_STREAM_HEARTBEAT_MS) so idle reapers never kill a stream that is legitimately waiting; the client
           // reader skips empty lines.
-          while (await raceIsTimeout(Promise.race(undelivered.map((entry) => entry.throwable)), heartbeatMs)) {
+          // One combined promise per wait, not per beat — a fresh Promise.race each beat would add reactions to every
+          // undelivered entry for as long as they stay pending (see raceIsTimeout).
+          const progress = Promise.race(undelivered.map((entry) => entry.throwable))
+          while (await raceIsTimeout(progress, heartbeatMs)) {
             if (isCancelled()) {
               return
             }

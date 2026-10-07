@@ -12,23 +12,9 @@
  */
 import { stringifyOrThrow } from '@point0/core'
 import type { AnyPoint, SubscriptionStreamEnvelope } from '@point0/core'
+import { raceIsTimeout } from './rsc-stream.js'
 
 const SUBSCRIPTION_STREAM_HEARTBEAT_MS = 5000
-
-const raceIsTimeout = async <T>(promise: Promise<T>, ms: number): Promise<{ timeout: boolean; value?: T }> => {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const timeoutMarker = Symbol('timeout')
-  const raced = await Promise.race([
-    promise,
-    new Promise<typeof timeoutMarker>((resolve) => {
-      timer = setTimeout(() => resolve(timeoutMarker), ms)
-    }),
-  ])
-  if (timer) {
-    clearTimeout(timer)
-  }
-  return raced === timeoutMarker ? { timeout: true } : { timeout: false, value: raced as T }
-}
 
 /** A stringified envelope must stay one line — a pretty-printing transformer would corrupt the newline framing. */
 const assertSingleLine = (line: string, pointId: string): string => {
@@ -39,6 +25,9 @@ const assertSingleLine = (line: string, pointId: string): string => {
   }
   return line
 }
+
+const isAbortError = (error: unknown, signal: AbortSignal): boolean =>
+  error === signal.reason || (error instanceof Error && error.name === 'AbortError')
 
 export type SubscriptionStreamFraming = 'ndjson' | 'sse'
 
@@ -88,16 +77,16 @@ export const createSubscriptionStream = ({
             return
           }
           pendingNext ??= iterator.next()
-          const raced = await raceIsTimeout(pendingNext, SUBSCRIPTION_STREAM_HEARTBEAT_MS)
-          if (raced.timeout) {
+          if (await raceIsTimeout(pendingNext, SUBSCRIPTION_STREAM_HEARTBEAT_MS)) {
             // the generator is quiet — keep the pending next() and let a blank heartbeat keep the pipe warm
             if (!isCancelled()) {
               controller.enqueue(heartbeat())
             }
             continue
           }
+          const settled = pendingNext
           pendingNext = undefined
-          const result = raced.value as IteratorResult<unknown>
+          const result = await settled
           if (result.done) {
             if (!isCancelled()) {
               controller.enqueue(line({ d: true }))
@@ -123,6 +112,11 @@ export const createSubscriptionStream = ({
           const error0 = ErrorClass.from(error)
           emit('pointSubscriptionServerSettled', { outcome: 'failed', error: error0 })
           emit('pointSubscriptionServerError', { error: error0 })
+        }
+        // The loader rethrowing its own `signal`'s abort after the client left is how a subscription normally ends
+        // (`events.on(..., { signal })` does exactly that) — not a failure worth an error log on every closed tab.
+        if (isCancelled() && isAbortError(error, abortController.signal)) {
+          return
         }
         log({
           level: 'error',

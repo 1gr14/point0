@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import * as React from 'react'
 import { ErrorPoint0, POINT0_ERROR_CODES_MAP, RscHoleRegistry, type DataTransformerExtended } from '@point0/core'
-import { buildHolePushPayload, createHoleNdjsonStream } from '../src/rsc-stream.js'
+import { buildHolePushPayload, createHoleNdjsonStream, raceIsTimeout } from '../src/rsc-stream.js'
 
 // Unit tests for the NDJSON hole framing — no server: a hand-fed RscHoleRegistry drives the exported stream factory
 // directly. The full in-process flows (framing over a real fetch, fills, boundaries) live in rsc.int.test.tsx.
@@ -188,5 +188,33 @@ describe('rsc stream units', () => {
       (error: unknown) => error,
     )
     expect((thrown as ErrorPoint0).code).toBe(POINT0_ERROR_CODES_MAP.SERIALIZE_FAILED)
+  })
+  it('heartbeat waits on one long-pending promise attach a single reaction, however many beats elapse', async () => {
+    const pending = new Promise<never>(() => {})
+    const originalThen = pending.then.bind(pending)
+    let thenCalls = 0
+    pending.then = ((...args: Parameters<typeof originalThen>) => {
+      thenCalls++
+      return originalThen(...args)
+    }) as typeof pending.then
+    for (let beat = 0; beat < 50; beat++) {
+      expect(await raceIsTimeout(pending, 1)).toBe(true)
+    }
+    expect(thenCalls).toBe(1)
+  })
+
+  it('raceIsTimeout answers false once the promise settles — fulfilled or rejected, waiting or already settled', async () => {
+    let resolve!: () => void
+    const later = new Promise<void>((r) => {
+      resolve = r
+    })
+    expect(await raceIsTimeout(later, 1)).toBe(true)
+    const waiting = raceIsTimeout(later, 60_000)
+    resolve()
+    expect(await waiting).toBe(false)
+    expect(await raceIsTimeout(later, 60_000)).toBe(false)
+    const rejected = Promise.reject(new Error('kaput'))
+    expect(await raceIsTimeout(rejected, 60_000)).toBe(false)
+    expect(await rejected.catch((error: unknown) => (error as Error).message)).toBe('kaput')
   })
 })

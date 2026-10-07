@@ -5,6 +5,18 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+- **Long-lived streams no longer grow memory while they wait.** A quiet
+  subscription (and a slow deferred hole or SSR flush) re-armed its 5-second
+  heartbeat with a fresh `Promise.race` on the same pending promise, and every
+  race left a reaction on it until it settled — an idle subscription held ~47 KB
+  more for every hour it stayed open. A wait now attaches one reaction per
+  promise, however many beats elapse.
+- **A closed tab is no longer a subscription error.** When the client leaves,
+  the loader's `signal` aborts and a loader parked in `events.on(…, { signal })`
+  rethrows that abort; the engine logged it as
+  `Subscription loader of … threw`. That normal ending is now silent; any other
+  error is logged as before.
+
 ## 0.4.1 — 2026-09-23
 
 - **Route strings carry typed params and search params.** Point0 now sits on
