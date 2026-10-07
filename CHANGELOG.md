@@ -5,6 +5,8 @@ release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.2 — 2026-10-07
+
 - **Long-lived streams no longer grow memory while they wait.** A quiet
   subscription (and a slow deferred hole or SSR flush) re-armed its 5-second
   heartbeat with a fresh `Promise.race` on the same pending promise, and every
